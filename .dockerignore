@@ -1,0 +1,10 @@
+nhpmnodel/renv
+nhpmnodel/man
+nhpmnodel/.lintr
+nhpmnodel/.here
+nhpmnodel/.Rprofile
+nhpmnodel/nhp_model.Rproj
+nhpmnodel/renv.lock
+
+Dockerfile
+.Renviron
