@@ -1,0 +1,11 @@
+strategy,avoidance_low,avoidance_high,los_change,strategy_weight
+null,1,1,1,1
+ambulatory_emergency_care,NA,NA,NA,1
+ambulatory_emergency_care_high,1,1,0.85,1
+ambulatory_emergency_care_low,1,1,0.95,1
+ambulatory_emergency_care_moderate,1,1,0.9,1
+ambulatory_emergency_care_very_high,1,1,0.8,1
+cancelled_operations,0.5,0.9,1,1
+emergency_elderly,0.7,0.95,1,1
+frail_elderly_high,0.9,1,1,1
+frail_elderly_intermediate,0.8,0.95,1,1
