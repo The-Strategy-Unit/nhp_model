@@ -9,8 +9,10 @@
 #' @examples
 #' demographic_factors("E08000031", "principal")
 #' demographic_factors("E08000031", "high migration")
+#'
+#' @export
 demographic_factors <- function(local_authorities, variant_probabilities, start_year, end_year) {
-  d <- system.file("data", "demographic_factors.csv", package = "nhp_model") |>
+  d <- system.file("data", "demographic_factors.csv", package = "nhpmodel") |>
     read_csv(col_types = paste(c(rep("c", 5), rep("d", 26)), collapse = ""),
              lazy = FALSE) |>
     filter(.data$age != "all") |>

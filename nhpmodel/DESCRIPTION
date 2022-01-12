@@ -19,7 +19,8 @@ Imports:
     here,
     purrr,
     tidyr,
-    readr
+    readr,
+    jsonlite
 Suggests: 
     devtools,
     usethis

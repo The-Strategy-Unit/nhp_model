@@ -27,4 +27,5 @@ Demographic Factors
 \examples{
 demographic_factors("E08000031", "principal")
 demographic_factors("E08000031", "high migration")
+
 }

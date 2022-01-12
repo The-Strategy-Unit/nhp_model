@@ -4,26 +4,19 @@
 \alias{model}
 \title{Run Model}
 \usage{
-model(
-  model_run_name,
-  run_number,
-  data,
-  strategies,
-  strategy_params,
-  demog_factors_fn
-)
+model(path, data, strategies, demog_factors_fn, strategy_params)
 }
 \arguments{
-\item{model_run_name}{what to name the files}
+\item{path}{where to store the model results}
 
 \item{data}{the data to run the model on, should contain four columns (rn, admiage, sex, speldur)}
 
 \item{strategies}{a table containing two columns (rn, strategy). Multiple strategies may be defined per rn}
 
+\item{demog_factors_fn}{a function which returns a table containing two columns (demogroup, factor)}
+
 \item{strategy_params}{a table containing five columns:
 (strategy, avoidance_low, avoidance_high, speldur_adjustment, strategy_weight)}
-
-\item{demog_factors_fn}{a function which returns a table containing two columns (demogroup, factor)}
 }
 \value{
 a table containing two columns (rn, speldur)
