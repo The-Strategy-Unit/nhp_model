@@ -1,10 +1,10 @@
-nhpmnodel/renv
-nhpmnodel/man
-nhpmnodel/.lintr
-nhpmnodel/.here
-nhpmnodel/.Rprofile
-nhpmnodel/nhp_model.Rproj
-nhpmnodel/renv.lock
+nhpmodel/renv
+nhpmodel/man
+nhpmodel/.lintr
+nhpmodel/.here
+nhpmodel/.Rprofile
+nhpmodel/nhp_model.Rproj
+nhpmodel/renv.lock
 
 Dockerfile
 .Renviron
