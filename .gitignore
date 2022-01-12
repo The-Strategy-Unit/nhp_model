@@ -48,3 +48,11 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 .Rproj.user
+
+# ignore config files
+config.py
+
+# ignore test folder
+test/
+
+__PYCACHE__
