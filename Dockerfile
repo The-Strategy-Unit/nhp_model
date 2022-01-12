@@ -5,10 +5,12 @@ RUN install.r remotes
 COPY nhpmodel/DESCRIPTION /opt/nhpmodel/
 RUN Rscript -e 'remotes::install_deps("/opt/nhpmodel", dependencies = TRUE)'
 
+VOLUME [ "/mnt/data", "/mnt/queue", "/mnt/results" ]
+
 # handle the rest of the files now and install the package
-COPY nhpmodel /opt/
+COPY nhpmodel/ /opt/nhpmodel
 RUN R CMD INSTALL /opt/nhpmodel
 
-VOLUME [ "/mnt/data", "mnt/results" ]
+COPY run_models.R /opt
 
-CMD ["/bin/bash"]
+CMD ["/usr/bin/Rscript", "/opt/run_models.R"]
