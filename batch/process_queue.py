@@ -2,33 +2,36 @@
 import json
 import os
 
-from connections import connect_adls, connect_blob_storage
+from batch.connections import connect_adls, connect_blob_storage
 
-__RUNS_PER_TASK = 256
-__QUEUE_PATH = os.path.join("test", "queue")
-
-
-def prep_file(path, file):
+def prep_file(runs_per_task: int, path: str, file: str) -> None:
   """
-  Prepare the file
+  Prepares a parameters file into tasks
 
-  Prepares a parameter file for processing. It creates the relevant folder structure in the results container, and
-  uploads the json file to this folder. It then splits the json params up into individual tasks and places them in the
-  queue container. 
+    * runs_per_task: the number of model runs to perform per task.
+    * path: the path that contains the parameter file.
+    * file: the name of the parameter file.
+
+  This function will create the relevant folder structure in the results container, and then upload the parameter file
+  to this location. It then splits the json params up into individual tasks and places them in the queue container.
   """
+  
   with open(os.path.join(path, file)) as f:
     data = json.load(f)
 
   blob_storage_client = connect_blob_storage()
   adls_client = connect_adls()
 
+  # create the location of where we are going to save in the results container
   create_time = data["create_datetime"].replace(":", "").replace(" ", "_").replace("-", "")
   results_path = f"{data['name']}/{create_time}"
 
+  # upload the json to the results container
   blob_storage_client \
     .get_blob_client("results", f"{results_path}/params.json") \
     .upload_blob(json.dumps(data))
 
+  # create the necessary folders in the results container
   d = adls_client.get_file_system_client("results")
   [d.create_directory(f"{results_path}/{x}") for x in ["results", "selected_strategy", "selected_variant"]]
 
@@ -39,20 +42,23 @@ def prep_file(path, file):
   data.pop("name")
   data["path"] = results_path
 
-  for i in range(1, model_runs, __RUNS_PER_TASK):
+  # split the file up based on how many runs per task we are going to perform
+  for i in range(1, model_runs, runs_per_task):
     data["run_start"] = i
-    data["run_end"] = (j := i + __RUNS_PER_TASK - 1)
+    data["run_end"] = (j := i + runs_per_task - 1)
 
-    blob_client = blob_storage_client.get_blob_client("queue", f"tasks/{file[0:-5]}_{i}_{j}.json")
-    blob_client.upload_blob(json.dumps(data))
+    blob_storage_client \
+      .get_blob_client("queue", f"tasks/{file[0:-5]}_{i}_{j}.json") \
+      .upload_blob(json.dumps(data))
 
-"""
-Prepare the queue
+def prep_queue(runs_per_task: int, queue_path: str) -> None:
+  """
+  Prepare the queue
 
-Prepares all of the files currently in the queue by calling prep_file on each .json file.
-"""
-def prep_queue():
-  [prep_file(__QUEUE_PATH, p) for p in os.listdir(__QUEUE_PATH) if p.endswith(".json")]
+    * runs_per_task: the number of model runs to perform per task.
+    * path: the path that contains parameter json files.
 
-if __name__ == "__main__":
-  prep_queue()
+  Prepares all of the files currently in the queue by calling prep_file on each .json file.
+  """
+
+  [prep_file(runs_per_task, queue_path, p) for p in os.listdir(queue_path) if p.endswith(".json")]

@@ -1,26 +1,38 @@
 import time
-import azure.batch.models as batchmodels
-import config
+import batch.config as config
 
-def create_pool(batch_service_client, pool_id):
+from azure.batch import BatchServiceClient
+import azure.batch.models as batchmodels
+
+def create_pool(batch_service_client: BatchServiceClient, pool_id: str) -> None:
+  """
+  Creates a pool of VM's
+
+    * batch_service_client: A Batch service client.
+    * pool_id: The ID for the pool.
+  """
+  vm_image = batchmodels.ImageReference(
+    publisher = "microsoft-azure-batch",
+    offer = "ubuntu-server-container",
+    sku = "20-04-lts",
+    version = "latest"
+  )
+
+  container_conf = batchmodels.ContainerConfiguration(
+    container_image_names = [config._CR_CONTAINER_NAME],
+    container_registries = [
+      batchmodels.ContainerRegistry(
+        user_name = config._CR_REGISTRY_NAME,
+        password = config._CR_PASSWORD,
+        registry_server = config._CR_LOGIN_SERVER
+      )
+    ]
+  )
+
   vm = batchmodels.VirtualMachineConfiguration(
-    image_reference = batchmodels.ImageReference(
-      publisher = "microsoft-azure-batch",
-      offer = "ubuntu-server-container",
-      sku = "20-04-lts",
-      version = "latest"
-    ),
+    image_reference = vm_image,
     node_agent_sku_id = "batch.node.ubuntu 20.04",
-    container_configuration = batchmodels.ContainerConfiguration(
-      container_image_names = [config._CR_CONTAINER_NAME],
-      container_registries = [
-        batchmodels.ContainerRegistry(
-          user_name = config._CR_REGISTRY_NAME,
-          password = config._CR_PASSWORD,
-          registry_server = config._CR_LOGIN_SERVER
-        )
-      ]
-    )
+    container_configuration = container_conf
   )
 
   mount = lambda container: batchmodels.MountConfiguration(
@@ -40,10 +52,22 @@ def create_pool(batch_service_client, pool_id):
     target_dedicated_nodes = config._POOL_NODE_DEDICATED_COUNT,
     target_low_priority_nodes = config._POOL_NODE_LOW_PRIORITY_COUNT
   )
+
   batch_service_client.pool.add(pool)
   wait_for_pool_resize(batch_service_client, pool_id)
 
-def resize_pool(batch_service_client, pool_id, dedicated_nodes, low_priority_nodes):
+def resize_pool(batch_service_client: BatchServiceClient,
+                pool_id: str,
+                dedicated_nodes: int,
+                low_priority_nodes: int) -> None:
+  """
+  Resize's the number of nodes in a pool
+
+    * batch_service_client: A Batch service client.
+    * pool_id: The ID for the pool.
+    * dedicated_nodes/low_priority_nodes: how many nodes of each type should this pool have
+  """
+
   batch_service_client.pool.resize(
     pool_id = pool_id,
     pool_resize_parameter = batchmodels.PoolResizeParameter(
@@ -53,14 +77,28 @@ def resize_pool(batch_service_client, pool_id, dedicated_nodes, low_priority_nod
   )
   wait_for_pool_resize(batch_service_client, pool_id)
 
-def delete_pool(batch_service_client, pool_id):
+def delete_pool(batch_service_client: BatchServiceClient, pool_id: str) -> None:
+  """
+  Deletes a pool of VM's
+
+    * batch_service_client: A Batch service client.
+    * pool_id: The ID for the pool.
+  """
+
   batch_service_client.pool.delete(pool_id)
   print ("pool deleting: waiting for nodes to be deallocated")
   while batch_service_client.pool.exists(pool_id):
     time.sleep(1)
   print ("pool deleted")
 
-def wait_for_pool_resize(batch_service_client, pool_id):
+def wait_for_pool_resize(batch_service_client: BatchServiceClient, pool_id: str) -> None:
+  """
+  Waits for a pool to finish resizing and all nodes to be ready
+
+    * batch_service_client: A Batch service client.
+    * pool_id: The ID for the pool.
+  """
+
   print ("waiting for nodes to be allocated")
   ps = lambda: batch_service_client.pool.get(pool_id)
   while ps().allocation_state != "steady":
