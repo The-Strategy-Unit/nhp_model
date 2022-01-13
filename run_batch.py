@@ -1,11 +1,9 @@
+#!/usr/bin/python3
+
 import sys
 from datetime import datetime
 
-from connections import connect_blob_storage, connect_batch_client
-from process_queue import prep_queue
-from pool import create_pool, resize_pool, delete_pool
-from jobs import run_queue
-import config
+from batch import *
 
 if __name__ ==  '__main__':
 
