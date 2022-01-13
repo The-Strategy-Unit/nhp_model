@@ -19,9 +19,11 @@ if __name__ ==  '__main__':
 
   err_msg = "please provide argument: prep_queue, run_queue, create_pool, start_pool, stop_pool, delete_pool"
   if len(sys.argv) == 1:
-    print (err_msg)
+    raise Exception(err_msg)
   elif sys.argv[1] == "prep_queue":
-    prep_queue()
+    if len(sys.argv) != 4:
+      raise Exception("missing arguments, expecting: prep_queue RUNS_PER_TASK QUEUE_PATH")
+    prep_queue(int(sys.argv[2]), sys.argv[3])
   elif sys.argv[1] == "run_queue":
     run_queue(blob_service_client, batch_client)
   elif sys.argv[1] == "create_pool":
@@ -33,7 +35,7 @@ if __name__ ==  '__main__':
   elif sys.argv[1] == "delete_pool":
     delete_pool(batch_client, config._POOL_ID)
   else:
-    print (err_msg)
+    raise Exception(err_msg)
 
   # Print out some timing info
   end_time = datetime.now().replace(microsecond = 0)
