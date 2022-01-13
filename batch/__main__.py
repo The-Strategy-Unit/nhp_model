@@ -7,7 +7,6 @@ from pool import create_pool, resize_pool, delete_pool
 from jobs import run_queue
 import config
 
-# Main
 if __name__ ==  '__main__':
 
   start_time = datetime.now().replace(microsecond = 0)
