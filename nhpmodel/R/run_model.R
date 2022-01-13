@@ -49,5 +49,7 @@ run_model <- function(params_json) {
 
   plan(sequential)
 
+  unlink(params_json)
+
   invisible(NULL)
 }
