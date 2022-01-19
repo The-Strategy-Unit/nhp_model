@@ -27,10 +27,10 @@ if not os.path.exists(strategies_path := "test/data/synthetic/ip_strategies.json
     json.dump(sd, f)
 
 def admission_avoidance(params):
-  return pd.DataFrame.from_dict({
+  return {
     k: min(1, rnorm(v["avoidance_low"], v["avoidance_high"])) if "avoidance_low" in v else 1
     for k, v in params["strategy_params"].items()
-  }, "index", columns = ["factor"])
+  }
 
 def los_run(data, params):
   sp = params["strategy_params"]
@@ -68,36 +68,34 @@ def demog_factors(params):
   demog_factors["sex"] = np.where(demog_factors["sex"] == "males", 1, 2)
   demog_factors["factor"] = demog_factors[end_year] / demog_factors[start_year]
   #
-  demog_factors = demog_factors[["variant", "age", "sex", "factor"]].groupby("variant")
-  demog_factors = { k: v.drop("variant", axis = 1) for k, v in tuple(demog_factors) }
+  demog_factors = demog_factors[["variant", "age", "sex", "factor"]].set_index(["age", "sex"]).groupby("variant")
+  demog_factors = { k: v["factor"].to_dict() for k, v in tuple(demog_factors) }
   #
   variants = list(params["variant_probabilities"].keys())
   probabilities = list(params["variant_probabilities"].values()) 
   #
-  return lambda: demog_factors[np.random.choice(variants, 1, False,  probabilities)[0]]
+  return lambda: demog_factors[np.random.choice(variants, None, False,  probabilities)]
 
 def model_run(model_run, data, strategies, params, demog_factors_fn):
-  # select just relevant columns for modelling
-  data_run = data.loc[:, ["rn", "speldur", "sex", "admiage"]]
   # select a strategy
-  data_run["strategy"] = data_run["rn"].apply(lambda k: choices(strategies[k])[0])
+  data["strategy"] = data["rn"].apply(lambda k: choices(strategies[k])[0])
   # choose a demographic factor
-  data_run = data_run.merge(demog_factors_fn(), left_on = ["admiage", "sex"], right_on = ["age", "sex"])
+  dfn = demog_factors_fn()
+  factor_d = np.array([dfn[k] for k in data["agesex"]])
   # choose an admission avoidance factor
-  data_run = data_run.merge(admission_avoidance(params), how = "left", left_on = ["strategy"], right_index = True)
+  ada = admission_avoidance(params)
+  factor_a = np.array([ada.get(k, 1.0) for k in data["strategy"]])
   # create a single factor for how many times to select that row
-  data_run["n"] = (
-    data_run["factor_x"] * np.nan_to_num(data_run["factor_y"], nan = 1.0)
-  ).apply(lambda x: np.random.poisson(x))
+  data["n"] = [np.random.poisson(f) for f in (factor_d * factor_a)]
   # drop columns we don't need and repeat rows n times
-  data_run = data_run.drop(["admiage", "age", "sex", "factor_x", "factor_y"], axis = 1)
-  data_run = data_run.loc[data_run.index.repeat(data_run["n"])].drop(["n"], axis = 1)
+  data = data.drop(["agesex"], axis = 1)
+  data = data.loc[data.index.repeat(data["n"])].drop(["n"], axis = 1)
   # choose new los
-  data_run["speldur"] = np.concatenate([x for x in los_run(data_run, params)])
+  data["speldur"] = np.concatenate([x for x in los_run(data, params)])
   # add in the model run and return the data
-  data_run["model_run"] = model_run
+  data["model_run"] = model_run
   #
-  return data_run.reset_index()
+  return data.reset_index()
 
 def test():
   # load data
@@ -105,8 +103,10 @@ def test():
   data["rn"] = data["rn"].astype(str)
   data["admiage"] = data["admiage"].astype(int)
   data["sex"] = data["sex"].astype(int)
-
+  data["agesex"] = list(zip(data["admiage"], data["sex"]))
   data = data[data["sex"] <= 2]
+
+  data = data[["rn", "speldur", "agesex"]]
 
   with open(strategies_path, "r") as f:
     sd = json.load(f)
