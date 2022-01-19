@@ -27,7 +27,8 @@ model <- function(path, data, strategies, demog_factors_fn, strategy_params) {
 
     # for each row we pick a single strategy
     selected_strategy <- strategies |>
-      inner_join(select(strategy_params, strategy, strategy_weight), by = "strategy") |>
+      left_join(select(strategy_params, strategy, strategy_weight), by = "strategy") |>
+      mutate(across(strategy_weight, tidyr::replace_na, 1)) |>
       group_by(rn) |>
       summarise(strategy = purrr::map2_chr(
         list(strategy),
@@ -35,7 +36,6 @@ model <- function(path, data, strategies, demog_factors_fn, strategy_params) {
         # add in the NULL strategy as a selection possibility
         \(x, y) sample(c("null", x), 1, prob = c(1, y))
       )) |>
-      filter(strategy != "null") |>
       arrange(rn)
 
     # pick an avoidance value for this model run
