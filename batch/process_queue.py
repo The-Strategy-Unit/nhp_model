@@ -24,16 +24,17 @@ def prep_file(runs_per_task: int, path: str, file: str) -> None:
 
   # create the location of where we are going to save in the results container
   create_time = data["create_datetime"].replace(":", "").replace(" ", "_").replace("-", "")
-  results_path = f"{data['name']}/{create_time}"
+  results_path = f"results/{data['name']}/{create_time}"
 
   # upload the json to the results container
   blob_storage_client \
-    .get_blob_client("results", f"{results_path}/params.json") \
-    .upload_blob(json.dumps(data))
+    .get_blob_client("data", f"{data['input_data']}/{results_path}/params.json") \
+    .upload_blob(json.dumps(data), overwrite = True)
 
   # create the necessary folders in the results container
-  d = adls_client.get_file_system_client("results")
-  [d.create_directory(f"{results_path}/{x}") for x in ["results", "selected_strategy", "selected_variant"]]
+  d = adls_client.get_file_system_client("data")
+  [d.create_directory(f"{data['input_data']}/{results_path}/{x}")
+   for x in ["results", "selected_strategy", "selected_variant"]]
 
   # split the json into tasks
   model_runs = data.pop("model_runs")
@@ -49,7 +50,7 @@ def prep_file(runs_per_task: int, path: str, file: str) -> None:
 
     blob_storage_client \
       .get_blob_client("queue", f"tasks/{file[0:-5]}_{i}_{j}.json") \
-      .upload_blob(json.dumps(data))
+      .upload_blob(json.dumps(data), overwrite = True)
 
 def prep_queue(runs_per_task: int, queue_path: str) -> None:
   """

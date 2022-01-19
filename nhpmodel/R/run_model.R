@@ -17,28 +17,20 @@ run_model <- function(params_json) {
 
   demog_factors_fn <- do.call(demographic_factors, params$demographic_factors)
 
-  data <- arrow::read_parquet(
-    file.path(
-      getOption("nhp_model_data_path", "test/data"),
-      paste0(params$input_data, ".parquet")
-    )
+  path <- file.path(
+    getOption("nhp_model_data_path", "test/data"),
+    params$input_data
   )
 
-  strategies <- arrow::read_parquet(
-    file.path(
-      getOption("nhp_model_data_path", "test/data"),
-      paste0(params$input_data, "_strategies.parquet")
-    )
-  )
+  data <- arrow::read_parquet(file.path(path, "ip.parquet"))
+
+  strategies <- arrow::read_parquet(file.path(path, "ip_strategies.parquet"))
 
   # run the model
   plan(multisession, workers = getOption("nhp_model_ncpus", 1))
 
-  path <- file.path(
-    getOption("nhp_model_results_path", "test/results"),
-    params$path
-  )
-  m <- model(path, data, strategies, demog_factors_fn, strategy_params)
+  results_path <- file.path(path, params$path)
+  m <- model(results_path, data, strategies, demog_factors_fn, strategy_params)
 
   r <- future_walk(
     seq(params$run_start, params$run_end),
