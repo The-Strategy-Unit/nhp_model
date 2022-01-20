@@ -8,15 +8,29 @@ import time
 from collections import defaultdict
 from random import choices
 
-# helper functions
-def rnorm (lo, hi): 
-  mean = (hi + lo) / 2
-  sd   = (hi - lo) / 3.289707 # magic number: 2 * qnorm(0.95)
-  return np.random.normal(mean, sd, 1)[0]
+path = "test/data/synthetic"
+data_path = f"{path}/ip.parquet"
+strategies_path = f"{path}/ip_strategies.json"
+demog_factors_csv_path = "nhpmodel/inst/data/demographic_factors.csv"
 
-# pre-process data: shouldn't be needed in practice
-if not os.path.exists(strategies_path := "test/data/synthetic/ip_strategies.json"):
-  strategies = pq.read_pandas("test/data/synthetic/ip_strategies.parquet").to_pandas()
+# helper functions
+def create_strategy_json():
+  strategies = pq.read_pandas(f"{path}/ip_strategies.parquet").to_pandas()
+  strategies.strategy.unique()
+  #
+  s = strategies.strategy.unique()
+  s.sort()
+  s = pd.DataFrame(s, columns = ["strategy"])
+  s["strategy_replace"] = s.strategy
+  s.loc[s.strategy.str.contains("^alcohol_partial_acute"), "strategy_replace"] = "alcohol_partial_acute"
+  s.loc[s.strategy.str.contains("^alcohol_partial_chronic"), "strategy_replace"] = "alcohol_partial_chronic"
+  s.loc[s.strategy.str.contains("^ambulatory_care_conditions_acute"), "strategy_replace"] = "ambulatory_care_conditions_acute"
+  s.loc[s.strategy.str.contains("^ambulatory_care_conditions_chronic"), "strategy_replace"] = "ambulatory_care_conditions_chronic"
+  s.loc[s.strategy.str.contains("^ambulatory_care_conditions_vaccine_preventable"), "strategy_replace"] = "ambulatory_care_conditions_vaccine_preventable"
+  s.loc[s.strategy == "improved_discharge_planning_emergency"] = "improved_discharge_planning_non-elective"
+  #
+  strategies = strategies.merge(s, on = "strategy").drop(["strategy"], axis = "columns").rename(columns = {"strategy_replace": "strategy"}).drop_duplicates()
+  #
   # set up of strategies... pickle this?
   sd = defaultdict(lambda: ["NULL"])
   #
@@ -26,9 +40,14 @@ if not os.path.exists(strategies_path := "test/data/synthetic/ip_strategies.json
   with open(strategies_path, "w") as f:
     json.dump(sd, f)
 
+def rnorm (lo, hi): 
+  mean = (hi + lo) / 2
+  sd   = (hi - lo) / 3.289707 # magic number: 2 * qnorm(0.95)
+  return np.random.normal(mean, sd, 1)[0]
+
 def admission_avoidance(params):
   return {
-    k: min(1, rnorm(v["avoidance_low"], v["avoidance_high"])) if "avoidance_low" in v else 1
+    k: min(1, rnorm(*v["admission_avoidance"])) if "admission_avoidance" in v else 1
     for k, v in params["strategy_params"].items()
   }
 
@@ -42,12 +61,12 @@ def los_run(data, params):
       continue
     #
     s = sp[k]
-    if not "los_reduction_low" in s:
+    if not "los_reduction" in s:
       yield v
       continue
     #
     m = np.mean(v)
-    r = rnorm(s["los_reduction_low"], s["los_reduction_high"])
+    r = rnorm(*s["los_reduction"])
     if r >= m:
       yield v
       continue
@@ -61,7 +80,7 @@ def demog_factors(params):
   start_year = params.get("start_year", "2018")
   end_year = params.get("end_year", "2043")
   #
-  demog_factors = pd.read_csv("nhpmodel/inst/data/demographic_factors.csv")
+  demog_factors = pd.read_csv(demog_factors_csv_path)
   demog_factors = demog_factors[(demog_factors["code"] == code) & (demog_factors["age"] != "all")]
   #
   demog_factors["age"] = demog_factors["age"].astype(int)
@@ -76,9 +95,9 @@ def demog_factors(params):
   #
   return lambda: demog_factors[np.random.choice(variants, None, False,  probabilities)]
 
-def model_run(model_run, data, strategies, params, demog_factors_fn):
+def model_run(model_run, data, data_strategies, params, demog_factors_fn):
   # select a strategy
-  data["strategy"] = data["rn"].apply(lambda k: choices(strategies[k])[0])
+  data["strategy"] = data["rn"].apply(lambda k: choices(data_strategies[k])[0])
   # choose a demographic factor
   dfn = demog_factors_fn()
   factor_d = np.array([dfn[k] for k in data["agesex"]])
@@ -97,47 +116,26 @@ def model_run(model_run, data, strategies, params, demog_factors_fn):
   #
   return data.reset_index()
 
-def test():
-  # load data
-  data = pq.read_pandas("test/data/synthetic/ip.parquet").to_pandas()
-  data["rn"] = data["rn"].astype(str)
-  data["admiage"] = data["admiage"].astype(int)
-  data["sex"] = data["sex"].astype(int)
-  data["agesex"] = list(zip(data["admiage"], data["sex"]))
-  data = data[data["sex"] <= 2]
+# load data
+data = pq.read_pandas(data_path, ["rn", "speldur", "admiage", "sex"]).to_pandas()
+data["agesex"] = list(zip(data["admiage"].astype(int), data["sex"].astype(int)))
+data = data.loc[data["sex"].isin(["1", "2"]), ["rn", "speldur", "agesex"]]
 
-  data = data[["rn", "speldur", "agesex"]]
+# load strategies, convert the key (rn) to an int
+with open(strategies_path, "r") as f:
+  data_strategies = { int(k): v for k, v in json.load(f).items() }
 
-  with open(strategies_path, "r") as f:
-    sd = json.load(f)
-
-  with open("test/queue/test.json", "r") as f:
-    params = json.load(f)
-    
-  dfn = demog_factors(params)
-  # fudge params for now
-  params["strategy_params"]["ambulatory_emergency_care_high"] = {
-    "los_reduction_low": 0.7,
-    "los_reduction_high": 0.85
-  }
-  params["strategy_params"]["ambulatory_emergency_care_low"] = {
-    "los_reduction_low": 0.8,
-    "los_reduction_high": 0.95
-  }
-  params["strategy_params"]["ambulatory_emergency_care_moderate"] = {
-    "los_reduction_low": 0.75,
-    "los_reduction_high": 0.9
-  }
-  params["strategy_params"]["ambulatory_emergency_care_very_high"] = {
-    "los_reduction_low": 0.65,
-    "los_reduction_high": 0.8
-  }
-  return lambda i: model_run(i, data, sd, params, dfn)
+# load the parameters
+with open("test/queue/test.json", "r") as f:
+  params = json.load(f)
 
 if __name__ == "__main__":
+  mr = lambda i: model_run(i, data, data_strategies, params, demog_factors(params))
   N_RUNS = 10
-  mr = test()
   s = time.time()
   runs = [mr(i) for i in range(N_RUNS)]
   e = time.time() - s
   print(f"total time: {e}, avg time: {e / N_RUNS}")
+
+# optimisations:
+# could we pre-join the demographic factors for all variants, then just select one option?
