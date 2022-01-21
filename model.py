@@ -1,12 +1,14 @@
 import pyarrow.parquet as pq
 import pandas as pd
 import numpy as np
-import os
+from pathos.multiprocessing import ProcessPool
 import json
 import time
 
 from collections import defaultdict
-from random import choices
+from random import choice
+
+N_CPUS = 10
 
 path = "test/data/synthetic"
 data_path = f"{path}/ip.parquet"
@@ -45,22 +47,21 @@ def rnorm (lo, hi):
   sd   = (hi - lo) / 3.289707 # magic number: 2 * qnorm(0.95)
   return np.random.normal(mean, sd, 1)[0]
 
-def admission_avoidance(params):
+def admission_avoidance(strategy_params):
   return {
     k: min(1, rnorm(*v["admission_avoidance"])) if "admission_avoidance" in v else 1
-    for k, v in params["strategy_params"].items()
+    for k, v in strategy_params.items()
   }
 
-def los_run(data, params):
-  sp = params["strategy_params"]
+def los_run(data, strategy_params):
   #
   for k, v in tuple(data.groupby("strategy")):
     v = v["speldur"]
-    if not k in sp:
+    if not k in strategy_params:
       yield v
       continue
     #
-    s = sp[k]
+    s = strategy_params[k]
     if not "los_reduction" in s:
       yield v
       continue
@@ -73,9 +74,7 @@ def los_run(data, params):
     yield np.array([np.random.binomial(x, r / m, 1)[0] for x in v])
 
 # TODO: code should be a dictionary or code/proportion
-def demog_factors(params):
-  params = params["demographic_factors"]
-  #
+def demog_factors(data, params):
   code = params["local_authorities"][0]
   start_year = params.get("start_year", "2018")
   end_year = params.get("end_year", "2043")
@@ -83,38 +82,49 @@ def demog_factors(params):
   demog_factors = pd.read_csv(demog_factors_csv_path)
   demog_factors = demog_factors[(demog_factors["code"] == code) & (demog_factors["age"] != "all")]
   #
-  demog_factors["age"] = demog_factors["age"].astype(int)
-  demog_factors["sex"] = np.where(demog_factors["sex"] == "males", 1, 2)
+  demog_factors["agesex"] = list(zip(demog_factors["age"].astype(int), np.where(demog_factors["sex"] == "males", 1, 2)))
   demog_factors["factor"] = demog_factors[end_year] / demog_factors[start_year]
   #
-  demog_factors = demog_factors[["variant", "age", "sex", "factor"]].set_index(["age", "sex"]).groupby("variant")
-  demog_factors = { k: v["factor"].to_dict() for k, v in tuple(demog_factors) }
-  #
   variants = list(params["variant_probabilities"].keys())
-  probabilities = list(params["variant_probabilities"].values()) 
+  probabilities = list(params["variant_probabilities"].values())
   #
-  return lambda: demog_factors[np.random.choice(variants, None, False,  probabilities)]
+  data = {
+    k: v.drop(["variant", "agesex"], axis = "columns")
+    for k, v in tuple(data.merge(demog_factors[["agesex", "variant", "factor"]], on = "agesex").groupby(["variant"]))
+  }
+  return lambda: data[np.random.choice(variants, p = probabilities)]
 
-def model_run(model_run, data, data_strategies, params, demog_factors_fn):
-  # select a strategy
-  data["strategy"] = data["rn"].apply(lambda k: choices(data_strategies[k])[0])
+def model_run(model_run, data_fn, data_strategies, strategy_params):
   # choose a demographic factor
-  dfn = demog_factors_fn()
-  factor_d = np.array([dfn[k] for k in data["agesex"]])
+  data = data_fn()
+  # select a strategy
+  data["strategy"] = data["rn"].apply(lambda k: choice(data_strategies[k]))
   # choose an admission avoidance factor
-  ada = admission_avoidance(params)
+  ada = admission_avoidance(strategy_params)
   factor_a = np.array([ada.get(k, 1.0) for k in data["strategy"]])
   # create a single factor for how many times to select that row
-  data["n"] = [np.random.poisson(f) for f in (factor_d * factor_a)]
+  data["n"] = [np.random.poisson(f) for f in (data["factor"] * factor_a)]
   # drop columns we don't need and repeat rows n times
-  data = data.drop(["agesex"], axis = 1)
+  data = data.drop(["factor"], axis = 1)
   data = data.loc[data.index.repeat(data["n"])].drop(["n"], axis = 1)
   # choose new los
-  data["speldur"] = np.concatenate([x for x in los_run(data, params)])
+  data["speldur"] = np.concatenate([x for x in los_run(data, strategy_params)])
   # add in the model run and return the data
   data["model_run"] = model_run
   #
-  return data.reset_index()
+  #return data.reset_index()
+  return len(data.index)
+
+def multi_model_runs(N_RUNS):
+  dfn = demog_factors(data, params["demographic_factors"])
+  mr = lambda i: model_run(i, dfn, data_strategies, params["strategy_params"])
+  #
+  pool = ProcessPool(ncpus = N_CPUS)
+  results = pool.amap(mr, [i for i in range(N_RUNS)])
+  pool.close()
+  pool.join()
+  #
+  return np.mean(results.get())
 
 # load data
 data = pq.read_pandas(data_path, ["rn", "speldur", "admiage", "sex"]).to_pandas()
@@ -130,12 +140,9 @@ with open("test/queue/test.json", "r") as f:
   params = json.load(f)
 
 if __name__ == "__main__":
-  mr = lambda i: model_run(i, data, data_strategies, params, demog_factors(params))
-  N_RUNS = 10
+  dfn = demog_factors(data, params["demographic_factors"])
+  N_RUNS = 1000
   s = time.time()
-  runs = [mr(i) for i in range(N_RUNS)]
+  print(f"avg n results: {multi_model_runs(N_RUNS)}")
   e = time.time() - s
-  print(f"total time: {e}, avg time: {e / N_RUNS}")
-
-# optimisations:
-# could we pre-join the demographic factors for all variants, then just select one option?
+  print(f"total time: {e}, avg time: {e / N_RUNS * N_CPUS}")

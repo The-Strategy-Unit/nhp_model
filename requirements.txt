@@ -1,0 +1,4 @@
+pyarrow
+pandas
+numpy
+pathos
