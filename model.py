@@ -140,14 +140,16 @@ def model(data_fn, strategies_admission_avoidance, strategies_los_reduction, str
   # return the data
   return data.reset_index()
   
-def save_model_run(model_run_n, model_run):
-  mr_data = model_run()
+def save_model_run(model_run_n, mr_data):
   mr_data["model_run"] = model_run_n
   mr_data.to_parquet(f"test/tmp/{model_run_n}.parquet")
-  return len(data.index)
 
 def run_model(data_fn, strategies_admission_avoidance, strategies_los_reduction, strategy_params):
-  return lambda n: save_model_run(n, model(data_fn, strategies_admission_avoidance, strategies_los_reduction, strategy_params))
+  def f(n):
+    m = model(data_fn, strategies_admission_avoidance, strategies_los_reduction, strategy_params)
+    save_model_run(n, m)
+    return len(m.index)
+  return f
 
 def multi_model_runs(N_RUNS):
   pool = ProcessPool(ncpus = N_CPUS)
@@ -168,12 +170,13 @@ strategies_los_reduction = pq.read_pandas(f"{path}/ip_los_reduction_strategies.p
 # load the parameters
 with open("test/queue/test.json", "r") as f: params = json.load(f)
 
-dfn = demog_factors(data, params["demographic_factors"])
-mr = run_model(dfn, strategies_admission_avoidance, strategies_los_reduction, params["strategy_params"])
+data_fn = demog_factors(data, params["demographic_factors"])
+strategy_params = params["strategy_params"]
+mr = run_model(data_fn, strategies_admission_avoidance, strategies_los_reduction, strategy_params)
 
 if __name__ == "__main__":
   dfn = demog_factors(data, params["demographic_factors"])
-  N_RUNS = 1000
+  N_RUNS = 100
   s = time.time()
   print(f"avg n results: {multi_model_runs(N_RUNS)}")
   e = time.time() - s
