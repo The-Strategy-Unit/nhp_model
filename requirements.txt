@@ -2,3 +2,6 @@ pyarrow
 pandas
 numpy
 pathos
+azure-batch==11.0.0
+azure-storage-blob==12.8.1
+azure-storage-file-datalake==12.8.1
