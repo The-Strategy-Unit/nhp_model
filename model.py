@@ -134,7 +134,7 @@ def model(data_fn, strategies_admission_avoidance, strategies_los_reduction, str
   # create a single factor for how many times to select that row
   data["n"] = [np.random.poisson(f) for f in (data["factor"] * factor_a)]
   # drop columns we don't need and repeat rows n times
-  data = data.drop(["factor"], axis = 1).loc[data.index.repeat(data["n"])].drop(["n"], axis = 1)
+  data = data.loc[data.index.repeat(data["n"])].drop(["factor", "n"], axis = "columns")
   # choose new los
   data["speldur"] = [new_los(r, strategy_params) for r in data.itertuples()]
   # return the data
