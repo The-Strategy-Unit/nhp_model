@@ -100,7 +100,11 @@ def demog_factors(data, params):
     k: v.drop(["variant", "agesex"], axis = "columns").set_index(["rn"])
     for k, v in tuple(data.merge(demog_factors[["agesex", "variant", "factor"]], on = "agesex").groupby(["variant"]))
   }
-  return lambda: data[np.random.choice(variants, p = probabilities)]
+  # create and return a closure that selects a variant at random, returning a tuple containing the (variant, data)
+  def f():
+    v = np.random.choice(variants, p = probabilities)
+    return (v, data[v])
+  return f
 
 def admission_avoidance(strategy_params):
   return defaultdict(lambda: 1, {
@@ -123,7 +127,7 @@ def new_los(row, strategy_params):
 
 def model(data_fn, strategies_admission_avoidance, strategies_los_reduction, strategy_params):
   # choose a demographic factor
-  data = data_fn()
+  variant, data = data_fn()
   # select a strategy
   random_strat = lambda df: data.merge(df.sample(frac = 1).groupby(["rn"]).head(1), left_index = True, right_index = True)
   data = random_strat(strategies_admission_avoidance)
@@ -138,11 +142,13 @@ def model(data_fn, strategies_admission_avoidance, strategies_los_reduction, str
   # choose new los
   data["speldur"] = [new_los(r, strategy_params) for r in data.itertuples()]
   # return the data
-  return data.reset_index()
+  return (variant, data.reset_index())
   
-def save_model_run(model_run_n, mr_data):
-  mr_data["model_run"] = model_run_n
-  mr_data.to_parquet(f"test/tmp/{model_run_n}.parquet")
+def save_model_run(model_run_n, mr):
+  variant, mr_data = mr
+  mr_data.to_parquet(f"test/tmp/results/mr={model_run_n}.parquet")
+  with open(f"test/tmp/selected_variant/mr={model_run_n}.txt", "w") as f:
+    f.write(variant)
 
 def run_model(data_fn, strategies_admission_avoidance, strategies_los_reduction, strategy_params):
   def f(n):
@@ -153,7 +159,7 @@ def run_model(data_fn, strategies_admission_avoidance, strategies_los_reduction,
 
 def multi_model_runs(N_RUNS):
   pool = ProcessPool(ncpus = N_CPUS)
-  results = pool.amap(mr, [i for i in range(N_RUNS)])
+  results = pool.amap(mr, range(N_RUNS))
   pool.close()
   pool.join()
   #
@@ -176,7 +182,7 @@ mr = run_model(data_fn, strategies_admission_avoidance, strategies_los_reduction
 
 if __name__ == "__main__":
   dfn = demog_factors(data, params["demographic_factors"])
-  N_RUNS = 100
+  N_RUNS = 1000
   s = time.time()
   print(f"avg n results: {multi_model_runs(N_RUNS)}")
   e = time.time() - s
