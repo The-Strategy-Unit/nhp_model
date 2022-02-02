@@ -18,21 +18,25 @@ def create_pool(batch_service_client: BatchServiceClient, pool_id: str) -> None:
     version = "latest"
   )
 
-  container_conf = batchmodels.ContainerConfiguration(
-    container_image_names = [config._CR_CONTAINER_NAME],
-    container_registries = [
-      batchmodels.ContainerRegistry(
-        user_name = config._CR_REGISTRY_NAME,
-        password = config._CR_PASSWORD,
-        registry_server = config._CR_LOGIN_SERVER
+  task_commands = ";".join([
+    "apt install -y python3-pip",
+    "pip install -r /mnt/batch/tasks/fsmounts/app/requirements.txt",
+  ])
+
+  start_task_conf = batchmodels.StartTask(
+    command_line = f"/bin/bash -c 'set -e; set -o pipefail; {task_commands}; wait'",
+    wait_for_success = True,
+    user_identity = batchmodels.UserIdentity(
+      auto_user = batchmodels.AutoUserSpecification(
+        elevation_level = batchmodels.ElevationLevel.admin,
+        scope = batchmodels.AutoUserScope.pool
       )
-    ]
+    )
   )
 
   vm = batchmodels.VirtualMachineConfiguration(
     image_reference = vm_image,
-    node_agent_sku_id = "batch.node.ubuntu 20.04",
-    container_configuration = container_conf
+    node_agent_sku_id = "batch.node.ubuntu 20.04"
   )
 
   mount = lambda container: batchmodels.MountConfiguration(
@@ -48,9 +52,10 @@ def create_pool(batch_service_client: BatchServiceClient, pool_id: str) -> None:
     id = pool_id,
     vm_size = config._POOL_VM_SIZE,
     virtual_machine_configuration = vm,
-    mount_configuration =  [mount(x) for x in ["data", "queue", "results"]],
+    mount_configuration =  [mount(x) for x in ["data", "queue", "app"]],
     target_dedicated_nodes = config._POOL_NODE_DEDICATED_COUNT,
-    target_low_priority_nodes = config._POOL_NODE_LOW_PRIORITY_COUNT
+    target_low_priority_nodes = config._POOL_NODE_LOW_PRIORITY_COUNT,
+    start_task = start_task_conf
   )
 
   batch_service_client.pool.add(pool)
