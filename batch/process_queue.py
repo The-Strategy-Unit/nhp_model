@@ -34,7 +34,7 @@ def prep_file(runs_per_task: int, path: str, file: str) -> None:
   # create the necessary folders in the results container
   d = adls_client.get_file_system_client("data")
   [d.create_directory(f"{data['input_data']}/{results_path}/{x}")
-   for x in ["results", "selected_strategy", "selected_variant"]]
+   for x in ["results", "selected_variant"]]
 
   # split the json into tasks
   model_runs = data.pop("model_runs")
