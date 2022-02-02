@@ -4,14 +4,13 @@ import numpy as np
 import json
 import time
 import os
+import argparse
+
+import shutil
 
 from pathos.multiprocessing import ProcessPool
 from datetime import datetime
 from collections import defaultdict
-
-N_CPUS = 10
-DATA_PATH = "test/data"
-DEMOG_FACTORS_CSV_PATH = "nhpmodel/inst/data/demographic_factors.csv"
 
 # helper functions
 
@@ -84,17 +83,21 @@ class InpatientsModel:
   parameters. Once the object is constructed you can call either m.run() to run the model and return the data, or
   m.save_run() to run the model and save the results.
   """
-  def __init__(self, params):
+  def __init__(self, params_json_path, data_path, force):
+    # load the parameters file
+    with open(params_json_path, "r") as f: params = json.load(f)
     self._params = params
     # load the required data
-    self._path = f"{DATA_PATH}/{params['input_data']}"
+    self._path = os.path.join(data_path, params["input_data"])
     cd = datetime.fromisoformat(params["create_datetime"])
-    self._results_path = f"{self._path}/results/{params['name']}{cd:%Y%m%d_%H%M%S}"
+    self._results_path = os.path.join(self._path, "results", params["name"], f"{cd:%Y%m%d_%H%M%S}")
     #
-    # TODO: uncomment these lines
-    # if os.path.exists(self._results_path):
-    #   raise Exception("Model has already been run previously")
-    # [os.makedirs(f"{self._results_path}/{x}") for x in ["results", "selected_variants"]]
+    # TODO: this shouldn't exist in production!
+    if os.path.exists(self._results_path):
+      if not force:
+        raise Exception("Model has already been run previously")
+      shutil.rmtree(self._results_path)
+    [os.makedirs(os.path.join(self._results_path, x)) for x in ["results", "selected_variants"]]
     #
     # load the data
     # don't assign to self yet, handle in prepare demographic factors
@@ -110,7 +113,10 @@ class InpatientsModel:
     start_year = dfp.get("start_year", "2018")
     end_year = dfp.get("end_year", "2043")
     #
-    demog_factors = pd.read_csv(DEMOG_FACTORS_CSV_PATH)
+    demog_factors = pd.read_csv(os.path.join(
+      os.path.dirname(os.path.realpath(__file__)),
+      "demographic_factors.csv"
+    ))
     demog_factors = demog_factors[(demog_factors["code"] == code) & (demog_factors["age"] != "all")]
     #
     demog_factors["agesex"] = list(zip(demog_factors["age"].astype(int), np.where(demog_factors["sex"] == "males", 1, 2)))
@@ -123,9 +129,6 @@ class InpatientsModel:
       k: v.drop(["variant", "agesex"], axis = "columns").set_index(["rn"])
       for k, v in tuple(data.merge(demog_factors[["agesex", "variant", "factor"]], on = "agesex").groupby(["variant"]))
     }
-    #
-    # set up the random number generator
-    self._rng = np.random.default_rng(params.get("seed", 2022))
   #
   def _load_parquet(self, file, *args):
     """
@@ -133,34 +136,34 @@ class InpatientsModel:
 
     You can selectively load columns by passing an array of column names to *args.
     """
-    return pq.read_pandas(f"{self._path}/{file}.parquet", *args).to_pandas()
+    return pq.read_pandas(os.path.join(self._path, f"{file}.parquet"), *args).to_pandas()
   #
-  def _rnorm (self, lo, hi):
+  def _rnorm(self, rng, lo, hi):
     """
     Create a single random normal value from a 90% confidence interval
     """
     mean = (hi + lo) / 2
     sd   = (hi - lo) / 3.289707 # magic number: 2 * qnorm(0.95)
-    return self._rng.normal(mean, sd)
+    return rng.normal(mean, sd)
   #
-  def _select_variant(self):
+  def _select_variant(self, rng):
     """
     Randomly select a single variant to use for a model run
     """
-    v = self._rng.choice(self._variants, p = self._probabilities)
+    v = rng.choice(self._variants, p = self._probabilities)
     return (v, self._data[v])
   #
-  def _admission_avoidance(self):
+  def _admission_avoidance(self, rng):
     """
     Create a dictionary of the admission avoidance factors to use for a run
     """
     strategy_params = self._params["strategy_params"]
     return defaultdict(lambda: 1, {
-      k: in01(self._rnorm(*v["interval"]))
+      k: in01(self._rnorm(rng, *v["interval"]))
       for k, v in strategy_params["admission_avoidance"].items()
     })
   #
-  def _new_los(self, row):
+  def _new_los(self, rng, row):
     """
     Create a new Length of Stay for a row of data
     """
@@ -169,15 +172,15 @@ class InpatientsModel:
       return row.speldur
     sp = strategy_params["los_reduction"][row.los_reduction_strategy]
     #
-    r = in01(self._rnorm(*sp["interval"]))
+    r = in01(self._rnorm(rng, *sp["interval"]))
     if sp["type"] == "1-2_to_0":
       # TODO: check that this is the correct ordering for the <
-      # with r = 0.8, < will convert 80% of 1/2 to 0. with > it will convert 20%
-      return row.speldur if row.speldur > 2 or self._rng.uniform() < r else 0
+      # with r = 0.8, > will convert 80% of 1/2 to 0. with < it will convert 20%
+      return row.speldur if row.speldur > 2 or rng.uniform() < r else 0
     #
-    return self._rng.binomial(row.speldur, r)
+    return rng.binomial(row.speldur, r)
   #
-  def _random_strategy(self, data, strategy_type):
+  def _random_strategy(self, rng, data, strategy_type):
     """
     Select one strategy per record
 
@@ -187,68 +190,68 @@ class InpatientsModel:
     returns: an updated DataFrame with a new column for the selected strategy
     """
     df = (self._strategies[strategy_type]
-      .sample(frac = 1, random_state = self._rng)
+      .sample(frac = 1, random_state = rng.bit_generator)
       .groupby(["rn"])
       .head(1)
     )
     return data.merge(df, left_index = True, right_index = True)
   #
-  def run(self):
+  def run(self, model_run):
     """
     Run the model once
 
     returns: a tuple of the selected varient and the updated DataFrame
     """
+    # create a random number generator for this run
+    rng = np.random.default_rng(self._params["seed"] + model_run)
     # choose a demographic factor
-    variant, data = self._select_variant()
+    variant, data = self._select_variant(rng)
     # select a strategy
-    data = self._random_strategy(data, "admission_avoidance")
-    data = self._random_strategy(data, "los_reduction")
+    data = self._random_strategy(rng, data, "admission_avoidance")
+    data = self._random_strategy(rng, data, "los_reduction")
     # choose an admission avoidance factor
-    ada = self._admission_avoidance()
+    ada = self._admission_avoidance(rng)
     factor_a = np.array([ada[k] for k in data["admission_avoidance_strategy"]])
     # create a single factor for how many times to select that row
-    data["n"] = [self._rng.poisson(f) for f in (data["factor"] * factor_a)]
+    data["n"] = [rng.poisson(f) for f in (data["factor"] * factor_a)]
     # drop columns we don't need and repeat rows n times
     data = data.loc[data.index.repeat(data["n"])].drop(["factor", "n"], axis = "columns")
     # choose new los
-    data["speldur"] = [self._new_los(r) for r in data.itertuples()]
+    data["speldur"] = [self._new_los(rng, r) for r in data.itertuples()]
     # return the data
     return (variant, data.reset_index())
   #
-  def save_run(self, model_run_n):
+  def save_run(self, model_run):
     """
     Save the model run
 
-    * model_run_n: the number of this model run
+    * model_run: the number of this model run
 
     Runs the model, saving the results to the results folder
     """
-    variant, mr_data = self.run()
-    mr_data.to_parquet(f"{self._results_path}/results/mr={model_run_n}.parquet")
-    with open(f"{self._results_path}/selected_variants/mr={model_run_n}.txt", "w") as f:
+    variant, mr_data = self.run(model_run)
+    mr_data.to_parquet(f"{self._results_path}/results/mr={model_run}.parquet")
+    with open(f"{self._results_path}/selected_variants/mr={model_run}.txt", "w") as f:
       f.write(variant)
-
-def multi_model_runs(params, N_RUNS):
-  model = InpatientsModel(params)
   #
-  pool = ProcessPool(ncpus = N_CPUS)
-  results = pool.amap(model.save_run, range(N_RUNS))
-  pool.close()
-  pool.join()
-  #
-  return np.mean(results.get())
-
-# load the parameters
-with open("test/queue/test.json", "r") as f: params = json.load(f)
+  def multi_model_runs(self, N_CPUS = 1):
+    #
+    pool = ProcessPool(ncpus = N_CPUS)
+    pool.amap(self.save_run, range(self._params["run_start"], self._params["run_end"] + 1))
+    pool.close()
+    pool.join()
 
 if __name__ == "__main__":
-  m = InpatientsModel(params)
-  v, r = timeit(m.run)
-  print(f"selected strategy: {v}\ndata:")
-  print(r)
-#   N_RUNS = 1000
-#   s = time.time()
-#   print(f"avg n results: {multi_model_runs(params, N_RUNS)}")
-#   e = time.time() - s
-#   print(f"total time: {e}, avg time: {e / N_RUNS * N_CPUS}")
+  parser = argparse.ArgumentParser()
+  parser.add_argument("params_json_path", nargs = 1, help = "Path to the parameters json file")
+  parser.add_argument("data_path", nargs = 1, help = "Path to the data files")
+  parser.add_argument("-c", "--cpus", default = os.cpu_count(), help = "Number of CPU cores to use", type = int)
+  parser.add_argument("-f", "--force", action = "store_true")
+  # Grab the Arguments
+  args = parser.parse_args()
+  #
+  m = InpatientsModel(args.params_json_path[0], args.data_path[0], args.force)
+  m.multi_model_runs(args.cpus)
+# TODO: debugging purposes: remove from production
+else:
+  m = InpatientsModel("test/queue/test.json", "test/data", True)
