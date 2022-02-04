@@ -28,7 +28,7 @@ def create_job(batch_service_client: BatchServiceClient, job_id: str, pool_id: s
 
   batch_service_client.job.add(job)
 
-def add_tasks(batch_service_client :BatchServiceClient, job_id: str, input_files: list) -> None:
+def add_task(batch_service_client :BatchServiceClient, job_id: str, results_path: str, model_runs: int, runs_per_task: int) -> None:
   """
   Adds a task for each input file in the collection to the specified job.
 
@@ -36,18 +36,11 @@ def add_tasks(batch_service_client :BatchServiceClient, job_id: str, input_files
     * job_id: The ID of the job to which to add the tasks.
     * input_files: A collection of input files. One task will be created for each input file.
   """
-
-  print('Adding {} tasks to job [{}]...'.format(len(input_files), job_id))
-
-  task_container_settings = batchmodels.TaskContainerSettings(
-    image_name = config._CR_CONTAINER_NAME,
-    container_run_options = config._CR_RUN_OPTIONS
-  )
-
-  create_task = lambda idx, input_file: batchmodels.TaskAddParameter(
-    id = 'Task{}'.format(idx), # TODO: this could/should? be the input file name itself
-    command_line = f"/usr/bin/Rscript /opt/run_models.R {input_file}",
-    container_settings = task_container_settings,
+  #
+  command_line = f"/usr/bin/python3 {config._APP_PATH}/model.py '{config._DATA_PATH}/{results_path}'"
+  create_task = lambda run_start: batchmodels.TaskAddParameter(
+    id = f"Run{run_start}-{run_start+runs_per_task - 1}",
+    command_line = f"{command_line} {run_start} {runs_per_task}",
     user_identity = batchmodels.UserIdentity(
       auto_user = batchmodels.AutoUserSpecification(
         scope = batchmodels.AutoUserScope.pool,
@@ -55,8 +48,8 @@ def add_tasks(batch_service_client :BatchServiceClient, job_id: str, input_files
       )
     )
   )
-
-  tasks = [create_task(idx, input_file) for idx, input_file in enumerate(input_files)]
+  #
+  tasks = [create_task(rs) for rs in range(0, model_runs, runs_per_task)]
   batch_service_client.task.add_collection(job_id, tasks)
 
 def wait_for_tasks_to_complete(batch_service_client: BatchServiceClient, job_id: str, timeout: timedelta) -> None:
@@ -135,34 +128,3 @@ def print_task_output(batch_service_client: BatchServiceClient, job_id: str, enc
     file_text = _read_stream_as_string(stream, encoding)
     print("Standard output:")
     print(file_text)
-
-def run_queue(blob_service_client: BlobServiceClient, batch_client: BatchServiceClient) -> None:
-  """
-  Runs all the tasks in the queue
-
-    * blob_service_client: A Blob service client.
-    * batch_service_client: A Batch service client.
-  """
-  try:
-    # Create the job that will run the tasks.
-    job_id = f"{config._JOB_ID}_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
-    create_job(batch_client, job_id, config._POOL_ID)
-
-    # Add the tasks to the job.
-    bc = blob_service_client.get_container_client("queue")
-    task_files = [f"/mnt/queue/{x.name}"
-                  for x in bc.list_blobs()
-                  if re.match("^tasks/.*\\.json$", x.name)]
-    add_tasks(batch_client, job_id, task_files)
-
-    # Pause execution until tasks reach Completed state.
-    wait_for_tasks_to_complete(batch_client, job_id, timedelta(minutes = 30))
-
-    print("  Success! All tasks reached the 'Completed' state within the specified timeout period.")
-
-    # Print the stdout.txt and stderr.txt files for each task to the console
-    print_task_output(batch_client, job_id)
-
-  except batchmodels.BatchErrorException as err:
-    print_batch_exception(err)
-    raise

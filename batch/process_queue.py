@@ -1,8 +1,14 @@
 #!/bin/env python3
+from datetime import date, datetime, timedelta
 import json
 import os
 
-from batch.connections import connect_adls, connect_blob_storage
+from batch.connections import connect_adls, connect_blob_storage, connect_batch_client
+from batch.jobs import create_job, add_task, wait_for_tasks_to_complete
+from azure.batch import BatchServiceClient
+from azure.storage.blob import BlobServiceClient
+
+import batch.config as config
 
 def prep_file(runs_per_task: int, path: str, file: str) -> None:
   """
@@ -15,42 +21,67 @@ def prep_file(runs_per_task: int, path: str, file: str) -> None:
   This function will create the relevant folder structure in the results container, and then upload the parameter file
   to this location. It then splits the json params up into individual tasks and places them in the queue container.
   """
-  
+  # open the parameters file
   with open(os.path.join(path, file)) as f:
-    data = json.load(f)
-
-  blob_storage_client = connect_blob_storage()
+    params = json.load(f)
+  #
   adls_client = connect_adls()
-
-  # create the location of where we are going to save in the results container
-  create_time = data["create_datetime"].replace(":", "").replace(" ", "_").replace("-", "")
-  results_path = f"results/{data['name']}/{create_time}"
-
-  # upload the json to the results container
-  blob_storage_client \
-    .get_blob_client("data", f"{data['input_data']}/{results_path}/params.json") \
-    .upload_blob(json.dumps(data), overwrite = True)
-
+  # extract the create_time from the parameters. We need to convert a string of the form:
+  #   "yyyy-mm-dd HH:MM:SS" to "yyyy-mm-dd_HH:MM:SS"
+  # create_time = params["create_datetime"].replace(":", "").replace(" ", "_").replace("-", "")
+  create_time = f"{datetime.now():%Y%m%d_%H%M%S}"
+  # the name of the job in the batch service
+  job_path = f"{params['name']}/{create_time}"
+  job_id = job_path.replace("/", "_")
+  # create the path where we will store the results
+  results_path = f"{params['input_data']}/results/{job_path}"
+  # connect to adls
+  d = adls_client.get_directory_client("data", results_path)
   # create the necessary folders in the results container
-  d = adls_client.get_file_system_client("data")
-  [d.create_directory(f"{data['input_data']}/{results_path}/{x}")
-   for x in ["results", "selected_variant"]]
+  [d.get_sub_directory_client(x).create_directory() for x in ["results", "selected_variant"]]
+  # upload the json to the results container
+  d.get_file_client("params.json").upload_data(json.dumps(params), overwrite = True)
+  #
+  # get how many runs of the model to perform
+  model_runs = params["model_runs"]
+  # create a job
+  batch_client = connect_batch_client()
+  create_job(batch_client, job_id, config._POOL_ID)
+  # add the tasks for this job
+  add_task(batch_client, job_id, results_path, model_runs, runs_per_task)
+  wait_for_tasks_to_complete(batch_client, job_id, timedelta(minutes = 30))
+  batch_client.job.terminate(job_id)
 
-  # split the json into tasks
-  model_runs = data.pop("model_runs")
-  # remove items from json not needed in the task json's
-  data.pop("create_datetime")
-  data.pop("name")
-  data["path"] = results_path
+def run_queue(blob_service_client: BlobServiceClient, batch_client: BatchServiceClient) -> None:
+  """
+  Runs all the tasks in the queue
 
-  # split the file up based on how many runs per task we are going to perform
-  for i in range(1, model_runs, runs_per_task):
-    data["run_start"] = i
-    data["run_end"] = (j := i + runs_per_task - 1)
+    * blob_service_client: A Blob service client.
+    * batch_service_client: A Batch service client.
+  """
+  try:
+    # Create the job that will run the tasks.
+    job_id = f"{config._JOB_ID}_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+    create_job(batch_client, job_id, config._POOL_ID)
 
-    blob_storage_client \
-      .get_blob_client("queue", f"tasks/{file[0:-5]}_{i}_{j}.json") \
-      .upload_blob(json.dumps(data), overwrite = True)
+    # Add the tasks to the job.
+    bc = blob_service_client.get_container_client("queue")
+    task_files = [f"/mnt/queue/{x.name}"
+                  for x in bc.list_blobs()
+                  if re.match("^tasks/.*\\.json$", x.name)]
+    add_tasks(batch_client, job_id, task_files)
+
+    # Pause execution until tasks reach Completed state.
+    wait_for_tasks_to_complete(batch_client, job_id, timedelta(minutes = 30))
+
+    print("  Success! All tasks reached the 'Completed' state within the specified timeout period.")
+
+    # Print the stdout.txt and stderr.txt files for each task to the console
+    print_task_output(batch_client, job_id)
+
+  except batchmodels.BatchErrorException as err:
+    print_batch_exception(err)
+    raise
 
 def prep_queue(runs_per_task: int, queue_path: str) -> None:
   """

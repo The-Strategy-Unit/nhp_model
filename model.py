@@ -8,6 +8,7 @@ import argparse
 
 import shutil
 
+from pathlib import Path
 from pathos.multiprocessing import ProcessPool
 from datetime import datetime
 from collections import defaultdict
@@ -67,11 +68,11 @@ def prepare_strategies(data, strategy_params):
       .to_parquet(f"{path}/ip_{k}_strategies.parquet")
     )
 
-def in01 (v):
+def inrange(v, lo = 0, hi = 1):
   """
-  Force a value to be in the interval [0, 1]
+  Force a value to be in the interval [lo, hi]
   """
-  return max(0, min(1, v))
+  return max(lo, min(hi, v))
 
 class InpatientsModel:
   """
@@ -83,21 +84,13 @@ class InpatientsModel:
   parameters. Once the object is constructed you can call either m.run() to run the model and return the data, or
   m.save_run() to run the model and save the results.
   """
-  def __init__(self, params_json_path, data_path, force):
+  def __init__(self, results_path):
     # load the parameters file
-    with open(params_json_path, "r") as f: params = json.load(f)
+    with open(f"{results_path}/params.json", "r") as f: params = json.load(f)
     self._params = params
     # load the required data
-    self._path = os.path.join(data_path, params["input_data"])
-    cd = datetime.fromisoformat(params["create_datetime"])
-    self._results_path = os.path.join(self._path, "results", params["name"], f"{cd:%Y%m%d_%H%M%S}")
-    #
-    # TODO: this shouldn't exist in production!
-    if os.path.exists(self._results_path):
-      if not force:
-        raise Exception("Model has already been run previously")
-      shutil.rmtree(self._results_path)
-    [os.makedirs(os.path.join(self._results_path, x)) for x in ["results", "selected_variants"]]
+    self._path = str(Path(results_path).parent.parent.parent)
+    self._results_path = results_path
     #
     # load the data
     # don't assign to self yet, handle in prepare demographic factors
@@ -109,15 +102,10 @@ class InpatientsModel:
     #
     # prepare demographic factors
     dfp = params["demographic_factors"]
-    code = dfp["local_authorities"][0] # TODO: code should be a dictionary or code/proportion
     start_year = dfp.get("start_year", "2018")
     end_year = dfp.get("end_year", "2043")
     #
-    demog_factors = pd.read_csv(os.path.join(
-      os.path.dirname(os.path.realpath(__file__)),
-      "demographic_factors.csv"
-    ))
-    demog_factors = demog_factors[(demog_factors["code"] == code) & (demog_factors["age"] != "all")]
+    demog_factors = pd.read_csv(os.path.join(self._path, dfp["file"]))
     #
     demog_factors["agesex"] = list(zip(demog_factors["age"].astype(int), np.where(demog_factors["sex"] == "males", 1, 2)))
     demog_factors["factor"] = demog_factors[end_year] / demog_factors[start_year]
@@ -159,7 +147,7 @@ class InpatientsModel:
     """
     strategy_params = self._params["strategy_params"]
     return defaultdict(lambda: 1, {
-      k: in01(self._rnorm(rng, *v["interval"]))
+      k: inrange(self._rnorm(rng, *v["interval"]))
       for k, v in strategy_params["admission_avoidance"].items()
     })
   #
@@ -172,7 +160,7 @@ class InpatientsModel:
       return row.speldur
     sp = strategy_params["los_reduction"][row.los_reduction_strategy]
     #
-    r = in01(self._rnorm(rng, *sp["interval"]))
+    r = inrange(self._rnorm(rng, *sp["interval"]))
     if sp["type"] == "1-2_to_0":
       # TODO: check that this is the correct ordering for the <
       # with r = 0.8, > will convert 80% of 1/2 to 0. with < it will convert 20%
@@ -230,28 +218,29 @@ class InpatientsModel:
     Runs the model, saving the results to the results folder
     """
     variant, mr_data = self.run(model_run)
-    mr_data.to_parquet(f"{self._results_path}/results/mr={model_run}.parquet")
-    with open(f"{self._results_path}/selected_variants/mr={model_run}.txt", "w") as f:
+    mr_data.to_parquet(f"{self._results_path}/results/model_run={model_run}.parquet")
+    with open(f"{self._results_path}/selected_variants/model_run={model_run}.txt", "w") as f:
       f.write(variant)
   #
-  def multi_model_runs(self, N_CPUS = 1):
+  def multi_model_runs(self, run_start, model_runs, N_CPUS = 1):
     #
     pool = ProcessPool(ncpus = N_CPUS)
-    pool.amap(self.save_run, range(self._params["run_start"], self._params["run_end"] + 1))
+    pool.amap(self.save_run, range(run_start, run_start + model_runs))
     pool.close()
     pool.join()
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("params_json_path", nargs = 1, help = "Path to the parameters json file")
-  parser.add_argument("data_path", nargs = 1, help = "Path to the data files")
+  parser.add_argument("results_path", nargs = 1, help = "Path to the results")
+  parser.add_argument("run_start", nargs = 1, help = "Where to start model run from", type = int)
+  parser.add_argument("model_runs", nargs = 1, help = "How many model runs to perform", type = int)
   parser.add_argument("-c", "--cpus", default = os.cpu_count(), help = "Number of CPU cores to use", type = int)
   parser.add_argument("-f", "--force", action = "store_true")
   # Grab the Arguments
   args = parser.parse_args()
   #
-  m = InpatientsModel(args.params_json_path[0], args.data_path[0], args.force)
-  m.multi_model_runs(args.cpus)
+  m = InpatientsModel(args.results_path[0])
+  m.multi_model_runs(args.run_start[0], args.model_runs[0], args.cpus)
 # TODO: debugging purposes: remove from production
 else:
-  m = InpatientsModel("test/queue/test.json", "test/data", True)
+  m = InpatientsModel("test/data/synthetic/results/test/20220110_104353")
