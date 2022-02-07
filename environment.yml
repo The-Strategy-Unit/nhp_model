@@ -1,0 +1,12 @@
+name: nhp
+channels:
+  - conda-forge
+dependencies:
+  - python=3.8.12
+  - pyarrow=6.0.1
+  - pandas=1.4.0
+  - numpy=1.22.1
+  - pathos=0.2.8
+  - azure-batch=11.0.*
+  - azure-storage-blob=12.9.*
+  - azure-storage-file-datalake=12.5.*
