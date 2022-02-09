@@ -74,6 +74,14 @@ def inrange(v, lo = 0, hi = 1):
   """
   return max(lo, min(hi, v))
 
+def rnorm(rng, lo, hi):
+  """
+  Create a single random normal value from a 90% confidence interval
+  """
+  mean = (hi + lo) / 2
+  sd   = (hi - lo) / 3.289707 # magic number: 2 * qnorm(0.95)
+  return rng.normal(mean, sd)
+
 class InpatientsModel:
   """
   Inpatients Model
@@ -126,14 +134,6 @@ class InpatientsModel:
     """
     return pq.read_pandas(os.path.join(self._path, f"{file}.parquet"), *args).to_pandas()
   #
-  def _rnorm(self, rng, lo, hi):
-    """
-    Create a single random normal value from a 90% confidence interval
-    """
-    mean = (hi + lo) / 2
-    sd   = (hi - lo) / 3.289707 # magic number: 2 * qnorm(0.95)
-    return rng.normal(mean, sd)
-  #
   def _select_variant(self, rng):
     """
     Randomly select a single variant to use for a model run
@@ -147,7 +147,7 @@ class InpatientsModel:
     """
     strategy_params = self._params["strategy_params"]
     return defaultdict(lambda: 1, {
-      k: inrange(self._rnorm(rng, *v["interval"]))
+      k: inrange(rnorm(rng, *v["interval"]))
       for k, v in strategy_params["admission_avoidance"].items()
     })
   #
@@ -160,7 +160,7 @@ class InpatientsModel:
       return row.speldur
     sp = strategy_params["los_reduction"][row.los_reduction_strategy]
     #
-    r = inrange(self._rnorm(rng, *sp["interval"]))
+    r = inrange(rnorm(rng, *sp["interval"]))
     if sp["type"] == "1-2_to_0":
       # TODO: check that this is the correct ordering for the <
       # with r = 0.8, > will convert 80% of 1/2 to 0. with < it will convert 20%
