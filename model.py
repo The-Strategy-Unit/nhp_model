@@ -6,8 +6,6 @@ import time
 import os
 import argparse
 
-import shutil
-
 from pathlib import Path
 from pathos.multiprocessing import ProcessPool
 from datetime import datetime
