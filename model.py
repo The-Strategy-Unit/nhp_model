@@ -185,7 +185,7 @@ class InpatientsModel:
     return data.merge(df, left_index = True, right_index = True)
   #
   def _waiting_list_adjustment(self, data):
-    pwla = params["waiting_list_adjustment"]["inpatients"].copy()
+    pwla = self._params["waiting_list_adjustment"]["inpatients"].copy()
     dv = pwla.pop("X01")
     pwla = defaultdict(lambda: dv, pwla)
     return [pwla[row.tretspef] if row.admimeth == "11" else 1 for row in data.itertuples()]
@@ -248,7 +248,8 @@ def main():
   #
   m = InpatientsModel(args.results_path[0])
   if args.debug:
-    m.run(0)
+    _, r = m.run(0)
+    print (r)
   else:
     m.multi_model_runs(args.run_start[0], args.model_runs[0], args.cpus)
 
