@@ -102,9 +102,9 @@ class InpatientsModel:
     #
     # load the data
     # don't assign to self yet, handle in prepare demographic factors
-    data = self._load_parquet("ip", ["rn", "speldur", "admiage", "sex"]) 
+    data = self._load_parquet("ip", ["rn", "speldur", "admiage", "sex", "admimeth", "tretspef"]) 
     data["agesex"] = list(zip(data["admiage"].astype(int), data["sex"].astype(int)))
-    data = data.loc[data["sex"].isin(["1", "2"]), ["rn", "speldur", "agesex"]]
+    data = data.loc[data["sex"].isin(["1", "2"]), ["rn", "speldur", "agesex", "admimeth", "tretspef"]]
     #
     self._strategies = { x: self._load_parquet(f"ip_{x}_strategies") for x in ["admission_avoidance", "los_reduction"] }
     #
