@@ -184,6 +184,12 @@ class InpatientsModel:
     )
     return data.merge(df, left_index = True, right_index = True)
   #
+  def _waiting_list_adjustment(self, data):
+    pwla = params["waiting_list_adjustment"]["inpatients"].copy()
+    dv = pwla.pop("X01")
+    pwla = defaultdict(lambda: dv, pwla)
+    return [pwla[row.tretspef] if row.admimeth == "11" else 1 for row in data.itertuples()]
+  #
   def run(self, model_run):
     """
     Run the model once
@@ -200,8 +206,10 @@ class InpatientsModel:
     # choose an admission avoidance factor
     ada = self._admission_avoidance(rng)
     factor_a = np.array([ada[k] for k in data["admission_avoidance_strategy"]])
+    # waiting list adjustments
+    factor_w = self._waiting_list_adjustment(data)
     # create a single factor for how many times to select that row
-    data["n"] = [rng.poisson(f) for f in (data["factor"] * factor_a)]
+    data["n"] = [rng.poisson(f) for f in (data["factor"] * factor_a * factor_w)]
     # drop columns we don't need and repeat rows n times
     data = data.loc[data.index.repeat(data["n"])].drop(["factor", "n"], axis = "columns")
     # choose new los
