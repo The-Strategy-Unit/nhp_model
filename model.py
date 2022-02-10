@@ -115,7 +115,7 @@ class InpatientsModel:
     #
     demog_factors = pd.read_csv(os.path.join(self._path, dfp["file"]))
     #
-    demog_factors["agesex"] = list(zip(demog_factors["age"].astype(int), np.where(demog_factors["sex"] == "males", 1, 2)))
+    demog_factors["agesex"] = list(zip(demog_factors["age"].astype(int), demog_factors["sex"]))
     demog_factors["factor"] = demog_factors[end_year] / demog_factors[start_year]
     #
     self._variants = list(dfp["variant_probabilities"].keys())
