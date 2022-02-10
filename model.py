@@ -23,10 +23,12 @@ def timeit(f, *args):
   return r
 
 # TODO: this should just become part of the data extraction process
-def prepare_strategies(data, strategy_params):
+def prepare_strategies(path, strategy_params):
   """
   take the raw strategies file and create the prepared admission_avoidance/los_reduction files
   """
+  # load the data
+  data = pq.read_pandas(f"{path}/ip.parquet").to_pandas().set_index("rn")
   # figure out the types of strategies
   admission_avoidance = strategy_params["admission_avoidance"].keys()
   los_reduction = strategy_params["los_reduction"].keys()
