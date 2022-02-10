@@ -229,7 +229,7 @@ class InpatientsModel:
     pool.close()
     pool.join()
 
-if __name__ == "__main__":
+def main():
   parser = argparse.ArgumentParser()
   parser.add_argument("results_path", nargs = 1, help = "Path to the results")
   parser.add_argument("run_start", nargs = 1, help = "Where to start model run from", type = int)
@@ -241,6 +241,9 @@ if __name__ == "__main__":
   #
   m = InpatientsModel(args.results_path[0])
   m.multi_model_runs(args.run_start[0], args.model_runs[0], args.cpus)
+
+if __name__ == "__main__":
+  main()
 # TODO: debugging purposes: remove from production
 else:
   m = InpatientsModel("test/data/synthetic/results/test/20220110_104353")
