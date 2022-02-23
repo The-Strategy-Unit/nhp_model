@@ -82,6 +82,29 @@ def rnorm(rng, lo, hi):
   sd   = (hi - lo) / 3.289707 # magic number: 2 * qnorm(0.95)
   return rng.normal(mean, sd)
 
+def _los_none(row, rng):
+  return row.speldur
+
+def _los_all(row, rng, lo, hi):
+  r = inrange(rnorm(rng, lo, hi))
+  return rng.binomial(row.speldur, r)
+
+def _los_bads(row, rng, baseline_el_rate, op_dc_split, lo, hi):
+  # we have the previous rate
+  return row.speldur if row.classpat == 1 else 0
+
+def _los_aec(row, rng, minv, lo, hi):
+  if row.speldur == 0: return 0
+  r = inrange(rnorm(rng, lo, hi), minv, 1)
+  u = rng.uniform()
+  return 0 if u <= r else row.speldur
+
+los_methods = defaultdict(lambda: _los_none, {
+  "all": _los_all,
+  "aec": _los_aec,
+  "bads": _los_bads
+})
+
 class InpatientsModel:
   """
   Inpatients Model
@@ -102,9 +125,9 @@ class InpatientsModel:
     #
     # load the data
     # don't assign to self yet, handle in prepare demographic factors
-    data = self._load_parquet("ip", ["rn", "speldur", "admiage", "sex", "admimeth", "tretspef"]) 
+    data = self._load_parquet("ip", ["rn", "speldur", "admiage", "sex", "admimeth", "classpat", "tretspef"]) 
     data["agesex"] = list(zip(data["admiage"].astype(int), data["sex"].astype(int)))
-    data = data.loc[data["sex"].isin(["1", "2"]), ["rn", "speldur", "agesex", "admimeth", "tretspef"]]
+    data = data.loc[data["sex"].isin(["1", "2"]), ["rn", "speldur", "agesex", "admimeth", "classpat", "tretspef"]]
     #
     self._strategies = { x: self._load_parquet(f"ip_{x}_strategies") for x in ["admission_avoidance", "los_reduction"] }
     #
@@ -155,18 +178,9 @@ class InpatientsModel:
     """
     Create a new Length of Stay for a row of data
     """
-    strategy_params = self._params["strategy_params"]
-    if row.los_reduction_strategy == "NULL" or row.speldur == 0:
-      return row.speldur
-    sp = strategy_params["los_reduction"][row.los_reduction_strategy]
-    #
-    r = inrange(rnorm(rng, *sp["interval"]))
-    if sp["type"] == "1-2_to_0":
-      # TODO: check that this is the correct ordering for the <
-      # with r = 0.8, > will convert 80% of 1/2 to 0. with < it will convert 20%
-      return row.speldur if row.speldur > 2 or rng.uniform() < r else 0
-    #
-    return rng.binomial(row.speldur, r)
+    if row.los_reduction_strategy == "NULL": return row.speldur
+    sp = self._params["strategy_params"]["los_reduction"][row.los_reduction_strategy]
+    return los_methods[sp["type"]](row, rng, *sp["interval"])
   #
   def _random_strategy(self, rng, data, strategy_type):
     """
@@ -190,6 +204,17 @@ class InpatientsModel:
     pwla = defaultdict(lambda: dv, pwla)
     return [pwla[row.tretspef] if row.admimeth == "11" else 1 for row in data.itertuples()]
   #
+  def _bads_conversion(self, rng, row):
+    if row.los_reduction_strategy == "NULL": return row.classpat
+    sp = self._params["strategy_params"]["los_reduction"][row.los_reduction_strategy]
+    if sp["type"] != "bads": return row.classpat
+    baseline_el_rate, op_dc_split, lo, hi = sp["interval"]
+    r = inrange(rnorm(rng, lo, hi), 0, baseline_el_rate)
+    u = rng.uniform()
+    if u <= r: return min(row.classpat, 2) # if we have any regular attenders, convert these to daycases
+    # update the patient class to be daycase, or -1 to indicate this is now outpatients
+    return rng.choice([-1, 2], p = [1 - op_dc_split, op_dc_split])
+  #
   def run(self, model_run):
     """
     Run the model once
@@ -212,6 +237,8 @@ class InpatientsModel:
     data["n"] = [rng.poisson(f) for f in (data["factor"] * factor_a * factor_w)]
     # drop columns we don't need and repeat rows n times
     data = data.loc[data.index.repeat(data["n"])].drop(["factor", "n"], axis = "columns")
+    # handle bads rows
+    data["classpat"] = [self._bads_conversion(rng, r) for r in data.itertuples()]
     # choose new los
     data["speldur"] = [self._new_los(rng, r) for r in data.itertuples()]
     # return the data
@@ -248,7 +275,7 @@ def main():
   #
   m = InpatientsModel(args.results_path[0])
   if args.debug:
-    _, r = m.run(0)
+    _, r = timeit(m.run, 0)
     print (r)
   else:
     m.multi_model_runs(args.run_start[0], args.model_runs[0], args.cpus)
