@@ -181,8 +181,11 @@ class InpatientsModel:
     # choose a demographic factor
     variant, data = self._select_variant(rng)
     # select a strategy
+    row_count = len(data.index) # for assert below
     data = self._random_strategy(rng, data, "admission_avoidance")
     data = self._random_strategy(rng, data, "los_reduction")
+    # double check that joining in the strategies didn't drop any rows
+    assert len(data.index) == row_count, "Row's lost when selecting strategies: has the NULL strategy not been included?"
     # choose an admission avoidance factor
     ada = self._admission_avoidance(rng)
     factor_a = np.array([ada[k] for k in data["admission_avoidance_strategy"]])
