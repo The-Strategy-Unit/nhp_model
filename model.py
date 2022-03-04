@@ -43,7 +43,7 @@ def _los_all(row, rng, lo, hi):
   r = inrange(rnorm(rng, lo, hi))
   return rng.binomial(row.speldur, r)
 
-def _los_bads(row, rng, baseline_el_rate, op_dc_split, lo, hi):
+def _los_bads(row, rng, lo, hi):
   # we have the previous rate
   return row.speldur if row.classpat == 1 else 0
 
@@ -163,12 +163,15 @@ class InpatientsModel:
     if row.los_reduction_strategy == "NULL": return row.classpat
     sp = self._params["strategy_params"]["los_reduction"][row.los_reduction_strategy]
     if sp["type"] != "bads": return row.classpat
-    baseline_el_rate, op_dc_split, lo, hi = sp["interval"]
-    r = inrange(rnorm(rng, lo, hi), 0, baseline_el_rate)
-    u = rng.uniform()
-    if u <= r: return min(row.classpat, 2) # if we have any regular attenders, convert these to daycases
+    #
+    if row.classpat == (2 if sp["target_type"] == "daycase" else -1): return row.classpat
+    #
+    btr, ods = sp["baseline_target_rate"], sp["op_dc_split"]
+    ods = sp["op_dc_split"]
+    r = inrange((rnorm(rng, *sp["interval"]) - btr) / (1 - btr))
+    u = [ods * r, (1 - ods) * r]
     # update the patient class to be daycase, or -1 to indicate this is now outpatients
-    return rng.choice([-1, 2], p = [1 - op_dc_split, op_dc_split])
+    return rng.choice([row.classpat, 2, -1], p = [1 - sum(u)] + u)
   #
   def run(self, model_run):
     """
