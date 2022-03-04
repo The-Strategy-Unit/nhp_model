@@ -22,52 +22,6 @@ def timeit(f, *args):
   print(f"elapsed: {time.time() - s:.3f}")
   return r
 
-# TODO: this should just become part of the data extraction process
-def prepare_strategies(path, strategy_params):
-  """
-  take the raw strategies file and create the prepared admission_avoidance/los_reduction files
-  """
-  # load the data
-  data = pq.read_pandas(f"{path}/ip.parquet").to_pandas().set_index("rn")
-  # figure out the types of strategies
-  admission_avoidance = strategy_params["admission_avoidance"].keys()
-  los_reduction = strategy_params["los_reduction"].keys()
-  #
-  strategies = pq.read_pandas(f"{path}/ip_strategies.parquet").to_pandas()
-  # semijoin back to filtered data
-  strategies = strategies[strategies.rn.isin(data.index)]
-  #
-  s = strategies.strategy.unique()
-  s.sort()
-  s = pd.DataFrame(s, columns = ["strategy"])
-  s["strategy_replace"] = s.strategy
-  s.loc[s.strategy.str.contains("^alcohol_partial_acute"), "strategy_replace"] = "alcohol_partial_acute"
-  s.loc[s.strategy.str.contains("^alcohol_partial_chronic"), "strategy_replace"] = "alcohol_partial_chronic"
-  s.loc[s.strategy.str.contains("^ambulatory_care_conditions_acute"), "strategy_replace"] = "ambulatory_care_conditions_acute"
-  s.loc[s.strategy.str.contains("^ambulatory_care_conditions_chronic"), "strategy_replace"] = "ambulatory_care_conditions_chronic"
-  s.loc[s.strategy.str.contains("^ambulatory_care_conditions_vaccine_preventable"), "strategy_replace"] = "ambulatory_care_conditions_vaccine_preventable"
-  s.loc[s.strategy == "improved_discharge_planning_emergency"] = "improved_discharge_planning_non-elective"
-  s.loc[s.strategy.str.contains("^falls_related_admissions_implicit"), "strategy_replace"] = "falls_related_admissions_implicit"
-  #
-  s["type"] = s.strategy_replace.apply(lambda s: "admission_avoidance" if s in admission_avoidance else "los_reduction" if s in los_reduction else None)
-  #
-  strategies_merged = tuple(strategies
-      .merge(s, on = "strategy")
-      .drop(["strategy"], axis = "columns")
-      .rename(columns = {"strategy_replace": "strategy"})
-      .drop_duplicates()
-      .groupby(["type"])
-    )
-  #
-  null_strats = pd.DataFrame(["NULL"] * len(data.index), index = data.index, columns = ["strategy"])
-  null_strats.index.rename("rn", inplace = True)
-  for k, v in strategies_merged:
-    (pd
-      .concat([null_strats, v.drop(["type"], axis = "columns").set_index(["rn"])])
-      .rename({ "strategy": f"{k}_strategy" }, axis = "columns")
-      .to_parquet(f"{path}/ip_{k}_strategies.parquet")
-    )
-
 def inrange(v, lo = 0, hi = 1):
   """
   Force a value to be in the interval [lo, hi]
@@ -195,6 +149,7 @@ class InpatientsModel:
       .sample(frac = 1, random_state = rng.bit_generator)
       .groupby(["rn"])
       .head(1)
+      .set_index(["rn"])
     )
     return data.merge(df, left_index = True, right_index = True)
   #
