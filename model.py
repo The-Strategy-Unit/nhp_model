@@ -53,10 +53,16 @@ def _los_aec(row, rng, minv, lo, hi):
   u = rng.uniform()
   return 0 if u <= r else row.speldur
 
+def _los_preop(row, rng, days, lo, hi):
+  r = inrange(rnorm(rng, lo, hi))
+  u = rng.uniform()
+  return row.speldur - (days if u <= r else 0)
+
 los_methods = defaultdict(lambda: _los_none, {
   "all": _los_all,
   "aec": _los_aec,
-  "bads": _los_bads
+  "bads": _los_bads,
+  "pre-op": _los_preop
 })
 
 class InpatientsModel:
