@@ -200,7 +200,7 @@ class InpatientsModel:
     # choose new los
     data["speldur"] = [self._new_los(rng, r) for r in data.itertuples()]
     # return the data
-    return (variant, data.reset_index())
+    return (variant, data.reset_index().drop(["admimeth", "tretspef"], axis = "columns"))
   #
   def save_run(self, model_run):
     """
