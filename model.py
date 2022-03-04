@@ -1,3 +1,4 @@
+import pickle
 import pyarrow.parquet as pq
 import pandas as pd
 import numpy as np
@@ -84,10 +85,13 @@ class InpatientsModel:
     self._results_path = results_path
     #
     # load the data
+    #
+    with open(f"{self._path}/hsa_gams.pkl", "rb") as f: self._hsa_gams = pickle.load(f)
     # don't assign to self yet, handle in prepare demographic factors
-    data = self._load_parquet("ip", ["rn", "speldur", "admiage", "sex", "admimeth", "classpat", "tretspef"]) 
-    data["agesex"] = list(zip(data["admiage"].astype(int), data["sex"].astype(int)))
-    data = data.loc[data["sex"].isin(["1", "2"]), ["rn", "speldur", "agesex", "admimeth", "classpat", "tretspef"]]
+    data = self._load_parquet("ip", ["rn", "speldur", "admiage", "sex", "admimeth", "classpat", "tretspef", "admigrp"]) 
+    data["age"] = data["admiage"].astype(int)
+    data["sex"] = data["sex"].astype(int)
+    data = data.loc[data["sex"].isin([1, 2]), ["rn", "speldur", "admiage", "sex", "admimeth", "classpat", "tretspef", "admigrp"]]
     #
     self._strategies = { x: self._load_parquet(f"ip_{x}_strategies") for x in ["admission_avoidance", "los_reduction"] }
     #
@@ -98,15 +102,16 @@ class InpatientsModel:
     #
     demog_factors = pd.read_csv(os.path.join(self._path, dfp["file"]))
     #
-    demog_factors["agesex"] = list(zip(demog_factors["age"].astype(int), demog_factors["sex"]))
+    demog_factors["age"] = demog_factors["age"].astype(int)
+    demog_factors["sex"] = demog_factors["sex"].astype(int)
     demog_factors["factor"] = demog_factors[end_year] / demog_factors[start_year]
     #
     self._variants = list(dfp["variant_probabilities"].keys())
     self._probabilities = list(dfp["variant_probabilities"].values())
     #
     self._data = {
-      k: v.drop(["variant", "agesex"], axis = "columns").set_index(["rn"])
-      for k, v in tuple(data.merge(demog_factors[["agesex", "variant", "factor"]], on = "agesex").groupby(["variant"]))
+      k: v.drop(["variant"], axis = "columns").set_index(["rn"])
+      for k, v in tuple(data.merge(demog_factors[["age", "sex", "variant", "factor"]], left_on = ["admiage", "sex"], right_on = ["age", "sex"]).groupby(["variant"]))
     }
   #
   def _load_parquet(self, file, *args):
@@ -165,6 +170,22 @@ class InpatientsModel:
     pwla = defaultdict(lambda: dv, pwla)
     return [pwla[row.tretspef] if row.admimeth == "11" else 1 for row in data.itertuples()]
   #
+  def _health_status_adjustment(self, rng, data):
+    lo, hi = self._params["health_status_adjustment"]
+    y = rnorm(rng, lo, hi)
+    #
+    ages = np.arange(55, 91)
+    hsa = pd.concat([
+      pd.DataFrame({
+        "admigrp": a,
+        "sex": int(s),
+        "admiage": ages,
+        "hsa_f": g.predict(ages - y) / g.predict(ages)
+      })
+      for (a, s), g in self._hsa_gams.items()
+    ])
+    return data.merge(hsa, on = ["admigrp", "sex", "admiage"], how = "left").fillna(1)
+  #
   def _bads_conversion(self, rng, row):
     if row.los_reduction_strategy == "NULL": return row.classpat
     sp = self._params["strategy_params"]["los_reduction"][row.los_reduction_strategy]
@@ -200,10 +221,12 @@ class InpatientsModel:
     factor_a = np.array([ada[k] for k in data["admission_avoidance_strategy"]])
     # waiting list adjustments
     factor_w = self._waiting_list_adjustment(data)
+    # hsa
+    data = self._health_status_adjustment(rng, data)
     # create a single factor for how many times to select that row
-    data["n"] = [rng.poisson(f) for f in (data["factor"] * factor_a * factor_w)]
+    data["n"] = [rng.poisson(f) for f in (data["factor"] * data["hsa_f"] * factor_a * factor_w)]
     # drop columns we don't need and repeat rows n times
-    data = data.loc[data.index.repeat(data["n"])].drop(["factor", "n"], axis = "columns")
+    data = data.loc[data.index.repeat(data["n"])].drop(["factor", "hsa_f", "n"], axis = "columns")
     # handle bads rows
     data["classpat"] = [self._bads_conversion(rng, r) for r in data.itertuples()]
     # choose new los
