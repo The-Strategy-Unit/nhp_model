@@ -174,9 +174,12 @@ class InpatientsModel:
       })
       for (a, s), g in self._hsa_gams.items()
     ])
-    data = data.merge(hsa, on = ["admigrp", "sex", "admiage"], how = "left").fillna(1)
-    data.index.name = "rn"
-    return data
+    return (data
+      .reset_index()
+      .merge(hsa, on = ["admigrp", "sex", "admiage"], how = "left")
+      .fillna(1)
+      .set_index(["rn"])
+    )
   #
   def _bads_conversion(self, rng, row):
     if row.los_reduction_strategy == "NULL": return row.classpat
@@ -224,7 +227,7 @@ class InpatientsModel:
     # choose new los
     data["speldur"] = [self._new_los(rng, r) for r in data.itertuples()]
     # return the data
-    return (variant, data.reset_index().drop(["admimeth", "tretspef"], axis = "columns"))
+    return (variant, data.reset_index()[["rn", "speldur", "classpat", "admission_avoidance_strategy", "los_reduction_strategy"]])
   #
   def save_run(self, model_run):
     """
