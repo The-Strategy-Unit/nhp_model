@@ -89,7 +89,7 @@ class InpatientsModel:
     with open(f"{self._path}/hsa_gams.pkl", "rb") as f: self._hsa_gams = pickle.load(f)
     # don't assign to self yet, handle in prepare demographic factors
     data = self._load_parquet("ip", ["rn", "speldur", "admiage", "sex", "admimeth", "classpat", "tretspef", "admigrp"]) 
-    data["age"] = data["admiage"].astype(int)
+    data["admiage"] = data["admiage"].astype(int)
     data["sex"] = data["sex"].astype(int)
     data = data.loc[data["sex"].isin([1, 2]), ["rn", "speldur", "admiage", "sex", "admimeth", "classpat", "tretspef", "admigrp"]]
     #
@@ -105,13 +105,14 @@ class InpatientsModel:
     demog_factors["age"] = demog_factors["age"].astype(int)
     demog_factors["sex"] = demog_factors["sex"].astype(int)
     demog_factors["factor"] = demog_factors[end_year] / demog_factors[start_year]
+    demog_factors = demog_factors.rename(columns = {"age": "admiage"}).set_index(["admiage", "sex"])[["variant", "factor"]]
     #
     self._variants = list(dfp["variant_probabilities"].keys())
     self._probabilities = list(dfp["variant_probabilities"].values())
     #
     self._data = {
       k: v.drop(["variant"], axis = "columns").set_index(["rn"])
-      for k, v in tuple(data.merge(demog_factors[["age", "sex", "variant", "factor"]], left_on = ["admiage", "sex"], right_on = ["age", "sex"]).groupby(["variant"]))
+      for k, v in tuple(data.merge(demog_factors, left_on = ["admiage", "sex"], right_index = True).groupby(["variant"]))
     }
   #
   def _load_parquet(self, file, *args):
@@ -184,7 +185,9 @@ class InpatientsModel:
       })
       for (a, s), g in self._hsa_gams.items()
     ])
-    return data.merge(hsa, on = ["admigrp", "sex", "admiage"], how = "left").fillna(1)
+    data = data.merge(hsa, on = ["admigrp", "sex", "admiage"], how = "left").fillna(1)
+    data.index.name = "rn"
+    return data
   #
   def _bads_conversion(self, rng, row):
     if row.los_reduction_strategy == "NULL": return row.classpat
