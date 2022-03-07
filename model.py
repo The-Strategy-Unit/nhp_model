@@ -171,16 +171,16 @@ class InpatientsModel:
     return [pwla[row.tretspef] if row.admimeth == "11" else 1 for row in data.itertuples()]
   #
   def _health_status_adjustment(self, rng, data):
-    lo, hi = self._params["health_status_adjustment"]
-    y = rnorm(rng, lo, hi)
+    params = self._params["health_status_adjustment"]
     #
-    ages = np.arange(55, 91)
+    ages = np.arange(params["min_age"], params["max_age"] + 1)
+    adjusted_ages = ages - [rnorm(rng, *i) for i in params["intervals"]]
     hsa = pd.concat([
       pd.DataFrame({
         "admigrp": a,
         "sex": int(s),
         "admiage": ages,
-        "hsa_f": g.predict(ages - y) / g.predict(ages)
+        "hsa_f": g.predict(adjusted_ages) / g.predict(ages)
       })
       for (a, s), g in self._hsa_gams.items()
     ])
