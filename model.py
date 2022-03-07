@@ -3,9 +3,7 @@ import pyarrow.parquet as pq
 import pandas as pd
 import numpy as np
 import json
-import time
 import os
-import argparse
 
 from pathlib import Path
 from pathos.multiprocessing import ProcessPool
@@ -13,15 +11,6 @@ from datetime import datetime
 from collections import defaultdict
 
 # helper functions
-
-def timeit(f, *args):
-  """
-  Time how long it takes to evaluate function `f` with arguments `*args`.
-  """
-  s = time.time()
-  r = f(*args)
-  print(f"elapsed: {time.time() - s:.3f}")
-  return r
 
 def inrange(v, lo = 0, hi = 1):
   """
@@ -255,28 +244,3 @@ class InpatientsModel:
     pool.amap(self.save_run, range(run_start, run_start + model_runs))
     pool.close()
     pool.join()
-
-def main():
-  parser = argparse.ArgumentParser()
-  parser.add_argument("results_path", nargs = 1, help = "Path to the results")
-  parser.add_argument("run_start", nargs = 1, help = "Where to start model run from", type = int)
-  parser.add_argument("model_runs", nargs = 1, help = "How many model runs to perform", type = int)
-  parser.add_argument("-c", "--cpus", default = os.cpu_count(), help = "Number of CPU cores to use", type = int)
-  parser.add_argument("-d", "--debug", action = "store_true")
-  # Grab the Arguments
-  args = parser.parse_args()
-  #
-  m = InpatientsModel(args.results_path[0])
-  if args.debug:
-    _, r = timeit(m.run, 0)
-    print (r)
-  else:
-    m.multi_model_runs(args.run_start[0], args.model_runs[0], args.cpus)
-
-if __name__ == "__main__":
-  main()
-# TODO: debugging purposes: remove from production
-else:
-  m = InpatientsModel("test/data/synthetic/results/test/20220110_104353")
-  with open("test/queue/test.json", "r") as f: params = json.load(f)
-  data = m._data["principal"]
