@@ -52,7 +52,8 @@ rsconnect/
 # ignore config files
 config.py
 
-# ignore test folder
+# ignore test/data folder
 test/
+data/
 
 __PYCACHE__
