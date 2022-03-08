@@ -238,7 +238,8 @@ class InpatientsModel:
     Runs the model, saving the results to the results folder
     """
     variant, mr_data = self.run(model_run)
-    mr_data.to_parquet(f"{self._results_path}/results/model_run={model_run}.parquet")
+    os.mkdir(f"{self._results_path}/results/model_run={model_run}")
+    mr_data.to_parquet(f"{self._results_path}/results/model_run={model_run}/{model_run}.parquet")
     with open(f"{self._results_path}/selected_variants/model_run={model_run}.txt", "w") as f:
       f.write(variant)
   #
