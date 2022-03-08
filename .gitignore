@@ -57,3 +57,7 @@ test/
 data/
 
 __PYCACHE__
+
+# ignore any potential data/artifacts
+*.zip
+*.parquet
