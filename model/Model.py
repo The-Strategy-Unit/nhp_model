@@ -1,11 +1,16 @@
-import pickle
-import pyarrow.parquet as pq
-import pandas as pd
 import json
+import pickle
 import os
 
+import numpy as np
+import pyarrow.parquet as pq
+import pandas as pd
+
+from collections import defaultdict
 from pathlib import Path
 from pathos.multiprocessing import ProcessPool
+
+from model.helpers import rnorm, inrange
 
 class Model:
   def __init__(self, results_path):
@@ -39,7 +44,34 @@ class Model:
     #
     self._variants = list(dfp["variant_probabilities"].keys())
     self._probabilities = list(dfp["variant_probabilities"].values())
-    
+  #
+  def _waiting_list_adjustment(self, data):
+    pwla = self._params["waiting_list_adjustment"]["inpatients"].copy()
+    dv = pwla.pop("X01")
+    pwla = defaultdict(lambda: dv, pwla)
+    return [pwla[row.tretspef] if row.admimeth == "11" else 1 for row in data.itertuples()]
+  #
+  def _health_status_adjustment(self, rng, data):
+    params = self._params["health_status_adjustment"]
+    #
+    ages = np.arange(params["min_age"], params["max_age"] + 1)
+    adjusted_ages = ages - [rnorm(rng, *i) for i in params["intervals"]]
+    hsa = pd.concat([
+      pd.DataFrame({
+        "hsagrp": a,
+        "sex": int(s),
+        "age": ages,
+        "hsa_f": g.predict(adjusted_ages) / g.predict(ages)
+      })
+      for (a, s), g in self._hsa_gams.items()
+    ])
+    return (data
+      .reset_index()
+      .merge(hsa, on = ["hsagrp", "sex", "age"], how = "left")
+      .fillna(1)
+      .set_index(["rn"])
+    )
+  # 
   def _load_parquet(self, file, *args):
     """
     Load a parquet file from the file path created by the constructor.

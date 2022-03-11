@@ -1,5 +1,3 @@
-import pyarrow.parquet as pq
-import pandas as pd
 import numpy as np
 
 from collections import defaultdict
@@ -94,33 +92,6 @@ class InpatientsModel(Model):
       .set_index(["rn"])
     )
     return data.merge(df, left_index = True, right_index = True)
-  #
-  def _waiting_list_adjustment(self, data):
-    pwla = self._params["waiting_list_adjustment"]["inpatients"].copy()
-    dv = pwla.pop("X01")
-    pwla = defaultdict(lambda: dv, pwla)
-    return [pwla[row.tretspef] if row.admimeth == "11" else 1 for row in data.itertuples()]
-  #
-  def _health_status_adjustment(self, rng, data):
-    params = self._params["health_status_adjustment"]
-    #
-    ages = np.arange(params["min_age"], params["max_age"] + 1)
-    adjusted_ages = ages - [rnorm(rng, *i) for i in params["intervals"]]
-    hsa = pd.concat([
-      pd.DataFrame({
-        "hsagrp": a,
-        "sex": int(s),
-        "age": ages,
-        "hsa_f": g.predict(adjusted_ages) / g.predict(ages)
-      })
-      for (a, s), g in self._hsa_gams.items()
-    ])
-    return (data
-      .reset_index()
-      .merge(hsa, on = ["hsagrp", "sex", "age"], how = "left")
-      .fillna(1)
-      .set_index(["rn"])
-    )
   #
   def _bads_conversion(self, rng, row):
     if row.los_reduction_strategy == "NULL": return row.classpat
