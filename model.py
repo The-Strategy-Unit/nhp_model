@@ -7,7 +7,6 @@ import os
 
 from pathlib import Path
 from pathos.multiprocessing import ProcessPool
-from datetime import datetime
 from collections import defaultdict
 
 # helper functions
