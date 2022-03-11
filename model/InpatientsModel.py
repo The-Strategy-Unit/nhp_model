@@ -9,21 +9,7 @@ from pathlib import Path
 from pathos.multiprocessing import ProcessPool
 from collections import defaultdict
 
-# helper functions
-
-def inrange(v, lo = 0, hi = 1):
-  """
-  Force a value to be in the interval [lo, hi]
-  """
-  return max(lo, min(hi, v))
-
-def rnorm(rng, lo, hi):
-  """
-  Create a single random normal value from a 90% confidence interval
-  """
-  mean = (hi + lo) / 2
-  sd   = (hi - lo) / 3.289707 # magic number: 2 * qnorm(0.95)
-  return rng.normal(mean, sd)
+from model.helpers import rnorm, inrange
 
 def _los_none(row, rng):
   return row.speldur
@@ -47,7 +33,7 @@ def _los_preop(row, rng, days, lo, hi):
   u = rng.uniform()
   return row.speldur - (days if u <= r else 0)
 
-los_methods = defaultdict(lambda: _los_none, {
+_los_methods = defaultdict(lambda: _los_none, {
   "all": _los_all,
   "aec": _los_aec,
   "bads": _los_bads,
@@ -134,7 +120,7 @@ class InpatientsModel:
     """
     if row.los_reduction_strategy == "NULL": return row.speldur
     sp = self._params["strategy_params"]["los_reduction"][row.los_reduction_strategy]
-    return los_methods[sp["type"]](row, rng, *sp["interval"])
+    return _los_methods[sp["type"]](row, rng, *sp["interval"])
   #
   def _random_strategy(self, rng, data, strategy_type):
     """

@@ -2,7 +2,7 @@ import argparse
 import os
 import time
 
-from model import InpatientsModel
+from model.InpatientsModel import InpatientsModel
 
 def timeit(f, *args):
   """
