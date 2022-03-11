@@ -5,10 +5,18 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Run Model",
+      "name": "Python: Inpatients Run Model",
       "type": "python",
       "request": "launch",
-      "program": "run_model.py",
+      "program": "run_inpatients_model.py",
+      "args": ["data/synthetic/results/test/20220110_104353", "0", "1", "--debug"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Python: Outpatients Run Model",
+      "type": "python",
+      "request": "launch",
+      "program": "run_outpatients_model.py",
       "args": ["data/synthetic/results/test/20220110_104353", "0", "1", "--debug"],
       "console": "integratedTerminal"
     }
