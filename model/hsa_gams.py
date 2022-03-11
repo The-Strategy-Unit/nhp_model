@@ -37,8 +37,13 @@ if __name__ == "__main__":
   p = lambda f: os.path.join(path, f)
   # load the population data
   pop = pd.read_csv(p("demographic_factors.csv"))
-  pop = pop[pop["variant"] == "principal"][["sex", "age", str(base_year)]] \
+  pop["age"] = pop["age"].clip(upper = 90)
+  pop = (pop[pop["variant"] == "principal"][["sex", "age", str(base_year)]]
     .rename(columns = {str(base_year): "base_year", "age": "age"})
+    .groupby(["sex", "age"])
+    .agg("sum")
+    .reset_index()
+  )
   # create the gams
   _, ip_gams = create_gams(p, pop, "ip", ["birth", "maternity", "paeds"])
   _, op_gams = create_gams(p, pop, "op")
