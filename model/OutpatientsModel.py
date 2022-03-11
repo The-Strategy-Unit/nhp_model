@@ -29,15 +29,29 @@ class OutpatientsModel(Model):
     )
     self._data = { k: v.drop(["variant"], axis = "columns").set_index(["rn"]) for k, v in tuple(data) }
   #
-  def _followup_reduction(self, rng, row):
-    if row.has_procedures: return 1
-    interval = self._params["outpatient_factors"]["followup_reduction"][row.type]
-    return inrange(rnorm(rng, *interval))
+  def _followup_reduction(self, data, rng):
+    p = self._params["outpatient_factors"]["followup_reduction"]
+    f = pd.DataFrame([
+      [0] * len(p),
+      [0] * len(p),
+      p.keys(),
+      [inrange(rnorm(rng, *v)) for v in p.values()]
+    ], columns = ["has_procedures", "is_first", "type", "fur_f"])
+    #
+    data = data.merge(f, how = "left", on = ["has_procedures", "is_first", "type"])
+    data["fur_f"].fillna(1, inplace = True)
+    return data
   #
-  def _convert_to_tele(self, rng, row):
-    interval = self._params["outpatient_factors"]["convert_to_tele"][row.type]
-    r = inrange(rnorm(rng, *interval))
-    return rng.binomial(row.attendances, r)
+  def _convert_to_tele(self, data, rng):
+    p = {
+      k: inrange(rnorm(rng, *v))
+      for k, v in self._params["outpatient_factors"]["convert_to_tele"].items()
+    }
+    p = [p[t] for t in data["type"]]
+    tc = list(map(np.random.binomial, data["attendances"], p))
+    data["attendances"] -= tc
+    data["tele_attendances"] += tc
+    return data
   #
   def run(self, model_run):
     """
@@ -52,14 +66,13 @@ class OutpatientsModel(Model):
     # hsa
     data = self._health_status_adjustment(rng, data)
     # first to follow-up adjustments
-    ffu = [self._followup_reduction(rng, r) for r in data.itertuples()]
+    data = self._followup_reduction(data, rng)
     # create a single factor for how many times to select that row
-    data["attendances"] = [rng.poisson(f) for f in (data["attendances"] * data["factor"] * data["hsa_f"] * ffu)]
-    data["tele_attendances"] = [rng.poisson(f) for f in (data["tele_attendances"] * data["factor"] * data["hsa_f"] * ffu)]
+    factor = data["factor"] * data["hsa_f"] * data["fur_f"]
+    data["attendances"] = [rng.poisson(f) for f in data["attendances"] * factor]
+    data["tele_attendances"] = [rng.poisson(f) for f in data["tele_attendances"] * factor]
     data = data[data["attendances"] + data["tele_attendances"] > 0]
     # convert attendances to tele attendances
-    tr = [self._convert_to_tele(rng, r) for r in data.itertuples()]
-    data["attendances"] -= tr
-    data["tele_attendances"] += tr
+    data = self._convert_to_tele(data, rng)
     # return the data
     return (variant, data[["attendances", "tele_attendances"]].reset_index())
