@@ -45,12 +45,6 @@ class Model:
     self._variants = list(dfp["variant_probabilities"].keys())
     self._probabilities = list(dfp["variant_probabilities"].values())
   #
-  def _waiting_list_adjustment(self, data):
-    pwla = self._params["waiting_list_adjustment"]["inpatients"].copy()
-    dv = pwla.pop("X01")
-    pwla = defaultdict(lambda: dv, pwla)
-    return [pwla[row.tretspef] if row.admimeth == "11" else 1 for row in data.itertuples()]
-  #
   def _health_status_adjustment(self, rng, data):
     params = self._params["health_status_adjustment"]
     #
@@ -65,12 +59,15 @@ class Model:
       })
       for (a, s), g in self._hsa_gams.items()
     ])
-    return (data
+    data = (data
       .reset_index()
       .merge(hsa, on = ["hsagrp", "sex", "age"], how = "left")
-      .fillna(1)
       .set_index(["rn"])
     )
+    # because we do a left join, some groups / sex / age rows may be NaN. replace with multiplication identity (1)
+    data["hsa_f"].fillna(1, inplace = True)
+    #
+    return data
   # 
   def _load_parquet(self, file, *args):
     """

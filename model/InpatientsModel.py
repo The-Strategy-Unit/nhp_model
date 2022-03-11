@@ -107,6 +107,12 @@ class InpatientsModel(Model):
     # update the patient class to be daycase, or -1 to indicate this is now outpatients
     return rng.choice([row.classpat, 2, -1], p = [1 - sum(u)] + u)
   #
+  def _waiting_list_adjustment(self, data):
+    pwla = self._params["waiting_list_adjustment"]["inpatients"].copy()
+    dv = pwla.pop("X01")
+    pwla = defaultdict(lambda: dv, pwla)
+    return [pwla[row.tretspef] if row.admimeth == "11" else 1 for row in data.itertuples()]
+  #
   def run(self, model_run):
     """
     Run the model once
