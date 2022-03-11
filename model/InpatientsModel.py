@@ -49,31 +49,16 @@ class InpatientsModel(Model):
   def __init__(self, results_path):
     # call the parent init function
     Model.__init__(self, results_path)
-    #
     # load the data
-    #
-    data = self._load_parquet("ip", ["rn", "speldur", "admiage", "sex", "admimeth", "classpat", "tretspef", "admigrp"]) 
-    # TODO: this data type conversion should happen at data extraction
-    data["admiage"] = data["admiage"].astype(int)
-    data["sex"] = data["sex"].astype(int)
-    # TODO: this filtering should happen at the data extraction stage
-    data = data.loc[data["sex"].isin([1, 2]), ["rn", "speldur", "admiage", "sex", "admimeth", "classpat", "tretspef", "admigrp"]]
-    #
-    self._strategies = { x: self._load_parquet(f"ip_{x}_strategies") for x in ["admission_avoidance", "los_reduction"] }
-    #
-    # prepare demographic factors
-    #
-    self._data = {
-      k: v.drop(["variant"], axis = "columns").set_index(["rn"])
-      for k, v in tuple(data.merge(self._demog_factors, left_on = ["admiage", "sex"], right_index = True).groupby(["variant"]))
+    data = (self
+      ._load_parquet("ip", ["rn", "speldur", "age", "sex", "admimeth", "classpat", "tretspef", "hsagrp"])
+      .merge(self._demog_factors, left_on = ["age", "sex"], right_index = True)
+      .groupby(["variant"])
+    )
+    self._strategies = {
+      x: self._load_parquet(f"ip_{x}_strategies") for x in ["admission_avoidance", "los_reduction"]
     }
-  #
-  def _select_variant(self, rng):
-    """
-    Randomly select a single variant to use for a model run
-    """
-    v = rng.choice(self._variants, p = self._probabilities)
-    return (v, self._data[v])
+    self._data = { k: v.drop(["variant"], axis = "columns").set_index(["rn"]) for k, v in tuple(data) }
   #
   def _admission_avoidance(self, rng):
     """
@@ -123,16 +108,16 @@ class InpatientsModel(Model):
     adjusted_ages = ages - [rnorm(rng, *i) for i in params["intervals"]]
     hsa = pd.concat([
       pd.DataFrame({
-        "admigrp": a,
+        "hsagrp": a,
         "sex": int(s),
-        "admiage": ages,
+        "age": ages,
         "hsa_f": g.predict(adjusted_ages) / g.predict(ages)
       })
       for (a, s), g in self._hsa_gams.items()
     ])
     return (data
       .reset_index()
-      .merge(hsa, on = ["admigrp", "sex", "admiage"], how = "left")
+      .merge(hsa, on = ["hsagrp", "sex", "age"], how = "left")
       .fillna(1)
       .set_index(["rn"])
     )
