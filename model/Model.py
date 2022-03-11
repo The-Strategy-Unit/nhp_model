@@ -11,7 +11,7 @@ class Model:
   def __init__(self, results_path):
     # load the parameters file
     with open(f"{results_path}/params.json", "r") as f: self._params = json.load(f)
-    # load the required data
+    # store the path where the data is stored and the results are stored
     self._path = str(Path(results_path).parent.parent.parent)
     self._results_path = results_path
     #
