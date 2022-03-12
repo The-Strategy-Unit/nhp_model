@@ -137,11 +137,15 @@ class InpatientsModel(Model):
     # hsa
     data = self._health_status_adjustment(rng, data)
     # create a single factor for how many times to select that row
-    data["n"] = [rng.poisson(f) for f in (data["factor"] * data["hsa_f"] * factor_a * factor_w)]
+    n = rng.poisson(data["factor"] * data["hsa_f"] * factor_a * factor_w)
     # drop columns we don't need and repeat rows n times
-    data = data.loc[data.index.repeat(data["n"])].drop(["factor", "hsa_f", "n"], axis = "columns")
+    data = data.loc[data.index.repeat(n)].drop(["factor", "hsa_f"], axis = "columns")
     # handle bads rows
-    data["classpat"] = [self._bads_conversion(rng, r) for r in data.itertuples()]
+    bads_i = data.los_reduction_strategy.str.startswith("bads_")
+    data.loc[bads_i, "classpat"] = [
+      self._bads_conversion(rng, r)
+      for r in data.loc[bads_i, :].itertuples()
+    ]
     # choose new los
     data["speldur"] = [self._new_los(rng, r) for r in data.itertuples()]
     # return the data

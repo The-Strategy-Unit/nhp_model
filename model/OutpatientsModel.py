@@ -31,15 +31,27 @@ class OutpatientsModel(Model):
   #
   def _followup_reduction(self, data, rng):
     p = self._params["outpatient_factors"]["followup_reduction"]
-    f = pd.DataFrame([
-      [0] * len(p),
-      [0] * len(p),
-      p.keys(),
-      [inrange(rnorm(rng, *v)) for v in p.values()]
-    ], columns = ["has_procedures", "is_first", "type", "fur_f"])
+    f = pd.DataFrame({
+      "has_procedures": [0] * len(p),
+      "is_first": [0] * len(p),
+      "type": p.keys(),
+      "fur_f": [inrange(rnorm(rng, *v)) for v in p.values()]
+    })
     #
-    data = data.merge(f, how = "left", on = ["has_procedures", "is_first", "type"])
-    data["fur_f"].fillna(1, inplace = True)
+    data = data.merge(f, how = "left", on = list(f.columns[:-1]))
+    data[f.columns[-1]].fillna(1, inplace = True)
+    return data
+  #
+  def _consultant_to_consultant_reduction(self, data, rng):    
+    p = self._params["outpatient_factors"]["consultant_to_consultant_reduction"]
+    f = pd.DataFrame({
+      "is_cons_cons_ref": [1] * len(p),
+      "type": p.keys(),
+      "c2c_f": [inrange(rnorm(rng, *v)) for v in p.values()]
+    })
+    #
+    data = data.merge(f, how = "left", on = list(f.columns[:-1]))
+    data[f.columns[-1]].fillna(1, inplace = True)
     return data
   #
   def _convert_to_tele(self, data, rng):
@@ -66,6 +78,8 @@ class OutpatientsModel(Model):
     data = self._health_status_adjustment(rng, data)
     # first to follow-up adjustments
     data = self._followup_reduction(data, rng)
+    # consultant to consultant referrals adjustments
+    data = self._consultant_to_consultant_reduction(data, rng)
     # create a single factor for how many times to select that row
     factor = data["factor"] * data["hsa_f"] * data["fur_f"]
     data["attendances"] = rng.poisson(data["attendances"] * factor)
