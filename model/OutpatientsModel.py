@@ -47,8 +47,7 @@ class OutpatientsModel(Model):
       k: inrange(rnorm(rng, *v))
       for k, v in self._params["outpatient_factors"]["convert_to_tele"].items()
     }
-    p = [p[t] for t in data["type"]]
-    tc = list(map(np.random.binomial, data["attendances"], p))
+    tc = np.random.binomial(data["attendances"], [p[t] for t in data["type"]])
     data["attendances"] -= tc
     data["tele_attendances"] += tc
     return data
@@ -69,8 +68,8 @@ class OutpatientsModel(Model):
     data = self._followup_reduction(data, rng)
     # create a single factor for how many times to select that row
     factor = data["factor"] * data["hsa_f"] * data["fur_f"]
-    data["attendances"] = [rng.poisson(f) for f in data["attendances"] * factor]
-    data["tele_attendances"] = [rng.poisson(f) for f in data["tele_attendances"] * factor]
+    data["attendances"] = rng.poisson(data["attendances"] * factor)
+    data["tele_attendances"] = rng.poisson(data["tele_attendances"] * factor)
     data = data[data["attendances"] + data["tele_attendances"] > 0]
     # convert attendances to tele attendances
     data = self._convert_to_tele(data, rng)
