@@ -70,7 +70,10 @@ class InpatientsModel(Model):
     pwla = self._params["waiting_list_adjustment"]["inpatients"].copy()
     dv = pwla.pop("X01")
     pwla = defaultdict(lambda: dv, pwla)
-    return [pwla[row.tretspef] if row.admimeth == "11" else 1 for row in data.itertuples()]
+    w = np.ones_like(data.index).astype(float)
+    i = list(data.admimeth == "11")
+    w[i] = [pwla[t] for t in data[i].tretspef]
+    return w
   #
   def run(self, model_run):
     """
@@ -102,7 +105,9 @@ class InpatientsModel(Model):
     data = data.loc[data.index.repeat(n)].drop(["factor", "hsa_f"], axis = "columns")
     data.reset_index(inplace = True)
     # LoS Reduction ----------------------------------------------------------------------------------------------------
+    # get the parameters
     losr = self._los_reduction(rng)
+    # set the index for easier querying
     data.set_index(["los_reduction_strategy"], inplace = True)
     data = self._losr_all(data, losr, rng)
     data = self._losr_aec(data, losr, rng)
@@ -129,20 +134,24 @@ class InpatientsModel(Model):
     data.loc[s, "speldur"] *= rng.uniform(size = n) >= losr.loc[data.loc[s].index, "losr_f"]
     return data
   def _losr_bads(self, data, losr, rng):
-    def bads_conversion(row):
-      sp = self._params["strategy_params"]["los_reduction"][row.Index]
-      #
-      if row.classpat == (2 if sp["target_type"] == "daycase" else -1): return row.classpat
-      #
-      losr_f = losr.loc[row.Index, "losr_f"]
-      btr = sp["baseline_target_rate"]
-      ods = sp["op_dc_split"]
-      r = inrange((losr_f - btr) / (1 - btr))
-      u = [ods * r, (1 - ods) * r]
-      # update the patient class to be daycase, or -1 to indicate this is now outpatients
-      return rng.choice([row.classpat, 2, -1], p = [1 - sum(u)] + u)
     i = losr.type == "bads"
+    bads_df = data.merge(
+      losr[i][["baseline_target_rate", "op_dc_split", "losr_f"]],
+      left_index = True,
+      right_index = True
+    )
+    r = (
+      (bads_df["losr_f"] - bads_df["baseline_target_rate"]) / (1 - bads_df["baseline_target_rate"])
+    ).apply(inrange)
+    u1 = bads_df["op_dc_split"] * r
+    u2 = (1 - bads_df["op_dc_split"]) * r
+    u0 = 1 - u1 - u2
+    x = np.random.uniform(size = len(r))
+    #
+    bads_df.loc[(x >= u0) & (x < u0 + u1), "classpat"] = "2"
+    bads_df.loc[(x >= u0 + u1), "classpat"] = "-1"
+    #
     s = losr.index[i]
-    data.loc[s, "classpat"] = [bads_conversion(r) for r in data.loc[s].itertuples()]
+    data.loc[s, "classpat"] = bads_df["classpat"]
     data.loc[s, "speldur"] *= data.loc[s, "classpat"] == 1
-    return data 
+    return data
