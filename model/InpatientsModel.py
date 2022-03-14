@@ -1,38 +1,10 @@
 import numpy as np
+import pandas as pd
 
 from collections import defaultdict
 
 from model.helpers import rnorm, inrange
 from model.Model import Model
-
-def _los_none(row, rng):
-  return row.speldur
-
-def _los_all(row, rng, lo, hi):
-  r = inrange(rnorm(rng, lo, hi))
-  return rng.binomial(row.speldur, r)
-
-def _los_bads(row, rng, lo, hi):
-  # we have the previous rate
-  return row.speldur if row.classpat == 1 else 0
-
-def _los_aec(row, rng, minv, lo, hi):
-  if row.speldur == 0: return 0
-  r = inrange(rnorm(rng, lo, hi), minv, 1)
-  u = rng.uniform()
-  return 0 if u <= r else row.speldur
-
-def _los_preop(row, rng, days, lo, hi):
-  r = inrange(rnorm(rng, lo, hi))
-  u = rng.uniform()
-  return row.speldur - (days if u <= r else 0)
-
-_los_methods = defaultdict(lambda: _los_none, {
-  "all": _los_all,
-  "aec": _los_aec,
-  "bads": _los_bads,
-  "pre-op": _los_preop
-})
 
 class InpatientsModel(Model):
   """
@@ -68,13 +40,14 @@ class InpatientsModel(Model):
       for k, v in strategy_params["admission_avoidance"].items()
     })
   #
-  def _new_los(self, rng, row):
+  def _los_reduction(self, rng):
     """
-    Create a new Length of Stay for a row of data
+    Create a dictionary of the los reduction factors to use for a run
     """
-    if row.los_reduction_strategy == "NULL": return row.speldur
-    sp = self._params["strategy_params"]["los_reduction"][row.los_reduction_strategy]
-    return _los_methods[sp["type"]](row, rng, *sp["interval"])
+    p = self._params["strategy_params"]["los_reduction"]
+    losr = pd.DataFrame.from_dict(p, orient = "index")
+    losr["losr_f"] = [inrange(rnorm(rng, *i), *r) for i, r in zip(losr["interval"], losr["range"])]
+    return losr
   #
   def _random_strategy(self, rng, data, strategy_type):
     """
@@ -92,20 +65,6 @@ class InpatientsModel(Model):
       .set_index(["rn"])
     )
     return data.merge(df, left_index = True, right_index = True)
-  #
-  def _bads_conversion(self, rng, row):
-    if row.los_reduction_strategy == "NULL": return row.classpat
-    sp = self._params["strategy_params"]["los_reduction"][row.los_reduction_strategy]
-    if sp["type"] != "bads": return row.classpat
-    #
-    if row.classpat == (2 if sp["target_type"] == "daycase" else -1): return row.classpat
-    #
-    btr, ods = sp["baseline_target_rate"], sp["op_dc_split"]
-    ods = sp["op_dc_split"]
-    r = inrange((rnorm(rng, *sp["interval"]) - btr) / (1 - btr))
-    u = [ods * r, (1 - ods) * r]
-    # update the patient class to be daycase, or -1 to indicate this is now outpatients
-    return rng.choice([row.classpat, 2, -1], p = [1 - sum(u)] + u)
   #
   def _waiting_list_adjustment(self, data):
     pwla = self._params["waiting_list_adjustment"]["inpatients"].copy()
@@ -129,6 +88,7 @@ class InpatientsModel(Model):
     data = self._random_strategy(rng, data, "los_reduction")
     # double check that joining in the strategies didn't drop any rows
     assert len(data.index) == row_count, "Row's lost when selecting strategies: has the NULL strategy not been included?"
+    # Admission Avoidance ----------------------------------------------------------------------------------------------
     # choose an admission avoidance factor
     ada = self._admission_avoidance(rng)
     factor_a = np.array([ada[k] for k in data["admission_avoidance_strategy"]])
@@ -140,13 +100,49 @@ class InpatientsModel(Model):
     n = rng.poisson(data["factor"] * data["hsa_f"] * factor_a * factor_w)
     # drop columns we don't need and repeat rows n times
     data = data.loc[data.index.repeat(n)].drop(["factor", "hsa_f"], axis = "columns")
-    # handle bads rows
-    bads_i = data.los_reduction_strategy.str.startswith("bads_")
-    data.loc[bads_i, "classpat"] = [
-      self._bads_conversion(rng, r)
-      for r in data.loc[bads_i, :].itertuples()
-    ]
-    # choose new los
-    data["speldur"] = [self._new_los(rng, r) for r in data.itertuples()]
+    data.reset_index(inplace = True)
+    # LoS Reduction ----------------------------------------------------------------------------------------------------
+    losr = self._los_reduction(rng)
+    data.set_index(["los_reduction_strategy"], inplace = True)
+    data = self._losr_all(data, losr, rng)
+    data = self._losr_aec(data, losr, rng)
+    data = self._losr_preop(data, losr, rng)
+    data = self._losr_bads(data, losr, rng)
     # return the data
     return (variant, data.reset_index()[["rn", "speldur", "classpat", "admission_avoidance_strategy", "los_reduction_strategy"]])
+  #
+  def _losr_all(self, data, losr, rng):
+    i = losr.type == "all"
+    s = losr.index[i]
+    data.loc[s, "speldur"] = rng.binomial(data.loc[s, "speldur"], losr.loc[data.loc[s].index, "losr_f"])
+    return data
+  def _losr_aec(self, data, losr, rng):
+    i = losr.type == "aec"
+    s = losr.index[i]
+    n = len(data.loc[s, "speldur"])
+    data.loc[s, "speldur"] *= rng.uniform(size = n) >= losr.loc[data.loc[s].index, "losr_f"]
+    return data
+  def _losr_preop(self, data, losr, rng): # this is exactly the same as _losr_aec
+    i = losr.type == "pre-op"
+    s = losr.index[i]
+    n = len(data.loc[s, "speldur"])
+    data.loc[s, "speldur"] *= rng.uniform(size = n) >= losr.loc[data.loc[s].index, "losr_f"]
+    return data
+  def _losr_bads(self, data, losr, rng):
+    def bads_conversion(row):
+      sp = self._params["strategy_params"]["los_reduction"][row.Index]
+      #
+      if row.classpat == (2 if sp["target_type"] == "daycase" else -1): return row.classpat
+      #
+      losr_f = losr.loc[row.Index, "losr_f"]
+      btr = sp["baseline_target_rate"]
+      ods = sp["op_dc_split"]
+      r = inrange((losr_f - btr) / (1 - btr))
+      u = [ods * r, (1 - ods) * r]
+      # update the patient class to be daycase, or -1 to indicate this is now outpatients
+      return rng.choice([row.classpat, 2, -1], p = [1 - sum(u)] + u)
+    i = losr.type == "bads"
+    s = losr.index[i]
+    data.loc[s, "classpat"] = [bads_conversion(r) for r in data.loc[s].itertuples()]
+    data.loc[s, "speldur"] *= data.loc[s, "classpat"] == 1
+    return data 
