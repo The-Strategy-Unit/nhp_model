@@ -135,23 +135,31 @@ class InpatientsModel(Model):
     return data
   def _losr_bads(self, data, losr, rng):
     i = losr.type == "bads"
+    # create a copy of our data, and join to the losr data
     bads_df = data.merge(
       losr[i][["baseline_target_rate", "op_dc_split", "losr_f"]],
       left_index = True,
       right_index = True
     )
+    # convert the factor value to be the amount we need to adjust the non-target type to to make the target rate equal
+    # too the factor value
     r = (
       (bads_df["losr_f"] - bads_df["baseline_target_rate"]) / (1 - bads_df["baseline_target_rate"])
     ).apply(inrange)
+    # create three values that will sum to 1 - these will be the probabilties of:
+    #   - staying where we are  [0.0, u0)
+    #   - moving to daycase     [u0,  u1)
+    #   - moving to outpatients (u1,  1.0]
     u1 = bads_df["op_dc_split"] * r
     u2 = (1 - bads_df["op_dc_split"]) * r
     u0 = 1 - u1 - u2
-    x = np.random.uniform(size = len(r))
-    #
-    bads_df.loc[(x >= u0) & (x < u0 + u1), "classpat"] = "2"
-    bads_df.loc[(x >= u0 + u1), "classpat"] = "-1"
-    #
+    # we now create a random value for each row in [0, 1]
+    x = rng.uniform(size = len(r))
+    # we can use this random value to update the patient class column appropriately
+    bads_df.loc[(x >= u0) & (x < u0 + u1), "classpat"] = "2" # row becomes daycase
+    bads_df.loc[(x >= u0 + u1), "classpat"] = "-1"           # row becomes outpatients
+    # we now need to apply these changes to the actual data
     s = losr.index[i]
     data.loc[s, "classpat"] = bads_df["classpat"]
-    data.loc[s, "speldur"] *= data.loc[s, "classpat"] == 1
+    data.loc[s, "speldur"] *= data.loc[s, "classpat"] == 1 # set the speldur to 0 if we aren't inpatients
     return data
