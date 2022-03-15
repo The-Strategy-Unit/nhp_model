@@ -9,33 +9,35 @@ from model.Model import Model
 class InpatientsModel(Model):
   """
   Inpatients Model
-  
-  * params: a dictionary from a parsed json file containing the model parameters.
 
-  Implements the model for inpatient data. In order to run the model you need to pass in a parsed json file of
-  parameters. Once the object is constructed you can call either m.run() to run the model and return the data, or
-  m.save_run() to run the model and save the results.
+  Implements the model for inpatient data. See `Model()` for documentation on the generic class. 
   """
   def __init__(self, results_path):
     # call the parent init function
     Model.__init__(self, results_path)
-    # load the data
+    # load the data. we only need some of the columns for the model, so just load what we need
     data = (self
       ._load_parquet("ip", ["rn", "speldur", "age", "sex", "admimeth", "classpat", "tretspef", "hsagrp"])
+      # merge the demographic factors to the data
       .merge(self._demog_factors, left_on = ["age", "sex"], right_index = True)
       .groupby(["variant"])
     )
+    # we now store the data in a dictionary keyed by the population variant
+    self._data = { k: v.drop(["variant"], axis = "columns").set_index(["rn"]) for k, v in tuple(data) }
+    # load the strategies, store each strategy file as a separate entry in a dictionary
     self._strategies = {
       x: self._load_parquet(f"ip_{x}_strategies") for x in ["admission_avoidance", "los_reduction"]
     }
-    self._data = { k: v.drop(["variant"], axis = "columns").set_index(["rn"]) for k, v in tuple(data) }
   #
   def _admission_avoidance(self, rng):
     """
     Create a dictionary of the admission avoidance factors to use for a run
+
+    * rng: an instance of np.random.default_rng, created for each model iteration
     """
     strategy_params = self._params["strategy_params"]
     return defaultdict(lambda: 1, {
+      # extract a single random value from the interval, constrainted to [0, 1]
       k: inrange(rnorm(rng, *v["interval"]))
       for k, v in strategy_params["admission_avoidance"].items()
     })
@@ -43,41 +45,74 @@ class InpatientsModel(Model):
   def _los_reduction(self, rng):
     """
     Create a dictionary of the los reduction factors to use for a run
+
+    * rng: an instance of np.random.default_rng, created for each model iteration
     """
     p = self._params["strategy_params"]["los_reduction"]
+    # convert the parameters dictionary to a dataframe: each item becomes a row (with the item being the name of the
+    # row in the index), and then each sub-item becoming a column
     losr = pd.DataFrame.from_dict(p, orient = "index")
-    losr["losr_f"] = [inrange(rnorm(rng, *i), *r) for i, r in zip(losr["interval"], losr["range"])]
+    losr["losr_f"] = [
+      # convert a single random value from the interval, constrained to the given range for this strategy
+      inrange(rnorm(rng, *i), *r)
+      for i, r in zip(losr["interval"], losr["range"])
+    ]
     return losr
   #
   def _random_strategy(self, rng, data, strategy_type):
     """
     Select one strategy per record
 
+    * rng: an instance of np.random.default_rng, created for each model iteration
     * data: the pandas DataFrame that we are updating
     * strategy_type: a string of which type of strategy to update, e.g. "admission_avoidance", "los_reduction"
 
     returns: an updated DataFrame with a new column for the selected strategy
     """
     df = (self._strategies[strategy_type]
+      # take all of the rows and randomly reshuffle them into a new order. We *do not* want to use resampling here.
+      # make sure to use the same random state using rng.bit_generator
       .sample(frac = 1, random_state = rng.bit_generator)
+      # for each rn, select a single row, i.e. select 1 strategy per rn
       .groupby(["rn"])
       .head(1)
+      # set the index to match the data objects index
       .set_index(["rn"])
     )
+    # return the data joined to the selected strategies
     return data.merge(df, left_index = True, right_index = True)
   #
   def _waiting_list_adjustment(self, data):
+    """
+    Create a series of factors for waiting list adjustment.
+
+    * data: the pandas DataFrame that we are updating
+
+    returns: a series of floats indicating how often we want to sample that row
+
+    A value of 1 will indicate that we want to sample this row at the baseline rate. A value less that 1 will indicate
+    we want to sample that row less often that in the baseline, and a value greater than 1 will indicate that we want
+    to sample that row more often than in the baseline
+    """
+    # extract the waiting list adjustment parameters - we convert this to a default dictionary that uses the "X01"
+    # specialty as the default value
     pwla = self._params["waiting_list_adjustment"]["inpatients"].copy()
     dv = pwla.pop("X01")
     pwla = defaultdict(lambda: dv, pwla)
+    # create a series of 1's the length of our data: make sure these are floats, not ints
     w = np.ones_like(data.index).astype(float)
+    # find the rows which are elective wait list admissions
     i = list(data.admimeth == "11")
+    # update the series for these rows with the waiting list adjustments for that specialty
     w[i] = [pwla[t] for t in data[i].tretspef]
+    # return the waiting list adjustment factor series
     return w
   #
   def run(self, model_run):
     """
     Run the model once
+
+    * model_run: the number of the model to run. This set's the random seed so the results are reproducible
 
     returns: a tuple of the selected varient and the updated DataFrame
     """
@@ -109,31 +144,58 @@ class InpatientsModel(Model):
     losr = self._los_reduction(rng)
     # set the index for easier querying
     data.set_index(["los_reduction_strategy"], inplace = True)
+    # run each of the length of stay reduction strategies
     data = self._losr_all(data, losr, rng)
-    data = self._losr_aec(data, losr, rng)
-    data = self._losr_preop(data, losr, rng)
+    data = self._losr_to_zero(data, losr, rng, "aec")
+    data = self._losr_to_zero(data, losr, rng, "preop")
     data = self._losr_bads(data, losr, rng)
     # return the data
-    return (variant, data.reset_index()[["rn", "speldur", "classpat", "admission_avoidance_strategy", "los_reduction_strategy"]])
+    return (
+      variant,
+      # select just the columns we have updated in modelling
+      data.reset_index()[[
+        "rn", "speldur", "classpat", "admission_avoidance_strategy", "los_reduction_strategy"
+      ]]
+    )
   #
   def _losr_all(self, data, losr, rng):
-    i = losr.type == "all"
-    s = losr.index[i]
+    """
+    Length of Stay Reduction: All
+
+    * data: the pandas DataFrame that we are updating
+    * losr: the Length of Stay rates table created from self._los_reduction()
+    * rng: an instance of np.random.default_rng, created for each model iteration
+
+    returns: a dataframe with an updated length of stay column
+
+    Reduces all rows length of stay by sampling from a binomial distribution, using the current length of stay as the
+    value for n, and the length of stay reduction factor for that strategy as the value for p. This will update the
+    los to be a value between 0 and the original los.
+    """
+    s = losr.index[losr.type == "all"]
     data.loc[s, "speldur"] = rng.binomial(data.loc[s, "speldur"], losr.loc[data.loc[s].index, "losr_f"])
     return data
-  def _losr_aec(self, data, losr, rng):
-    i = losr.type == "aec"
-    s = losr.index[i]
-    n = len(data.loc[s, "speldur"])
-    data.loc[s, "speldur"] *= rng.uniform(size = n) >= losr.loc[data.loc[s].index, "losr_f"]
-    return data
-  def _losr_preop(self, data, losr, rng): # this is exactly the same as _losr_aec
-    i = losr.type == "pre-op"
-    s = losr.index[i]
-    n = len(data.loc[s, "speldur"])
-    data.loc[s, "speldur"] *= rng.uniform(size = n) >= losr.loc[data.loc[s].index, "losr_f"]
-    return data
   def _losr_bads(self, data, losr, rng):
+    """
+    Length of Stay Reduction: British Association of Day Surgery
+
+    * data: the pandas DataFrame that we are updating
+    * losr: the Length of Stay rates table created from self._los_reduction()
+    * rng: an instance of np.random.default_rng, created for each model iteration
+
+    returns: a dataframe with an updated patient classification and length of stay column's
+
+    This will swap rows between elective admissions and daycases into either daycases or outpatients, based on the given
+    parameter values. We have a baseline target rate, this is the rate in the baseline that rows are of the given target
+    type (i.e. either daycase, outpatients, daycase or outpatients). Our interval will alter the target_rate by setting
+    some rows which are not the target type to be the target type.
+
+    Rows that are converted to daycase have the patient classification set to 2. Rows that are converted to outpatients
+    have a patient classification of -1 (these rows need to be filtered out of the inpatients results and added to the
+    outpatients results).
+
+    Rows that are modelled away from elective care have the length of stay fixed to 0 days.
+    """
     i = losr.type == "bads"
     # create a copy of our data, and join to the losr data
     bads_df = data.merge(
@@ -162,4 +224,21 @@ class InpatientsModel(Model):
     s = losr.index[i]
     data.loc[s, "classpat"] = bads_df["classpat"]
     data.loc[s, "speldur"] *= data.loc[s, "classpat"] == 1 # set the speldur to 0 if we aren't inpatients
+    return data
+  def _losr_to_zero(self, data, losr, rng, type):
+    """
+    Length of Stay Reduction: To Zero Day LoS
+
+    * data: the pandas DataFrame that we are updating
+    * losr: the Length of Stay rates table created from self._los_reduction()
+    * rng: an instance of np.random.default_rng, created for each model iteration
+    * type: the type of row we are updating
+    
+    returns: a dataframe with an updated length of stay column
+
+    Updates the length of stay to 0 for a given percentage of rows.
+    """
+    s = losr.index[losr.type == type]
+    n = len(data.loc[s, "speldur"])
+    data.loc[s, "speldur"] *= rng.uniform(size = n) >= losr.loc[data.loc[s].index, "losr_f"]
     return data

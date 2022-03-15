@@ -2,21 +2,14 @@ import pyarrow.parquet as pq
 import pandas as pd
 import numpy as np
 
-from collections import defaultdict
-
 from model.helpers import rnorm, inrange
 from model.Model import Model
 
-
 class OutpatientsModel(Model):
   """
-  Inpatients Model
-  
-  * params: a dictionary from a parsed json file containing the model parameters.
+  Outpatients Model
 
-  Implements the model for inpatient data. In order to run the model you need to pass in a parsed json file of
-  parameters. Once the object is constructed you can call either m.run() to run the model and return the data, or
-  m.save_run() to run the model and save the results.
+  Implements the model for outpatient data. See `Model()` for documentation on the generic class. 
   """
   def __init__(self, results_path):
     # call the parent init function
@@ -24,9 +17,11 @@ class OutpatientsModel(Model):
     # load the data
     data = (self
       ._load_parquet("op")
+      # merge the demographic factors to the data
       .merge(self._demog_factors, left_on = ["age", "sex"], right_index = True)
       .groupby(["variant"])
     )
+    # we now store the data in a dictionary keyed by the population variant
     self._data = { k: v.drop(["variant"], axis = "columns").set_index(["rn"]) for k, v in tuple(data) }
   #
   def _followup_reduction(self, data, rng):

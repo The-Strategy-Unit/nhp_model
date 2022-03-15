@@ -6,13 +6,28 @@ import numpy as np
 import pyarrow.parquet as pq
 import pandas as pd
 
-from collections import defaultdict
 from pathlib import Path
 from pathos.multiprocessing import ProcessPool
 
-from model.helpers import rnorm, inrange
+from model.helpers import rnorm
 
 class Model:
+  """
+  Inpatients Model
+  
+  * results_path: where the data is stored
+
+  This is a generic implementation of the model. Specific implementations of the model inherit from this class.
+
+  In order to run the model you need to pass the path to where the parameters json file is stored. This path should be
+  of the form: {dataset_name}/{results}/{model_name}/{model_run_datetime}
+  
+  Once the object is constructed you can call either m.run() to run the model and return the data, or
+  m.save_run() to run the model and save the results.
+
+  You can also call m.multi_model_run() to run multiple iterations of the model in parallel, saving the results to disk
+  to use later.
+  """
   def __init__(self, results_path):
     # load the parameters file
     with open(f"{results_path}/params.json", "r") as f: self._params = json.load(f)
