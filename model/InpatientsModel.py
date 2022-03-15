@@ -13,17 +13,9 @@ class InpatientsModel(Model):
   Implements the model for inpatient data. See `Model()` for documentation on the generic class. 
   """
   def __init__(self, results_path):
+    self._MODEL_TYPE = "ip"
     # call the parent init function
-    Model.__init__(self, results_path)
-    # load the data. we only need some of the columns for the model, so just load what we need
-    data = (self
-      ._load_parquet("ip", ["rn", "speldur", "age", "sex", "admimeth", "classpat", "tretspef", "hsagrp"])
-      # merge the demographic factors to the data
-      .merge(self._demog_factors, left_on = ["age", "sex"], right_index = True)
-      .groupby(["variant"])
-    )
-    # we now store the data in a dictionary keyed by the population variant
-    self._data = { k: v.drop(["variant"], axis = "columns").set_index(["rn"]) for k, v in tuple(data) }
+    Model.__init__(self, results_path, ["rn", "speldur", "age", "sex", "admimeth", "classpat", "tretspef", "hsagrp"])
     # load the strategies, store each strategy file as a separate entry in a dictionary
     self._strategies = {
       x: self._load_parquet(f"ip_{x}_strategies") for x in ["admission_avoidance", "los_reduction"]

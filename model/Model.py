@@ -28,7 +28,7 @@ class Model:
   You can also call m.multi_model_run() to run multiple iterations of the model in parallel, saving the results to disk
   to use later.
   """
-  def __init__(self, results_path):
+  def __init__(self, results_path, columns_to_load = None):
     # load the parameters file
     with open(f"{results_path}/params.json", "r") as f: self._params = json.load(f)
     # store the path where the data is stored and the results are stored
@@ -38,7 +38,15 @@ class Model:
     # load the data that's shared across different model types
     #
     with open(f"{self._path}/hsa_gams.pkl", "rb") as f: self._hsa_gams = pickle.load(f)
-    self._load_demog_factors()
+    self._load_demog_factors()# load the data. we only need some of the columns for the model, so just load what we need
+    data = (self
+      ._load_parquet(self._MODEL_TYPE, columns_to_load)
+      # merge the demographic factors to the data
+      .merge(self._demog_factors, left_on = ["age", "sex"], right_index = True)
+      .groupby(["variant"])
+    )
+    # we now store the data in a dictionary keyed by the population variant
+    self._data = { k: v.drop(["variant"], axis = "columns").set_index(["rn"]) for k, v in tuple(data) }
   #
   def _select_variant(self, rng):
     """
@@ -101,8 +109,9 @@ class Model:
     Runs the model, saving the results to the results folder
     """
     variant, mr_data = self.run(model_run)
-    os.mkdir(f"{self._results_path}/results/model_run={model_run}")
-    mr_data.to_parquet(f"{self._results_path}/results/model_run={model_run}/{model_run}.parquet")
+    results_path = f"{self._results_path}/results/model_run={model_run}"
+    if not os.path.exists(results_path): os.makedirs(results_path)
+    mr_data.to_parquet(f"{self._results_path}/results/model_run={model_run}/{self._MODEL_TYPE}.parquet")
     with open(f"{self._results_path}/selected_variants/model_run={model_run}.txt", "w") as f:
       f.write(variant)
   #

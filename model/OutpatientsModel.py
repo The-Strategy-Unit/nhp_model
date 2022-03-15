@@ -12,17 +12,9 @@ class OutpatientsModel(Model):
   Implements the model for outpatient data. See `Model()` for documentation on the generic class. 
   """
   def __init__(self, results_path):
+    self._MODEL_TYPE = "op"
     # call the parent init function
     Model.__init__(self, results_path)
-    # load the data
-    data = (self
-      ._load_parquet("op")
-      # merge the demographic factors to the data
-      .merge(self._demog_factors, left_on = ["age", "sex"], right_index = True)
-      .groupby(["variant"])
-    )
-    # we now store the data in a dictionary keyed by the population variant
-    self._data = { k: v.drop(["variant"], axis = "columns").set_index(["rn"]) for k, v in tuple(data) }
   #
   def _followup_reduction(self, data, rng):
     p = self._params["outpatient_factors"]["followup_reduction"]
