@@ -57,6 +57,7 @@ test/
 data/
 
 __PYCACHE__
+__pycache__
 
 # ignore any potential data/artifacts
 *.zip
