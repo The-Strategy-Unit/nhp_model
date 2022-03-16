@@ -7,7 +7,8 @@ import pyarrow.parquet as pq
 import pandas as pd
 
 from pathlib import Path
-from pathos.multiprocessing import ProcessPool
+from multiprocessing import Pool
+from tqdm import tqdm
 
 from model.helpers import rnorm
 
@@ -116,10 +117,18 @@ class Model:
       json.dump(params, f)
   #
   def multi_model_runs(self, run_start, model_runs, N_CPUS = 1):
-    pool = ProcessPool(ncpus = N_CPUS)
-    pool.amap(self.save_run, range(run_start, run_start + model_runs))
-    pool.close()
-    pool.join()
+    print (f"{model_runs} model runs on {N_CPUS} cpus")
+    pbar = tqdm(total = model_runs)
+    with Pool(N_CPUS) as pool:
+      results = [
+        pool.apply_async(
+          self.save_run,
+          (i, ),
+          callback = lambda _: pbar.update()
+        )
+        for i in range(run_start, run_start + model_runs)
+      ]
+      for r in results: r.wait()
   #
   def run(self, model_run):
     """

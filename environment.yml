@@ -8,6 +8,6 @@ dependencies:
   - azure-storage-file-datalake=12.5.*
   - numpy=1.22.*
   - pandas=1.4.*
-  - pathos=0.2.*
   - pyarrow=6.0.*
   - pygam=0.8.*
+  - tqdm=1.3.*
