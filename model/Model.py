@@ -2,6 +2,8 @@ import json
 import pickle
 import os
 
+from time import time
+
 import numpy as np
 import pyarrow.parquet as pq
 import pandas as pd
@@ -109,12 +111,17 @@ class Model:
 
     Runs the model, saving the results to the results folder
     """
+    t0 = time()
     params, mr_data = self.run(model_run)
+    et = time() - t0
+    #
     results_path = f"{self._results_path}/model_run={model_run}"
     if not os.path.exists(results_path): os.makedirs(results_path)
     mr_data.to_parquet(f"{results_path}/{self._MODEL_TYPE}.parquet")
     with open(f"{results_path}/{self._MODEL_TYPE}_params.json", "w") as f:
       json.dump(params, f)
+    #
+    return et
   #
   def multi_model_runs(self, run_start, model_runs, N_CPUS = 1):
     print (f"{model_runs} model runs on {N_CPUS} cpus")
@@ -129,6 +136,8 @@ class Model:
         for i in range(run_start, run_start + model_runs)
       ]
       for r in results: r.wait()
+    times = [r.get() for r in results]
+    print(f"\nMean Time: {np.mean(times)}, Range: [{np.min(times)}, {np.max(times)}]\n")
   #
   def run(self, model_run):
     """
