@@ -141,9 +141,15 @@ class InpatientsModel(Model):
     data = self._losr_to_zero(data, losr, rng, "aec")
     data = self._losr_to_zero(data, losr, rng, "preop")
     data = self._losr_bads(data, losr, rng)
+    # create a dictionary containing all of the chosen parameters for this model run
+    run_params = {
+      "selected_variant": variant,
+      "admission_avoidance": dict(ada),
+      "length_of_stay_reduction": losr["losr_f"].to_dict()
+    }
     # return the data
     return (
-      variant,
+      run_params,
       # select just the columns we have updated in modelling
       data.reset_index()[[
         "rn", "speldur", "classpat", "admission_avoidance_strategy", "los_reduction_strategy"

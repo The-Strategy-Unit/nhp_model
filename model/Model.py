@@ -108,12 +108,12 @@ class Model:
 
     Runs the model, saving the results to the results folder
     """
-    variant, mr_data = self.run(model_run)
-    results_path = f"{self._results_path}/results/model_run={model_run}"
+    params, mr_data = self.run(model_run)
+    results_path = f"{self._results_path}/model_run={model_run}"
     if not os.path.exists(results_path): os.makedirs(results_path)
-    mr_data.to_parquet(f"{self._results_path}/results/model_run={model_run}/{self._MODEL_TYPE}.parquet")
-    with open(f"{self._results_path}/selected_variants/model_run={model_run}.txt", "w") as f:
-      f.write(variant)
+    mr_data.to_parquet(f"{results_path}/{self._MODEL_TYPE}.parquet")
+    with open(f"{results_path}/{self._MODEL_TYPE}_params.json", "w") as f:
+      json.dump(params, f)
   #
   def multi_model_runs(self, run_start, model_runs, N_CPUS = 1):
     pool = ProcessPool(ncpus = N_CPUS)
