@@ -2,6 +2,8 @@ import json
 import pickle
 import os
 
+from time import time
+
 import numpy as np
 import pyarrow.parquet as pq
 import pandas as pd
@@ -103,18 +105,25 @@ class Model:
   #
   def save_run(self, model_run):
     """
-    Save the model run
+    Save the model run and run parameters
 
     * model_run: the number of this model run
 
-    Runs the model, saving the results to the results folder
+    returns: a tuple containing the time to run the model, and the time to save the results
     """
+    t0 = time()
     params, mr_data = self.run(model_run)
+    t1 = time()
+    #
     results_path = f"{self._results_path}/model_run={model_run}"
     if not os.path.exists(results_path): os.makedirs(results_path)
+    #
     mr_data.to_parquet(f"{results_path}/{self._MODEL_TYPE}.parquet")
     with open(f"{results_path}/{self._MODEL_TYPE}_params.json", "w") as f:
       json.dump(params, f)
+    #
+    t2 = time()
+    return (t1 - t0, t2 - t1)
   #
   def multi_model_runs(self, run_start, model_runs, N_CPUS = 1):
     print (f"{model_runs} model runs on {N_CPUS} cpus")
@@ -128,7 +137,23 @@ class Model:
         )
         for i in range(run_start, run_start + model_runs)
       ]
-      for r in results: r.wait()
+      pool.close()
+      pool.join()
+    #
+    times = [r.get() for r in results]
+    run_times = [t[0] for t in times]
+    save_times = [t[1] for t in times]
+    total_times = [t[0] + t[1] for t in times]
+    display_times = lambda t: f"mean: {np.mean(t):.3f}, range: [{np.min(t):.3f}, {np.max(t):.3f}]"
+    print(
+      "",
+      "Timings:",
+      "=" * 80,
+      f"* model runs:    {display_times(run_times)}",
+      f"* save results:  {display_times(save_times)}",
+      f"* total elapsed: {display_times(total_times)}",
+      "=" * 80
+    )
   #
   def run(self, model_run):
     """
