@@ -137,7 +137,8 @@ class Model:
         )
         for i in range(run_start, run_start + model_runs)
       ]
-      for r in results: r.wait()
+      pool.close()
+      pool.join()
     #
     times = [r.get() for r in results]
     run_times = [t[0] for t in times]
