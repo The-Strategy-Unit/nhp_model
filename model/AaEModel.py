@@ -24,16 +24,6 @@ class AaEModel(Model):
         k2: f(v2) for k2, v2 in v1.items()
       } for k1, v1 in p.items()
     }
-  #
-  def _factor_helper(self, data, params, column_values):
-    f = {
-      k: [v] * len(params)
-      for k, v in column_values.items()
-    }
-    f["hsagrp"] = [f"aae_{k}" for k in params.keys()]
-    f["f"] = params.values()
-    f = pd.DataFrame(f)
-    return data.merge(f, how = "left", on = list(f.columns[:-1])).f.fillna(1).to_numpy()
   # 
   def _low_cost_discharged(self, data, run_params):
     return self._factor_helper(data, run_params["low_cost_discharged"], {
@@ -60,12 +50,13 @@ class AaEModel(Model):
     rng = np.random.default_rng(self._params["seed"] + model_run)
     # choose a demographic factor
     variant, data = self._select_variant(rng)
+    # hsa
+    hsa_params, hsa_f = self._health_status_adjustment(rng, data)
     #
     run_params = self._generate_run_params(rng)
-    # hsa
-    data = self._health_status_adjustment(rng, data)
     # create a single factor for how many times to select that row
     factor = (data["factor"].to_numpy()
+      * hsa_f
       * self._low_cost_discharged(data, run_params)
       * self._left_before_seen(data, run_params)
       * self._frequent_attenders(data, run_params)
@@ -74,4 +65,5 @@ class AaEModel(Model):
     data = data[data["arrivals"] > 0]
     # return the data
     run_params["selected_variant"] = variant
+    run_params["hsa"] = hsa_params
     return (run_params, data[["arrivals"]].reset_index())

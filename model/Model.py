@@ -76,6 +76,8 @@ class Model:
     #
     ages = np.arange(params["min_age"], params["max_age"] + 1)
     adjusted_ages = ages - [rnorm(rng, *i) for i in params["intervals"]]
+    # convert to a nested dictionary for later storage to disk
+    #   { hsagrp: { sex: { age: hsa_f } } }
     hsa = pd.concat([
       pd.DataFrame({
         "hsagrp": a,
@@ -90,10 +92,15 @@ class Model:
       .merge(hsa, on = ["hsagrp", "sex", "age"], how = "left")
       .set_index(["rn"])
     )
+    hsa = {
+      k1: {
+        k2: v2.set_index("age")["hsa_f"].to_dict()
+        for k2, v2 in tuple(v1.groupby("sex"))
+      }
+      for k1, v1 in tuple(hsa.groupby("hsagrp"))
+    }
     # because we do a left join, some groups / sex / age rows may be NaN. replace with multiplication identity (1)
-    data["hsa_f"].fillna(1, inplace = True)
-    #
-    return data
+    return hsa, data["hsa_f"].fillna(1).to_numpy()
   # 
   def _load_parquet(self, file, *args):
     """
@@ -102,6 +109,16 @@ class Model:
     You can selectively load columns by passing an array of column names to *args.
     """
     return pq.read_pandas(os.path.join(self._path, f"{file}.parquet"), *args).to_pandas()
+  #
+  def _factor_helper(self, data, params, column_values):
+    f = {
+      k: [v] * len(params)
+      for k, v in column_values.items()
+    }
+    f["hsagrp"] = [f"aae_{k}" for k in params.keys()]
+    f["f"] = params.values()
+    f = pd.DataFrame(f)
+    return data.merge(f, how = "left", on = list(f.columns[:-1])).f.fillna(1).to_numpy()
   #
   def save_run(self, model_run):
     """

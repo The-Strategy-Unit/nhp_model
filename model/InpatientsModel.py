@@ -197,6 +197,8 @@ class InpatientsModel(Model):
     rng = np.random.default_rng(self._params["seed"] + model_run)
     # choose a demographic factor
     variant, data = self._select_variant(rng)
+    # hsa
+    hsa_params, hsa_f = self._health_status_adjustment(rng, data)
     # select a strategy
     row_count = len(data.index) # for assert below
     data = self._random_strategy(rng, data, "admission_avoidance")
@@ -209,12 +211,10 @@ class InpatientsModel(Model):
     factor_a = np.array([ada[k] for k in data["admission_avoidance_strategy"]])
     # waiting list adjustments
     factor_w = self._waiting_list_adjustment(data)
-    # hsa
-    data = self._health_status_adjustment(rng, data)
     # create a single factor for how many times to select that row
-    n = rng.poisson(data["factor"] * data["hsa_f"] * factor_a * factor_w)
+    n = rng.poisson(data["factor"].to_numpy() * hsa_f * factor_a * factor_w)
     # drop columns we don't need and repeat rows n times
-    data = data.loc[data.index.repeat(n)].drop(["factor", "hsa_f"], axis = "columns")
+    data = data.loc[data.index.repeat(n)].drop(["factor"], axis = "columns")
     data.reset_index(inplace = True)
     # LoS Reduction ----------------------------------------------------------------------------------------------------
     # get the parameters
@@ -229,6 +229,7 @@ class InpatientsModel(Model):
     # create a dictionary containing all of the chosen parameters for this model run
     run_params = {
       "selected_variant": variant,
+      "hsa": hsa_params,
       "admission_avoidance": dict(ada),
       "length_of_stay_reduction": losr["losr_f"].to_dict()
     }

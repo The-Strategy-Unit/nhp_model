@@ -26,36 +26,29 @@ class OutpatientsModel(Model):
     }
   #
   def _followup_reduction(self, data, run_params):
-    p = run_params["followup_reduction"]
-    f = pd.DataFrame({
-      "has_procedures": [0] * len(p),
-      "is_first": [0] * len(p),
-      "type": p.keys(),
-      "fur_f": p.values()
+    return self._factor_helper(data, run_params["followup_reduction"], {
+      "has_procedures": 0,
+      "is_first": 0
     })
-    #
-    data = data.merge(f, how = "left", on = list(f.columns[:-1]))
-    data[f.columns[-1]].fillna(1, inplace = True)
-    return data
   #
   def _consultant_to_consultant_reduction(self, data, run_params):    
-    p = run_params["consultant_to_consultant_reduction"]
-    f = pd.DataFrame({
-      "is_cons_cons_ref": [1] * len(p),
-      "type": p.keys(),
-      "c2c_f": p.values()
+    return self._factor_helper(data, run_params["consultant_to_consultant_reduction"], {
+      "is_cons_cons_ref": 1
     })
-    #
-    data = data.merge(f, how = "left", on = list(f.columns[:-1]))
-    data[f.columns[-1]].fillna(1, inplace = True)
-    return data
   #
   def _convert_to_tele(self, data, run_params):
+    # temp disable chained assignment warnings
+    o = pd.get_option("mode.chained_assignment")
+    pd.set_option("mode.chained_assignment", None)
+    # create a value for converting attendances into tele attendances for each row
+    # the value will be a random binomial value, i.e. we will convert between 0 and attendances into tele attendances
     p = run_params["convert_to_tele"]
     tc = np.random.binomial(data["attendances"], [p[t] for t in data["type"]])
-    data["attendances"] -= tc
-    data["tele_attendances"] += tc
-    return data
+    # update the columns, subtracting tc from one, adding tc to the other (we maintain the number of overall attendances)
+    data.loc[:,"attendances"] -= tc
+    data.loc[:,"tele_attendances"] += tc
+    # restore chained assignment warnings
+    pd.set_option("mode.chained_assignment", o)
   #
   def run(self, model_run):
     """
@@ -67,21 +60,24 @@ class OutpatientsModel(Model):
     rng = np.random.default_rng(self._params["seed"] + model_run)
     # choose a demographic factor
     variant, data = self._select_variant(rng)
+    # hsa
+    hsa_params, hsa_f = self._health_status_adjustment(rng, data)
     #
     run_params = self._generate_run_params(rng)
-    # hsa
-    data = self._health_status_adjustment(rng, data)
-    # first to follow-up adjustments
-    data = self._followup_reduction(data, run_params)
-    # consultant to consultant referrals adjustments
-    data = self._consultant_to_consultant_reduction(data, run_params)
     # create a single factor for how many times to select that row
-    factor = data["factor"] * data["hsa_f"] * data["fur_f"]
+    factor = (data["factor"].to_numpy()
+      * hsa_f
+      * self._followup_reduction(data, run_params)
+      * self._consultant_to_consultant_reduction(data, run_params)
+    )
+    # update the number of attendances / tele_attendances
     data["attendances"] = rng.poisson(data["attendances"] * factor)
     data["tele_attendances"] = rng.poisson(data["tele_attendances"] * factor)
+    # remove rows where the overall number of attendances was 0
     data = data[data["attendances"] + data["tele_attendances"] > 0]
     # convert attendances to tele attendances
-    data = self._convert_to_tele(data, run_params)
+    self._convert_to_tele(data, run_params)
     # return the data
     run_params["selected_variant"] = variant
+    run_params["hsa"] = hsa_params
     return (run_params, data[["attendances", "tele_attendances"]].reset_index())
