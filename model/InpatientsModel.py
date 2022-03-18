@@ -100,62 +100,6 @@ class InpatientsModel(Model):
     # return the waiting list adjustment factor series
     return w
   #
-  def run(self, model_run):
-    """
-    Run the model once
-
-    * model_run: the number of the model to run. This set's the random seed so the results are reproducible
-
-    returns: a tuple of the selected varient and the updated DataFrame
-    """
-    # create a random number generator for this run
-    rng = np.random.default_rng(self._params["seed"] + model_run)
-    # choose a demographic factor
-    variant, data = self._select_variant(rng)
-    # select a strategy
-    row_count = len(data.index) # for assert below
-    data = self._random_strategy(rng, data, "admission_avoidance")
-    data = self._random_strategy(rng, data, "los_reduction")
-    # double check that joining in the strategies didn't drop any rows
-    assert len(data.index) == row_count, "Row's lost when selecting strategies: has the NULL strategy not been included?"
-    # Admission Avoidance ----------------------------------------------------------------------------------------------
-    # choose an admission avoidance factor
-    ada = self._admission_avoidance(rng)
-    factor_a = np.array([ada[k] for k in data["admission_avoidance_strategy"]])
-    # waiting list adjustments
-    factor_w = self._waiting_list_adjustment(data)
-    # hsa
-    data = self._health_status_adjustment(rng, data)
-    # create a single factor for how many times to select that row
-    n = rng.poisson(data["factor"] * data["hsa_f"] * factor_a * factor_w)
-    # drop columns we don't need and repeat rows n times
-    data = data.loc[data.index.repeat(n)].drop(["factor", "hsa_f"], axis = "columns")
-    data.reset_index(inplace = True)
-    # LoS Reduction ----------------------------------------------------------------------------------------------------
-    # get the parameters
-    losr = self._los_reduction(rng)
-    # set the index for easier querying
-    data.set_index(["los_reduction_strategy"], inplace = True)
-    # run each of the length of stay reduction strategies
-    data = self._losr_all(data, losr, rng)
-    data = self._losr_to_zero(data, losr, rng, "aec")
-    data = self._losr_to_zero(data, losr, rng, "preop")
-    data = self._losr_bads(data, losr, rng)
-    # create a dictionary containing all of the chosen parameters for this model run
-    run_params = {
-      "selected_variant": variant,
-      "admission_avoidance": dict(ada),
-      "length_of_stay_reduction": losr["losr_f"].to_dict()
-    }
-    # return the data
-    return (
-      run_params,
-      # select just the columns we have updated in modelling
-      data.reset_index()[[
-        "rn", "speldur", "classpat", "admission_avoidance_strategy", "los_reduction_strategy"
-      ]]
-    )
-  #
   def _losr_all(self, data, losr, rng):
     """
     Length of Stay Reduction: All
@@ -240,3 +184,59 @@ class InpatientsModel(Model):
     n = len(data.loc[s, "speldur"])
     data.loc[s, "speldur"] *= rng.uniform(size = n) >= losr.loc[data.loc[s].index, "losr_f"]
     return data
+  #
+  def run(self, model_run):
+    """
+    Run the model once
+
+    * model_run: the number of the model to run. This set's the random seed so the results are reproducible
+
+    returns: a tuple of the selected varient and the updated DataFrame
+    """
+    # create a random number generator for this run
+    rng = np.random.default_rng(self._params["seed"] + model_run)
+    # choose a demographic factor
+    variant, data = self._select_variant(rng)
+    # select a strategy
+    row_count = len(data.index) # for assert below
+    data = self._random_strategy(rng, data, "admission_avoidance")
+    data = self._random_strategy(rng, data, "los_reduction")
+    # double check that joining in the strategies didn't drop any rows
+    assert len(data.index) == row_count, "Row's lost when selecting strategies: has the NULL strategy not been included?"
+    # Admission Avoidance ----------------------------------------------------------------------------------------------
+    # choose an admission avoidance factor
+    ada = self._admission_avoidance(rng)
+    factor_a = np.array([ada[k] for k in data["admission_avoidance_strategy"]])
+    # waiting list adjustments
+    factor_w = self._waiting_list_adjustment(data)
+    # hsa
+    data = self._health_status_adjustment(rng, data)
+    # create a single factor for how many times to select that row
+    n = rng.poisson(data["factor"] * data["hsa_f"] * factor_a * factor_w)
+    # drop columns we don't need and repeat rows n times
+    data = data.loc[data.index.repeat(n)].drop(["factor", "hsa_f"], axis = "columns")
+    data.reset_index(inplace = True)
+    # LoS Reduction ----------------------------------------------------------------------------------------------------
+    # get the parameters
+    losr = self._los_reduction(rng)
+    # set the index for easier querying
+    data.set_index(["los_reduction_strategy"], inplace = True)
+    # run each of the length of stay reduction strategies
+    data = self._losr_all(data, losr, rng)
+    data = self._losr_to_zero(data, losr, rng, "aec")
+    data = self._losr_to_zero(data, losr, rng, "preop")
+    data = self._losr_bads(data, losr, rng)
+    # create a dictionary containing all of the chosen parameters for this model run
+    run_params = {
+      "selected_variant": variant,
+      "admission_avoidance": dict(ada),
+      "length_of_stay_reduction": losr["losr_f"].to_dict()
+    }
+    # return the data
+    return (
+      run_params,
+      # select just the columns we have updated in modelling
+      data.reset_index()[[
+        "rn", "speldur", "classpat", "admission_avoidance_strategy", "los_reduction_strategy"
+      ]]
+    )
