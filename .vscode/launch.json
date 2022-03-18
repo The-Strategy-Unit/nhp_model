@@ -19,6 +19,14 @@
       "program": "run_outpatients_model.py",
       "args": ["data/synthetic/results/test/20220110_104353", "0", "1", "--debug"],
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Python: A&E Run Model",
+      "type": "python",
+      "request": "launch",
+      "program": "run_aae_model.py",
+      "args": ["data/synthetic/results/test/20220110_104353", "0", "1", "--debug"],
+      "console": "integratedTerminal"
     }
   ]
 }
