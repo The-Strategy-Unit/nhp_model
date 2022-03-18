@@ -50,19 +50,12 @@ class OutpatientsModel(Model):
     # restore chained assignment warnings
     pd.set_option("mode.chained_assignment", o)
   #
-  def run(self, model_run):
+  def _run(self, rng, variant, data, hsa_params, hsa_f):
     """
     Run the model once
 
     returns: a tuple of the selected varient and the updated DataFrame
     """
-    # create a random number generator for this run
-    rng = np.random.default_rng(self._params["seed"] + model_run)
-    # choose a demographic factor
-    variant, data = self._select_variant(rng)
-    # hsa
-    hsa_params, hsa_f = self._health_status_adjustment(rng, data)
-    #
     run_params = self._generate_run_params(rng)
     # create a single factor for how many times to select that row
     factor = (data["factor"].to_numpy()

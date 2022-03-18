@@ -178,4 +178,9 @@ class Model:
 
     returns: a tuple of the selected varient and the updated DataFrame
     """
-    pass
+    rng = np.random.default_rng(self._params["seed"] + model_run)
+    # choose a demographic factor
+    variant, data = self._select_variant(rng)
+    # hsa
+    hsa_params, hsa_f = self._health_status_adjustment(rng, data)
+    return self._run(rng, variant, data, hsa_params, hsa_f)

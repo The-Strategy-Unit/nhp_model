@@ -185,7 +185,7 @@ class InpatientsModel(Model):
     data.loc[s, "speldur"] *= rng.uniform(size = n) >= losr.loc[data.loc[s].index, "losr_f"]
     return data
   #
-  def run(self, model_run):
+  def _run(self, rng, variant, data, hsa_params, hsa_f):
     """
     Run the model once
 
@@ -193,12 +193,6 @@ class InpatientsModel(Model):
 
     returns: a tuple of the selected varient and the updated DataFrame
     """
-    # create a random number generator for this run
-    rng = np.random.default_rng(self._params["seed"] + model_run)
-    # choose a demographic factor
-    variant, data = self._select_variant(rng)
-    # hsa
-    hsa_params, hsa_f = self._health_status_adjustment(rng, data)
     # select a strategy
     row_count = len(data.index) # for assert below
     data = self._random_strategy(rng, data, "admission_avoidance")
