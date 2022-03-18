@@ -193,6 +193,10 @@ class InpatientsModel(Model):
 
     returns: a tuple of the selected varient and the updated DataFrame
     """
+    # choose admission avoidance factors
+    ada = self._admission_avoidance(rng)
+    # choose length of stay reduction factors
+    losr = self._los_reduction(rng)
     # select a strategy
     row_count = len(data.index) # for assert below
     data = self._random_strategy(rng, data, "admission_avoidance")
@@ -200,8 +204,6 @@ class InpatientsModel(Model):
     # double check that joining in the strategies didn't drop any rows
     assert len(data.index) == row_count, "Row's lost when selecting strategies: has the NULL strategy not been included?"
     # Admission Avoidance ----------------------------------------------------------------------------------------------
-    # choose an admission avoidance factor
-    ada = self._admission_avoidance(rng)
     factor_a = np.array([ada[k] for k in data["admission_avoidance_strategy"]])
     # waiting list adjustments
     factor_w = self._waiting_list_adjustment(data)
@@ -211,8 +213,6 @@ class InpatientsModel(Model):
     data = data.loc[data.index.repeat(n)].drop(["factor"], axis = "columns")
     data.reset_index(inplace = True)
     # LoS Reduction ----------------------------------------------------------------------------------------------------
-    # get the parameters
-    losr = self._los_reduction(rng)
     # set the index for easier querying
     data.set_index(["los_reduction_strategy"], inplace = True)
     # run each of the length of stay reduction strategies
