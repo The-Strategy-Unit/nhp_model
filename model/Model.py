@@ -169,7 +169,8 @@ class Model:
       f"* model runs:    {display_times(run_times)}",
       f"* save results:  {display_times(save_times)}",
       f"* total elapsed: {display_times(total_times)}",
-      "=" * 80
+      "=" * 80,
+      sep = "\n"
     )
   #
   def run(self, model_run):
