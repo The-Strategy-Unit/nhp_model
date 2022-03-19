@@ -142,22 +142,26 @@ class Model:
     t2 = time()
     return (t1 - t0, t2 - t1)
   #
-  def multi_model_runs(self, run_start, model_runs, N_CPUS = 1):
-    print (f"{model_runs} model runs on {N_CPUS} cpus")
+  def batch_save(self, model_run, batch_size):
+    return [self.save_run(x) for x in range(model_run, model_run + batch_size)]
+  #
+  def multi_model_runs(self, run_start, model_runs, N_CPUS = 1, batch_size = 4):
+    print (f"{model_runs} {self._MODEL_TYPE} model runs on {N_CPUS} cpus")
     pbar = tqdm(total = model_runs)
     with Pool(N_CPUS) as pool:
       results = [
         pool.apply_async(
-          self.save_run,
-          (i, ),
-          callback = lambda _: pbar.update()
+          self.batch_save,
+          (i, batch_size),
+          callback = lambda _: pbar.update(batch_size)
         )
-        for i in range(run_start, run_start + model_runs)
+        for i in range(run_start, run_start + model_runs, batch_size)
       ]
       pool.close()
       pool.join()
+      pbar.close()
     #
-    times = [r.get() for r in results]
+    times = np.concatenate([r.get() for r in results])
     run_times = [t[0] for t in times]
     save_times = [t[1] for t in times]
     total_times = [t[0] + t[1] for t in times]

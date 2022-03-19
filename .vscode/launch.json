@@ -27,6 +27,14 @@
       "program": "run_aae_model.py",
       "args": ["data/synthetic/results/test/20220110_104353", "0", "1", "--debug"],
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Python: Run All Models (parallel)",
+      "type": "python",
+      "request": "launch",
+      "program": "run_all_models.py",
+      "args": ["data/synthetic/results/test/20220110_104353", "0", "192", "-b=8"],
+      "console": "integratedTerminal"
     }
   ]
 }
