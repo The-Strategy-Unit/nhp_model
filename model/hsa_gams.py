@@ -8,6 +8,7 @@ from janitor import complete
 from pygam import GAM
 
 def create_gams(p, pop, file, ignored_hsagrps = []):
+  print(f"Creating gams: {file}")
   df = pq.read_pandas(p(f"{file}.parquet")).to_pandas()
   df = df[~df["hsagrp"].isin(ignored_hsagrps)]
   df = df[df["age"] >= 18]
@@ -47,6 +48,7 @@ if __name__ == "__main__":
   # create the gams
   _, ip_gams = create_gams(p, pop, "ip", ["birth", "maternity", "paeds"])
   _, op_gams = create_gams(p, pop, "op")
+  _, aae_gams = create_gams(p, pop, "aae")
   # combine the gams
   gams = { **ip_gams, **op_gams }
   # save the gams to disk
