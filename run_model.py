@@ -16,7 +16,15 @@ def timeit(f, *args):
   return r
 
 def run_model(Model, results_path, run_start, model_runs, cpus, batch_size):
-  m = Model(results_path)
+  try:
+    m = Model(results_path)
+  except FileNotFoundError as e:
+    # handle the dataset not existing: we simply skip
+    if str(e).endswith(".parquet"):
+      print(f"file {str(e)} not found: skipping")
+    # if it's not the data file that missing, re-raise the error
+    else:
+      raise e
   print (f"Running: {m.__class__.__name__}")
   m.multi_model_runs(run_start, model_runs, cpus, batch_size)
 
