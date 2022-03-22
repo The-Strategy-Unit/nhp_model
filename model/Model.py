@@ -133,10 +133,12 @@ class Model:
     t1 = time()
     #
     results_path = f"{self._results_path}/{self._MODEL_TYPE}/model_run={model_run}"
+    params_path = f"{self._results_path}/{self._MODEL_TYPE}/params"
     if not os.path.exists(results_path): os.makedirs(results_path)
+    if not os.path.exists(params_path): os.makedirs(params_path)
     #
     mr_data.to_parquet(f"{results_path}/{model_run}.parquet")
-    with open(f"{results_path}/{model_run}_params.json", "w") as f:
+    with open(f"{params_path}/{model_run}.json", "w") as f:
       json.dump(params, f)
     #
     t2 = time()
