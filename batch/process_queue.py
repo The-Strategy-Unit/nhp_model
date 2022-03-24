@@ -38,7 +38,7 @@ def prep_file(runs_per_task: int, path: str, file: str) -> None:
   # connect to adls
   d = adls_client.get_directory_client("data", results_path)
   # create the necessary folders in the results container
-  [d.get_sub_directory_client(x).create_directory() for x in ["results", "selected_variant"]]
+  [d.get_sub_directory_client(x).create_directory() for x in ["aae", "ip", "op"]]
   # upload the json to the results container
   d.get_file_client("params.json").upload_data(json.dumps(params), overwrite = True)
   #

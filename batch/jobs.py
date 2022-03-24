@@ -37,7 +37,7 @@ def add_task(batch_service_client :BatchServiceClient, job_id: str, results_path
     * input_files: A collection of input files. One task will be created for each input file.
   """
   #
-  command_line = f"/usr/bin/python3 {config._APP_PATH}/model.py '{config._DATA_PATH}/{results_path}'"
+  command_line = f"/usr/bin/python3 {config._APP_PATH}/run_model.py '{config._DATA_PATH}/{results_path}'"
   create_task = lambda run_start: batchmodels.TaskAddParameter(
     id = f"Run{run_start}-{run_start+runs_per_task - 1}",
     command_line = f"{command_line} {run_start} {runs_per_task}",
