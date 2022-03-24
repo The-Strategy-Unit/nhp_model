@@ -21,20 +21,7 @@ class InpatientsModel(Model):
       x: self._load_parquet(f"ip_{x}_strategies") for x in ["admission_avoidance", "los_reduction"]
     }
   #
-  def _admission_avoidance(self, rng):
-    """
-    Create a dictionary of the admission avoidance factors to use for a run
-
-    * rng: an instance of np.random.default_rng, created for each model iteration
-    """
-    strategy_params = self._params["strategy_params"]
-    return defaultdict(lambda: 1, {
-      # extract a single random value from the interval, constrainted to [0, 1]
-      k: inrange(rnorm(rng, *v["interval"]))
-      for k, v in strategy_params["admission_avoidance"].items()
-    })
-  #
-  def _los_reduction(self, rng):
+  def _los_reduction(self, run_params):
     """
     Create a dictionary of the los reduction factors to use for a run
 
@@ -44,11 +31,7 @@ class InpatientsModel(Model):
     # convert the parameters dictionary to a dataframe: each item becomes a row (with the item being the name of the
     # row in the index), and then each sub-item becoming a column
     losr = pd.DataFrame.from_dict(p, orient = "index")
-    losr["losr_f"] = [
-      # convert a single random value from the interval, constrained to the given range for this strategy
-      inrange(rnorm(rng, *i), *r)
-      for i, r in zip(losr["interval"], losr["range"])
-    ]
+    losr["losr_f"] = [run_params["strategy_params"]["los_reduction"][i] for i in losr.index]
     return losr
   #
   def _random_strategy(self, rng, data, strategy_type):
@@ -185,7 +168,7 @@ class InpatientsModel(Model):
     data.loc[s, "speldur"] *= rng.uniform(size = n) >= losr.loc[data.loc[s].index, "losr_f"]
     return data
   #
-  def _run(self, rng, variant, data, hsa_params, hsa_f):
+  def _run(self, rng, data, run_params, hsa_f):
     """
     Run the model once
 
@@ -194,9 +177,9 @@ class InpatientsModel(Model):
     returns: a tuple of the selected varient and the updated DataFrame
     """
     # choose admission avoidance factors
-    ada = self._admission_avoidance(rng)
+    ada = defaultdict(lambda: 1, run_params["strategy_params"]["admission_avoidance"])
     # choose length of stay reduction factors
-    losr = self._los_reduction(rng)
+    losr = self._los_reduction(run_params)
     # select a strategy
     row_count = len(data.index) # for assert below
     data = self._random_strategy(rng, data, "admission_avoidance")
@@ -220,18 +203,7 @@ class InpatientsModel(Model):
     data = self._losr_to_zero(data, losr, rng, "aec")
     data = self._losr_to_zero(data, losr, rng, "preop")
     data = self._losr_bads(data, losr, rng)
-    # create a dictionary containing all of the chosen parameters for this model run
-    run_params = {
-      "selected_variant": variant,
-      "hsa": hsa_params,
-      "admission_avoidance": dict(ada),
-      "length_of_stay_reduction": losr["losr_f"].to_dict()
-    }
-    # return the data
-    return (
-      run_params,
-      # select just the columns we have updated in modelling
-      data.reset_index()[[
-        "rn", "speldur", "classpat", "admission_avoidance_strategy", "los_reduction_strategy"
-      ]]
-    )
+    # return the data (select just the columns we have updated in modelling)
+    return data.reset_index()[[
+      "rn", "speldur", "classpat", "admission_avoidance_strategy", "los_reduction_strategy"
+    ]]

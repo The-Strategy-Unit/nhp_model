@@ -12,7 +12,7 @@ from pathlib import Path
 from multiprocessing import Pool
 from tqdm import tqdm
 
-from model.helpers import rnorm
+from model.helpers import rnorm, inrange
 
 class Model:
   """
@@ -71,13 +71,11 @@ class Model:
     self._variants = list(dfp["variant_probabilities"].keys())
     self._probabilities = list(dfp["variant_probabilities"].values())
   #
-  def _health_status_adjustment(self, rng, data):
-    params = self._params["health_status_adjustment"]
+  def _health_status_adjustment(self, data, run_params):
+    p = self._params["health_status_adjustment"]
     #
-    ages = np.arange(params["min_age"], params["max_age"] + 1)
-    adjusted_ages = ages - [rnorm(rng, *i) for i in params["intervals"]]
-    # convert to a nested dictionary for later storage to disk
-    #   { hsagrp: { sex: { age: hsa_f } } }
+    ages = np.arange(p["min_age"], p["max_age"] + 1)
+    adjusted_ages = ages - run_params["health_status_adjustment"]
     hsa = pd.concat([
       pd.DataFrame({
         "hsagrp": a,
@@ -87,20 +85,11 @@ class Model:
       })
       for (a, s), g in self._hsa_gams.items()
     ])
-    data = (data
+    return (data
       .reset_index()
       .merge(hsa, on = ["hsagrp", "sex", "age"], how = "left")
       .set_index(["rn"])
-    )
-    hsa = {
-      k1: {
-        k2: v2.set_index("age")["hsa_f"].to_dict()
-        for k2, v2 in tuple(v1.groupby("sex"))
-      }
-      for k1, v1 in tuple(hsa.groupby("hsagrp"))
-    }
-    # because we do a left join, some groups / sex / age rows may be NaN. replace with multiplication identity (1)
-    return hsa, data["hsa_f"].fillna(1).to_numpy()
+    )["hsa_f"].fillna(1).to_numpy()
   # 
   def _load_parquet(self, file, *args):
     """
@@ -179,15 +168,39 @@ class Model:
       sep = "\n"
     )
   #
-  def run(self, model_run):
+  def _run_params(self, rng, principal = False):
+    params = self._params
+    f = (lambda i, j: (i + j) / 2) if principal else (lambda i, j: rnorm(rng, i, j))
+    #
+    return {
+      "variant": (
+        # if this is the principal projection, choose the most probable population projection
+        self._variants[np.argmax(self._probabilities)] if principal
+        else rng.choice(self._variants, p = self._probabilities)
+      ),
+      "health_status_adjustment": [f(*i) for i in params["health_status_adjustment"]["intervals"]],
+      "waiting_list_adjustment": params["waiting_list_adjustment"],
+      **{
+        k0: {
+          k1: {
+            k2: inrange(f(*v2["interval"]), *v2.get("range", [0, 1]))
+            for k2, v2 in v1.items()
+          }
+          for k1, v1 in params[k0].items()
+        }
+        for k0 in ["strategy_params", "outpatient_factors", "aae_factors"]
+      }
+    }
+  def run(self, model_run, principal = False):
     """
     Run the model once
 
     returns: a tuple of the selected varient and the updated DataFrame
     """
     rng = np.random.default_rng(self._params["seed"] + model_run)
-    # choose a demographic factor
-    variant, data = self._select_variant(rng)
+    # get the run params
+    run_params = self._run_params(rng, principal)
+    data = self._data[run_params["variant"]]
     # hsa
-    hsa_params, hsa_f = self._health_status_adjustment(rng, data)
-    return self._run(rng, variant, data, hsa_params, hsa_f)
+    hsa_f = self._health_status_adjustment(data, run_params)
+    return (run_params, self._run(rng, data, run_params, hsa_f))

@@ -50,18 +50,18 @@ class OutpatientsModel(Model):
     # restore chained assignment warnings
     pd.set_option("mode.chained_assignment", o)
   #
-  def _run(self, rng, variant, data, hsa_params, hsa_f):
+  def _run(self, rng, data, run_params, hsa_f):
     """
     Run the model once
 
     returns: a tuple of the selected varient and the updated DataFrame
     """
-    run_params = self._generate_run_params(rng)
+    p = run_params["outpatient_factors"]
     # create a single factor for how many times to select that row
     factor = (data["factor"].to_numpy()
       * hsa_f
-      * self._followup_reduction(data, run_params)
-      * self._consultant_to_consultant_reduction(data, run_params)
+      * self._followup_reduction(data, p)
+      * self._consultant_to_consultant_reduction(data, p)
     )
     # update the number of attendances / tele_attendances
     data["attendances"] = rng.poisson(data["attendances"] * factor)
@@ -69,8 +69,6 @@ class OutpatientsModel(Model):
     # remove rows where the overall number of attendances was 0
     data = data[data["attendances"] + data["tele_attendances"] > 0]
     # convert attendances to tele attendances
-    self._convert_to_tele(data, run_params)
+    self._convert_to_tele(data, p)
     # return the data
-    run_params["selected_variant"] = variant
-    run_params["hsa"] = hsa_params
-    return (run_params, data[["attendances", "tele_attendances"]].reset_index())
+    return data[["attendances", "tele_attendances"]].reset_index()

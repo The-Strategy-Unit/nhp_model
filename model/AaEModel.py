@@ -40,23 +40,21 @@ class AaEModel(Model):
       "is_frequent_attender": 1
     })
   #
-  def _run(self, rng, variant, data, hsa_params, hsa_f):
+  def _run(self, rng, data, run_params, hsa_f):
     """
     Run the model once
 
     returns: a tuple of the selected varient and the updated DataFrame
     """
-    run_params = self._generate_run_params(rng)
+    p = run_params["aae_factors"]
     # create a single factor for how many times to select that row
     factor = (data["factor"].to_numpy()
       * hsa_f
-      * self._low_cost_discharged(data, run_params)
-      * self._left_before_seen(data, run_params)
-      * self._frequent_attenders(data, run_params)
+      * self._low_cost_discharged(data, p)
+      * self._left_before_seen(data, p)
+      * self._frequent_attenders(data, p)
     )
     data["arrivals"] = rng.poisson(data["arrivals"] * factor)
     data = data[data["arrivals"] > 0]
     # return the data
-    run_params["selected_variant"] = variant
-    run_params["hsa"] = hsa_params
-    return (run_params, data[["arrivals"]].reset_index())
+    return data[["arrivals"]].reset_index()
