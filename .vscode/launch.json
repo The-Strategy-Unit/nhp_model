@@ -5,7 +5,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Inpatients Run Model",
+      "name": "Python: Inpatients (principal) Run Model",
       "type": "python",
       "request": "launch",
       "program": "run_model.py",
@@ -13,7 +13,7 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "Python: Outpatients Run Model",
+      "name": "Python: Outpatients (principal) Run Model",
       "type": "python",
       "request": "launch",
       "program": "run_model.py",
@@ -21,7 +21,7 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "Python: A&E Run Model",
+      "name": "Python: A&E (principal) Run Model",
       "type": "python",
       "request": "launch",
       "program": "run_model.py",
@@ -33,7 +33,7 @@
       "type": "python",
       "request": "launch",
       "program": "run_model.py",
-      "args": ["data/synthetic/results/test/20220110_104353", "0", "192", "-b=8"],
+      "args": ["data/synthetic/results/test/20220110_104353", "1", "192", "-b=8"],
       "console": "integratedTerminal"
     }
   ]
