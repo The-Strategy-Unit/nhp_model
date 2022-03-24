@@ -31,7 +31,7 @@ class Model:
   You can also call m.multi_model_run() to run multiple iterations of the model in parallel, saving the results to disk
   to use later.
   """
-  def __init__(self, results_path, principal = False, columns_to_load = None):
+  def __init__(self, results_path, columns_to_load = None):
     # load the parameters file
     with open(f"{results_path}/params.json", "r") as f: self._params = json.load(f)
     # store the path where the data is stored and the results are stored
@@ -51,7 +51,7 @@ class Model:
     # we now store the data in a dictionary keyed by the population variant
     self._data = { k: v.drop(["variant"], axis = "columns").set_index(["rn"]) for k, v in tuple(data) }
     # generate the run parameters
-    self._generate_run_params(principal)
+    self._generate_run_params()
   #
   def _select_variant(self, rng):
     """
@@ -128,10 +128,6 @@ class Model:
     #
     mr_data.to_parquet(f"{results_path}/{model_run}.parquet")
     t2 = time()
-    # save all of the run params if this is the first model run only
-    if model_run == 0:
-      with open(f"{results_path}/run_params.json", "w") as f:
-        json.dump(self._run_params, f)
     #
     return (t1 - t0, t2 - t1)
   #
@@ -170,27 +166,35 @@ class Model:
       sep = "\n"
     )
   #
-  def _generate_run_params(self, principal = False):
+  def _generate_run_params(self):
+    # the principal projection will have run number 0. all other runs start indexing from 1
+    run_params_path = f"{self._results_path}/run_params.json"
+    # load the params if they have previously been created
+    if os.path.exists(run_params_path):
+      with open(run_params_path, "r") as f:
+        self._run_params = json.load(f)
+        return
+    #
     p = self._params
     rng = np.random.default_rng(p["seed"])
     mr = p["model_runs"]
-    f = (lambda i, j: (i + j) / 2) if principal else (lambda i, j: rnorm(rng, i, j))
+    def f(mr, i, j):
+      if mr == 0: return (i + j) / 2 # for the principal projection, just use the midpoint of the interval
+      return rnorm(rng, i, j)        # otherwise, 
     #
     self._run_params = {
-      "variant": (
-        # if this is the principal projection, choose the most probable population projection
-        [self._variants[np.argmax(self._probabilities)]] * mr if principal
-        else rng.choice(self._variants, mr, p = self._probabilities)
-      ),
-      "seeds": rng.integers(0, 65535, mr),
+      # for the principal run, select the most probable variant
+      "variant": [self._variants[np.argmax(self._probabilities)]] +
+        rng.choice(self._variants, mr, p = self._probabilities).tolist(),
+      "seeds": rng.integers(0, 65535, mr + 1).tolist(),
       "health_status_adjustment": [
-        [f(*i) for _ in range(mr)] for i in p["health_status_adjustment"]["intervals"]
+        [f(m, *i) for m in range(mr + 1)] for i in p["health_status_adjustment"]["intervals"]
       ],
       "waiting_list_adjustment": p["waiting_list_adjustment"],
       **{
         k0: {
           k1: {
-            k2: [inrange(f(*v2["interval"]), *v2.get("range", [0, 1])) for _ in range(mr)]
+            k2: [inrange(f(m, *v2["interval"]), *v2.get("range", [0, 1])) for m in range(mr + 1)]
             for k2, v2 in v1.items()
           }
           for k1, v1 in p[k0].items()
@@ -198,6 +202,9 @@ class Model:
         for k0 in ["strategy_params", "outpatient_factors", "aae_factors"]
       }
     }
+    # save the run params
+    with open(run_params_path, "w") as f:
+      json.dump(self._run_params, f)
   #
   def _get_run_params(self, model_run):
     p = self._run_params

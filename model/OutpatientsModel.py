@@ -11,10 +11,10 @@ class OutpatientsModel(Model):
 
   Implements the model for outpatient data. See `Model()` for documentation on the generic class. 
   """
-  def __init__(self, results_path, principal = False):
+  def __init__(self, results_path):
     self._MODEL_TYPE = "op"
     # call the parent init function
-    Model.__init__(self, results_path, principal)
+    Model.__init__(self, results_path)
   #
   def _followup_reduction(self, data, run_params):
     return self._factor_helper(data, run_params["followup_reduction"], {
