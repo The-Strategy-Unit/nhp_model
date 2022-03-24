@@ -11,19 +11,10 @@ class AaEModel(Model):
 
   Implements the model for accident and emergency data. See `Model()` for documentation on the generic class. 
   """
-  def __init__(self, results_path):
+  def __init__(self, results_path, principal = False):
     self._MODEL_TYPE = "aae"
     # call the parent init function
-    Model.__init__(self, results_path)
-  #
-  def _generate_run_params(self, rng):
-    p = self._params["aae_factors"]
-    f = lambda v: inrange(rnorm(rng, *v["interval"]), *v["range"])
-    return {
-      k1: {
-        k2: f(v2) for k2, v2 in v1.items()
-      } for k1, v1 in p.items()
-    }
+    Model.__init__(self, results_path, principal)
   # 
   def _low_cost_discharged(self, data, run_params):
     return self._factor_helper(data, run_params["low_cost_discharged"], {

@@ -12,10 +12,10 @@ class InpatientsModel(Model):
 
   Implements the model for inpatient data. See `Model()` for documentation on the generic class. 
   """
-  def __init__(self, results_path):
+  def __init__(self, results_path, principal = False):
     self._MODEL_TYPE = "ip"
     # call the parent init function
-    Model.__init__(self, results_path, ["rn", "speldur", "age", "sex", "admimeth", "classpat", "tretspef", "hsagrp"])
+    Model.__init__(self, results_path, principal, ["rn", "speldur", "age", "sex", "admimeth", "classpat", "tretspef", "hsagrp"])
     # load the strategies, store each strategy file as a separate entry in a dictionary
     self._strategies = {
       x: self._load_parquet(f"ip_{x}_strategies") for x in ["admission_avoidance", "los_reduction"]
