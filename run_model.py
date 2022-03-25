@@ -48,7 +48,7 @@ def main():
     assert args.type != "all", \
       "can only debug a single model at a time: make sure to set the --type argument"
     m = models[args.type](args.results_path[0])
-    _, r = timeit(m.run, args.run_start[0])
+    r = timeit(m.run, args.run_start[0])
     print (r)
   else:
     [
