@@ -141,10 +141,24 @@ class Model:
         t0 = time()
         mr_data = self.run(model_run)
         t1 = time()
+        principal_change_factors = None
+        if type(mr_data) == tuple:
+            principal_change_factors, mr_data = mr_data
         #
         results_path = f"{self._results_path}/{self._MODEL_TYPE}/model_run={model_run}"
         if not os.path.exists(results_path):
             os.makedirs(results_path)
+        if principal_change_factors is not None:
+            # handle encoding of numpy values (source: https://stackoverflow.com/a/65151218/4636789)
+            def np_encoder(object):
+                if isinstance(object, np.generic):
+                    return object.item()
+
+            with open(
+                f"{self._results_path}/{self._MODEL_TYPE}/principal_change_factors.json",
+                "w",
+            ) as pcf:
+                json.dump(principal_change_factors, pcf, indent=2, default=np_encoder)
         #
         mr_data.to_parquet(f"{results_path}/{model_run}.parquet")
         t2 = time()
@@ -202,7 +216,7 @@ class Model:
         #
         p = self._params
         rng = np.random.default_rng(p["seed"])
-        mr = p["model_runs"]
+        mr = p["model_runs"] + 1  # add 1 for the principal
 
         def f(mr, i, j):
             if mr == 0:
@@ -215,8 +229,8 @@ class Model:
         self._run_params = {
             # for the principal run, select the most probable variant
             "variant": [self._variants[np.argmax(self._probabilities)]]
-            + rng.choice(self._variants, mr, p=self._probabilities).tolist(),
-            "seeds": rng.integers(0, 65535, mr + 1).tolist(),
+            + rng.choice(self._variants, mr - 1, p=self._probabilities).tolist(),
+            "seeds": rng.integers(0, 65535, mr).tolist(),
             "health_status_adjustment": [
                 [f(m, *i) for m in range(mr + 1)]
                 for i in p["health_status_adjustment"]["intervals"]
@@ -227,7 +241,7 @@ class Model:
                     k1: {
                         k2: [
                             inrange(f(m, *v2["interval"]), *v2.get("range", [0, 1]))
-                            for m in range(mr + 1)
+                            for m in range(mr)
                         ]
                         for k2, v2 in v1.items()
                     }
