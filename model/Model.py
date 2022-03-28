@@ -155,7 +155,7 @@ class Model:
                     return object.item()
 
             with open(
-                f"{self._results_path}/{self._MODEL_TYPE}/principal_change_factors.json",
+                f"{self._results_path}/{self._MODEL_TYPE}_principal_change_factors.json",
                 "w",
             ) as pcf:
                 json.dump(principal_change_factors, pcf, indent=2, default=np_encoder)
