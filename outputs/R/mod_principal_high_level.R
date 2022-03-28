@@ -7,26 +7,30 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
-mod_principal_high_level_ui <- function(id){
+mod_principal_high_level_ui <- function(id) {
   ns <- NS(id)
   tagList(
     h1("High level activity estimates (principal projection)"),
-    tableOutput(ns("activity")),
+    fluidRow(
+      box(
+        title = "Activity Estimates",
+        gt::gt_output(ns("activity")),
+        width = 12
+      )
+    ),
     fluidRow(
       box(
         title = "A&E Attendances",
         plotly::plotlyOutput(ns("aae")),
         width = 4
       ),
-
       box(
-        title = "Inpatient admissions",
+        title = "Inpatient Admissions",
         plotly::plotlyOutput(ns("ip")),
         width = 4
       ),
-
       box(
-        title = "Outpatient attendances",
+        title = "Outpatient Attendances",
         plotly::plotlyOutput(ns("op")),
         width = 4
       )
@@ -38,7 +42,6 @@ mod_principal_high_level_ui <- function(id){
 #'
 #' @noRd
 mod_principal_high_level_server <- function(id, data) {
-
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -82,14 +85,23 @@ mod_principal_high_level_server <- function(id, data) {
         dplyr::mutate(
           dplyr::across(n, purrr::compose(as.integer, zoo::na.approx)),
           fyear = fyear_str(.data$year)
-        )
+        ) |>
+        dplyr::ungroup()
     })
 
-    output$activity <- renderTable({
+    output$activity <- gt::render_gt({
       summary_data() |>
         dplyr::select(-year) |>
-        dplyr::mutate(dplyr::across(n, scales::comma)) |>
-        tidyr::pivot_wider(names_from = .data$fyear, values_from = .data$n)
+        tidyr::pivot_wider(names_from = .data$fyear, values_from = .data$n) |>
+        gt::gt() |>
+        gt::cols_align(
+          align = "left",
+          columns = "pod"
+        ) |>
+        gt::cols_label(
+          "pod" = ""
+        ) |>
+        gt::fmt_integer(tidyselect::matches("\\d{4}/\\d{2}"))
     })
 
     plot_fn <- function(data, activity_type) {
@@ -104,7 +116,10 @@ mod_principal_high_level_server <- function(id, data) {
           labels = fyear_str,
           breaks = seq(START_YEAR, END_YEAR, 2)
         ) +
-        ggplot2::scale_y_continuous(labels = scales::comma) +
+        ggplot2::scale_y_continuous(
+          labels = scales::comma
+        ) +
+        ggplot2::expand_limits(y = 0) +
         ggplot2::labs(x = NULL, y = NULL, colour = NULL)
 
       plotly::ggplotly(p) %>%
