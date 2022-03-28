@@ -1,18 +1,17 @@
 import json
-import pickle
 import os
-
+import pickle
+from multiprocessing import Pool
+from pathlib import Path
 from time import time
 
 import numpy as np
-import pyarrow.parquet as pq
 import pandas as pd
-
-from pathlib import Path
-from multiprocessing import Pool
+import pyarrow.parquet as pq
 from tqdm import tqdm
 
-from model.helpers import rnorm, inrange
+from model.helpers import inrange, rnorm
+
 
 class Model:
   """
@@ -236,4 +235,9 @@ class Model:
     data = self._data[run_params["variant"]]
     # hsa
     hsa_f = self._health_status_adjustment(data, run_params)
-    return self._run(rng, data, run_params, hsa_f)
+    # choose which function to use
+    if model_run == 0 and self._MODEL_TYPE == "ip":
+      f = self._principal_projection
+    else:
+      f = self._run
+    return f(rng, data, run_params, hsa_f)

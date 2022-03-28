@@ -1,10 +1,11 @@
+from collections import defaultdict
+
 import numpy as np
 import pandas as pd
 
-from collections import defaultdict
-
-from model.helpers import rnorm, inrange
+from model.helpers import inrange, rnorm
 from model.Model import Model
+
 
 class InpatientsModel(Model):
   """
@@ -207,3 +208,62 @@ class InpatientsModel(Model):
     return data.reset_index()[[
       "rn", "speldur", "classpat", "admission_avoidance_strategy", "los_reduction_strategy"
     ]]
+  #
+  def _principal_projection(self, rng, data, run_params, hsa_f):
+    # choose admission avoidance factors
+    ada = defaultdict(
+        lambda: 1, run_params["strategy_params"]["admission_avoidance"]
+    )
+    # choose length of stay reduction factors
+    losr = self._los_reduction(run_params)
+    # select a strategy
+    data = self._random_strategy(rng, data, "admission_avoidance")
+    data = self._random_strategy(rng, data, "los_reduction")
+    #
+    step_counts = {"baseline": len(data.index)}
+    #
+    def f(thing, name):
+        nonlocal data, step_counts
+        n = rng.poisson(thing)
+        step_counts[name] = sum(n) - len(data.index)
+        data = data.loc[data.index.repeat(n)].reset_index(drop=True)
+
+    # before we do anything, reset the index to keep the row number
+    data.reset_index(inplace=True)
+    # first, run hsa as we have the factor already created
+    f(hsa_f, "health_status_adjustment")
+    # then, demographic modelling
+    f(data["factor"].to_numpy(), "population_factors")
+    data.drop(["factor"], axis="columns", inplace=True)
+    # waiting list adjustments
+    f(self._waiting_list_adjustment(data), "waiting_list_adjustment")
+    # Admission Avoidance ----------------------------------------------------------------------------------------------
+    aac = -data.value_counts("admission_avoidance_strategy")
+    a = [ada[k] for k in data["admission_avoidance_strategy"]]
+    n = rng.poisson(a)
+    step_counts["admission_avoidance"] = sum(n)
+    data = data.loc[data.index.repeat(n)].reset_index(drop=True)
+    aac += data.value_counts("admission_avoidance_strategy")
+    step_counts["admission_avoidance"] = aac.to_dict()
+    # done with row count adjustment
+    # LoS Reduction ----------------------------------------------------------------------------------------------------
+    # set the index for easier querying
+    data.set_index(["los_reduction_strategy"], inplace=True)
+    # run each of the length of stay reduction strategies
+    data = self._losr_all(data, losr, rng)
+    data = self._losr_to_zero(data, losr, rng, "aec")
+    data = self._losr_to_zero(data, losr, rng, "preop")
+    data = self._losr_bads(data, losr, rng)
+    # return the data (select just the columns we have updated in modelling)
+    return (
+        step_counts,
+        data.reset_index()[
+            [
+                "rn",
+                "speldur",
+                "classpat",
+                "admission_avoidance_strategy",
+                "los_reduction_strategy",
+            ]
+        ],
+    )
