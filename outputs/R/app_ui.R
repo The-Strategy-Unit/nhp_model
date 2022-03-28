@@ -2,20 +2,35 @@
 #'
 #' @param request Internal parameter for `{shiny}`.
 #'     DO NOT REMOVE.
-#' @import shiny
 #' @import bs4Dash
 #' @noRd
 app_ui <- function(request) {
   header <- dashboardHeader(title = "Basic dashboard")
-  sidebar <- dashboardSidebar()
-  body <- dashboardBody(
-    # Boxes need to be put in a row (or column)
-    fluidRow(
-      box(plotOutput("plot1", height = 250)),
 
-      box(
-        title = "Controls",
-        sliderInput("slider", "Number of observations:", 1, 100, 50)
+  sidebar <- dashboardSidebar(
+    sidebarMenu(
+      id = "sidebarMenu",
+      sidebarHeader("Principal Projection"),
+      menuItem(
+        text = "High Level",
+        tabName = "tab_phl"
+      ),
+      menuItem(
+        text = "Detailed",
+        tabName = "tab_pd"
+      )
+    )
+  )
+
+  body <- dashboardBody(
+    tabItems(
+      tabItem(
+        tabName = "tab_phl",
+        mod_principal_high_level_ui("principal_high_level")
+      ),
+      tabItem(
+        tabName = "tab_pd",
+        mod_principal_detailed_ui("principal_detailed")
       )
     )
   )
@@ -34,7 +49,6 @@ app_ui <- function(request) {
 #' This function is internally used to add external
 #' resources inside the Shiny application.
 #'
-#' @import shiny
 #' @importFrom golem add_resource_path activate_js favicon bundle_resources
 #' @noRd
 golem_add_external_resources <- function(){
