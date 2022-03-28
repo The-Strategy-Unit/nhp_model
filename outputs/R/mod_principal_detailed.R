@@ -30,14 +30,15 @@ mod_principal_detailed_ui <- function(id) {
 #'
 #' @noRd
 mod_principal_detailed_server <- function(id, data) {
-  moduleServer( id, function(input, output, session){
+  moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     age_groups <- tibble::tibble(age = 0:90) |>
-      mutate(age_group = cut(
+      dplyr::mutate(age_group = cut(
         .data$age,
         c(0, 5, 15, 35, 50, 65, 85, Inf),
-        c("0 to 4",
+        c(
+          "0 to 4",
           "5 to 14",
           "15 to 34",
           "35 to 49",
@@ -49,42 +50,18 @@ mod_principal_detailed_server <- function(id, data) {
       ))
 
     data_fixed <- reactive({
-      d <- data()
-
-      aae <- d$aae |>
+      data() |>
+        dplyr::filter(.data$type != "model") |>
         dplyr::inner_join(age_groups, by = "age") |>
-        dplyr::group_by(activity_type = "aae", .data$sex, .data$age_group, .data$type, .data$pod)
-
-      ip <- d$ip |>
-        dplyr::inner_join(age_groups, by = "age") |>
-        dplyr::group_by(activity_type = "ip", .data$sex, .data$age_group, .data$type, .data$pod) |>
-        dplyr::summarise(
-          "Admissions" = dplyr::n(),
-          "Mean Length of Stay" = mean(.data$speldur),
-          "Total Bed Days" = sum(.data$beddays),
-          .groups = "drop"
-        ) |>
-        tidyr::pivot_longer(c(Admissions:`Total Bed Days`), names_to = "measure")
-
-      op <- d$op |>
-        dplyr::inner_join(age_groups, by = "age") |>
-        dplyr::group_by(activity_type = "op", .data$sex, .data$age_group, .data$type, .data$pod) |>
-        dplyr::summarise(dplyr::across(dplyr::ends_with("attendances"), sum), .groups = "drop") |>
-        tidyr::pivot_longer(dplyr::ends_with("attendances"), names_to = "measure")
-
-      bind_rows(
-        aae |>
-          dplyr::filter(.data$aearrivalmode == "1") |>
-          dplyr::summarise(measure = "Ambulance Arrivals", value = sum(.data$arrivals), .groups = "drop"),
-        aae |>
-          dplyr::filter(.data$aearrivalmode != "1") |>
-          dplyr::summarise(measure = "Walk-in Arrivals", value = sum(.data$arrivals), .groups = "drop"),
-        ip,
-        op
-      ) |>
-        tidyr::pivot_wider(names_from = .data$type, values_from = .data$value) |>
-        dplyr::rename(final = model) |>
+        dplyr::count(.data$dataset, .data$sex, .data$age_group, .data$pod, .data$type, .data$measure, wt = .data$value) |>
+        tidyr::pivot_wider(names_from = .data$type, values_from = .data$n) |>
+        dplyr::rename(final = principal) |>
         dplyr::mutate(change = final - baseline, change_pcnt = change / baseline)
+    })
+
+    dropdown_options <- reactive({
+      data_fixed() |>
+        distinct(.data$dataset, .data$pod, .data$measure)
     })
 
     selected_data <- reactive({
@@ -94,11 +71,11 @@ mod_principal_detailed_server <- function(id, data) {
 
       data_fixed() |>
         dplyr::filter(
-          .data$activity_type == at,
+          .data$dataset == at,
           .data$pod == p,
           .data$measure == m
         ) |>
-        select(-activity_type, -pod, -measure)
+        select(-.data$dataset, -.data$pod, -.data$measure)
     })
 
     output$results <- gt::render_gt({
@@ -110,7 +87,7 @@ mod_principal_detailed_server <- function(id, data) {
 
       d |>
         dplyr::mutate(
-          dplyr::across(.data$sex, ~ifelse(.x == 1, "Male", "Female")),
+          dplyr::across(.data$sex, ~ ifelse(.x == 1, "Male", "Female")),
           dplyr::across(.data$final, gt_bar, scales::comma_format(1), "#686f73", "#686f73"),
           dplyr::across(.data$change, gt_bar, scales::comma_format(1)),
           dplyr::across(.data$change_pcnt, gt_bar, scales::percent_format(1))
@@ -134,32 +111,24 @@ mod_principal_detailed_server <- function(id, data) {
     observeEvent(input$activity_type, {
       at <- req(input$activity_type)
 
-      if (at == "aae") {
-        p <- c(
-          "Type 1" = "01",
-          "Type 2" = "02",
-          "Type 3" = "03",
-          "Type 4" = "04",
-          "Type Unknown" = "99"
-        )
-        m <- c("Ambulance Arrivals", "Walk-in Arrivals")
-      } else if (at == "ip") {
-        p <- c(
-          "Elective" = "elective_admission",
-          "Non-Elective" = "non-elective_admission",
-          "Daycase" = "elective_daycase"
-        )
-        m <- c("Admissions", "Total Bed Days", "Mean Length of Stay")
-      } else if (at == "op") {
-        p <- c(
-          "OP First" = "op_first",
-          "OP Follow-up" = "op_follow-up",
-          "OP Procedures" = "op_procedure"
-        )
-        m <- c("Attendances" = "attendances", "Tele-Attendances" = "tele_attendances")
-      }
-      updateSelectInput(session, "pod", choices = p)
-      updateSelectInput(session, "measure", choices = m)
+      p <- dropdown_options() |>
+        dplyr::filter(.data$dataset == at) |>
+        dplyr::pull(.data$pod) |>
+        unique()
+
+      shiny::updateSelectInput(session, "pod", choices = p)
+    })
+
+    observeEvent(input$pod, {
+      at <- req(input$activity_type)
+      p <- req(input$pod)
+
+      m <- dropdown_options() |>
+        dplyr::filter(.data$dataset == at, .data$pod == p) |>
+        dplyr::pull(.data$measure) |>
+        unique()
+
+      shiny::updateSelectInput(session, "measure", choices = m)
     })
   })
 }

@@ -51,28 +51,38 @@ mod_principal_high_level_server <- function(id, data) {
     fyear_str <- \(y) glue::glue("{y}/{(y + 1) %% 100}")
 
     summary_data <- reactive({
-      d <- data()
+      d <- data() |>
+        dplyr::filter(.data$model_run == 0)
+
       dplyr::bind_rows(
-        d$aae |>
-          dplyr::count(.data$type, pod = "A&E Attendances", wt = .data$arrivals),
-        d$ip |>
-          dplyr::mutate(pod = ifelse(
-            stringr::str_starts(.data$admimeth, "1"),
-            "IP Admissions Elective",
-            "IP Admissions Non-Elective"
-          )) |>
-          dplyr::count(.data$type, .data$pod),
-        d$op |>
-          dplyr::count(.data$type, .data$pod, wt = .data$attendances)
-      ) |>
-        dplyr::mutate(
-          dplyr::across(
-            .data$pod,
-            forcats::fct_recode,
-            "OP 1st Attendance" = "op_first",
-            "OP Follow-up Attendance" = "op_follow-up",
-            "OP Procedures" = "op_procedure"
+        aae <- d |>
+          dplyr::filter(.data$dataset == "aae") |>
+          dplyr::mutate(pod = "A&E Attendances"),
+        d |>
+          dplyr::filter(.data$dataset == "op", .data$measure == "attendances") |>
+          dplyr::mutate(
+            dplyr::across(
+              .data$pod,
+              forcats::fct_recode,
+              "OP 1st Attendances" = "op_first",
+              "OP Follow up Attendances" = "op_follow-up",
+              "OP Procedures" = "op_procedure"
+            )
           ),
+        d |>
+          dplyr::filter(.data$dataset == "ip", .data$measure == "admissions") |>
+          dplyr::mutate(
+            dplyr::across(
+              .data$pod,
+              forcats::fct_recode,
+              "IP Elective Admissions" = "elective_admission",
+              "IP Non-Elective Admissions" = "non-elective_admission",
+              "Daycase Admissions" = "elective_daycase"
+            )
+          )
+      ) |>
+        dplyr::count(.data$pod, .data$type, wt = .data$value) |>
+        dplyr::mutate(
           dplyr::across(.data$pod, forcats::fct_relevel, sort),
           year = ifelse(.data$type == "baseline", START_YEAR, END_YEAR)
         ) |>
@@ -91,7 +101,7 @@ mod_principal_high_level_server <- function(id, data) {
 
     output$activity <- gt::render_gt({
       summary_data() |>
-        dplyr::select(-year) |>
+        dplyr::select(-.data$year) |>
         tidyr::pivot_wider(names_from = .data$fyear, values_from = .data$n) |>
         gt::gt() |>
         gt::cols_align(

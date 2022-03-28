@@ -3,18 +3,17 @@
 #' @param input,output,session Internal parameters for {shiny}.
 #'     DO NOT REMOVE.
 #' @noRd
-app_server <- function( input, output, session ) {
+app_server <- function(input, output, session) {
+
+  # this should probably become parameterised
+  data_path <- reactive({
+    "../data/RL4/results/test/20220110_104353"
+  })
 
   data <- reactive({
-    # trigger on load, need to change to be based on some dropdowns?
-    data_path <- "../data/RL4/results/test/20220110_104353"
-
-    list(
-      aae = arrow::read_parquet(glue::glue("{data_path}/aae_principal.parquet")) |>
-        rename(pod = aedepttype),
-      ip  = arrow::read_parquet(glue::glue("{data_path}/ip_principal.parquet")),
-      op  = arrow::read_parquet(glue::glue("{data_path}/op_principal.parquet"))
-    )
+    arrow::read_parquet(glue::glue("{data_path()}/model_results.parquet")) |>
+      dplyr::as_tibble() |>
+      dplyr::select(-.data$`__index_level_0__`)
   })
 
   mod_principal_high_level_server("principal_high_level", data)
