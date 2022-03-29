@@ -17,6 +17,7 @@ Imports:
     plotly,
     scales,
     shiny (>= 1.7.1),
+    shinycssloaders,
     zoo
 Encoding: UTF-8
 LazyData: true
