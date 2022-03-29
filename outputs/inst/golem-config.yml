@@ -6,3 +6,4 @@ production:
   app_prod: yes
 dev:
   golem_wd: !expr here::here()
+  datasets_path: !expr here::here("..", "data")
