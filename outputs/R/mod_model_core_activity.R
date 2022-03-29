@@ -10,7 +10,9 @@
 mod_model_core_activity_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    gt::gt_output(ns("core_activity"))
+    shinycssloaders::withSpinner(
+      gt::gt_output(ns("core_activity"))
+    )
   )
 }
 

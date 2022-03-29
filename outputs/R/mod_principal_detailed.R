@@ -8,21 +8,13 @@
 #'
 #' @importFrom shiny NS tagList
 mod_principal_detailed_ui <- function(id) {
-  activity_types <- list(
-    "A&E" = "aae",
-    "IP" = "ip",
-    "OP" = "op"
-  )
-
   ns <- NS(id)
   tagList(
     h1("Detailed activity estimates (principal projection)"),
-    fluidRow(
-      column(4, selectInput(ns("activity_type"), "Activity Type", activity_types)),
-      column(4, selectInput(ns("pod"), "POD", NULL)),
-      column(4, selectInput(ns("measure"), "Measure", NULL))
-    ),
-    gt::gt_output(ns("results"))
+    mod_measure_selection_ui(ns("measure_selection")),
+    shinycssloaders::withSpinner(
+      gt::gt_output(ns("results"))
+    )
   )
 }
 
@@ -33,32 +25,18 @@ mod_principal_detailed_server <- function(id, data) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    data_fixed <- reactive({
-      data() |>
-        dplyr::filter(.data$type != "model") |>
-        dplyr::count(.data$dataset, .data$sex, .data$age_group, .data$pod, .data$type, .data$measure, wt = .data$value) |>
-        tidyr::pivot_wider(names_from = .data$type, values_from = .data$n) |>
-        dplyr::rename(final = principal) |>
-        dplyr::mutate(change = final - baseline, change_pcnt = change / baseline)
-    })
-
-    dropdown_options <- reactive({
-      data_fixed() |>
-        distinct(.data$dataset, .data$pod, .data$measure)
-    })
+    filtered_data <- mod_measure_selection_server("measure_selection", data)
 
     selected_data <- reactive({
-      at <- req(input$activity_type)
-      p <- req(input$pod)
-      m <- req(input$measure)
+      d <- filtered_data()
+      req(nrow(d) > 0)
 
-      data_fixed() |>
-        dplyr::filter(
-          .data$dataset == at,
-          .data$pod == p,
-          .data$measure == m
-        ) |>
-        select(-.data$dataset, -.data$pod, -.data$measure)
+      d |>
+        dplyr::filter(.data$type != "model") |>
+        dplyr::select(-.data$model_run) |>
+        tidyr::pivot_wider(names_from = .data$type, values_from = .data$value, values_fill = 0) |>
+        dplyr::rename(final = .data$principal) |>
+        dplyr::mutate(change = final - baseline, change_pcnt = change / baseline)
     })
 
     output$results <- gt::render_gt({
@@ -77,7 +55,7 @@ mod_principal_detailed_server <- function(id, data) {
         ) |>
         gt::gt(groupname_col = "sex") |>
         gt::cols_label(
-          age_group = "Age Group",
+          agg = attr(filtered_data, "aggregation"),
           baseline = "Baseline",
           final = "Final",
           change = "Change",
@@ -86,8 +64,8 @@ mod_principal_detailed_server <- function(id, data) {
         gt::fmt_integer(c(baseline)) |>
         gt::cols_width(final ~ px(150), change ~ px(150), change_pcnt ~ px(150)) |>
         gt::cols_align(
-          align = "left",
-          columns = c("age_group", "final", "change", "change_pcnt")
+          align = "left" # ,
+          # columns = c("age_group", "final", "change", "change_pcnt")
         )
     })
 

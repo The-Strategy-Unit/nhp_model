@@ -14,24 +14,32 @@ mod_principal_high_level_ui <- function(id) {
     fluidRow(
       box(
         title = "Activity Estimates",
-        gt::gt_output(ns("activity")),
+        shinycssloaders::withSpinner(
+          gt::gt_output(ns("activity"))
+        ),
         width = 12
       )
     ),
     fluidRow(
       box(
         title = "A&E Attendances",
-        plotly::plotlyOutput(ns("aae")),
+        shinycssloaders::withSpinner(
+          plotly::plotlyOutput(ns("aae"))
+        ),
         width = 4
       ),
       box(
         title = "Inpatient Admissions",
-        plotly::plotlyOutput(ns("ip")),
+        shinycssloaders::withSpinner(
+          plotly::plotlyOutput(ns("ip"))
+        ),
         width = 4
       ),
       box(
         title = "Outpatient Attendances",
-        plotly::plotlyOutput(ns("op")),
+        shinycssloaders::withSpinner(
+          plotly::plotlyOutput(ns("op"))
+        ),
         width = 4
       )
     )
