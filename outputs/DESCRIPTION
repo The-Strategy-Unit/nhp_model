@@ -9,6 +9,7 @@ Imports:
     attempt,
     bs4Dash,
     config (>= 0.3.1),
+    DescTools,
     DT,
     glue,
     golem (>= 0.3.1),
