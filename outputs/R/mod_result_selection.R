@@ -53,7 +53,20 @@ mod_result_selection_server <- function(id) {
       mr <- req(input$model_run)
       arrow::read_parquet(file.path(mr, "model_results.parquet")) |>
         # remove any "__.__" columns, these are usually pandas indexes
-        dplyr::select(-tidyselect::matches("^\\_{2}.*\\_{2}$"))
+        dplyr::select(-tidyselect::matches("^\\_{2}.*\\_{2}$")) |>
+        dplyr::mutate(
+          dplyr::across(
+            .data$age_group,
+            forcats::fct_relevel,
+            "0-4",
+            "5-14",
+            "15-34",
+            "35-49",
+            "50-64",
+            "65-84",
+            "85+"
+          )
+        )
     })
 
     return(data)
