@@ -33,26 +33,9 @@ mod_principal_detailed_server <- function(id, data) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    age_groups <- tibble::tibble(age = 0:90) |>
-      dplyr::mutate(age_group = cut(
-        .data$age,
-        c(0, 5, 15, 35, 50, 65, 85, Inf),
-        c(
-          "0 to 4",
-          "5 to 14",
-          "15 to 34",
-          "35 to 49",
-          "50 to 64",
-          "65 to 84",
-          "85+"
-        ),
-        right = FALSE
-      ))
-
     data_fixed <- reactive({
       data() |>
         dplyr::filter(.data$type != "model") |>
-        dplyr::inner_join(age_groups, by = "age") |>
         dplyr::count(.data$dataset, .data$sex, .data$age_group, .data$pod, .data$type, .data$measure, wt = .data$value) |>
         tidyr::pivot_wider(names_from = .data$type, values_from = .data$n) |>
         dplyr::rename(final = principal) |>
