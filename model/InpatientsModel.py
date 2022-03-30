@@ -33,7 +33,7 @@ class InpatientsModel(Model):
         )
         # load the strategies, store each strategy file as a separate entry in a dictionary
         self._strategies = {
-            x: self._load_parquet(f"ip_{x}_strategies")
+            x: self._load_parquet(f"ip_{x}_strategies").set_index(["rn"]).iloc[:, 0]
             for x in ["admission_avoidance", "los_reduction"]
         }
 
@@ -64,18 +64,14 @@ class InpatientsModel(Model):
 
         returns: an updated DataFrame with a new column for the selected strategy
         """
-        df = (
+        return (
             self._strategies[strategy_type]
             # take all of the rows and randomly reshuffle them into a new order. We *do not* want to use resampling here.
             # make sure to use the same random state using rng.bit_generator
             .sample(frac=1, random_state=rng.bit_generator)
             # for each rn, select a single row, i.e. select 1 strategy per rn
-            .groupby(["rn"]).head(1)
-            # set the index to match the data objects index
-            .set_index(["rn"])
+            .groupby(level=0).head(1)
         )
-        # return the data joined to the selected strategies
-        return data.merge(df, left_index=True, right_index=True)
 
     #
     def _waiting_list_adjustment(self, data):
@@ -212,18 +208,13 @@ class InpatientsModel(Model):
         ada = defaultdict(
             lambda: 1, run_params["strategy_params"]["admission_avoidance"]
         )
-        # choose length of stay reduction factors
+        # select strategies
+        admission_avoidance = self._random_strategy(rng, data, "admission_avoidance")
+        los_reduction = self._random_strategy(rng, data, "los_reduction")
+        # get length of stay reduction factors
         losr = self._los_reduction(run_params)
-        # select a strategy
-        row_count = len(data.index)  # for assert below
-        data = self._random_strategy(rng, data, "admission_avoidance")
-        data = self._random_strategy(rng, data, "los_reduction")
-        # double check that joining in the strategies didn't drop any rows
-        assert (
-            len(data.index) == row_count
-        ), "Row's lost when selecting strategies: has the NULL strategy not been included?"
         # Admission Avoidance ----------------------------------------------------------------------------------------------
-        factor_a = np.array([ada[k] for k in data["admission_avoidance_strategy"]])
+        factor_a = np.array([ada[k] for k in admission_avoidance[data.index]])
         # waiting list adjustments
         factor_w = self._waiting_list_adjustment(data)
         # create a single factor for how many times to select that row
@@ -233,22 +224,15 @@ class InpatientsModel(Model):
         data.reset_index(inplace=True)
         # LoS Reduction ----------------------------------------------------------------------------------------------------
         # set the index for easier querying
-        data.set_index(["los_reduction_strategy"], inplace=True)
+        los_reduction = self._random_strategy(rng, data, "los_reduction")
+        data.set_index(los_reduction[data["rn"]], inplace=True)
         # run each of the length of stay reduction strategies
         data = self._losr_all(data, losr, rng)
         data = self._losr_to_zero(data, losr, rng, "aec")
         data = self._losr_to_zero(data, losr, rng, "preop")
         data = self._losr_bads(data, losr, rng)
         # return the data (select just the columns we have updated in modelling)
-        return data.reset_index()[
-            [
-                "rn",
-                "speldur",
-                "classpat",
-                "admission_avoidance_strategy",
-                "los_reduction_strategy",
-            ]
-        ]
+        return data.reset_index(drop=True)[["rn", "speldur", "classpat"]]
 
     #
     def _principal_projection(self, rng, data, run_params, hsa_f):
@@ -256,11 +240,11 @@ class InpatientsModel(Model):
         ada = defaultdict(
             lambda: 1, run_params["strategy_params"]["admission_avoidance"]
         )
+        # select strategies
+        admission_avoidance = self._random_strategy(rng, data, "admission_avoidance")
+        los_reduction = self._random_strategy(rng, data, "los_reduction")
         # choose length of stay reduction factors
         losr = self._los_reduction(run_params)
-        # select a strategy
-        data = self._random_strategy(rng, data, "admission_avoidance")
-        data = self._random_strategy(rng, data, "los_reduction")
         #
         step_counts = {"baseline": len(data.index)}
         #
@@ -280,17 +264,17 @@ class InpatientsModel(Model):
         # waiting list adjustments
         f(self._waiting_list_adjustment(data), "waiting_list_adjustment")
         # Admission Avoidance ----------------------------------------------------------------------------------------------
-        aac = -data.value_counts("admission_avoidance_strategy")
-        a = [ada[k] for k in data["admission_avoidance_strategy"]]
+        aac = -admission_avoidance[data["rn"]].value_counts()
+        a = [ada[k] for k in admission_avoidance[data["rn"]]]
         n = rng.poisson(a)
         step_counts["admission_avoidance"] = sum(n)
         data = data.loc[data.index.repeat(n)].reset_index(drop=True)
-        aac += data.value_counts("admission_avoidance_strategy")
+        aac += admission_avoidance[data["rn"]].value_counts()
         step_counts["admission_avoidance"] = aac.to_dict()
         # done with row count adjustment
         # LoS Reduction ----------------------------------------------------------------------------------------------------
         # set the index for easier querying
-        data.set_index(["los_reduction_strategy"], inplace=True)
+        data.set_index(los_reduction[data["rn"]], inplace=True)
         # run each of the length of stay reduction strategies
         data = self._losr_all(data, losr, rng)
         data = self._losr_to_zero(data, losr, rng, "aec")
@@ -301,13 +285,5 @@ class InpatientsModel(Model):
         # return the data (select just the columns we have updated in modelling)
         return (
             step_counts,
-            data.reset_index()[
-                [
-                    "rn",
-                    "speldur",
-                    "classpat",
-                    "admission_avoidance_strategy",
-                    "los_reduction_strategy",
-                ]
-            ],
+            data.reset_index(drop=True)[["rn", "speldur", "classpat"]],
         )
