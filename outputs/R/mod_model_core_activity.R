@@ -50,7 +50,7 @@ mod_model_core_activity_server <- function(id, data) {
             fill = list(value = 0)
           ) |>
           dplyr::summarise(dplyr::across(.data$value, list), .groups = "drop") |>
-          dplyr::mutate(dplyr::across(.data$value, purrr::map, DescTools::MeanCI)) |>
+          dplyr::mutate(dplyr::across(.data$value, purrr::map, DescTools::MeanCI, conf.level = 0.9)) |>
           tidyr::unnest_wider(.data$value),
         by = c("dataset", "pod", "measure")
       )
@@ -75,7 +75,7 @@ mod_model_core_activity_server <- function(id, data) {
           "upr.ci" = "Upper"
         ) |>
         gt::tab_spanner(
-          "95% Confidence Interval",
+          "90% Confidence Interval",
           c("lwr.ci", "upr.ci")
         ) |>
         gt_theme()
