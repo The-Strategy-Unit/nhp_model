@@ -55,7 +55,7 @@ mod_principal_detailed_server <- function(id, data) {
         ) |>
         gt::gt(groupname_col = "sex") |>
         gt::cols_label(
-          agg = attr(filtered_data, "aggregation"),
+          agg = attr(filtered_data(), "aggregation"),
           baseline = "Baseline",
           final = "Final",
           change = "Change",
@@ -64,9 +64,10 @@ mod_principal_detailed_server <- function(id, data) {
         gt::fmt_integer(c(baseline)) |>
         gt::cols_width(final ~ px(150), change ~ px(150), change_pcnt ~ px(150)) |>
         gt::cols_align(
-          align = "left" # ,
-          # columns = c("age_group", "final", "change", "change_pcnt")
-        )
+          align = "left",
+          columns = c("agg", "final", "change", "change_pcnt")
+        ) |>
+        gt_theme()
     })
 
     observeEvent(input$activity_type, {
