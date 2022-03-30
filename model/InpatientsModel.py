@@ -3,7 +3,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 
-from model.helpers import inrange, rnorm
+from model.helpers import inrange
 from model.Model import Model
 
 
@@ -44,30 +44,30 @@ class InpatientsModel(Model):
 
         * rng: an instance of np.random.default_rng, created for each model iteration
         """
-        p = self._params["strategy_params"]["los_reduction"]
-        # convert the parameters dictionary to a dataframe: each item becomes a row (with the item being the name of the
-        # row in the index), and then each sub-item becoming a column
-        losr = pd.DataFrame.from_dict(p, orient="index")
+        params = self._params["strategy_params"]["los_reduction"]
+        # convert the parameters dictionary to a dataframe: each item becomes a row (with the item
+        # being the name of the row in the index), and then each sub-item becoming a column
+        losr = pd.DataFrame.from_dict(params, orient="index")
         losr["losr_f"] = [
             run_params["strategy_params"]["los_reduction"][i] for i in losr.index
         ]
         return losr
 
     #
-    def _random_strategy(self, rng, data, strategy_type):
+    def _random_strategy(self, rng, strategy_type):
         """
         Select one strategy per record
 
         * rng: an instance of np.random.default_rng, created for each model iteration
-        * data: the pandas DataFrame that we are updating
-        * strategy_type: a string of which type of strategy to update, e.g. "admission_avoidance", "los_reduction"
+        * strategy_type: a string of which type of strategy to update, e.g. "admission_avoidance",
+          "los_reduction"
 
         returns: an updated DataFrame with a new column for the selected strategy
         """
         return (
             self._strategies[strategy_type]
-            # take all of the rows and randomly reshuffle them into a new order. We *do not* want to use resampling here.
-            # make sure to use the same random state using rng.bit_generator
+            # take all of the rows and randomly reshuffle them into a new order. We *do not* want to
+            # use resampling here. make sure to use the same random state using rng.bit_generator
             .sample(frac=1, random_state=rng.bit_generator)
             # for each rn, select a single row, i.e. select 1 strategy per rn
             .groupby(level=0).head(1)
@@ -82,23 +82,25 @@ class InpatientsModel(Model):
 
         returns: a series of floats indicating how often we want to sample that row
 
-        A value of 1 will indicate that we want to sample this row at the baseline rate. A value less that 1 will indicate
-        we want to sample that row less often that in the baseline, and a value greater than 1 will indicate that we want
-        to sample that row more often than in the baseline
+        A value of 1 will indicate that we want to sample this row at the baseline rate. A value
+        less that 1 will indicate we want to sample that row less often that in the baseline, and
+        a value greater than 1 will indicate that we want to sample that row more often than in the
+        baseline
         """
-        # extract the waiting list adjustment parameters - we convert this to a default dictionary that uses the "X01"
-        # specialty as the default value
+        # extract the waiting list adjustment parameters - we convert this to a default dictionary
+        # that uses the "X01" specialty as the default value
         pwla = self._params["waiting_list_adjustment"]["inpatients"].copy()
-        dv = pwla.pop("X01")
-        pwla = defaultdict(lambda: dv, pwla)
+        default_specialty = pwla.pop("X01")
+        pwla = defaultdict(lambda: default_specialty, pwla)
+        # waiting list adjustment values
         # create a series of 1's the length of our data: make sure these are floats, not ints
-        w = np.ones_like(data.index).astype(float)
+        wlav = np.ones_like(data.index).astype(float)
         # find the rows which are elective wait list admissions
         i = list(data.admimeth == "11")
         # update the series for these rows with the waiting list adjustments for that specialty
-        w[i] = [pwla[t] for t in data[i].tretspef]
+        wlav[i] = [pwla[t] for t in data[i].tretspef]
         # return the waiting list adjustment factor series
-        return w
+        return wlav
 
     #
     def _losr_all(self, data, losr, rng):
@@ -111,13 +113,13 @@ class InpatientsModel(Model):
 
         returns: a dataframe with an updated length of stay column
 
-        Reduces all rows length of stay by sampling from a binomial distribution, using the current length of stay as the
-        value for n, and the length of stay reduction factor for that strategy as the value for p. This will update the
-        los to be a value between 0 and the original los.
+        Reduces all rows length of stay by sampling from a binomial distribution, using the current
+        length of stay as the value for n, and the length of stay reduction factor for that strategy
+        as the value for p. This will update the los to be a value between 0 and the original los.
         """
-        s = losr.index[losr.type == "all"]
-        data.loc[s, "speldur"] = rng.binomial(
-            data.loc[s, "speldur"], losr.loc[data.loc[s].index, "losr_f"]
+        i = losr.index[losr.type == "all"]
+        data.loc[i, "speldur"] = rng.binomial(
+            data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"]
         )
         return data
 
@@ -131,14 +133,15 @@ class InpatientsModel(Model):
 
         returns: a dataframe with an updated patient classification and length of stay column's
 
-        This will swap rows between elective admissions and daycases into either daycases or outpatients, based on the given
-        parameter values. We have a baseline target rate, this is the rate in the baseline that rows are of the given target
-        type (i.e. either daycase, outpatients, daycase or outpatients). Our interval will alter the target_rate by setting
+        This will swap rows between elective admissions and daycases into either daycases or
+        outpatients, based on the given parameter values. We have a baseline target rate, this is
+        the rate in the baseline that rows are of the given target type (i.e. either daycase,
+        outpatients, daycase or outpatients). Our interval will alter the target_rate by setting
         some rows which are not the target type to be the target type.
 
-        Rows that are converted to daycase have the patient classification set to 2. Rows that are converted to outpatients
-        have a patient classification of -1 (these rows need to be filtered out of the inpatients results and added to the
-        outpatients results).
+        Rows that are converted to daycase have the patient classification set to 2. Rows that are
+        converted to outpatients have a patient classification of -1 (these rows need to be filtered
+        out of the inpatients results and added to the outpatients results).
 
         Rows that are modelled away from elective care have the length of stay fixed to 0 days.
         """
@@ -149,9 +152,9 @@ class InpatientsModel(Model):
             left_index=True,
             right_index=True,
         )
-        # convert the factor value to be the amount we need to adjust the non-target type to to make the target rate equal
-        # too the factor value
-        r = (
+        # convert the factor value to be the amount we need to adjust the non-target type to to make
+        # the target rate equal too the factor value
+        factor = (
             (bads_df["losr_f"] - bads_df["baseline_target_rate"])
             / (1 - bads_df["baseline_target_rate"])
         ).apply(inrange)
@@ -159,23 +162,25 @@ class InpatientsModel(Model):
         #   - staying where we are  [0.0, u0)
         #   - moving to daycase     [u0,  u1)
         #   - moving to outpatients (u1,  1.0]
-        u1 = bads_df["op_dc_split"] * r
-        u2 = (1 - bads_df["op_dc_split"]) * r
-        u0 = 1 - u1 - u2
+        ur1 = bads_df["op_dc_split"] * factor
+        ur2 = (1 - bads_df["op_dc_split"]) * factor
+        ur0 = 1 - ur1 - ur2
         # we now create a random value for each row in [0, 1]
-        x = rng.uniform(size=len(r))
+        rvr = rng.uniform(size=len(factor))
         # we can use this random value to update the patient class column appropriately
-        bads_df.loc[(x >= u0) & (x < u0 + u1), "classpat"] = "2"  # row becomes daycase
-        bads_df.loc[(x >= u0 + u1), "classpat"] = "-1"  # row becomes outpatients
+        bads_df.loc[
+            (rvr >= ur0) & (rvr < ur0 + ur1), "classpat"
+        ] = "2"  # row becomes daycase
+        bads_df.loc[(rvr >= ur0 + ur1), "classpat"] = "-1"  # row becomes outpatients
         # we now need to apply these changes to the actual data
-        s = losr.index[i]
-        data.loc[s, "classpat"] = bads_df["classpat"]
-        data.loc[s, "speldur"] *= (
-            data.loc[s, "classpat"] == 1
+        i = losr.index[i]
+        data.loc[i, "classpat"] = bads_df["classpat"]
+        data.loc[i, "speldur"] *= (
+            data.loc[i, "classpat"] == 1
         )  # set the speldur to 0 if we aren't inpatients
         return data
 
-    def _losr_to_zero(self, data, losr, rng, type):
+    def _losr_to_zero(self, data, losr, rng, losr_type):
         """
         Length of Stay Reduction: To Zero Day LoS
 
@@ -188,10 +193,10 @@ class InpatientsModel(Model):
 
         Updates the length of stay to 0 for a given percentage of rows.
         """
-        s = losr.index[losr.type == type]
-        n = len(data.loc[s, "speldur"])
-        data.loc[s, "speldur"] *= (
-            rng.uniform(size=n) >= losr.loc[data.loc[s].index, "losr_f"]
+        i = losr.index[losr.type == losr_type]
+        nrow = len(data.loc[i, "speldur"])
+        data.loc[i, "speldur"] *= (
+            rng.uniform(size=nrow) >= losr.loc[data.loc[i].index, "losr_f"]
         )
         return data
 
@@ -200,7 +205,8 @@ class InpatientsModel(Model):
         """
         Run the model once
 
-        * model_run: the number of the model to run. This set's the random seed so the results are reproducible
+        * model_run: the number of the model to run. This set's the random seed so the results are
+          reproducible
 
         returns: a tuple of the selected varient and the updated DataFrame
         """
@@ -209,22 +215,21 @@ class InpatientsModel(Model):
             lambda: 1, run_params["strategy_params"]["admission_avoidance"]
         )
         # select strategies
-        admission_avoidance = self._random_strategy(rng, data, "admission_avoidance")
-        los_reduction = self._random_strategy(rng, data, "los_reduction")
+        admission_avoidance = self._random_strategy(rng, "admission_avoidance")
+        los_reduction = self._random_strategy(rng, "los_reduction")
         # get length of stay reduction factors
         losr = self._los_reduction(run_params)
-        # Admission Avoidance ----------------------------------------------------------------------------------------------
+        # Admission Avoidance ----------------------------------------------------------------------
         factor_a = np.array([ada[k] for k in admission_avoidance[data.index]])
         # waiting list adjustments
         factor_w = self._waiting_list_adjustment(data)
         # create a single factor for how many times to select that row
-        n = rng.poisson(data["factor"].to_numpy() * hsa_f * factor_a * factor_w)
+        i = rng.poisson(data["factor"].to_numpy() * hsa_f * factor_a * factor_w)
         # drop columns we don't need and repeat rows n times
-        data = data.loc[data.index.repeat(n)].drop(["factor"], axis="columns")
+        data = data.loc[data.index.repeat(i)].drop(["factor"], axis="columns")
         data.reset_index(inplace=True)
-        # LoS Reduction ----------------------------------------------------------------------------------------------------
+        # LoS Reduction ----------------------------------------------------------------------------
         # set the index for easier querying
-        los_reduction = self._random_strategy(rng, data, "los_reduction")
         data.set_index(los_reduction[data["rn"]], inplace=True)
         # run each of the length of stay reduction strategies
         data = self._losr_all(data, losr, rng)
@@ -241,38 +246,40 @@ class InpatientsModel(Model):
             lambda: 1, run_params["strategy_params"]["admission_avoidance"]
         )
         # select strategies
-        admission_avoidance = self._random_strategy(rng, data, "admission_avoidance")
-        los_reduction = self._random_strategy(rng, data, "los_reduction")
+        admission_avoidance = self._random_strategy(rng, "admission_avoidance")
+        los_reduction = self._random_strategy(rng, "los_reduction")
         # choose length of stay reduction factors
         losr = self._los_reduction(run_params)
         #
         step_counts = {"baseline": len(data.index)}
         #
-        def f(thing, name):
+        def run_step(thing, name):
             nonlocal data, step_counts
-            n = rng.poisson(thing)
-            step_counts[name] = sum(n) - len(data.index)
-            data = data.loc[data.index.repeat(n)].reset_index(drop=True)
+            select_row_n_times = rng.poisson(thing)
+            step_counts[name] = sum(select_row_n_times) - len(data.index)
+            data = data.loc[data.index.repeat(select_row_n_times)].reset_index(
+                drop=True
+            )
 
         # before we do anything, reset the index to keep the row number
         data.reset_index(inplace=True)
         # first, run hsa as we have the factor already created
-        f(hsa_f, "health_status_adjustment")
+        run_step(hsa_f, "health_status_adjustment")
         # then, demographic modelling
-        f(data["factor"].to_numpy(), "population_factors")
+        run_step(data["factor"].to_numpy(), "population_factors")
         data.drop(["factor"], axis="columns", inplace=True)
         # waiting list adjustments
-        f(self._waiting_list_adjustment(data), "waiting_list_adjustment")
-        # Admission Avoidance ----------------------------------------------------------------------------------------------
+        run_step(self._waiting_list_adjustment(data), "waiting_list_adjustment")
+        # Admission Avoidance ----------------------------------------------------------------------
         aac = -admission_avoidance[data["rn"]].value_counts()
-        a = [ada[k] for k in admission_avoidance[data["rn"]]]
-        n = rng.poisson(a)
-        step_counts["admission_avoidance"] = sum(n)
-        data = data.loc[data.index.repeat(n)].reset_index(drop=True)
+        aaf = [ada[k] for k in admission_avoidance[data["rn"]]]
+        select_row_n_times = rng.poisson(aaf)
+        step_counts["admission_avoidance"] = sum(select_row_n_times)
+        data = data.loc[data.index.repeat(select_row_n_times)].reset_index(drop=True)
         aac += admission_avoidance[data["rn"]].value_counts()
         step_counts["admission_avoidance"] = aac.to_dict()
         # done with row count adjustment
-        # LoS Reduction ----------------------------------------------------------------------------------------------------
+        # LoS Reduction ----------------------------------------------------------------------------
         # set the index for easier querying
         data.set_index(los_reduction[data["rn"]], inplace=True)
         # run each of the length of stay reduction strategies
