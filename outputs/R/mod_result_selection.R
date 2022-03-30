@@ -49,32 +49,11 @@ mod_result_selection_server <- function(id) {
       shiny::updateSelectInput(session, "model_run", choices = model_runs)
     })
 
-    data <- reactive({
+    data_path <- reactive({
       mr <- req(input$model_run)
-      arrow::read_parquet(file.path(mr, "model_results.parquet")) |>
-        # remove any "__.__" columns, these are usually pandas indexes
-        dplyr::select(-tidyselect::matches("^\\_{2}.*\\_{2}$")) |>
-        dplyr::mutate(
-          dplyr::across(
-            .data$age_group,
-            forcats::fct_relevel,
-            "0-4",
-            "5-14",
-            "15-34",
-            "35-49",
-            "50-64",
-            "65-84",
-            "85+"
-          )
-        )
+      return(mr)
     })
 
-    return(data)
+    return(data_path)
   })
 }
-
-## To be copied in the UI
-# mod_result_selection_ui("result_selection_ui_1")
-
-## To be copied in the server
-# mod_result_selection_server("result_selection_ui_1")

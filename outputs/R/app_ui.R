@@ -21,6 +21,10 @@ app_ui <- function(request) {
         text = "Detailed",
         tabName = "tab_pd"
       ),
+      menuItem(
+        text = "Change Factors",
+        tabName = "tab_pcf"
+      ),
       sidebarHeader("Model Results"),
       menuItem(
         text = "Core Activity",
@@ -42,6 +46,10 @@ app_ui <- function(request) {
       tabItem(
         tabName = "tab_pd",
         mod_principal_detailed_ui("principal_detailed")
+      ),
+      tabItem(
+        tabName = "tab_pcf",
+        mod_principal_change_factor_effects_ui("principal_change_factor_effects")
       ),
       tabItem(
         tabName = "tab_mc",
