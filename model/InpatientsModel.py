@@ -296,6 +296,8 @@ class InpatientsModel(Model):
         data = self._losr_to_zero(data, losr, rng, "aec")
         data = self._losr_to_zero(data, losr, rng, "preop")
         data = self._losr_bads(data, losr, rng)
+        #
+        step_counts["outpatient_conversion"] = -np.sum(data["classpat"] == "-1")
         # return the data (select just the columns we have updated in modelling)
         return (
             step_counts,
