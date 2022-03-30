@@ -71,9 +71,14 @@ mod_model_core_activity_server <- function(id, data) {
           "measure_display" = "Measure",
           "baseline" = "Baseline",
           "mean" = "Central Estimate",
-          "lwr.ci" = "95% Lower CI",
-          "upr.ci" = "95% Upper CI"
-        )
+          "lwr.ci" = "Lower",
+          "upr.ci" = "Upper"
+        ) |>
+        gt::tab_spanner(
+          "95% Confidence Interval",
+          c("lwr.ci", "upr.ci")
+        ) |>
+        gt_theme()
     })
   })
 }
