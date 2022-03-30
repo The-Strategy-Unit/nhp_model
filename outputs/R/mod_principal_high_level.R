@@ -119,7 +119,8 @@ mod_principal_high_level_server <- function(id, data) {
         gt::cols_label(
           "pod" = ""
         ) |>
-        gt::fmt_integer(tidyselect::matches("\\d{4}/\\d{2}"))
+        gt::fmt_integer(tidyselect::matches("\\d{4}/\\d{2}")) |>
+        gt_theme()
     })
 
     plot_fn <- function(data, activity_type) {
