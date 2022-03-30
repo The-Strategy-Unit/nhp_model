@@ -1,8 +1,8 @@
-import pyarrow.parquet as pq
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pyarrow.parquet as pq
 
-from model.helpers import rnorm, inrange
+from model.helpers import inrange, rnorm
 from model.Model import Model
 
 
@@ -39,11 +39,15 @@ class OutpatientsModel(Model):
         pd.set_option("mode.chained_assignment", None)
         # create a value for converting attendances into tele attendances for each row
         # the value will be a random binomial value, i.e. we will convert between 0 and attendances into tele attendances
+        # find locations of rows that didn't have procedures
+        npix = ~data["has_procedures"]
         p = run_params["convert_to_tele"]
-        tc = np.random.binomial(data["attendances"], [p[t] for t in data["type"]])
+        tc = np.random.binomial(
+            data.loc[npix, "attendances"], [p[t] for t in data.loc[npix, "type"]]
+        )
         # update the columns, subtracting tc from one, adding tc to the other (we maintain the number of overall attendances)
-        data.loc[:, "attendances"] -= tc
-        data.loc[:, "tele_attendances"] += tc
+        data.loc[npix, "attendances"] -= tc
+        data.loc[npix, "tele_attendances"] += tc
         # restore chained assignment warnings
         pd.set_option("mode.chained_assignment", o)
 
