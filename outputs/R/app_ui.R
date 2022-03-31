@@ -2,69 +2,68 @@
 #'
 #' @param request Internal parameter for `{shiny}`.
 #'     DO NOT REMOVE.
-#' @import bs4Dash
 #' @noRd
 app_ui <- function(request) {
-  header <- dashboardHeader(title = "NHP Model Results")
+  header <- bs4Dash::dashboardHeader(title = "NHP Model Results")
 
-  sidebar <- dashboardSidebar(
-    sidebarMenu(
+  sidebar <- bs4Dash::dashboardSidebar(
+    bs4Dash::sidebarMenu(
       id = "sidebarMenu",
-      sidebarHeader("Model Run Selection"),
+      bs4Dash::sidebarHeader("Model Run Selection"),
       mod_result_selection_ui("result_selection"),
-      sidebarHeader("Principal Projection"),
-      menuItem(
+      bs4Dash::sidebarHeader("Principal Projection"),
+      bs4Dash::menuItem(
         text = "High Level",
         tabName = "tab_phl"
       ),
-      menuItem(
+      bs4Dash::menuItem(
         text = "Detailed",
         tabName = "tab_pd"
       ),
-      menuItem(
+      bs4Dash::menuItem(
         text = "Change Factors",
         tabName = "tab_pcf"
       ),
-      sidebarHeader("Model Results"),
-      menuItem(
+      bs4Dash::sidebarHeader("Model Results"),
+      bs4Dash::menuItem(
         text = "Core Activity",
         tabName = "tab_mc"
       ),
-      menuItem(
+      bs4Dash::menuItem(
         text = "Results Distribution",
         tabName = "tab_md"
       )
     )
   )
 
-  body <- dashboardBody(
-    tabItems(
-      tabItem(
+  body <- bs4Dash::dashboardBody(
+    bs4Dash::tabItems(
+      bs4Dash::tabItem(
         tabName = "tab_phl",
         mod_principal_high_level_ui("principal_high_level")
       ),
-      tabItem(
+      bs4Dash::tabItem(
         tabName = "tab_pd",
         mod_principal_detailed_ui("principal_detailed")
       ),
-      tabItem(
+      bs4Dash::tabItem(
         tabName = "tab_pcf",
         mod_principal_change_factor_effects_ui("principal_change_factor_effects")
       ),
-      tabItem(
+      bs4Dash::tabItem(
         tabName = "tab_mc",
         mod_model_core_activity_ui("model_core_activity")
       ),
-      tabItem(
+      bs4Dash::tabItem(
         tabName = "tab_md",
         mod_model_results_distribution_ui("model_results_distribution")
       )
     )
   )
 
-  tagList(
+  shiny::tagList(
     golem_add_external_resources(),
-    dashboardPage(
+    bs4Dash::dashboardPage(
       header,
       sidebar,
       body
@@ -79,13 +78,13 @@ app_ui <- function(request) {
 #' @importFrom golem add_resource_path activate_js favicon bundle_resources
 #' @noRd
 golem_add_external_resources <- function() {
-  add_resource_path(
+  golem::add_resource_path(
     "www", app_sys("app/www")
   )
 
-  tags$head(
-    favicon(),
-    bundle_resources(
+  shiny::tags$head(
+    golem::favicon(),
+    golem::bundle_resources(
       path = app_sys("app/www"),
       app_title = "outputs"
     )

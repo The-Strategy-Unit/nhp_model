@@ -8,11 +8,11 @@
 #'
 #' @importFrom shiny NS tagList
 mod_principal_high_level_ui <- function(id) {
-  ns <- NS(id)
-  tagList(
-    h1("High level activity estimates (principal projection)"),
-    fluidRow(
-      box(
+  ns <- shiny::NS(id)
+  shiny::tagList(
+    shiny::h1("High level activity estimates (principal projection)"),
+    shiny::fluidRow(
+      bs4Dash::box(
         title = "Activity Estimates",
         shinycssloaders::withSpinner(
           gt::gt_output(ns("activity"))
@@ -20,22 +20,22 @@ mod_principal_high_level_ui <- function(id) {
         width = 12
       )
     ),
-    fluidRow(
-      box(
+    shiny::fluidRow(
+      bs4Dash::box(
         title = "A&E Attendances",
         shinycssloaders::withSpinner(
           plotly::plotlyOutput(ns("aae"))
         ),
         width = 4
       ),
-      box(
+      bs4Dash::box(
         title = "Inpatient Admissions",
         shinycssloaders::withSpinner(
           plotly::plotlyOutput(ns("ip"))
         ),
         width = 4
       ),
-      box(
+      bs4Dash::box(
         title = "Outpatient Attendances",
         shinycssloaders::withSpinner(
           plotly::plotlyOutput(ns("op"))
@@ -50,9 +50,7 @@ mod_principal_high_level_ui <- function(id) {
 #'
 #' @noRd
 mod_principal_high_level_server <- function(id, data) {
-  moduleServer(id, function(input, output, session) {
-    ns <- session$ns
-
+  shiny::moduleServer(id, function(input, output, session) {
     START_YEAR <- 2018
     END_YEAR <- 2029
 

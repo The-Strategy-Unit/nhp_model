@@ -8,7 +8,7 @@ app_server <- function(input, output, session) {
   # this module returns a reactive which contains the data path
   data_path <- mod_result_selection_server("result_selection")
   data <- reactive({
-    p <- req(data_path())
+    p <- shiny::req(data_path())
     arrow::read_parquet(file.path(p, "model_results.parquet")) |>
       dplyr::as_tibble() |>
       dplyr::mutate(
@@ -26,7 +26,7 @@ app_server <- function(input, output, session) {
       )
   })
   change_factors <- reactive({
-    p <- req(data_path())
+    p <- shiny::req(data_path())
     cf <- jsonlite::read_json(file.path(p, "ip_principal_change_factors.json"))
 
     aa <- cf$admission_avoidance |>
