@@ -59,12 +59,9 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
           across(.data$name, forcats::fct_relevel, "hidden", "value")
         )
 
-      p <- ggplot2::ggplot(d, aes(.data$type, .data$value)) +
+      p <- ggplot2::ggplot(d, aes(.data$value, .data$type)) +
         ggplot2::geom_col(aes(fill = .data$colour), show.legend = FALSE, position = "stack") +
-        ggplot2::scale_fill_identity() +
-        ggplot2::theme(
-          axis.text.x = ggplot2::element_text(angle = 30, hjust = 1)
-        )
+        ggplot2::scale_fill_identity()
 
       plotly::ggplotly(p) |>
         plotly::layout(showlegend = FALSE)
