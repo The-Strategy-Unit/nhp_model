@@ -224,7 +224,7 @@ class Model:  # pylint: disable=too-many-instance-attributes
             f"* save results:  {display_times(save_times)}",
             f"* total elapsed: {display_times(total_times)}",
             "=" * 80,
-            sep="\n",
+            sep=os.linesep,
         )
 
     #
@@ -253,7 +253,7 @@ class Model:  # pylint: disable=too-many-instance-attributes
             # for the principal run, select the most probable variant
             "variant": [self._variants[np.argmax(self._probabilities)]]
             + rng.choice(
-                self._variants, model_runs - 1, params=self._probabilities
+                self._variants, model_runs - 1, p=self._probabilities
             ).tolist(),
             "seeds": rng.integers(0, 65535, model_runs).tolist(),
             "health_status_adjustment": [
