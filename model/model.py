@@ -1,3 +1,9 @@
+"""
+Model Module
+
+Implements the generic class for all other model types.
+"""
+
 import json
 import os
 import pickle
@@ -13,39 +19,42 @@ from tqdm import tqdm
 from model.helpers import inrange, rnorm
 
 
-class Model:
+class Model:  # pylint: disable=too-many-instance-attributes
     """
     Inpatients Model
 
     * results_path: where the data is stored
 
-    This is a generic implementation of the model. Specific implementations of the model inherit from this class.
+    This is a generic implementation of the model. Specific implementations of the model inherit
+    from this class.
 
-    In order to run the model you need to pass the path to where the parameters json file is stored. This path should be
-    of the form: {dataset_name}/{results}/{model_name}/{model_run_datetime}
+    In order to run the model you need to pass the path to where the parameters json file is stored.
+    This path should be of the form: {dataset_name}/{results}/{model_name}/{model_run_datetime}
 
-    Once the object is constructed you can call either m.run() to run the model and return the data, or
-    m.save_run() to run the model and save the results.
+    Once the object is constructed you can call either m.run() to run the model and return the data,
+    or m.save_run() to run the model and save the results.
 
-    You can also call m.multi_model_run() to run multiple iterations of the model in parallel, saving the results to disk
-    to use later.
+    You can also call m.multi_model_run() to run multiple iterations of the model in parallel,
+    saving the results to disk to use later.
     """
 
-    def __init__(self, results_path, columns_to_load=None):
+    def __init__(self, model_type, results_path, columns_to_load=None):
+        self._model_type = model_type
         # load the parameters file
-        with open(f"{results_path}/params.json", "r") as f:
-            self._params = json.load(f)
+        with open(f"{results_path}/params.json", "r", encoding="UTF-8") as params_file:
+            self._params = json.load(params_file)
         # store the path where the data is stored and the results are stored
         self._path = str(Path(results_path).parent.parent.parent)
         self._results_path = results_path
         #
         # load the data that's shared across different model types
         #
-        with open(f"{self._path}/hsa_gams.pkl", "rb") as f:
-            self._hsa_gams = pickle.load(f)
-        self._load_demog_factors()  # load the data. we only need some of the columns for the model, so just load what we need
+        with open(f"{self._path}/hsa_gams.pkl", "rb") as hsa_pkl:
+            self._hsa_gams = pickle.load(hsa_pkl)
+        self._load_demog_factors()
+        # load the data. we only need some of the columns for the model, so just load what we need
         data = (
-            self._load_parquet(self._MODEL_TYPE, columns_to_load)
+            self._load_parquet(self._model_type, columns_to_load)
             # merge the demographic factors to the data
             .merge(
                 self._demog_factors, left_on=["age", "sex"], right_index=True
@@ -64,8 +73,8 @@ class Model:
         """
         Randomly select a single variant to use for a model run
         """
-        v = rng.choice(self._variants, p=self._probabilities)
-        return (v, self._data[v])
+        variant = rng.choice(self._variants, p=self._probabilities)
+        return (variant, self._data[variant])
 
     #
     def _load_demog_factors(self):
@@ -73,19 +82,21 @@ class Model:
         start_year = dfp.get("start_year", "2018")
         end_year = dfp.get("end_year", "2043")
         #
-        df = pd.read_csv(os.path.join(self._path, dfp["file"]))
-        df[["age", "sex"]] = df[["age", "sex"]].astype(int)
-        df["factor"] = df[end_year] / df[start_year]
-        self._demog_factors = df.set_index(["age", "sex"])[["variant", "factor"]]
+        demog_factors = pd.read_csv(os.path.join(self._path, dfp["file"]))
+        demog_factors[["age", "sex"]] = demog_factors[["age", "sex"]].astype(int)
+        demog_factors["factor"] = demog_factors[end_year] / demog_factors[start_year]
+        self._demog_factors = demog_factors.set_index(["age", "sex"])[
+            ["variant", "factor"]
+        ]
         #
         self._variants = list(dfp["variant_probabilities"].keys())
         self._probabilities = list(dfp["variant_probabilities"].values())
 
     #
     def _health_status_adjustment(self, data, run_params):
-        p = self._params["health_status_adjustment"]
+        params = self._params["health_status_adjustment"]
         #
-        ages = np.arange(p["min_age"], p["max_age"] + 1)
+        ages = np.arange(params["min_age"], params["max_age"] + 1)
         adjusted_ages = ages - run_params["health_status_adjustment"]
         hsa = pd.concat(
             [
@@ -122,12 +133,17 @@ class Model:
         ).to_pandas()
 
     #
-    def _factor_helper(self, data, params, column_values):
-        f = {k: [v] * len(params) for k, v in column_values.items()}
-        f["hsagrp"] = [f"aae_{k}" for k in params.keys()]
-        f["f"] = params.values()
-        f = pd.DataFrame(f)
-        return data.merge(f, how="left", on=list(f.columns[:-1])).f.fillna(1).to_numpy()
+    @staticmethod
+    def _factor_helper(data, params, column_values):
+        factor = {k: [v] * len(params) for k, v in column_values.items()}
+        factor["hsagrp"] = [f"aae_{k}" for k in params.keys()]
+        factor["f"] = params.values()
+        factor = pd.DataFrame(factor)
+        return (
+            data.merge(factor, how="left", on=list(factor.columns[:-1]))
+            .f.fillna(1)
+            .to_numpy()
+        )
 
     #
     def save_run(self, model_run):
@@ -138,46 +154,53 @@ class Model:
 
         returns: a tuple containing the time to run the model, and the time to save the results
         """
-        t0 = time()
+        start = time()
         mr_data = self.run(model_run)
-        t1 = time()
+        end_mr = time()
         principal_change_factors = None
-        if type(mr_data) == tuple:
+        if isinstance(mr_data, tuple):
             principal_change_factors, mr_data = mr_data
         #
-        results_path = f"{self._results_path}/{self._MODEL_TYPE}/model_run={model_run}"
+        results_path = f"{self._results_path}/{self._model_type}/model_run={model_run}"
         if not os.path.exists(results_path):
             os.makedirs(results_path)
         if principal_change_factors is not None:
             # handle encoding of numpy values (source: https://stackoverflow.com/a/65151218/4636789)
-            def np_encoder(object):
-                if isinstance(object, np.generic):
-                    return object.item()
+            def np_encoder(obj):
+                if isinstance(obj, np.generic):
+                    return obj.item()
+                return obj
 
             with open(
-                f"{self._results_path}/{self._MODEL_TYPE}_principal_change_factors.json",
+                f"{self._results_path}/{self._model_type}_principal_change_factors.json",
                 "w",
+                encoding="UTF-8",
             ) as pcf:
                 json.dump(principal_change_factors, pcf, indent=2, default=np_encoder)
         #
         mr_data.to_parquet(f"{results_path}/{model_run}.parquet")
-        t2 = time()
         #
-        return (t1 - t0, t2 - t1)
+        return (end_mr - start, time() - end_mr)
 
     #
     def batch_save(self, model_run, batch_size):
+        """
+        Run a batch of model runs and save the results
+        """
         return [self.save_run(x) for x in range(model_run, model_run + batch_size)]
 
     #
-    def multi_model_runs(self, run_start, model_runs, N_CPUS=1, batch_size=4):
-        print(f"{model_runs} {self._MODEL_TYPE} model runs on {N_CPUS} cpus")
+    def multi_model_runs(self, run_start, model_runs, n_cpus=1, batch_size=4):
+        """
+        Run multiple model runs in parallel
+        """
+        print(f"{model_runs} {self._model_type} model runs on {n_cpus} cpus")
         pbar = tqdm(total=model_runs)
-        with Pool(N_CPUS) as pool:
+        with Pool(n_cpus) as pool:
             results = [
                 pool.apply_async(
                     self.batch_save,
-                    (i, batch_size),
+                    (i, batch_size if i + batch_size <= model_runs else model_runs - i),
                     callback=lambda _: pbar.update(batch_size),
                 )
                 for i in range(run_start, run_start + model_runs, batch_size)
@@ -210,16 +233,16 @@ class Model:
         run_params_path = f"{self._results_path}/run_params.json"
         # load the params if they have previously been created
         if os.path.exists(run_params_path):
-            with open(run_params_path, "r") as f:
-                self._run_params = json.load(f)
+            with open(run_params_path, "r", encoding="UTF-8") as run_params_file:
+                self._run_params = json.load(run_params_file)
                 return
         #
-        p = self._params
-        rng = np.random.default_rng(p["seed"])
-        mr = p["model_runs"] + 1  # add 1 for the principal
+        params = self._params
+        rng = np.random.default_rng(params["seed"])
+        model_runs = params["model_runs"] + 1  # add 1 for the principal
 
-        def f(mr, i, j):
-            if mr == 0:
+        def gen_value(model_run, i, j):
+            if model_run == 0:
                 return (
                     i + j
                 ) / 2  # for the principal projection, just use the midpoint of the interval
@@ -229,48 +252,69 @@ class Model:
         self._run_params = {
             # for the principal run, select the most probable variant
             "variant": [self._variants[np.argmax(self._probabilities)]]
-            + rng.choice(self._variants, mr - 1, p=self._probabilities).tolist(),
-            "seeds": rng.integers(0, 65535, mr).tolist(),
+            + rng.choice(
+                self._variants, model_runs - 1, params=self._probabilities
+            ).tolist(),
+            "seeds": rng.integers(0, 65535, model_runs).tolist(),
             "health_status_adjustment": [
-                [f(m, *i) for m in range(mr + 1)]
-                for i in p["health_status_adjustment"]["intervals"]
+                [gen_value(m, *i) for m in range(model_runs)]
+                for i in params["health_status_adjustment"]["intervals"]
             ],
-            "waiting_list_adjustment": p["waiting_list_adjustment"],
+            "waiting_list_adjustment": params["waiting_list_adjustment"],
             **{
                 k0: {
                     k1: {
                         k2: [
-                            inrange(f(m, *v2["interval"]), *v2.get("range", [0, 1]))
-                            for m in range(mr)
+                            inrange(
+                                gen_value(m, *v2["interval"]), *v2.get("range", [0, 1])
+                            )
+                            for m in range(model_runs)
                         ]
                         for k2, v2 in v1.items()
                     }
-                    for k1, v1 in p[k0].items()
+                    for k1, v1 in params[k0].items()
                 }
                 for k0 in ["strategy_params", "outpatient_factors", "aae_factors"]
             },
         }
         # save the run params
-        with open(run_params_path, "w") as f:
-            json.dump(self._run_params, f)
+        with open(run_params_path, "w", encoding="UTF-8") as run_params_file:
+            json.dump(self._run_params, run_params_file)
 
     #
     def _get_run_params(self, model_run):
-        p = self._run_params
+        """
+        Gets the parameters for a particular model run
+        """
+        params = self._run_params
         return {
-            "variant": p["variant"][model_run],
+            "variant": params["variant"][model_run],
             "health_status_adjustment": [
-                v[model_run] for v in p["health_status_adjustment"]
+                v[model_run] for v in params["health_status_adjustment"]
             ],
-            "seed": p["seeds"][model_run],
+            "seed": params["seeds"][model_run],
             **{
                 k0: {
                     k1: {k2: v2[model_run] for k2, v2 in v1.items()}
-                    for k1, v1 in p[k0].items()
+                    for k1, v1 in params[k0].items()
                 }
                 for k0 in ["strategy_params", "outpatient_factors", "aae_factors"]
             },
         }
+
+    def _run(self, rng, data, run_params, hsa_f):
+        """
+        Model Run
+
+        To be implemented by specific classes
+        """
+
+    def _principal_projection(self, rng, data, run_params, hsa_f):
+        """
+        Principal Projection Run
+
+        To be implemented in specific classes
+        """
 
     #
     def run(self, model_run):
@@ -286,8 +330,8 @@ class Model:
         # hsa
         hsa_f = self._health_status_adjustment(data, run_params)
         # choose which function to use
-        if model_run == 0 and self._MODEL_TYPE == "ip":
-            f = self._principal_projection
+        if model_run == 0 and self._model_type == "ip":
+            run_fn = self._principal_projection
         else:
-            f = self._run
-        return f(rng, data, run_params, hsa_f)
+            run_fn = self._run
+        return run_fn(rng, data, run_params, hsa_f)

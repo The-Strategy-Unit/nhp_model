@@ -1,24 +1,31 @@
+"""
+Inpatients Module
+
+Implements the inpatients model.
+"""
 from collections import defaultdict
 
 import numpy as np
 import pandas as pd
 
 from model.helpers import inrange
-from model.Model import Model
+from model.model import Model
 
 
 class InpatientsModel(Model):
     """
     Inpatients Model
 
+    * results_path: where the data is stored
+
     Implements the model for inpatient data. See `Model()` for documentation on the generic class.
     """
 
-    def __init__(self, results_path):
-        self._MODEL_TYPE = "ip"
+    def __init__(self, results_path: str):
         # call the parent init function
         Model.__init__(
             self,
+            "ip",
             results_path,
             [
                 "rn",
@@ -103,7 +110,8 @@ class InpatientsModel(Model):
         return wlav
 
     #
-    def _losr_all(self, data, losr, rng):
+    @staticmethod
+    def _losr_all(data, losr, rng):
         """
         Length of Stay Reduction: All
 
@@ -123,7 +131,8 @@ class InpatientsModel(Model):
         )
         return data
 
-    def _losr_bads(self, data, losr, rng):
+    @staticmethod
+    def _losr_bads(data, losr, rng):
         """
         Length of Stay Reduction: British Association of Day Surgery
 
@@ -180,7 +189,8 @@ class InpatientsModel(Model):
         )  # set the speldur to 0 if we aren't inpatients
         return data
 
-    def _losr_to_zero(self, data, losr, rng, losr_type):
+    @staticmethod
+    def _losr_to_zero(data, losr, rng, losr_type):
         """
         Length of Stay Reduction: To Zero Day LoS
 
