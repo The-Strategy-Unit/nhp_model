@@ -59,7 +59,7 @@
         "-c=1"
       ],
       "console": "integratedTerminal"
-    }
+    },
     {
       "name": "Python: Run All Models (parallel)",
       "type": "python",
