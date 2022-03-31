@@ -9,14 +9,13 @@ import os
 import pickle
 from multiprocessing import Pool
 from pathlib import Path
-from time import time
 
 import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 from tqdm import tqdm
 
-from model.helpers import inrange, rnorm
+from model.helpers import inrange, np_encoder, rnorm
 
 
 class Model:  # pylint: disable=too-many-instance-attributes
@@ -154,78 +153,55 @@ class Model:  # pylint: disable=too-many-instance-attributes
 
         returns: a tuple containing the time to run the model, and the time to save the results
         """
-        start = time()
-        mr_data = self.run(model_run)
-        end_mr = time()
-        principal_change_factors = None
-        if isinstance(mr_data, tuple):
-            principal_change_factors, mr_data = mr_data
-        #
+        change_factors, mr_data = self.run(model_run)
+        # Save the results
         results_path = f"{self._results_path}/{self._model_type}/model_run={model_run}"
-        if not os.path.exists(results_path):
-            os.makedirs(results_path)
-        if principal_change_factors is not None:
-            # handle encoding of numpy values (source: https://stackoverflow.com/a/65151218/4636789)
-            def np_encoder(obj):
-                if isinstance(obj, np.generic):
-                    return obj.item()
-                return obj
-
-            with open(
-                f"{self._results_path}/{self._model_type}_principal_change_factors.json",
-                "w",
-                encoding="UTF-8",
-            ) as pcf:
-                json.dump(principal_change_factors, pcf, indent=2, default=np_encoder)
-        #
+        os.makedirs(results_path, exist_ok=True)
         mr_data.to_parquet(f"{results_path}/{model_run}.parquet")
-        #
-        return (end_mr - start, time() - end_mr)
+        # Save the change factors, so long as it's not an empty dictionary
+        if change_factors != {}:
+            change_factors_path = (
+                f"{self._results_path}/{self._model_type}_change_factors"
+            )
+            os.makedirs(change_factors_path, exist_ok=True)
+            change_factors_file = f"{change_factors_path}/{model_run}.json"
+            with open(change_factors_file, "w", encoding="UTF-8") as pcf:
+                json.dump(change_factors, pcf, indent=2, default=np_encoder)
+        return model_run
 
     #
-    def batch_save(self, model_run, batch_size):
+    def batch_save(self, i, j, batch_size):
         """
         Run a batch of model runs and save the results
         """
-        return [self.save_run(x) for x in range(model_run, model_run + batch_size)]
+        return [self.save_run(mr) for mr in range(i, min(j, i + batch_size))]
 
     #
     def multi_model_runs(self, run_start, model_runs, n_cpus=1, batch_size=4):
         """
         Run multiple model runs in parallel
         """
-        print(f"{model_runs} {self._model_type} model runs on {n_cpus} cpus")
         pbar = tqdm(total=model_runs)
         with Pool(n_cpus) as pool:
+            run_end = run_start + model_runs
             results = [
                 pool.apply_async(
                     self.batch_save,
-                    (i, batch_size if i + batch_size <= model_runs else model_runs - i),
+                    (
+                        i,
+                        run_end,
+                        batch_size,
+                    ),
                     callback=lambda _: pbar.update(batch_size),
                 )
-                for i in range(run_start, run_start + model_runs, batch_size)
+                for i in range(run_start, run_end, batch_size)
             ]
             pool.close()
             pool.join()
             pbar.close()
-        #
-        times = np.concatenate([r.get() for r in results])
-        run_times = [t[0] for t in times]
-        save_times = [t[1] for t in times]
-        total_times = [t[0] + t[1] for t in times]
-        display_times = (
-            lambda t: f"mean: {np.mean(t):.3f}, range: [{np.min(t):.3f}, {np.max(t):.3f}]"
-        )
-        print(
-            "",
-            "Timings:",
-            "=" * 80,
-            f"* model runs:    {display_times(run_times)}",
-            f"* save results:  {display_times(save_times)}",
-            f"* total elapsed: {display_times(total_times)}",
-            "=" * 80,
-            sep=os.linesep,
-        )
+        # make sure to get the results - if we don't then no errors that occurred will be raised
+        print(f"{sum(len(r.get()) for r in results)} == {model_runs}")
+        assert sum(len(r.get()) for r in results) == model_runs
 
     #
     def _generate_run_params(self):
@@ -309,14 +285,6 @@ class Model:  # pylint: disable=too-many-instance-attributes
         To be implemented by specific classes
         """
 
-    def _principal_projection(self, rng, data, run_params, hsa_f):
-        """
-        Principal Projection Run
-
-        To be implemented in specific classes
-        """
-
-    #
     def run(self, model_run):
         """
         Run the model once
@@ -326,12 +294,8 @@ class Model:  # pylint: disable=too-many-instance-attributes
         # get the run params
         run_params = self._get_run_params(model_run)
         rng = np.random.default_rng(run_params["seed"])
-        data = self._data[run_params["variant"]]
+        data = self._data[run_params["variant"]].copy()
         # hsa
         hsa_f = self._health_status_adjustment(data, run_params)
         # choose which function to use
-        if model_run == 0 and self._model_type == "ip":
-            run_fn = self._principal_projection
-        else:
-            run_fn = self._run
-        return run_fn(rng, data, run_params, hsa_f)
+        return self._run(rng, data, run_params, hsa_f)

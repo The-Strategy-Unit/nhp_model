@@ -60,4 +60,4 @@ class AaEModel(Model):
         data["arrivals"] = rng.poisson(data["arrivals"] * factor)
         data = data[data["arrivals"] > 0]
         # return the data
-        return data[["arrivals"]].reset_index()
+        return ({}, data[["arrivals"]].reset_index())

@@ -83,4 +83,4 @@ class OutpatientsModel(Model):
         # convert attendances to tele attendances
         self._convert_to_tele(data, params)
         # return the data
-        return data[["attendances", "tele_attendances"]].reset_index()
+        return ({}, data[["attendances", "tele_attendances"]].reset_index())

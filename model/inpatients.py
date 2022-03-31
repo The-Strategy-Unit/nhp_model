@@ -109,6 +109,34 @@ class InpatientsModel(Model):
         # return the waiting list adjustment factor series
         return wlav
 
+    def _admission_avoidance_step(self, rng, data, admission_avoidance, run_params):
+        # choose admission avoidance factors
+        ada = defaultdict(
+            lambda: 1, run_params["strategy_params"]["admission_avoidance"]
+        )
+        # work out the number of rows/sum of los before admission avoidance
+        data_aa = data.merge(
+            admission_avoidance, left_on="rn", right_index=True
+        ).groupby("admission_avoidance_strategy")
+        sc_n_aa = data_aa["rn"].agg(len)
+        sc_b_aa = data_aa["speldur"].agg(sum)
+        # then, work out the admission avoidance factors for each row
+        aaf = [ada[k] for k in admission_avoidance[data["rn"]]]
+        # work out how many times to sample each row
+        select_row_n_times = rng.poisson(aaf)
+        # select each row as many times as it was sampeld
+        data = data.loc[data.index.repeat(select_row_n_times)].reset_index(drop=True)
+        # update our number of rows and update step_counts
+        data_aa = data.merge(
+            admission_avoidance, left_on="rn", right_index=True
+        ).groupby("admission_avoidance_strategy")
+        sc_n_aa = data_aa["rn"].agg(len) - sc_n_aa
+        sc_b_aa = data_aa["speldur"].agg(sum) - sc_b_aa
+        return {
+            "rows": sc_n_aa.to_dict(),
+            "beddays": sc_b_aa.to_dict(),
+        }
+
     #
     @staticmethod
     def _losr_all(data, losr, rng):
@@ -125,7 +153,7 @@ class InpatientsModel(Model):
         length of stay as the value for n, and the length of stay reduction factor for that strategy
         as the value for p. This will update the los to be a value between 0 and the original los.
         """
-        i = losr.index[losr.type == "all"]
+        i = losr.index[(losr.type == "all") & (losr.index.isin(data.index))]
         data.loc[i, "speldur"] = rng.binomial(
             data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"]
         )
@@ -212,64 +240,36 @@ class InpatientsModel(Model):
 
     #
     def _run(self, rng, data, run_params, hsa_f):
-        """
-        Run the model once
-
-        * model_run: the number of the model to run. This set's the random seed so the results are
-          reproducible
-
-        returns: a tuple of the selected varient and the updated DataFrame
-        """
-        # choose admission avoidance factors
-        ada = defaultdict(
-            lambda: 1, run_params["strategy_params"]["admission_avoidance"]
-        )
-        # select strategies
-        admission_avoidance = self._random_strategy(rng, "admission_avoidance")
-        los_reduction = self._random_strategy(rng, "los_reduction")
-        # get length of stay reduction factors
-        losr = self._los_reduction(run_params)
-        # Admission Avoidance ----------------------------------------------------------------------
-        factor_a = np.array([ada[k] for k in admission_avoidance[data.index]])
-        # waiting list adjustments
-        factor_w = self._waiting_list_adjustment(data)
-        # create a single factor for how many times to select that row
-        i = rng.poisson(data["factor"].to_numpy() * hsa_f * factor_a * factor_w)
-        # drop columns we don't need and repeat rows n times
-        data = data.loc[data.index.repeat(i)].drop(["factor"], axis="columns")
-        data.reset_index(inplace=True)
-        # LoS Reduction ----------------------------------------------------------------------------
-        # set the index for easier querying
-        data.set_index(los_reduction[data["rn"]], inplace=True)
-        # run each of the length of stay reduction strategies
-        data = self._losr_all(data, losr, rng)
-        data = self._losr_to_zero(data, losr, rng, "aec")
-        data = self._losr_to_zero(data, losr, rng, "preop")
-        data = self._losr_bads(data, losr, rng)
-        # return the data (select just the columns we have updated in modelling)
-        return data.reset_index(drop=True)[["rn", "speldur", "classpat"]]
-
-    #
-    def _principal_projection(self, rng, data, run_params, hsa_f):
-        # choose admission avoidance factors
-        ada = defaultdict(
-            lambda: 1, run_params["strategy_params"]["admission_avoidance"]
-        )
         # select strategies
         admission_avoidance = self._random_strategy(rng, "admission_avoidance")
         los_reduction = self._random_strategy(rng, "los_reduction")
         # choose length of stay reduction factors
         losr = self._los_reduction(run_params)
         #
-        step_counts = {"baseline": len(data.index)}
+        step_counts = {
+            "baseline": {
+                "rows": (sc_n := len(data.index)),  # pylint: disable=unused-variable
+                "beddays": (
+                    sc_b := int(  # pylint: disable=unused-variable
+                        sum(data["speldur"] + 1)
+                    )
+                ),
+            }
+        }
         #
         def run_step(thing, name):
-            nonlocal data, step_counts
+            nonlocal data, step_counts, sc_n, sc_b
             select_row_n_times = rng.poisson(thing)
-            step_counts[name] = sum(select_row_n_times) - len(data.index)
+            # perform the step
             data = data.loc[data.index.repeat(select_row_n_times)].reset_index(
                 drop=True
             )
+            # update the step count values
+            sc_np = int(sum(select_row_n_times))
+            sc_bp = int(sum(data["speldur"] + 1))
+            step_counts[name] = {"rows": sc_np - sc_n, "beddays": sc_bp - sc_bp}
+            # replace the values
+            sc_n, sc_b = sc_np, sc_bp
 
         # before we do anything, reset the index to keep the row number
         data.reset_index(inplace=True)
@@ -281,13 +281,9 @@ class InpatientsModel(Model):
         # waiting list adjustments
         run_step(self._waiting_list_adjustment(data), "waiting_list_adjustment")
         # Admission Avoidance ----------------------------------------------------------------------
-        aac = -admission_avoidance[data["rn"]].value_counts()
-        aaf = [ada[k] for k in admission_avoidance[data["rn"]]]
-        select_row_n_times = rng.poisson(aaf)
-        step_counts["admission_avoidance"] = sum(select_row_n_times)
-        data = data.loc[data.index.repeat(select_row_n_times)].reset_index(drop=True)
-        aac += admission_avoidance[data["rn"]].value_counts()
-        step_counts["admission_avoidance"] = aac.to_dict()
+        step_counts["admission_avoidance"] = self._admission_avoidance_step(
+            rng, data, admission_avoidance, run_params
+        )
         # done with row count adjustment
         # LoS Reduction ----------------------------------------------------------------------------
         # set the index for easier querying
@@ -298,7 +294,9 @@ class InpatientsModel(Model):
         data = self._losr_to_zero(data, losr, rng, "preop")
         data = self._losr_bads(data, losr, rng)
         #
-        step_counts["outpatient_conversion"] = -np.sum(data["classpat"] == "-1")
+        step_counts["outpatient_conversion"] = {
+            "rows": int(-np.sum(data["classpat"] == "-1"))
+        }
         # return the data (select just the columns we have updated in modelling)
         return (
             step_counts,

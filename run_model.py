@@ -14,6 +14,7 @@ will run a single run of the inpatients model, returning the results to display.
 """
 
 import argparse
+import json
 import os
 import time
 
@@ -106,7 +107,9 @@ def main():
             args.type != "all"
         ), "can only debug a single model at a time: make sure to set the --type argument"
         model = models[args.type](args.results_path[0])
-        results = timeit(model.run, args.run_start[0])
+        change_factors, results = timeit(model.run, args.run_start[0])
+        print(json.dumps(change_factors, indent=2))
+        print()
         print(results)
     else:
         for i in models.values():
