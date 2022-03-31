@@ -23,8 +23,6 @@ mod_principal_change_factor_effects_ui <- function(id) {
 #' @noRd
 mod_principal_change_factor_effects_server <- function(id, change_factors) {
   moduleServer(id, function(input, output, session) {
-    ns <- session$ns
-
     change_factors_summarised <- reactive({
       change_factors() |>
         dplyr::group_by(.data$type) |>

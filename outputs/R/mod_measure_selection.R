@@ -36,8 +36,6 @@ mod_measure_selection_ui <- function(id, aggregation = TRUE) {
 #' @noRd
 mod_measure_selection_server <- function(id, data) {
   moduleServer(id, function(input, output, session) {
-    ns <- session$ns
-
     # handle onload
     observe({
       d <- data()
@@ -45,20 +43,20 @@ mod_measure_selection_server <- function(id, data) {
 
       activity_types <- dataset_display |>
         dplyr::semi_join(data(), by = "dataset") |>
-        (\(.x) purrr::set_names(.x[[1]], .x[[2]]))()
+        (function(.x) purrr::set_names(.x[[1]], .x[[2]]))()
 
       shiny::updateSelectInput(session, "activity_type", choices = activity_types)
     })
 
     shiny::observeEvent(input$activity_type, {
       at <- req(input$activity_type)
-      
+
       d <- data() |>
         dplyr::filter(.data$dataset == at)
 
       pods <- pod_display |>
         dplyr::semi_join(d, by = "pod") |>
-        (\(.x) purrr::set_names(.x[[1]], .x[[2]]))()
+        (function(.x) purrr::set_names(.x[[1]], .x[[2]]))()
 
       shiny::updateSelectInput(session, "pod", choices = pods)
     })
@@ -71,7 +69,7 @@ mod_measure_selection_server <- function(id, data) {
 
       measures <- measure_display |>
         dplyr::semi_join(d, by = "measure") |>
-        (\(.x) purrr::set_names(.x[[1]], .x[[2]]))()
+        (function(.x) purrr::set_names(.x[[1]], .x[[2]]))()
 
       shiny::updateSelectInput(session, "measure", choices = measures)
     })
@@ -99,9 +97,3 @@ mod_measure_selection_server <- function(id, data) {
     return(filtered_data)
   })
 }
-
-## To be copied in the UI
-# mod_measure_selection_ui("measure_selection_ui_1")
-
-## To be copied in the server
-# mod_measure_selection_server("measure_selection_ui_1")

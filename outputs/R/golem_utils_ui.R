@@ -7,11 +7,10 @@
 #' @noRd
 #'
 #' @examples
-#' list_to_li(c("a","b"))
-#'
+#' list_to_li(c("a", "b"))
 #' @importFrom shiny tags tagAppendAttributes tagList
-list_to_li <- function(list, class = NULL){
-  if (is.null(class)){
+list_to_li <- function(list, class = NULL) {
+  if (is.null(class)) {
     tagList(
       lapply(
         list,
@@ -34,7 +33,6 @@ list_to_li <- function(list, class = NULL){
     )
     tagList(res)
   }
-
 }
 #' Turn an R list into corresponding HTML paragraph tags
 #'
@@ -46,11 +44,10 @@ list_to_li <- function(list, class = NULL){
 #'
 #' @examples
 #' list_to_p(c("This is the first paragraph", "this is the second paragraph"))
-#'
 #' @importFrom shiny tags tagAppendAttributes tagList
 #'
-list_to_p <- function(list, class = NULL){
-  if (is.null(class)){
+list_to_p <- function(list, class = NULL) {
+  if (is.null(class)) {
     tagList(
       lapply(
         list,
@@ -73,14 +70,13 @@ list_to_p <- function(list, class = NULL){
     )
     tagList(res)
   }
-
 }
 
 #' @importFrom shiny tags tagAppendAttributes tagList
-named_to_li <- function(list, class = NULL){
-  if(is.null(class)){
+named_to_li <- function(list, class = NULL) {
+  if (is.null(class)) {
     res <- mapply(
-      function(x, y){
+      function(x, y) {
         tags$li(
           HTML(
             sprintf("<b>%s:</b> %s", y, x)
@@ -94,7 +90,7 @@ named_to_li <- function(list, class = NULL){
     tagList(res)
   } else {
     res <- mapply(
-      function(x, y){
+      function(x, y) {
         tags$li(
           HTML(
             sprintf("<b>%s:</b> %s", y, x)
@@ -129,10 +125,10 @@ named_to_li <- function(list, class = NULL){
 #' @examples
 #' a <- shiny::tags$p(src = "plop", "pouet")
 #' tagRemoveAttributes(a, "src")
-tagRemoveAttributes <- function(tag, ...) {
+tagRemoveAttributes <- function(tag, ...) { # nolint
   attrs <- as.character(list(...))
   for (i in seq_along(attrs)) {
-    tag$attribs[[ attrs[i] ]] <- NULL
+    tag$attribs[[attrs[i]]] <- NULL
   }
   tag
 }
@@ -150,13 +146,12 @@ tagRemoveAttributes <- function(tag, ...) {
 #' undisplay(a)
 #' b <- shiny::actionButton("go_filter", "go")
 #' undisplay(b)
-#'
 #' @importFrom shiny tagList
 undisplay <- function(tag) {
   # if not already hidden
   if (
     !is.null(tag$attribs$style) &&
-    !grepl("display:\\s+none", tag$attribs$style)
+      !grepl("display:\\s+none", tag$attribs$style)
   ) {
     tag$attribs$style <- paste(
       "display: none;",
@@ -172,7 +167,7 @@ undisplay <- function(tag) {
 display <- function(tag) {
   if (
     !is.null(tag$attribs$style) &&
-    grepl("display:\\s+none", tag$attribs$style)
+      grepl("display:\\s+none", tag$attribs$style)
   ) {
     tag$attribs$style <- gsub(
       "(\\s)*display:(\\s)*none(\\s)*(;)*(\\s)*",
@@ -206,7 +201,6 @@ jq_hide <- function(id) {
 #'
 #' @examples
 #' with_red_star("Enter your name here")
-#'
 #' @importFrom shiny tags HTML
 with_red_star <- function(text) {
   shiny::tags$span(
@@ -232,7 +226,6 @@ with_red_star <- function(text) {
 #'
 #' @examples
 #' rep_br(5)
-#'
 #' @importFrom shiny HTML
 rep_br <- function(times = 1) {
   HTML(rep("<br/>", times = times))
@@ -248,9 +241,8 @@ rep_br <- function(times = 1) {
 #'
 #' @examples
 #' enurl("https://www.thinkr.fr", "ThinkR")
-#'
 #' @importFrom shiny tags
-enurl <- function(url, text){
+enurl <- function(url, text) {
   tags$a(href = url, text)
 }
 
@@ -262,46 +254,46 @@ enurl <- function(url, text){
 #' @noRd
 #'
 #' @importFrom bs4Dash column
-col_12 <- function(...){
+col_12 <- function(...) {
   column(12, ...)
 }
 
 #' @importFrom bs4Dash column
-col_10 <- function(...){
+col_10 <- function(...) {
   column(10, ...)
 }
 
 #' @importFrom bs4Dash column
-col_8 <- function(...){
+col_8 <- function(...) {
   column(8, ...)
 }
 
 #' @importFrom bs4Dash column
-col_6 <- function(...){
+col_6 <- function(...) {
   column(6, ...)
 }
 
 
 #' @importFrom bs4Dash column
-col_4 <- function(...){
+col_4 <- function(...) {
   column(4, ...)
 }
 
 
 #' @importFrom bs4Dash column
-col_3 <- function(...){
+col_3 <- function(...) {
   column(3, ...)
 }
 
 
 #' @importFrom bs4Dash column
-col_2 <- function(...){
+col_2 <- function(...) {
   column(2, ...)
 }
 
 
 #' @importFrom bs4Dash column
-col_1 <- function(...){
+col_1 <- function(...) {
   column(1, ...)
 }
 
@@ -320,24 +312,23 @@ col_1 <- function(...){
 #'
 #' @examples
 #' if (interactive()) {
-#'  library(shiny)
+#'   library(shiny)
 #'
-#'  link <- a(href = "#", "My super link", style = "color: lightblue;")
+#'   link <- a(href = "#", "My super link", style = "color: lightblue;")
 #'
-#'  ui <- fluidPage(
-#'   make_action_button(link, inputId = "mylink")
-#'  )
+#'   ui <- fluidPage(
+#'     make_action_button(link, inputId = "mylink")
+#'   )
 #'
-#'  server <- function(input, output, session) {
-#'    observeEvent(input$mylink, {
-#'     showNotification("Pouic!")
-#'    })
-#'  }
+#'   server <- function(input, output, session) {
+#'     observeEvent(input$mylink, {
+#'       showNotification("Pouic!")
+#'     })
+#'   }
 #'
-#'  shinyApp(ui, server)
-#'
+#'   shinyApp(ui, server)
 #' }
-make_action_button <- function(tag, inputId = NULL) {
+make_action_button <- function(tag, inputId = NULL) { # nolint
   # some obvious checks
   if (!inherits(tag, "shiny.tag")) stop("Must provide a shiny tag.")
   if (!is.null(tag$attribs$class)) {
@@ -374,41 +365,3 @@ make_action_button <- function(tag, inputId = NULL) {
   # return tag
   tag
 }
-
-
-# UNCOMMENT AND USE
-#
-# usethis::use_package("markdown")
-# usethis::use_package("rmarkdown")
-#
-# To use this part of the UI
-#
-#' #' Include Content From a File
-#' #'
-#' #' Load rendered RMarkdown from a file and turn into HTML.
-#' #'
-#' #' @rdname includeRMarkdown
-#' #' @export
-#' #'
-#' #' @importFrom rmarkdown render
-#' #' @importFrom markdown markdownToHTML
-#' #' @importFrom shiny HTML
-#' includeRMarkdown <- function(path){
-#'
-#'   md <- tempfile(fileext = '.md')
-#'
-#'   on.exit(unlink(md),add = TRUE)
-#'
-#'   rmarkdown::render(
-#'     path,
-#'     output_format = 'md_document',
-#'     output_dir = tempdir(),
-#'     output_file = md,quiet = TRUE
-#'     )
-#'
-#'   html <- markdown::markdownToHTML(md, fragment.only = TRUE)
-#'
-#'   Encoding(html) <- "UTF-8"
-#'
-#'   return(HTML(html))
-#' }

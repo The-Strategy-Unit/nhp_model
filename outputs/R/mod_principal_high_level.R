@@ -51,10 +51,10 @@ mod_principal_high_level_ui <- function(id) {
 #' @noRd
 mod_principal_high_level_server <- function(id, data) {
   shiny::moduleServer(id, function(input, output, session) {
-    START_YEAR <- 2018
-    END_YEAR <- 2029
+    start_year <- 2018
+    end_year <- 2029
 
-    fyear_str <- \(y) glue::glue("{y}/{(y + 1) %% 100}")
+    fyear_str <- function(y) glue::glue("{y}/{(y + 1) %% 100}")
 
     summary_data <- reactive({
       d <- data() |>
@@ -90,11 +90,11 @@ mod_principal_high_level_server <- function(id, data) {
         dplyr::count(.data$pod, .data$type, wt = .data$value) |>
         dplyr::mutate(
           dplyr::across(.data$pod, forcats::fct_relevel, sort),
-          year = ifelse(.data$type == "baseline", START_YEAR, END_YEAR)
+          year = ifelse(.data$type == "baseline", start_year, end_year)
         ) |>
         dplyr::select(-.data$type) |>
         tidyr::complete(
-          year = seq(START_YEAR, END_YEAR),
+          year = seq(start_year, end_year),
           .data$pod
         ) |>
         dplyr::group_by(.data$pod) |>
@@ -131,7 +131,7 @@ mod_principal_high_level_server <- function(id, data) {
         ggplot2::geom_point() +
         ggplot2::scale_x_continuous(
           labels = fyear_str,
-          breaks = seq(START_YEAR, END_YEAR, 2)
+          breaks = seq(start_year, end_year, 2)
         ) +
         ggplot2::scale_y_continuous(
           labels = scales::comma

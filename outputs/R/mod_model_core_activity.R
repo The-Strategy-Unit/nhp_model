@@ -21,8 +21,6 @@ mod_model_core_activity_ui <- function(id) {
 #' @noRd
 mod_model_core_activity_server <- function(id, data) {
   moduleServer(id, function(input, output, session) {
-    ns <- session$ns
-
     summarised_data <- reactive({
       inner_join(
         data() |>

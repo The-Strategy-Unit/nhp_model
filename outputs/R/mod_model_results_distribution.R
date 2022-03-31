@@ -23,8 +23,6 @@ mod_model_results_distribution_ui <- function(id) {
 #' @noRd
 mod_model_results_distribution_server <- function(id, data) {
   moduleServer(id, function(input, output, session) {
-    ns <- session$ns
-
     filtered_data <- mod_measure_selection_server("measure_selection", data)
 
     selected_data <- reactive({
