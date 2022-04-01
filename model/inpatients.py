@@ -267,7 +267,7 @@ class InpatientsModel(Model):
             # update the step count values
             sc_np = int(sum(select_row_n_times))
             sc_bp = int(sum(data["speldur"] + 1))
-            step_counts[name] = {"rows": sc_np - sc_n, "beddays": sc_bp - sc_bp}
+            step_counts[name] = {"rows": sc_np - sc_n, "beddays": sc_bp - sc_b}
             # replace the values
             sc_n, sc_b = sc_np, sc_bp
 
