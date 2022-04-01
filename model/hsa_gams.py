@@ -1,22 +1,31 @@
-import numpy as np
+"""
+Health Status Adjustment GAMs
+
+This file is used to generate the GAMs for Health Status Adjustment.
+"""
+
 import os
-import sys
-import pandas as pd
 import pickle
+import sys
+
+import pandas as pd
 import pyarrow.parquet as pq
-from janitor import complete
 from pygam import GAM
 
 
-def create_gams(p, pop, file, ignored_hsagrps=[]):
+def create_gams(path_fn, pop, file, ignored_hsagrps=None):
+    """
+    Create GAMs
+    """
     print(f"Creating gams: {file}")
-    df = pq.read_pandas(p(f"{file}.parquet")).to_pandas()
-    df = df[~df["hsagrp"].isin(ignored_hsagrps)]
-    df = df[df["age"] >= 18]
-    df = df[df["age"] <= 90]
+    dfr = pq.read_pandas(path_fn(f"{file}.parquet")).to_pandas()
+    if ignored_hsagrps is not None:
+        dfr = dfr[~dfr["hsagrp"].isin(ignored_hsagrps)]
+    dfr = dfr[dfr["age"] >= 18]
+    dfr = dfr[dfr["age"] <= 90]
     #
-    df = (
-        df.groupby(["age", "sex", "hsagrp"])
+    dfr = (
+        dfr.groupby(["age", "sex", "hsagrp"])
         .size()
         .reset_index(name="n")
         .complete({"age": range(18, 91)}, "sex", "hsagrp")
@@ -24,25 +33,24 @@ def create_gams(p, pop, file, ignored_hsagrps=[]):
         .sort_values(["age", "sex", "hsagrp"])
         .merge(pop, on=["age", "sex"])
     )
-    df["activity_rate"] = df["n"] / df["base_year"]
+    dfr["activity_rate"] = dfr["n"] / dfr["base_year"]
     #
-    return (
-        df,
-        {
-            k: GAM().gridsearch(v[["age"]].to_numpy(), v["activity_rate"].to_numpy())
-            for k, v in tuple(df.groupby(["hsagrp", "sex"]))
-        },
-    )
+    return {
+        k: GAM().gridsearch(v[["age"]].to_numpy(), v["activity_rate"].to_numpy())
+        for k, v in tuple(dfr.groupby(["hsagrp", "sex"]))
+    }
 
 
-if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        raise "Must provide exactly 2 argument: the path to the data and the base year"
-    path, base_year = sys.argv[1:]
+def main():
+    """Main Method"""
+    assert (
+        len(sys.argv) == 3
+    ), "Must provide exactly 2 argument: the path to the data and the base year"
+    path, base_year = sys.argv[1:]  # pylint: disable=unbalanced-tuple-unpacking
     # create a helper function for creating paths
-    p = lambda f: os.path.join(path, f)
+    path_fn = lambda f: os.path.join(path, f)
     # load the population data
-    pop = pd.read_csv(p("demographic_factors.csv"))
+    pop = pd.read_csv(path_fn("demographic_factors.csv"))
     pop["age"] = pop["age"].clip(upper=90)
     pop = (
         pop[pop["variant"] == "principal"][["sex", "age", str(base_year)]]
@@ -52,11 +60,15 @@ if __name__ == "__main__":
         .reset_index()
     )
     # create the gams
-    _, ip_gams = create_gams(p, pop, "ip", ["birth", "maternity", "paeds"])
-    _, op_gams = create_gams(p, pop, "op")
-    _, aae_gams = create_gams(p, pop, "aae")
-    # combine the gams
-    gams = {**ip_gams, **op_gams}
+    gams = {
+        **create_gams(path_fn, pop, "ip", ["birth", "maternity", "paeds"]),
+        **create_gams(path_fn, pop, "op"),
+        **create_gams(path_fn, pop, "aae"),
+    }
     # save the gams to disk
-    with open(p("hsa_gams.pkl"), "wb") as f:
-        pickle.dump(gams, f)
+    with open(path_fn("hsa_gams.pkl"), "wb") as hsa_pkl:
+        pickle.dump(gams, hsa_pkl)
+
+
+if __name__ == "__main__":
+    main()

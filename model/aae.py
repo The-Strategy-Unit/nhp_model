@@ -1,22 +1,25 @@
-import pyarrow.parquet as pq
-import pandas as pd
-import numpy as np
+"""
+Accident and Emergency Module
 
-from model.helpers import rnorm, inrange
-from model.Model import Model
+Implements the A&E model.
+"""
+
+from model.model import Model
 
 
 class AaEModel(Model):
     """
     Accident and Emergency Model
 
-    Implements the model for accident and emergency data. See `Model()` for documentation on the generic class.
+    * results_path: where the data is stored
+
+    Implements the model for accident and emergency data. See `Model()` for documentation on the
+    generic class.
     """
 
     def __init__(self, results_path):
-        self._MODEL_TYPE = "aae"
         # call the parent init function
-        Model.__init__(self, results_path)
+        Model.__init__(self, "aae", results_path)
 
     #
     def _low_cost_discharged(self, data, run_params):
@@ -45,16 +48,16 @@ class AaEModel(Model):
 
         returns: a tuple of the selected varient and the updated DataFrame
         """
-        p = run_params["aae_factors"]
+        params = run_params["aae_factors"]
         # create a single factor for how many times to select that row
         factor = (
             data["factor"].to_numpy()
             * hsa_f
-            * self._low_cost_discharged(data, p)
-            * self._left_before_seen(data, p)
-            * self._frequent_attenders(data, p)
+            * self._low_cost_discharged(data, params)
+            * self._left_before_seen(data, params)
+            * self._frequent_attenders(data, params)
         )
         data["arrivals"] = rng.poisson(data["arrivals"] * factor)
         data = data[data["arrivals"] > 0]
         # return the data
-        return data[["arrivals"]].reset_index()
+        return ({}, data[["arrivals"]].reset_index())

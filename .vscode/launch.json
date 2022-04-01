@@ -9,7 +9,13 @@
       "type": "python",
       "request": "launch",
       "program": "run_model.py",
-      "args": ["data/synthetic/results/test/20220110_104353", "0", "1", "--debug", "--type=ip"],
+      "args": [
+        "data/synthetic/results/test/20220110_104353",
+        "0",
+        "1",
+        "--debug",
+        "--type=ip"
+      ],
       "console": "integratedTerminal"
     },
     {
@@ -17,7 +23,13 @@
       "type": "python",
       "request": "launch",
       "program": "run_model.py",
-      "args": ["data/synthetic/results/test/20220110_104353", "0", "1", "--debug", "--type=op"],
+      "args": [
+        "data/synthetic/results/test/20220110_104353",
+        "0",
+        "1",
+        "--debug",
+        "--type=op"
+      ],
       "console": "integratedTerminal"
     },
     {
@@ -25,7 +37,27 @@
       "type": "python",
       "request": "launch",
       "program": "run_model.py",
-      "args": ["data/synthetic/results/test/20220110_104353", "0", "1", "--debug", "--type=aae"],
+      "args": [
+        "data/synthetic/results/test/20220110_104353",
+        "0",
+        "1",
+        "--debug",
+        "--type=aae"
+      ],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Python: Run All Principal Projections",
+      "type": "python",
+      "request": "launch",
+      "program": "run_model.py",
+      "args": [
+        "data/synthetic/results/test/20220110_104353",
+        "0",
+        "1",
+        "-b=1",
+        "-c=1"
+      ],
       "console": "integratedTerminal"
     },
     {
@@ -33,7 +65,12 @@
       "type": "python",
       "request": "launch",
       "program": "run_model.py",
-      "args": ["data/synthetic/results/test/20220110_104353", "1", "192", "-b=8"],
+      "args": [
+        "data/synthetic/results/test/20220110_104353",
+        "1",
+        "192",
+        "-b=8"
+      ],
       "console": "integratedTerminal"
     }
   ]
