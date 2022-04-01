@@ -27,28 +27,27 @@ app_server <- function(input, output, session) {
   })
   change_factors <- reactive({
     p <- shiny::req(data_path())
-    cf <- jsonlite::read_json(file.path(p, "ip_principal_change_factors.json"))
-
-    aa <- cf$admission_avoidance |>
-      tibble::enframe(name = "strategy") |>
-      dplyr::mutate(type = "admission_avoidance")
-
-    cf |>
-      purrr::keep(is.numeric) |>
-      tibble::enframe(name = "type") |>
-      dplyr::bind_rows(aa) |>
-      dplyr::mutate(
-        dplyr::across(.data$value, purrr::flatten_dbl),
-        dplyr::across(
-          where(is.character),
-          purrr::compose(
-            forcats::fct_inorder,
-            snakecase::to_title_case
-          )
-        ),
-        dplyr::across(.data$strategy, forcats::fct_recode, "NULL Strategy" = "Null")
+    readr::read_csv(file.path(p, "change_factors.csv"), col_types = "ccddcd") |>
+      dplyr::select(
+        .data$dataset,
+        .data$change_factor,
+        .data$type,
+        .data$model_run,
+        .data$rows,
+        .data$beddays
       ) |>
-      dplyr::relocate(.data$strategy, .after = .data$type)
+      dplyr::mutate(
+        dplyr::across(
+          c(.data$change_factor, .data$type),
+          forcats::fct_inorder
+        ),
+        dplyr::across(
+          c(.data$change_factor, .data$type),
+          forcats::fct_relabel,
+          snakecase::to_title_case
+        ),
+        dplyr::across(.data$type, forcats::fct_recode, "NULL Strategy" = "Null")
+      )
   })
 
   mod_principal_high_level_server("principal_high_level", data)

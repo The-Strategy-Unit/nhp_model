@@ -8,10 +8,10 @@
 #'
 #' @importFrom shiny NS tagList
 mod_principal_change_factor_effects_ui <- function(id) {
-  ns <- NS(id)
-  tagList(
-    h1("Core change factor effects"),
-    h2("Inpatient spell estimated impact (principal projection)"),
+  ns <- shiny::NS(id)
+  shiny::tagList(
+    shiny::h1("Core change factor effects"),
+    shiny::h2("Inpatient spell estimated impact (principal projection)"),
     shinycssloaders::withSpinner(
       plotly::plotlyOutput(ns("change_factors"), height = "600px")
     )
@@ -25,8 +25,12 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
   moduleServer(id, function(input, output, session) {
     change_factors_summarised <- reactive({
       change_factors() |>
-        dplyr::group_by(.data$type) |>
-        dplyr::summarise(dplyr::across(.data$value, sum)) |>
+        dplyr::filter(.data$dataset == "ip", .data$model_run == 0) |>
+        dplyr::group_by(.data$change_factor) |>
+        dplyr::summarise(dplyr::across(c(.data$rows, .data$beddays), sum, na.rm = TRUE)) |>
+        tidyr::pivot_longer(c(.data$rows, .data$beddays)) |>
+        dplyr::filter(.data$name == "rows") |>
+        dplyr::select(-.data$name) |>
         dplyr::mutate(cuvalue = cumsum(.data$value))
     })
 
@@ -35,7 +39,7 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
         dplyr::mutate(
           hidden = tidyr::replace_na(lag(.data$cuvalue) + pmin(.data$value, 0), 0),
           colour = case_when(
-            .data$type == "Baseline" ~ "#686f73",
+            .data$change_factor == "Baseline" ~ "#686f73",
             .data$value >= 0 ~ "#f9bf07",
             TRUE ~ "#2c2825"
           ),
@@ -44,7 +48,7 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
         dplyr::select(-.data$cuvalue) |>
         dplyr::bind_rows(
           dplyr::tibble(
-            type = "Estimate",
+            change_factor = "Estimate",
             value = sum(change_factors_summarised()$value),
             hidden = 0,
             colour = "#ec6555"
@@ -53,11 +57,15 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
         tidyr::pivot_longer(c(.data$value, .data$hidden)) |>
         dplyr::mutate(
           across(.data$colour, ~ ifelse(.data$name == "hidden", NA, .x)),
-          across(.data$type, forcats::fct_inorder),
-          across(.data$name, forcats::fct_relevel, "hidden", "value")
+          across(.data$name, forcats::fct_relevel, "hidden", "value"),
+          across(
+            .data$change_factor,
+            forcats::fct_relevel,
+            rev(c(levels(change_factors()$change_factor), "Estimate"))
+          )
         )
 
-      p <- ggplot2::ggplot(d, aes(.data$value, .data$type)) +
+      p <- ggplot2::ggplot(d, aes(.data$value, .data$change_factor)) +
         ggplot2::geom_col(aes(fill = .data$colour), show.legend = FALSE, position = "stack") +
         ggplot2::scale_fill_identity()
 
