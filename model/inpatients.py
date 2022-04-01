@@ -219,6 +219,8 @@ class InpatientsModel(Model):
         bads_df.loc[(rvr >= ur0 + ur1), "classpat"] = "-1"  # row becomes outpatients
         # we now need to apply these changes to the actual data
         i = losr.index[i]
+        # make sure we only keep values in losr that exist in data
+        i = i[i.isin(data.index)]
         data.loc[i, "classpat"] = bads_df["classpat"]
         # set the speldur to 0 if we aren't inpatients
         data.loc[i, "speldur"] *= data.loc[i, "classpat"] == 1
@@ -252,7 +254,7 @@ class InpatientsModel(Model):
 
         Updates the length of stay to 0 for a given percentage of rows.
         """
-        i = losr.index[losr.type == losr_type]
+        i = losr.index[(losr.type == losr_type) & (losr.index.isin(data.index))]
         pre_los = data.loc[i, "speldur"]
         nrow = len(data.loc[i, "speldur"])
         data.loc[i, "speldur"] *= (
@@ -333,8 +335,6 @@ class InpatientsModel(Model):
     def aggregate(self, model_results):
         """
         Aggregate the model results
-
-        returns a tuple containing the inpatients, outpatients, and a&e results
         """
         model_results["age_group"] = age_groups(model_results["age"])
         # find the rows we need to convert to outpatients
