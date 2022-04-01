@@ -107,10 +107,17 @@ def main():
             args.type != "all"
         ), "can only debug a single model at a time: make sure to set the --type argument"
         model = models[args.type](args.results_path[0])
+        print(
+            "running model:",
+        )
         change_factors, results = timeit(model.run, args.run_start[0])
+        print(
+            "aggregating results:",
+        )
+        agg_results = timeit(model.aggregate, results)
         print(json.dumps(change_factors, indent=2))
         print()
-        print(results)
+        print(agg_results)
     else:
         for i in models.values():
             run_model(

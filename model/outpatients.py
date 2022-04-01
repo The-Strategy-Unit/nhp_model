@@ -7,6 +7,7 @@ Implements the Outpatients model.
 import numpy as np
 import pandas as pd
 
+from model.helpers import age_groups
 from model.model import Model
 
 
@@ -61,7 +62,7 @@ class OutpatientsModel(Model):
         pd.set_option("mode.chained_assignment", options)
 
     #
-    def _run(self, rng, data, run_params, hsa_f):
+    def _run(self, rng, data, run_params, aav_f, hsa_f):
         """
         Run the model once
 
@@ -70,7 +71,7 @@ class OutpatientsModel(Model):
         params = run_params["outpatient_factors"]
         # create a single factor for how many times to select that row
         factor = (
-            data["factor"].to_numpy()
+            aav_f
             * hsa_f
             * self._followup_reduction(data, params)
             * self._consultant_to_consultant_reduction(data, params)
@@ -83,4 +84,30 @@ class OutpatientsModel(Model):
         # convert attendances to tele attendances
         self._convert_to_tele(data, params)
         # return the data
-        return ({}, data[["attendances", "tele_attendances"]].reset_index())
+        return ({}, data.drop(["hsagrp"], axis="columns"))
+
+    def aggregate(self, model_results):
+        """
+        Aggregate the model results
+        """
+        model_results["age_group"] = age_groups(model_results["age"])
+
+        return self._aggregate_op_rows(model_results)
+
+    @staticmethod
+    def _aggregate_op_rows(op_rows):
+        op_rows.loc[op_rows["is_first"], "pod"] = "op_first"
+        op_rows.loc[~op_rows["is_first"], "pod"] = "op_follow-up"
+        op_rows.loc[op_rows["has_procedures"], "pod"] = "op_procedure"
+
+        op_agg = op_rows.groupby(
+            ["age_group", "sex", "tretspef", "pod"],
+            as_index=False,
+        ).agg({"attendances": np.sum, "tele_attendances": np.sum})
+
+        return pd.melt(
+            op_agg,
+            ["age_group", "sex", "tretspef", "pod"],
+            ["attendances", "tele_attendances"],
+            "measure",
+        )

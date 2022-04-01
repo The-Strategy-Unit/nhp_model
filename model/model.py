@@ -154,6 +154,8 @@ class Model:  # pylint: disable=too-many-instance-attributes
         returns: a tuple containing the time to run the model, and the time to save the results
         """
         change_factors, mr_data = self.run(model_run)
+        if self._params.get("aggregate", True):
+            mr_data = self.aggregate(mr_data)
         # Save the results
         results_path = f"{self._results_path}/{self._model_type}/model_run={model_run}"
         os.makedirs(results_path, exist_ok=True)
@@ -280,7 +282,7 @@ class Model:  # pylint: disable=too-many-instance-attributes
             },
         }
 
-    def _run(self, rng, data, run_params, hsa_f):
+    def _run(self, rng, data, run_params, aav_f, hsa_f):
         """
         Model Run
 
@@ -297,7 +299,18 @@ class Model:  # pylint: disable=too-many-instance-attributes
         run_params = self._get_run_params(model_run)
         rng = np.random.default_rng(run_params["seed"])
         data = self._data[run_params["variant"]].copy()
+        # admission avoidance
+        aav_f = data["factor"]
+        data.drop(["factor"], axis="columns", inplace=True)
         # hsa
         hsa_f = self._health_status_adjustment(data, run_params)
         # choose which function to use
-        return self._run(rng, data, run_params, hsa_f)
+        return self._run(rng, data, run_params, aav_f, hsa_f)
+
+    def aggregate(self, model_results):
+        """
+        Aggregate the model results
+
+        To be implemented by specific classes
+        """
+        return model_results

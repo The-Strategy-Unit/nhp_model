@@ -8,7 +8,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 
-from model.helpers import inrange
+from model.helpers import age_groups, inrange
 from model.model import Model
 
 
@@ -271,7 +271,7 @@ class InpatientsModel(Model):
         }
 
     #
-    def _run(self, rng, data, run_params, hsa_f):
+    def _run(self, rng, data, run_params, aav_f, hsa_f):
         # select strategies
         admission_avoidance = self._random_strategy(rng, "admission_avoidance")
         los_reduction = self._random_strategy(rng, "los_reduction")
@@ -308,8 +308,7 @@ class InpatientsModel(Model):
         # first, run hsa as we have the factor already created
         run_step(hsa_f, "health_status_adjustment")
         # then, demographic modelling
-        run_step(data["factor"].to_numpy(), "population_factors")
-        data.drop(["factor"], axis="columns", inplace=True)
+        run_step(aav_f[data["rn"]], "population_factors")
         # waiting list adjustments
         run_step(self._waiting_list_adjustment(data), "waiting_list_adjustment")
         # Admission Avoidance ----------------------------------------------------------------------
@@ -328,5 +327,66 @@ class InpatientsModel(Model):
         # return the data (select just the columns we have updated in modelling)
         return (
             step_counts,
-            data.reset_index(drop=True)[["rn", "speldur", "classpat"]],
+            data.drop(["hsagrp"], axis="columns").set_index(["rn"]),
+        )
+
+    def aggregate(self, model_results):
+        """
+        Aggregate the model results
+
+        returns a tuple containing the inpatients, outpatients, and a&e results
+        """
+        model_results["age_group"] = age_groups(model_results["age"])
+        # find the rows we need to convert to outpatients
+        ip_op_row_ix = model_results["classpat"] == "-1"
+        return pd.concat(
+            [
+                self._aggregate_ip_rows(model_results[~ip_op_row_ix]),
+                self._aggregate_op_rows(model_results[ip_op_row_ix]),
+            ]
+        )
+
+    @staticmethod
+    def _aggregate_op_rows(op_rows):
+        op_rows = op_rows.copy()
+        return (
+            op_rows.value_counts(["age_group", "sex", "tretspef"])
+            .to_frame("value")
+            .reset_index()
+            .assign(pod="op_procedure", measure="attendances")
+        )
+
+    @staticmethod
+    def _aggregate_ip_rows(ip_rows):
+        ip_rows = ip_rows.copy()
+        # create an admission group column
+        ip_rows["admission_group"] = "ip_non-elective"
+        ip_rows.loc[
+            ip_rows["admimeth"].str.startswith("1"), "admission_group"
+        ] = "ip_elective"
+        # quick dq fix: convert any "non-elective" daycases to "elective"
+        ip_rows.loc[
+            ip_rows["classpat"].isin(["2", "3"]), "admission_group"
+        ] = "ip_elective"
+        # create a "pod" column, starting with the admission group
+        ip_rows["pod"] = ip_rows["admission_group"]
+        ip_rows.loc[ip_rows["classpat"].isin(["1", "4"]), "pod"] += "_admission"
+        ip_rows.loc[ip_rows["classpat"].isin(["2", "3"]), "pod"] += "_daycase"
+        ip_rows.loc[ip_rows["classpat"] == "5", "pod"] += "_birth-episode"
+        ip_rows["beddays"] = ip_rows["speldur"] + 1
+
+        ip_agg = (
+            ip_rows.groupby(
+                ["age_group", "sex", "tretspef", "pod"],
+                as_index=False,
+            )
+            .agg({"speldur": len, "beddays": np.sum})
+            .rename({"speldur": "admissions"}, axis="columns")
+        )
+
+        return pd.melt(
+            ip_agg,
+            ["age_group", "sex", "tretspef", "pod"],
+            ["admissions", "beddays"],
+            "measure",
         )

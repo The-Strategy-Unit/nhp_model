@@ -4,6 +4,9 @@ Accident and Emergency Module
 Implements the A&E model.
 """
 
+import numpy as np
+
+from model.helpers import age_groups
 from model.model import Model
 
 
@@ -42,7 +45,7 @@ class AaEModel(Model):
         )
 
     #
-    def _run(self, rng, data, run_params, hsa_f):
+    def _run(self, rng, data, run_params, aav_f, hsa_f):
         """
         Run the model once
 
@@ -51,7 +54,7 @@ class AaEModel(Model):
         params = run_params["aae_factors"]
         # create a single factor for how many times to select that row
         factor = (
-            data["factor"].to_numpy()
+            aav_f
             * hsa_f
             * self._low_cost_discharged(data, params)
             * self._left_before_seen(data, params)
@@ -60,4 +63,24 @@ class AaEModel(Model):
         data["arrivals"] = rng.poisson(data["arrivals"] * factor)
         data = data[data["arrivals"] > 0]
         # return the data
-        return ({}, data[["arrivals"]].reset_index())
+        return ({}, data.drop(["hsagrp"], axis="columns"))
+
+    def aggregate(self, model_results):
+        """
+        Aggregate the model results
+        """
+        model_results["age_group"] = age_groups(model_results["age"])
+
+        return self._aggregate_aae_rows(model_results)
+
+    @staticmethod
+    def _aggregate_aae_rows(aae_rows):
+        aae_rows["pod"] = "aae_type-" + aae_rows["aedepttype"]
+        aae_rows["measure"] = "walk-in"
+        aae_rows.loc[aae_rows["aearrivalmode"] == "1", "measure"] = "ambulance"
+        aae_rows["tretspef"] = "Other"
+        aae_agg = aae_rows.groupby(
+            ["age_group", "sex", "tretspef", "pod"],
+            as_index=False,
+        ).agg({"arrivals": np.sum})
+        return aae_agg.rename(columns={"arrivals": "value"})

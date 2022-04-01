@@ -33,12 +33,12 @@ def np_encoder(obj):
     return obj
 
 
-def age_groups(x):
+def age_groups(age):
     """
     cut age into groups
     """
     return pd.cut(
-        x,
+        age,
         [0, 5, 15, 35, 50, 65, 85, 1000],
         False,
         ["0-4", "5-14", "15-34", "35-49", "50-64", "65-84", "85+"],
