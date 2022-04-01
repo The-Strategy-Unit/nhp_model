@@ -200,7 +200,9 @@ class Model:  # pylint: disable=too-many-instance-attributes
             pool.join()
             pbar.close()
         # make sure to get the results - if we don't then no errors that occurred will be raised
-        print(f"{sum(len(r.get()) for r in results)} == {model_runs}")
+        print(
+            f"Model runs completed: {sum(len(r.get()) for r in results)} / {model_runs}"
+        )
         assert sum(len(r.get()) for r in results) == model_runs
 
     #
