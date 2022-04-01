@@ -10,6 +10,7 @@ import sys
 
 import pandas as pd
 import pyarrow.parquet as pq
+from janitor import complete  # pylint: disable=unused-import
 from pygam import GAM
 
 
