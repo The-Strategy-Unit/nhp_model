@@ -140,7 +140,7 @@ class InpatientsModel(Model):
 
     #
     @staticmethod
-    def _losr_all(data, losr, rng):
+    def _losr_all(data, losr, rng, step_counts):
         """
         Length of Stay Reduction: All
 
@@ -155,13 +155,20 @@ class InpatientsModel(Model):
         as the value for p. This will update the los to be a value between 0 and the original los.
         """
         i = losr.index[(losr.type == "all") & (losr.index.isin(data.index))]
+        pre_los = data.loc[i, "speldur"]
         data.loc[i, "speldur"] = rng.binomial(
             data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"]
         )
-        return data
+        change_los = (
+            (data.loc[i, "speldur"] - pre_los).groupby(level=0).sum().astype(int)
+        )
+        step_counts["los_reduction"] = {
+            "rows": (change_los * 0).to_dict(),
+            "beddays": change_los.to_dict(),
+        }
 
     @staticmethod
-    def _losr_bads(data, losr, rng):
+    def _losr_bads(data, losr, rng, step_counts):
         """
         Length of Stay Reduction: British Association of Day Surgery
 
@@ -213,13 +220,26 @@ class InpatientsModel(Model):
         # we now need to apply these changes to the actual data
         i = losr.index[i]
         data.loc[i, "classpat"] = bads_df["classpat"]
-        data.loc[i, "speldur"] *= (
-            data.loc[i, "classpat"] == 1
-        )  # set the speldur to 0 if we aren't inpatients
-        return data
+        # set the speldur to 0 if we aren't inpatients
+        data.loc[i, "speldur"] *= data.loc[i, "classpat"] == 1
+        #
+        step_counts["los_reduction"]["rows"] = {
+            **step_counts["los_reduction"]["rows"],
+            **((data.loc[i, "classpat"] == "-1").groupby(level=0).sum() * -1)
+            .astype(int)
+            .to_dict(),
+        }
+        step_counts["los_reduction"]["beddays"] = {
+            **step_counts["los_reduction"]["beddays"],
+            **(data.loc[i, "speldur"] - bads_df["speldur"])
+            .groupby(level=0)
+            .sum()
+            .astype(int)
+            .to_dict(),
+        }
 
     @staticmethod
-    def _losr_to_zero(data, losr, rng, losr_type):
+    def _losr_to_zero(data, losr, rng, losr_type, step_counts):
         """
         Length of Stay Reduction: To Zero Day LoS
 
@@ -233,11 +253,22 @@ class InpatientsModel(Model):
         Updates the length of stay to 0 for a given percentage of rows.
         """
         i = losr.index[losr.type == losr_type]
+        pre_los = data.loc[i, "speldur"]
         nrow = len(data.loc[i, "speldur"])
         data.loc[i, "speldur"] *= (
             rng.uniform(size=nrow) >= losr.loc[data.loc[i].index, "losr_f"]
         )
-        return data
+        change_los = (
+            (data.loc[i, "speldur"] - pre_los).groupby(level=0).sum().astype(int)
+        )
+        step_counts["los_reduction"]["rows"] = {
+            **step_counts["los_reduction"]["rows"],
+            **(change_los * 0).to_dict(),
+        }
+        step_counts["los_reduction"]["beddays"] = {
+            **step_counts["los_reduction"]["beddays"],
+            **change_los.to_dict(),
+        }
 
     #
     def _run(self, rng, data, run_params, hsa_f):
@@ -290,14 +321,10 @@ class InpatientsModel(Model):
         # set the index for easier querying
         data.set_index(los_reduction[data["rn"]], inplace=True)
         # run each of the length of stay reduction strategies
-        data = self._losr_all(data, losr, rng)
-        data = self._losr_to_zero(data, losr, rng, "aec")
-        data = self._losr_to_zero(data, losr, rng, "preop")
-        data = self._losr_bads(data, losr, rng)
-        #
-        step_counts["outpatient_conversion"] = {
-            "rows": int(-np.sum(data["classpat"] == "-1"))
-        }
+        self._losr_all(data, losr, rng, step_counts)
+        self._losr_to_zero(data, losr, rng, "aec", step_counts)
+        self._losr_to_zero(data, losr, rng, "preop", step_counts)
+        self._losr_bads(data, losr, rng, step_counts)
         # return the data (select just the columns we have updated in modelling)
         return (
             step_counts,
