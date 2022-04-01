@@ -109,7 +109,8 @@ class InpatientsModel(Model):
         # return the waiting list adjustment factor series
         return wlav
 
-    def _admission_avoidance_step(self, rng, data, admission_avoidance, run_params):
+    @staticmethod
+    def _admission_avoidance_step(rng, data, admission_avoidance, run_params):
         # choose admission avoidance factors
         ada = defaultdict(
             lambda: 1, run_params["strategy_params"]["admission_avoidance"]
