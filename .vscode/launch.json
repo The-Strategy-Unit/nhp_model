@@ -67,8 +67,8 @@
       "program": "run_model.py",
       "args": [
         "data/synthetic/results/test/20220110_104353",
-        "1",
-        "192",
+        "0",
+        "257",
         "-b=8"
       ],
       "console": "integratedTerminal"
