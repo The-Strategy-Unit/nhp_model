@@ -71,22 +71,61 @@ class OutpatientsModel(Model):
         returns: a tuple of the selected varient and the updated DataFrame
         """
         params = run_params["outpatient_factors"]
-        # create a single factor for how many times to select that row
-        factor = (
-            aav_f
-            * hsa_f
-            * self._followup_reduction(data, params)
-            * self._consultant_to_consultant_reduction(data, params)
-        )
-        # update the number of attendances / tele_attendances
-        data["attendances"] = rng.poisson(data["attendances"] * factor)
-        data["tele_attendances"] = rng.poisson(data["tele_attendances"] * factor)
+        #
+        sc_a, sc_t = data[["attendances", "tele_attendances"]].sum()
+        step_counts = {
+            "baseline": pd.DataFrame(
+                {"attendances": [sc_a], "tele_attendances": [sc_t]}, [None]
+            )
+        }
+
+        def update_stepcounts(name):
+            nonlocal step_counts, sc_a, sc_t
+            # update the step count values
+            sc_ap = sum(data["attendances"])
+            sc_tp = sum(data["tele_attendances"])
+            step_counts[name] = pd.DataFrame(
+                {"attendances": [sc_ap - sc_a], "tele_attendances": [sc_tp - sc_t]},
+                [None],
+            )
+            # replace the values
+            sc_a, sc_t = sc_ap, sc_tp
+
+        def run_step(thing, name):
+            nonlocal data
+            factor = rng.poisson(thing)
+            # perform the step
+            data["attendances"] = rng.poisson(data["attendances"] * factor)
+            data["tele_attendances"] = rng.poisson(data["tele_attendances"] * factor)
+            update_stepcounts(name)
+
         # remove rows where the overall number of attendances was 0
         data = data[data["attendances"] + data["tele_attendances"] > 0]
+        # before we do anything, reset the index to keep the row number
+        data.reset_index(inplace=True)
+        # first, run hsa as we have the factor already created
+        run_step(hsa_f, "health_status_adjustment")
+        # then, demographic modelling
+        run_step(aav_f[data["rn"]], "population_factors")
+        # now run strategies
+        run_step(self._followup_reduction(data, params), "followup_reduction")
+        run_step(
+            self._consultant_to_consultant_reduction(data, params),
+            "consultant_to_consultant_referrals",
+        )
         # convert attendances to tele attendances
         self._convert_to_tele(data, params)
+        update_stepcounts("tele_conversion")
         # return the data
-        return (None, data.drop(["hsagrp"], axis="columns"))
+        change_factors = pd.melt(
+            pd.concat(step_counts)
+            .rename_axis(["change_factor", "strategy"])
+            .reset_index(),
+            ["change_factor", "strategy"],
+            ["attendances", "tele_attendances"],
+            "measure",
+        )
+        return (change_factors, data.drop(["hsagrp"], axis="columns"))
 
     def aggregate(self, model_results):
         """
