@@ -94,14 +94,18 @@ class OutpatientsModel(Model):
         def run_step(factor, name):
             nonlocal data
             # perform the step
-            data["attendances"] = rng.poisson(data["attendances"].to_numpy() * factor)
-            data["tele_attendances"] = rng.poisson(
+            data.loc[:, "attendances"] = rng.poisson(
+                data["attendances"].to_numpy() * factor
+            )
+            data.loc[:, "tele_attendances"] = rng.poisson(
                 data["tele_attendances"].to_numpy() * factor
             )
             # remove rows where the overall number of attendances was 0
             data = data[data["attendances"] + data["tele_attendances"] > 0]
             update_stepcounts(name)
 
+        # captue current pandas options, and set chainged assignment off
+        pd_options = pd.set_option("mode.chained_assignment", None)
         # before we do anything, reset the index to keep the row number
         data.reset_index(inplace=True)
         # first, run hsa as we have the factor already created
@@ -114,6 +118,8 @@ class OutpatientsModel(Model):
             self._consultant_to_consultant_reduction(data, params),
             "consultant_to_consultant_referrals",
         )
+        # now run_step's are finished, restore pandas options
+        pd.set_option("mode.chained_assignment", pd_options)
         # convert attendances to tele attendances
         self._convert_to_tele(data, params)
         update_stepcounts("tele_conversion")
