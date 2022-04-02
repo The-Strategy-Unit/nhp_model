@@ -14,7 +14,6 @@ will run a single run of the inpatients model, returning the results to display.
 """
 
 import argparse
-import json
 import os
 import time
 
