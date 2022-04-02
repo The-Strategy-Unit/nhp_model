@@ -284,20 +284,9 @@ class InpatientsModel(Model):
         # choose length of stay reduction factors
         losr = self._los_reduction(run_params)
         #
+        sc_n, sc_b = len(data.index), sum(data["speldur"] + 1)
         step_counts = {
-            "baseline": pd.DataFrame(
-                {
-                    "admissions": [
-                        sc_n := len(data.index)  # pylint: disable=unused-variable
-                    ],
-                    "beddays": [
-                        sc_b := int(  # pylint: disable=unused-variable
-                            sum(data["speldur"] + 1)
-                        )
-                    ],
-                },
-                [None],
-            )
+            "baseline": pd.DataFrame({"admissions": [sc_n], "beddays": [sc_b]}, [None])
         }
         #
         def run_step(thing, name):
