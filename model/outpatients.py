@@ -91,16 +91,17 @@ class OutpatientsModel(Model):
             # replace the values
             sc_a, sc_t = sc_ap, sc_tp
 
-        def run_step(thing, name):
+        def run_step(factor, name):
             nonlocal data
-            factor = rng.poisson(thing)
             # perform the step
-            data["attendances"] = rng.poisson(data["attendances"] * factor)
-            data["tele_attendances"] = rng.poisson(data["tele_attendances"] * factor)
+            data["attendances"] = rng.poisson(data["attendances"].to_numpy() * factor)
+            data["tele_attendances"] = rng.poisson(
+                data["tele_attendances"].to_numpy() * factor
+            )
+            # remove rows where the overall number of attendances was 0
+            data = data[data["attendances"] + data["tele_attendances"] > 0]
             update_stepcounts(name)
 
-        # remove rows where the overall number of attendances was 0
-        data = data[data["attendances"] + data["tele_attendances"] > 0]
         # before we do anything, reset the index to keep the row number
         data.reset_index(inplace=True)
         # first, run hsa as we have the factor already created
