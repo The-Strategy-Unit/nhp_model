@@ -135,7 +135,7 @@ class InpatientsModel(Model):
         sc_b_aa = data_aa["speldur"].agg(sum) - sc_b_aa
         return pd.DataFrame(
             {
-                "rows": sc_n_aa.to_dict(),
+                "admissions": sc_n_aa.to_dict(),
                 "beddays": sc_b_aa.to_dict(),
             }
         )
@@ -165,7 +165,7 @@ class InpatientsModel(Model):
             (data.loc[i, "speldur"] - pre_los).groupby(level=0).sum().astype(int)
         )
         step_counts["los_reduction"] = {
-            "rows": (change_los * 0).to_dict(),
+            "admissions": (change_los * 0).to_dict(),
             "beddays": change_los.to_dict(),
         }
 
@@ -227,8 +227,8 @@ class InpatientsModel(Model):
         # set the speldur to 0 if we aren't inpatients
         data.loc[i, "speldur"] *= data.loc[i, "classpat"] == 1
         #
-        step_counts["los_reduction"]["rows"] = {
-            **step_counts["los_reduction"]["rows"],
+        step_counts["los_reduction"]["admissions"] = {
+            **step_counts["los_reduction"]["admissions"],
             **((data.loc[i, "classpat"] == "-1").groupby(level=0).sum() * -1)
             .astype(int)
             .to_dict(),
@@ -265,8 +265,8 @@ class InpatientsModel(Model):
         change_los = (
             (data.loc[i, "speldur"] - pre_los).groupby(level=0).sum().astype(int)
         )
-        step_counts["los_reduction"]["rows"] = {
-            **step_counts["los_reduction"]["rows"],
+        step_counts["los_reduction"]["admissions"] = {
+            **step_counts["los_reduction"]["admissions"],
             **(change_los * 0).to_dict(),
         }
         step_counts["los_reduction"]["beddays"] = {
@@ -285,7 +285,7 @@ class InpatientsModel(Model):
         step_counts = {
             "baseline": pd.DataFrame(
                 {
-                    "rows": [
+                    "admissions": [
                         sc_n := len(data.index)
                     ],  # pylint: disable=unused-variable
                     "beddays": [
@@ -309,7 +309,7 @@ class InpatientsModel(Model):
             sc_np = int(sum(select_row_n_times))
             sc_bp = int(sum(data["speldur"] + 1))
             step_counts[name] = pd.DataFrame(
-                {"rows": [sc_np - sc_n], "beddays": [sc_bp - sc_b]}, [None]
+                {"admissions": [sc_np - sc_n], "beddays": [sc_bp - sc_b]}, [None]
             )
             # replace the values
             sc_n, sc_b = sc_np, sc_bp
@@ -338,7 +338,14 @@ class InpatientsModel(Model):
         step_counts["los_reduction"] = pd.DataFrame(step_counts["los_reduction"])
         # return the data (select just the columns we have updated in modelling)
         return (
-            pd.concat(step_counts).rename_axis(["change_factor", "strategy"]),
+            pd.melt(
+                pd.concat(step_counts)
+                .rename_axis(["change_factor", "strategy"])
+                .reset_index(),
+                ["change_factor", "strategy"],
+                ["admissions", "beddays"],
+                "measure",
+            ),
             data.drop(["hsagrp"], axis="columns").set_index(["rn"]),
         )
 

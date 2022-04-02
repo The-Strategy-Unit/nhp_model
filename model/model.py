@@ -168,7 +168,7 @@ class Model:  # pylint: disable=too-many-instance-attributes
             change_factors_path = f"{self._results_path}/change_factors/dataset={self._model_type}/model_run={model_run}"
             os.makedirs(change_factors_path, exist_ok=True)
             change_factors_file = f"{change_factors_path}/{model_run}.csv"
-            change_factors.to_csv(change_factors_file)
+            change_factors.to_csv(change_factors_file, index=False)
         return (change_factors, mr_data)
 
     #
