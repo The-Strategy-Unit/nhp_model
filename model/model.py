@@ -288,7 +288,9 @@ class Model:  # pylint: disable=too-many-instance-attributes
             },
         }
 
-    def _run(self, rng, data, run_params, aav_f, hsa_f):
+    def _run(
+        self, rng, data, run_params, aav_f, hsa_f
+    ):  # pylint: disable=too-many-arguments
         """
         Model Run
 

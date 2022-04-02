@@ -62,7 +62,9 @@ class OutpatientsModel(Model):
         pd.set_option("mode.chained_assignment", options)
 
     #
-    def _run(self, rng, data, run_params, aav_f, hsa_f):
+    def _run(
+        self, rng, data, run_params, aav_f, hsa_f
+    ):  # pylint: disable=too-many-arguments
         """
         Run the model once
 

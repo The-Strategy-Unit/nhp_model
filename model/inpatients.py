@@ -275,7 +275,9 @@ class InpatientsModel(Model):
         }
 
     #
-    def _run(self, rng, data, run_params, aav_f, hsa_f):
+    def _run(
+        self, rng, data, run_params, aav_f, hsa_f
+    ):  # pylint: disable=too-many-arguments
         # select strategies
         admission_avoidance = self._random_strategy(rng, "admission_avoidance")
         los_reduction = self._random_strategy(rng, "los_reduction")
