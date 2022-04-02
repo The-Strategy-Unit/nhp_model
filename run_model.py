@@ -29,7 +29,7 @@ def timeit(func, *args):
     """
     start = time.time()
     results = func(*args)
-    print(f"elapsed: {time.time() - start:.3f}")
+    print(f"elapsed: {time.time() - start:.3f}s")
     return results
 
 
@@ -107,16 +107,17 @@ def main():
             args.type != "all"
         ), "can only debug a single model at a time: make sure to set the --type argument"
         model = models[args.type](args.results_path[0])
-        print(
-            "running model:",
-        )
+        print("running model... ", end="")
         change_factors, results = timeit(model.run, args.run_start[0])
-        print(
-            "aggregating results:",
-        )
+        print("aggregating results... ", end="")
         agg_results = timeit(model.aggregate, results)
-        print(json.dumps(change_factors, indent=2))
+        #
         print()
+        print("change factors:")
+        print(change_factors)
+        #
+        print()
+        print("aggregated results:")
         print(agg_results)
     else:
         for i in models.values():

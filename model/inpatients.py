@@ -133,10 +133,12 @@ class InpatientsModel(Model):
         ).groupby("admission_avoidance_strategy")
         sc_n_aa = data_aa["rn"].agg(len) - sc_n_aa
         sc_b_aa = data_aa["speldur"].agg(sum) - sc_b_aa
-        return {
-            "rows": sc_n_aa.to_dict(),
-            "beddays": sc_b_aa.to_dict(),
-        }
+        return pd.DataFrame(
+            {
+                "rows": sc_n_aa.to_dict(),
+                "beddays": sc_b_aa.to_dict(),
+            }
+        )
 
     #
     @staticmethod
@@ -281,14 +283,19 @@ class InpatientsModel(Model):
         losr = self._los_reduction(run_params)
         #
         step_counts = {
-            "baseline": {
-                "rows": (sc_n := len(data.index)),  # pylint: disable=unused-variable
-                "beddays": (
-                    sc_b := int(  # pylint: disable=unused-variable
-                        sum(data["speldur"] + 1)
-                    )
-                ),
-            }
+            "baseline": pd.DataFrame(
+                {
+                    "rows": [
+                        sc_n := len(data.index)
+                    ],  # pylint: disable=unused-variable
+                    "beddays": [
+                        sc_b := int(  # pylint: disable=unused-variable
+                            sum(data["speldur"] + 1)
+                        )
+                    ],
+                },
+                [None],
+            )
         }
         #
         def run_step(thing, name):
@@ -301,7 +308,9 @@ class InpatientsModel(Model):
             # update the step count values
             sc_np = int(sum(select_row_n_times))
             sc_bp = int(sum(data["speldur"] + 1))
-            step_counts[name] = {"rows": sc_np - sc_n, "beddays": sc_bp - sc_b}
+            step_counts[name] = pd.DataFrame(
+                {"rows": [sc_np - sc_n], "beddays": [sc_bp - sc_b]}, [None]
+            )
             # replace the values
             sc_n, sc_b = sc_np, sc_bp
 
@@ -326,9 +335,10 @@ class InpatientsModel(Model):
         self._losr_to_zero(data, losr, rng, "aec", step_counts)
         self._losr_to_zero(data, losr, rng, "preop", step_counts)
         self._losr_bads(data, losr, rng, step_counts)
+        step_counts["los_reduction"] = pd.DataFrame(step_counts["los_reduction"])
         # return the data (select just the columns we have updated in modelling)
         return (
-            step_counts,
+            pd.concat(step_counts).rename_axis(["change_factor", "strategy"]),
             data.drop(["hsagrp"], axis="columns").set_index(["rn"]),
         )
 

@@ -161,15 +161,14 @@ class Model:  # pylint: disable=too-many-instance-attributes
         os.makedirs(results_path, exist_ok=True)
         mr_data.to_parquet(f"{results_path}/{model_run}.parquet")
         # Save the change factors, so long as it's not an empty dictionary
-        if change_factors != {}:
+        if change_factors is not None:
             change_factors_path = (
-                f"{self._results_path}/{self._model_type}_change_factors"
+                f"{self._results_path}/change_factors/dataset={self._model_type}/"
             )
             os.makedirs(change_factors_path, exist_ok=True)
-            change_factors_file = f"{change_factors_path}/{model_run}.json"
-            with open(change_factors_file, "w", encoding="UTF-8") as pcf:
-                json.dump(change_factors, pcf, indent=2, default=np_encoder)
-        return model_run
+            change_factors_file = f"{change_factors_path}/{model_run}.csv"
+            change_factors.to_csv(change_factors_file)
+        return (change_factors, mr_data)
 
     #
     def batch_save(self, i, j, batch_size):

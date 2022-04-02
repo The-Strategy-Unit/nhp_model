@@ -63,7 +63,7 @@ class AaEModel(Model):
         data["arrivals"] = rng.poisson(data["arrivals"] * factor)
         data = data[data["arrivals"] > 0]
         # return the data
-        return ({}, data.drop(["hsagrp"], axis="columns"))
+        return (None, data.drop(["hsagrp"], axis="columns"))
 
     def aggregate(self, model_results):
         """

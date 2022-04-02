@@ -84,7 +84,7 @@ class OutpatientsModel(Model):
         # convert attendances to tele attendances
         self._convert_to_tele(data, params)
         # return the data
-        return ({}, data.drop(["hsagrp"], axis="columns"))
+        return (None, data.drop(["hsagrp"], axis="columns"))
 
     def aggregate(self, model_results):
         """
