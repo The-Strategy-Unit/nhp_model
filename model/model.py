@@ -15,7 +15,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 from tqdm import tqdm
 
-from model.helpers import inrange, np_encoder, rnorm
+from model.helpers import inrange, rnorm
 
 
 class Model:  # pylint: disable=too-many-instance-attributes
@@ -151,21 +151,27 @@ class Model:  # pylint: disable=too-many-instance-attributes
 
         * model_run: the number of this model run
 
-        returns: a tuple containing the time to run the model, and the time to save the results
+        returns: the results of `self.run(model_run)`
         """
+        # run the model
         change_factors, mr_data = self.run(model_run)
+        path_fn = lambda t: os.path.join(
+            self._results_path,
+            t,
+            f"dataset={self._model_type}",
+            f"model_run={model_run}",
+        )
+        # save row level results (if param is not set, defaults to not saving row level results)
         if self._params.get("save_all_results", False):
-            results_path = f"{self._results_path}/model_results/dataset={self._model_type}/model_run={model_run}"
-            os.makedirs(results_path, exist_ok=True)
+            os.makedirs(results_path := path_fn("model_results"), exist_ok=True)
             mr_data.to_parquet(f"{results_path}/{model_run}.parquet")
-        # aggregate the results
-        mr_data = self.aggregate(mr_data)
-        results_path = f"{self._results_path}/aggregated_results/dataset={self._model_type}/model_run={model_run}"
-        os.makedirs(results_path, exist_ok=True)
-        mr_data.to_parquet(f"{results_path}/{model_run}.parquet")
+        # aggregate the results (if param is not set, defaults to saving aggregated results)
+        if self._params.get("aggregate_results", True):
+            os.makedirs(aggregated_path := path_fn("aggregated_results"), exist_ok=True)
+            self.aggregate(mr_data).to_parquet(f"{aggregated_path}/{model_run}.parquet")
         # Save the change factors, so long as it's not an empty dictionary
         if change_factors is not None:
-            change_factors_path = f"{self._results_path}/change_factors/dataset={self._model_type}/model_run={model_run}"
+            change_factors_path = path_fn("change_factors")
             os.makedirs(change_factors_path, exist_ok=True)
             change_factors_file = f"{change_factors_path}/{model_run}.csv"
             change_factors.to_csv(change_factors_file, index=False)
