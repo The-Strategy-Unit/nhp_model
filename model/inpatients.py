@@ -286,8 +286,8 @@ class InpatientsModel(Model):
             "baseline": pd.DataFrame(
                 {
                     "admissions": [
-                        sc_n := len(data.index)
-                    ],  # pylint: disable=unused-variable
+                        sc_n := len(data.index)  # pylint: disable=unused-variable
+                    ],
                     "beddays": [
                         sc_b := int(  # pylint: disable=unused-variable
                             sum(data["speldur"] + 1)
