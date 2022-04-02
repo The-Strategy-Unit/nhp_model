@@ -154,17 +154,18 @@ class Model:  # pylint: disable=too-many-instance-attributes
         returns: a tuple containing the time to run the model, and the time to save the results
         """
         change_factors, mr_data = self.run(model_run)
-        if self._params.get("aggregate", True):
-            mr_data = self.aggregate(mr_data)
-        # Save the results
-        results_path = f"{self._results_path}/{self._model_type}/model_run={model_run}"
+        if self._params.get("save_all_results", False):
+            results_path = f"{self._results_path}/model_results/dataset={self._model_type}/model_run={model_run}"
+            os.makedirs(results_path, exist_ok=True)
+            mr_data.to_parquet(f"{results_path}/{model_run}.parquet")
+        # aggregate the results
+        mr_data = self.aggregate(mr_data)
+        results_path = f"{self._results_path}/aggregated_results/dataset={self._model_type}/model_run={model_run}"
         os.makedirs(results_path, exist_ok=True)
         mr_data.to_parquet(f"{results_path}/{model_run}.parquet")
         # Save the change factors, so long as it's not an empty dictionary
         if change_factors is not None:
-            change_factors_path = (
-                f"{self._results_path}/change_factors/dataset={self._model_type}/"
-            )
+            change_factors_path = f"{self._results_path}/change_factors/dataset={self._model_type}/model_run={model_run}"
             os.makedirs(change_factors_path, exist_ok=True)
             change_factors_file = f"{change_factors_path}/{model_run}.csv"
             change_factors.to_csv(change_factors_file)
