@@ -286,7 +286,7 @@ class InpatientsModel(Model):
         #
         sc_n, sc_b = len(data.index), sum(data["speldur"] + 1)
         step_counts = {
-            "baseline": pd.DataFrame({"admissions": [sc_n], "beddays": [sc_b]}, [None])
+            "baseline": pd.DataFrame({"admissions": [sc_n], "beddays": [sc_b]}, ['-'])
         }
         #
         def run_step(thing, name):
@@ -300,7 +300,7 @@ class InpatientsModel(Model):
             sc_np = int(sum(select_row_n_times))
             sc_bp = int(sum(data["speldur"] + 1))
             step_counts[name] = pd.DataFrame(
-                {"admissions": [sc_np - sc_n], "beddays": [sc_bp - sc_b]}, [None]
+                {"admissions": [sc_np - sc_n], "beddays": [sc_bp - sc_b]}, ['-']
             )
             # replace the values
             sc_n, sc_b = sc_np, sc_bp
@@ -336,6 +336,7 @@ class InpatientsModel(Model):
             ["admissions", "beddays"],
             "measure",
         )
+        change_factors["value"] = change_factors["value"].astype(int)
         return (change_factors, data.drop(["hsagrp"], axis="columns").set_index(["rn"]))
 
     def aggregate(self, model_results):

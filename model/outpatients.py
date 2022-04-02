@@ -75,7 +75,7 @@ class OutpatientsModel(Model):
         sc_a, sc_t = data[["attendances", "tele_attendances"]].sum()
         step_counts = {
             "baseline": pd.DataFrame(
-                {"attendances": [sc_a], "tele_attendances": [sc_t]}, [None]
+                {"attendances": [sc_a], "tele_attendances": [sc_t]}, ["-"]
             )
         }
 
@@ -86,7 +86,7 @@ class OutpatientsModel(Model):
             sc_tp = sum(data["tele_attendances"])
             step_counts[name] = pd.DataFrame(
                 {"attendances": [sc_ap - sc_a], "tele_attendances": [sc_tp - sc_t]},
-                [None],
+                ["-"],
             )
             # replace the values
             sc_a, sc_t = sc_ap, sc_tp
@@ -132,6 +132,7 @@ class OutpatientsModel(Model):
             ["attendances", "tele_attendances"],
             "measure",
         )
+        change_factors["value"] = change_factors["value"].astype(int)
         return (change_factors, data.drop(["hsagrp"], axis="columns"))
 
     def aggregate(self, model_results):

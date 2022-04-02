@@ -58,7 +58,7 @@ class AaEModel(Model):
         #
         sc_a = sum(data["arrivals"])
         step_counts = {
-            "baseline": pd.DataFrame({"measure": ["arrivals"], "value": [sc_a]})
+            "baseline": pd.DataFrame({"measure": ["arrivals"], "value": [sc_a]}, ["-"])
         }
         #
         def run_step(factor, name):
@@ -68,7 +68,7 @@ class AaEModel(Model):
             # update the step count values
             sc_ap = sum(data["arrivals"])
             step_counts[name] = pd.DataFrame(
-                {"measure": ["arrivals"], "value": [sc_ap - sc_a]}, [None]
+                {"measure": ["arrivals"], "value": [sc_ap - sc_a]}, ["-"]
             )
             # replace the values
             sc_a = sc_ap
@@ -89,6 +89,7 @@ class AaEModel(Model):
             .rename_axis(["change_factor", "strategy"])
             .reset_index()
         )
+        change_factors["value"] = change_factors["value"].astype(int)
         return (change_factors, data.drop(["hsagrp"], axis="columns"))
 
     def aggregate(self, model_results):
