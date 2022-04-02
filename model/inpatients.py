@@ -328,17 +328,15 @@ class InpatientsModel(Model):
         self._losr_bads(data, losr, rng, step_counts)
         step_counts["los_reduction"] = pd.DataFrame(step_counts["los_reduction"])
         # return the data (select just the columns we have updated in modelling)
-        return (
-            pd.melt(
-                pd.concat(step_counts)
-                .rename_axis(["change_factor", "strategy"])
-                .reset_index(),
-                ["change_factor", "strategy"],
-                ["admissions", "beddays"],
-                "measure",
-            ),
-            data.drop(["hsagrp"], axis="columns").set_index(["rn"]),
+        change_factors = pd.melt(
+            pd.concat(step_counts)
+            .rename_axis(["change_factor", "strategy"])
+            .reset_index(),
+            ["change_factor", "strategy"],
+            ["admissions", "beddays"],
+            "measure",
         )
+        return (change_factors, data.drop(["hsagrp"], axis="columns").set_index(["rn"]))
 
     def aggregate(self, model_results):
         """
