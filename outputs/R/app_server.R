@@ -9,44 +9,24 @@ app_server <- function(input, output, session) {
   data_path <- mod_result_selection_server("result_selection")
   data <- reactive({
     p <- shiny::req(data_path())
-    arrow::read_parquet(file.path(p, "model_results.parquet")) |>
-      dplyr::as_tibble() |>
-      dplyr::mutate(
-        dplyr::across(
-          .data$age_group,
-          forcats::fct_relevel,
-          "0-4",
-          "5-14",
-          "15-34",
-          "35-49",
-          "50-64",
-          "65-84",
-          "85+"
-        )
-      )
+    arrow::open_dataset(file.path(p, "aggregated_results")) |>
+      arrow::to_duckdb()
   })
   change_factors <- reactive({
     p <- shiny::req(data_path())
-    readr::read_csv(file.path(p, "change_factors.csv"), col_types = "ccddcd") |>
-      dplyr::select(
-        .data$dataset,
-        .data$change_factor,
-        .data$type,
-        .data$model_run,
-        .data$rows,
-        .data$beddays
-      ) |>
+    arrow::open_dataset(file.path(p, "change_factors"), format = "csv") |>
+      dplyr::collect() |>
       dplyr::mutate(
         dplyr::across(
-          c(.data$change_factor, .data$type),
+          c(.data$change_factor, .data$strategy),
           forcats::fct_inorder
         ),
         dplyr::across(
-          c(.data$change_factor, .data$type),
+          c(.data$change_factor, .data$strategy, .data$measure),
           forcats::fct_relabel,
           snakecase::to_title_case
         ),
-        dplyr::across(.data$type, forcats::fct_recode, "NULL Strategy" = "Null")
+        dplyr::across(.data$strategy, forcats::fct_recode, "NULL Strategy" = "Null")
       )
   })
 

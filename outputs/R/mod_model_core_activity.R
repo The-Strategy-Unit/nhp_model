@@ -24,23 +24,24 @@ mod_model_core_activity_server <- function(id, data) {
     summarised_data <- reactive({
       inner_join(
         data() |>
-          dplyr::filter(.data$type == "baseline") |>
-          dplyr::select(-.data$type) |>
+          dplyr::filter(.data$model_run == -1) |>
           dplyr::group_by(
             .data$dataset,
             .data$pod,
             .data$measure
           ) |>
-          dplyr::summarise(baseline = sum(.data$value), .groups = "drop"),
+          dplyr::summarise(baseline = sum(.data$value, na.rm = TRUE), .groups = "drop") |>
+          dplyr::collect(),
         data() |>
-          dplyr::filter(.data$type == "model") |>
+          dplyr::filter(.data$model_run > 0) |>
           dplyr::group_by(
             .data$dataset,
             .data$pod,
             .data$measure,
             .data$model_run
           ) |>
-          dplyr::summarise(dplyr::across(.data$value, sum), .groups = "drop_last") |>
+          dplyr::summarise(dplyr::across(.data$value, sum, na.rm = TRUE), .groups = "drop_last") |>
+          dplyr::collect() |>
           # if there are any model runs that had no data, add them back in with a value of 0
           grouped_complete(
             tidyr::nesting(dataset, pod, measure),
