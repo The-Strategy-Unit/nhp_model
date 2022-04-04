@@ -61,11 +61,8 @@ class AaEModel(Model):
             "baseline": pd.DataFrame({"measure": ["arrivals"], "value": [sc_a]}, ["-"])
         }
         #
-        def run_step(factor, name):
+        def update_step_counts(name):
             nonlocal data, step_counts, sc_a
-            # perform the step
-            data["arrivals"] = rng.poisson(data["arrivals"].to_numpy() * factor)
-            # update the step count values
             sc_ap = sum(data["arrivals"])
             step_counts[name] = pd.DataFrame(
                 {"measure": ["arrivals"], "value": [sc_ap - sc_a]}, ["-"]
@@ -73,16 +70,38 @@ class AaEModel(Model):
             # replace the values
             sc_a = sc_ap
 
+        #
+        def run_poisson_step(factor, name):
+            nonlocal data
+            # perform the step
+            data["arrivals"] = rng.poisson(data["arrivals"].to_numpy() * factor)
+            # remove rows where the overall number of attendances was 0
+            data = data[data["arrivals"] > 0]
+            # update the step count values
+            update_step_counts(name)
+
+        #
+        def run_binomial_step(factor, name):
+            nonlocal data
+            # perform the step
+            data["arrivals"] = rng.binomial(data["arrivals"].to_numpy(), factor)
+            # remove rows where the overall number of attendances was 0
+            data = data[data["arrivals"] > 0]
+            # update the step count values
+            update_step_counts(name)
+
         # before we do anything, reset the index to keep the row number
         data.reset_index(inplace=True)
         # first, run hsa as we have the factor already created
-        run_step(hsa_f, "health_status_adjustment")
+        run_poisson_step(hsa_f, "health_status_adjustment")
         # then, demographic modelling
-        run_step(aav_f[data["rn"]], "population_factors")
+        run_poisson_step(aav_f[data["rn"]], "population_factors")
         # now run strategies
-        run_step(self._low_cost_discharged(data, params), "low_cost_discharged")
-        run_step(self._left_before_seen(data, params), "left_before_seen")
-        run_step(self._frequent_attenders(data, params), "frequent_attenders")
+        run_binomial_step(
+            self._low_cost_discharged(data, params), "low_cost_discharged"
+        )
+        run_binomial_step(self._left_before_seen(data, params), "left_before_seen")
+        run_binomial_step(self._frequent_attenders(data, params), "frequent_attenders")
         # return the data
         change_factors = (
             pd.concat(step_counts)
