@@ -80,7 +80,7 @@ class OutpatientsModel(Model):
         }
 
         def update_stepcounts(name):
-            nonlocal step_counts, sc_a, sc_t
+            nonlocal data, step_counts, sc_a, sc_t
             # update the step count values
             sc_ap = sum(data["attendances"])
             sc_tp = sum(data["tele_attendances"])
