@@ -90,6 +90,8 @@ class AaEModel(Model):
             # update the step count values
             update_step_counts(name)
 
+        # captue current pandas options, and set chainged assignment off
+        pd_options = pd.set_option("mode.chained_assignment", None)
         # before we do anything, reset the index to keep the row number
         data.reset_index(inplace=True)
         # first, run hsa as we have the factor already created
@@ -102,6 +104,8 @@ class AaEModel(Model):
         )
         run_binomial_step(self._left_before_seen(data, params), "left_before_seen")
         run_binomial_step(self._frequent_attenders(data, params), "frequent_attenders")
+        # now run_step's are finished, restore pandas options
+        pd.set_option("mode.chained_assignment", pd_options)
         # return the data
         change_factors = (
             pd.concat(step_counts)
