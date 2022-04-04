@@ -130,7 +130,7 @@ class AaEModel(Model):
         aae_rows.loc[aae_rows["aearrivalmode"] == "1", "measure"] = "ambulance"
         aae_rows["tretspef"] = "Other"
         aae_agg = aae_rows.groupby(
-            ["age_group", "sex", "tretspef", "pod"],
+            ["age_group", "sex", "tretspef", "pod", "measure"],
             as_index=False,
         ).agg({"arrivals": np.sum})
         return aae_agg.rename(columns={"arrivals": "value"})
