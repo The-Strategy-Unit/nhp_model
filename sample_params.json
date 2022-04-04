@@ -1,0 +1,515 @@
+{
+  "name": "test",
+  "input_data": "synthetic",
+  "seed": 1502,
+  "model_runs": 256,
+  "health_status_adjustment": {
+    "min_age": 55,
+    "max_age": 90,
+    "intervals": [
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5],
+      [0.5, 1.5]
+    ]
+  },
+  "waiting_list_adjustment": {
+    "inpatients": {
+      "100": 1.03141193381171,
+      "101": 1.00431089708937,
+      "110": 0.96065773899985,
+      "120": 1.03112548264765,
+      "130": 0.99696729805336,
+      "140": 1.08064704655517,
+      "160": 0.91909814323607,
+      "300": 1.00801222103667,
+      "320": 1.01131386644624,
+      "330": 1.03203433205074,
+      "400": 1.10489115458804,
+      "410": 1.89403680981595,
+      "430": 1.00698602794411,
+      "502": 1.07678690000387,
+      "X01": 1.08801399692198
+    },
+    "outpatients": {
+      "100": 1.02841606832282,
+      "101": 1.00266291184302,
+      "110": 0.98635484094456,
+      "120": 1.00593763318499,
+      "130": 0.99915595971433,
+      "140": 1.03883826980887,
+      "160": 0.92720763723150,
+      "300": 1.01086664156221,
+      "301": 1.00633488627657,
+      "320": 1.00058175469382,
+      "330": 1.00064659379420,
+      "340": 0.99999748146338,
+      "400": 1.00246772156658,
+      "410": 1.00092993219244,
+      "430": 1.00016318373354,
+      "502": 1.01810892562988,
+      "X01": 1.00069399772155
+    }
+  },
+  "strategy_params": {
+    "admission_avoidance": {
+      "alcohol_partial_acute": {
+        "interval": [ 0.8, 1 ],
+        "strategy_weight": 1
+      },
+      "alcohol_partial_chronic": {
+        "interval": [ 0.9, 1 ],
+        "strategy_weight": 1
+      },
+      "alcohol_wholly_attributable": {
+        "interval": [ 0.9, 1 ],
+        "strategy_weight": 1
+      },
+      "ambulatory_care_conditions_acute": {
+        "interval": [ 0.9, 1 ],
+        "strategy_weight": 1
+      },
+      "ambulatory_care_conditions_chronic": {
+        "interval": [ 0.7, 0.9 ],
+        "strategy_weight": 1
+      },
+      "ambulatory_care_conditions_vaccine_preventable": {
+        "interval": [ 0.8, 0.9 ],
+        "strategy_weight": 1
+      },
+      "cancelled_operations": {
+        "interval": [ 0.5, 0.9 ],
+        "strategy_weight": 1
+      },
+      "emergency_elderly": {
+        "interval": [ 0.7, 0.95 ],
+        "strategy_weight": 1
+      },
+      "eol_care_2_days": {
+        "interval": [ 0.5, 0.8 ],
+        "strategy_weight": 1
+      },
+      "eol_care_3_to_14_days": {
+        "interval": [ 0.7, 0.9 ],
+        "strategy_weight": 1
+      },
+      "evidence_based_interventions_ent": {
+        "interval": [ 0.7, 0.9 ],
+        "strategy_weight": 1
+      },                    
+      "evidence_based_interventions_general_surgery": {
+        "interval": [ 0.7, 0.9 ],
+        "strategy_weight": 1
+      },
+      "evidence_based_interventions_gi_surgical": {
+        "interval": [ 0.7, 0.9 ],
+        "strategy_weight": 1
+      },            
+      "evidence_based_interventions_msk": {
+        "interval": [ 0.7, 0.9 ],
+        "strategy_weight": 1
+      },
+      "evidence_based_interventions_urology": {
+        "interval": [ 0.7, 0.9 ],
+        "strategy_weight": 1
+      },
+      "evidence_based_interventions_vascular_varicose_veins": {
+        "interval": [ 0.7, 0.9 ],
+        "strategy_weight": 1
+      },
+      "falls_related_admissions_explicit": {
+        "interval": [ 0.9, 1 ],
+        "strategy_weight": 1
+      },
+      "falls_related_admissions_implicit": {
+        "interval": [ 0.9, 1 ],
+        "strategy_weight": 1
+      },
+      "frail_elderly_high": {
+        "interval": [ 0.9, 1 ],
+        "strategy_weight": 1
+      },
+      "frail_elderly_intermediate": {
+        "interval": [ 0.8, 0.95 ],
+        "strategy_weight": 1
+      },
+      "intentional_self_harm": {
+        "interval": [ 0.6, 0.9 ],
+        "strategy_weight": 1
+      },
+      "medically_unexplained_related_admissions": {
+        "interval": [ 0.85, 1 ],
+        "strategy_weight": 1
+      },
+      "medicines_related_admissions_explicit": {
+        "interval": [ 0.85, 1 ],
+        "strategy_weight": 1
+      },
+      "medicines_related_admissions_implicit_anti-diabetics": {
+        "interval": [ 0.85, 1 ],
+        "strategy_weight": 1
+      },
+      "medicines_related_admissions_implicit_benzodiasepines": {
+        "interval": [ 0.8, 1 ],
+        "strategy_weight": 1
+      },
+      "medicines_related_admissions_implicit_diurectics": {
+        "interval": [ 0.85, 1 ],
+        "strategy_weight": 1
+      },
+      "medicines_related_admissions_implicit_nsaids": {
+        "interval": [ 0.85, 1 ],
+        "strategy_weight": 1
+      },
+      "obesity_related_admissions_large": {
+        "interval": [ 0.9, 1 ],
+        "strategy_weight": 1
+      },
+      "obesity_related_admissions_marginal": {
+        "interval": [ 0.8, 1 ],
+        "strategy_weight": 1
+      },
+      "obesity_related_admissions_somewhat": {
+        "interval": [ 0.85, 1 ],
+        "strategy_weight": 1
+      },
+      "raid_ip": {
+        "interval": [ 0.75, 0.95 ],
+        "strategy_weight": 1
+      },
+      "readmission_within_28_days": {
+        "interval": [ 0.9, 1 ],
+        "strategy_weight": 1
+      },
+      "smoking_large": {
+        "interval": [ 0.6, 0.9 ],
+        "strategy_weight": 1
+      },
+      "smoking_somewhat": {
+        "interval": [ 0.75, 0.9 ],
+        "strategy_weight": 1
+      },
+      "zero_los_no_procedure_adult": {
+        "interval": [ 0.7, 0.9 ],
+        "strategy_weight": 1
+      },
+      "zero_los_no_procedure_child": {
+        "interval": [ 0.7, 0.85 ],
+        "strategy_weight": 1
+      }
+    },
+    "los_reduction": {
+      "enhanced_recovery_bladder": {
+        "type": "all",
+        "interval": [ 0.7, 0.9 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "enhanced_recovery_breast": {
+        "type": "all",
+        "interval": [ 0.7, 0.9 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "enhanced_recovery_colectomy": {
+        "type": "all",
+        "interval": [ 0.7, 0.9 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "enhanced_recovery_hip": {
+        "type": "all",
+        "interval": [ 0.7, 0.9 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "enhanced_recovery_hysterectomy": {
+        "type": "all",
+        "interval": [ 0.7, 0.9 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "enhanced_recovery_knee": {
+        "type": "all",
+        "interval": [ 0.7, 0.9 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "enhanced_recovery_prostate": {
+        "type": "all",
+        "interval": [ 0.7, 0.9 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "enhanced_recovery_rectum": {
+        "type": "all",
+        "interval": [ 0.7, 0.9 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "improved_discharge_planning_elective": {
+        "type": "all",
+        "interval": [ 0.8, 0.9 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "improved_discharge_planning_non-elective": {
+        "type": "all",
+        "interval": [ 0.7, 0.9 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "medical_hrg_long_los": {
+        "type": "all",
+        "interval": [ 0.7, 0.9 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "raid_ae": {
+        "type": "all",
+        "interval": [ 0.7, 0.9 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "stroke_early_supported_discharge": {
+        "type": "all",
+        "interval": [ 0.6, 0.9 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "ambulatory_emergency_care_high": {
+        "type": "aec",
+        "interval": [ 0.7, 0.9 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "ambulatory_emergency_care_low": {
+        "type": "aec",
+        "interval": [ 0.9, 1 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "ambulatory_emergency_care_moderate": {
+        "type": "aec",
+        "interval": [ 0.8, 0.95 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "ambulatory_emergency_care_very_high": {
+        "type": "aec",
+        "interval": [ 0.6, 0.85 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "bads_daycase": {
+        "type": "bads",
+        "interval": [ 0.8, 0.9 ],
+        "target_type": "daycase",
+        "baseline_target_rate": 0.839,
+        "range": [0, 1],
+        "op_dc_split": 1.00,
+        "strategy_weight": 1
+      },
+      "bads_daycase_occasional": {
+        "type": "bads",
+        "interval": [ 0.0, 0.1 ],
+        "target_type": "daycase",
+        "baseline_target_rate": 0.137,
+        "range": [0, 1],
+        "op_dc_split": 1.00,
+        "strategy_weight": 1
+      },
+      "bads_outpatients": {
+        "type": "bads",
+        "interval": [ 0.6, 0.9 ],
+        "target_type": "outpatients",
+        "baseline_target_rate": 0.489,
+        "range": [0, 1],
+        "op_dc_split": 0.00,
+        "strategy_weight": 1
+      },
+      "bads_outpatients_or_daycase": {
+        "type": "bads",
+        "interval": [ 0.7, 0.9 ],
+        "target_type": "outpatients",
+        "baseline_target_rate": 0.885,
+        "range": [0, 1],
+        "op_dc_split": 0.10,
+        "strategy_weight": 1
+      },
+      "pre-op_los_1-day": {
+        "type": "pre-op",
+        "interval": [ 0.7, 0.9 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      },
+      "pre-op_los_2-day": {
+        "type": "pre-op",
+        "interval": [ 0.7, 0.9 ],
+        "range": [0, 1],
+        "strategy_weight": 1
+      }
+    },
+    "other": {
+      "excess_beddays_elective": {
+        "interval": [ 0.5, 0.9 ],
+        "strategy_weight": 1
+      },
+      "excess_beddays_emergency": {
+        "interval": [ 0.5, 0.9 ],
+        "strategy_weight": 1
+      }
+    }
+  },
+  "outpatient_factors": {
+    "followup_reduction": {
+      "adult_surgical": {
+        "interval": [0.9, 0.95],
+        "range": [0, 1]
+      },
+      "child_surgical": {
+        "interval": [0.9, 0.95],
+        "range": [0, 1]
+      },
+      "adult_non-surgical": {
+        "interval": [0.9, 0.95],
+        "range": [0, 1]
+      },
+      "child_non-surgical": {
+        "interval": [0.9, 0.95],
+        "range": [0, 1]
+      }
+    },
+    "consultant_to_consultant_reduction": {
+      "adult_surgical": {
+        "interval": [0.9, 0.95],
+        "range": [0, 1]
+      },
+      "child_surgical": {
+        "interval": [0.9, 0.95],
+        "range": [0, 1]
+      },
+      "adult_non-surgical": {
+        "interval": [0.9, 0.95],
+        "range": [0, 1]
+      },
+      "child_non-surgical": {
+        "interval": [0.9, 0.95],
+        "range": [0, 1]
+      }
+    },
+    "convert_to_tele": {
+      "adult_surgical": {
+        "interval": [0.0, 0.05],
+        "range": [0, 1]
+      },
+      "child_surgical": {
+        "interval": [0.0, 0.05],
+        "range": [0, 1]
+      },
+      "adult_non-surgical": {
+        "interval": [0.0, 0.05],
+        "range": [0, 1]
+      },
+      "child_non-surgical": {
+        "interval": [0.0, 0.05],
+        "range": [0, 1]
+      }
+    }
+  },
+  "aae_factors": {
+    "low_cost_discharged": {
+      "adult_ambulance": {
+        "interval": [ 0.98, 0.99 ],
+        "range": [0, 1]
+      },
+      "child_ambulance": {
+        "interval": [ 0.98, 0.99 ],
+        "range": [0, 1]
+      },
+      "adult_walk-in": {
+        "interval": [ 0.98, 0.99 ],
+        "range": [0, 1]
+      },
+      "child_walk-in": {
+        "interval": [ 0.98, 0.99 ],
+        "range": [0, 1]
+      }
+    },
+    "left_before_seen": {
+      "adult_ambulance": {
+        "interval": [ 0.98, 0.99 ],
+        "range": [0, 1]
+      },
+      "child_ambulance": {
+        "interval": [ 0.98, 0.99 ],
+        "range": [0, 1]
+      },
+      "adult_walk-in": {
+        "interval": [ 0.98, 0.99 ],
+        "range": [0, 1]
+      },
+      "child_walk-in": {
+        "interval": [ 0.98, 0.99 ],
+        "range": [0, 1]
+      }
+    },
+    "frequent_attenders": {
+      "adult_ambulance": {
+        "interval": [ 0.98, 0.99 ],
+        "range": [0, 1]
+      },
+      "child_ambulance": {
+        "interval": [ 0.98, 0.99 ],
+        "range": [0, 1]
+      },
+      "adult_walk-in": {
+        "interval": [ 0.98, 0.99 ],
+        "range": [0, 1]
+      },
+      "child_walk-in": {
+        "interval": [ 0.98, 0.99 ],
+        "range": [0, 1]
+      }
+    }
+  },
+  "demographic_factors": {
+    "file": "demographic_factors.csv",
+    "variant_probabilities": {
+      "principal": 0.75,
+      "high migration": 0.25
+    }
+  }
+}
