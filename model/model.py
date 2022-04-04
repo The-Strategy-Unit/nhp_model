@@ -15,7 +15,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 from tqdm import tqdm
 
-from model.helpers import inrange, np_encoder, rnorm
+from model.helpers import inrange, rnorm
 
 
 class Model:  # pylint: disable=too-many-instance-attributes
@@ -66,6 +66,8 @@ class Model:  # pylint: disable=too-many-instance-attributes
         }
         # generate the run parameters
         self._generate_run_params()
+        # save the baseline aggregated rows
+        self.aggregate_baseline()
 
     #
     def _select_variant(self, rng):
@@ -144,6 +146,22 @@ class Model:  # pylint: disable=too-many-instance-attributes
             .to_numpy()
         )
 
+    def aggregate_baseline(self):
+        """
+        Save the aggregated results for the baseline
+        """
+        if not self._params.get("aggregate_results", True):
+            return
+        path_fn = lambda t: os.path.join(
+            self._results_path,
+            t,
+            f"dataset={self._model_type}",
+            f"model_run=-1",
+        )
+        data = self._data["principal"]
+        os.makedirs(aggregated_path := path_fn("aggregated_results"), exist_ok=True)
+        self.aggregate(data).to_parquet(f"{aggregated_path}/-1.parquet")
+
     #
     def save_run(self, model_run):
         """
@@ -151,23 +169,31 @@ class Model:  # pylint: disable=too-many-instance-attributes
 
         * model_run: the number of this model run
 
-        returns: a tuple containing the time to run the model, and the time to save the results
+        returns: the results of `self.run(model_run)`
         """
+        # run the model
         change_factors, mr_data = self.run(model_run)
-        # Save the results
-        results_path = f"{self._results_path}/{self._model_type}/model_run={model_run}"
-        os.makedirs(results_path, exist_ok=True)
-        mr_data.to_parquet(f"{results_path}/{model_run}.parquet")
+        path_fn = lambda t: os.path.join(
+            self._results_path,
+            t,
+            f"dataset={self._model_type}",
+            f"model_run={model_run}",
+        )
+        # save row level results (if param is not set, defaults to not saving row level results)
+        if self._params.get("save_all_results", False):
+            os.makedirs(results_path := path_fn("model_results"), exist_ok=True)
+            mr_data.to_parquet(f"{results_path}/{model_run}.parquet")
+        # aggregate the results (if param is not set, defaults to saving aggregated results)
+        if self._params.get("aggregate_results", True):
+            os.makedirs(aggregated_path := path_fn("aggregated_results"), exist_ok=True)
+            self.aggregate(mr_data).to_parquet(f"{aggregated_path}/{model_run}.parquet")
         # Save the change factors, so long as it's not an empty dictionary
-        if change_factors != {}:
-            change_factors_path = (
-                f"{self._results_path}/{self._model_type}_change_factors"
-            )
+        if change_factors is not None:
+            change_factors_path = path_fn("change_factors")
             os.makedirs(change_factors_path, exist_ok=True)
-            change_factors_file = f"{change_factors_path}/{model_run}.json"
-            with open(change_factors_file, "w", encoding="UTF-8") as pcf:
-                json.dump(change_factors, pcf, indent=2, default=np_encoder)
-        return model_run
+            change_factors_file = f"{change_factors_path}/{model_run}.csv"
+            change_factors.to_csv(change_factors_file, index=False)
+        return (change_factors, mr_data)
 
     #
     def batch_save(self, i, j, batch_size):
@@ -280,7 +306,9 @@ class Model:  # pylint: disable=too-many-instance-attributes
             },
         }
 
-    def _run(self, rng, data, run_params, hsa_f):
+    def _run(
+        self, rng, data, run_params, aav_f, hsa_f
+    ):  # pylint: disable=too-many-arguments
         """
         Model Run
 
@@ -297,7 +325,18 @@ class Model:  # pylint: disable=too-many-instance-attributes
         run_params = self._get_run_params(model_run)
         rng = np.random.default_rng(run_params["seed"])
         data = self._data[run_params["variant"]].copy()
+        # admission avoidance
+        aav_f = data["factor"]
+        data.drop(["factor"], axis="columns", inplace=True)
         # hsa
         hsa_f = self._health_status_adjustment(data, run_params)
         # choose which function to use
-        return self._run(rng, data, run_params, hsa_f)
+        return self._run(rng, data, run_params, aav_f, hsa_f)
+
+    def aggregate(self, model_results):
+        """
+        Aggregate the model results
+
+        To be implemented by specific classes
+        """
+        return model_results

@@ -8,7 +8,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 
-from model.helpers import inrange
+from model.helpers import age_groups, inrange
 from model.model import Model
 
 
@@ -131,12 +131,15 @@ class InpatientsModel(Model):
         data_aa = data.merge(
             admission_avoidance, left_on="rn", right_index=True
         ).groupby("admission_avoidance_strategy")
-        sc_n_aa = data_aa["rn"].agg(len) - sc_n_aa
-        sc_b_aa = data_aa["speldur"].agg(sum) - sc_b_aa
-        return {
-            "rows": sc_n_aa.to_dict(),
-            "beddays": sc_b_aa.to_dict(),
-        }
+        # handle the case of a strategy eliminating all rows
+        sc_n_aa_post = defaultdict(lambda: 0, data_aa["rn"].agg(len).to_dict())
+        sc_b_aa_post = defaultdict(lambda: 0, data_aa["speldur"].agg(sum).to_dict())
+        return pd.DataFrame(
+            {
+                "admissions": {k: sc_n_aa_post[k] - sc_n_aa[k] for k in sc_n_aa.index},
+                "beddays": {k: sc_b_aa_post[k] - sc_b_aa[k] for k in sc_b_aa.index},
+            }
+        )
 
     #
     @staticmethod
@@ -163,7 +166,7 @@ class InpatientsModel(Model):
             (data.loc[i, "speldur"] - pre_los).groupby(level=0).sum().astype(int)
         )
         step_counts["los_reduction"] = {
-            "rows": (change_los * 0).to_dict(),
+            "admissions": (change_los * 0).to_dict(),
             "beddays": change_los.to_dict(),
         }
 
@@ -219,12 +222,14 @@ class InpatientsModel(Model):
         bads_df.loc[(rvr >= ur0 + ur1), "classpat"] = "-1"  # row becomes outpatients
         # we now need to apply these changes to the actual data
         i = losr.index[i]
+        # make sure we only keep values in losr that exist in data
+        i = i[i.isin(data.index)]
         data.loc[i, "classpat"] = bads_df["classpat"]
         # set the speldur to 0 if we aren't inpatients
         data.loc[i, "speldur"] *= data.loc[i, "classpat"] == 1
         #
-        step_counts["los_reduction"]["rows"] = {
-            **step_counts["los_reduction"]["rows"],
+        step_counts["los_reduction"]["admissions"] = {
+            **step_counts["los_reduction"]["admissions"],
             **((data.loc[i, "classpat"] == "-1").groupby(level=0).sum() * -1)
             .astype(int)
             .to_dict(),
@@ -252,7 +257,7 @@ class InpatientsModel(Model):
 
         Updates the length of stay to 0 for a given percentage of rows.
         """
-        i = losr.index[losr.type == losr_type]
+        i = losr.index[(losr.type == losr_type) & (losr.index.isin(data.index))]
         pre_los = data.loc[i, "speldur"]
         nrow = len(data.loc[i, "speldur"])
         data.loc[i, "speldur"] *= (
@@ -261,8 +266,8 @@ class InpatientsModel(Model):
         change_los = (
             (data.loc[i, "speldur"] - pre_los).groupby(level=0).sum().astype(int)
         )
-        step_counts["los_reduction"]["rows"] = {
-            **step_counts["los_reduction"]["rows"],
+        step_counts["los_reduction"]["admissions"] = {
+            **step_counts["los_reduction"]["admissions"],
             **(change_los * 0).to_dict(),
         }
         step_counts["los_reduction"]["beddays"] = {
@@ -271,22 +276,18 @@ class InpatientsModel(Model):
         }
 
     #
-    def _run(self, rng, data, run_params, hsa_f):
+    def _run(
+        self, rng, data, run_params, aav_f, hsa_f
+    ):  # pylint: disable=too-many-arguments
         # select strategies
         admission_avoidance = self._random_strategy(rng, "admission_avoidance")
         los_reduction = self._random_strategy(rng, "los_reduction")
         # choose length of stay reduction factors
         losr = self._los_reduction(run_params)
         #
+        sc_n, sc_b = len(data.index), sum(data["speldur"] + 1)
         step_counts = {
-            "baseline": {
-                "rows": (sc_n := len(data.index)),  # pylint: disable=unused-variable
-                "beddays": (
-                    sc_b := int(  # pylint: disable=unused-variable
-                        sum(data["speldur"] + 1)
-                    )
-                ),
-            }
+            "baseline": pd.DataFrame({"admissions": [sc_n], "beddays": [sc_b]}, ["-"])
         }
         #
         def run_step(thing, name):
@@ -299,7 +300,9 @@ class InpatientsModel(Model):
             # update the step count values
             sc_np = int(sum(select_row_n_times))
             sc_bp = int(sum(data["speldur"] + 1))
-            step_counts[name] = {"rows": sc_np - sc_n, "beddays": sc_bp - sc_b}
+            step_counts[name] = pd.DataFrame(
+                {"admissions": [sc_np - sc_n], "beddays": [sc_bp - sc_b]}, ["-"]
+            )
             # replace the values
             sc_n, sc_b = sc_np, sc_bp
 
@@ -308,8 +311,7 @@ class InpatientsModel(Model):
         # first, run hsa as we have the factor already created
         run_step(hsa_f, "health_status_adjustment")
         # then, demographic modelling
-        run_step(data["factor"].to_numpy(), "population_factors")
-        data.drop(["factor"], axis="columns", inplace=True)
+        run_step(aav_f[data["rn"]], "population_factors")
         # waiting list adjustments
         run_step(self._waiting_list_adjustment(data), "waiting_list_adjustment")
         # Admission Avoidance ----------------------------------------------------------------------
@@ -325,8 +327,74 @@ class InpatientsModel(Model):
         self._losr_to_zero(data, losr, rng, "aec", step_counts)
         self._losr_to_zero(data, losr, rng, "preop", step_counts)
         self._losr_bads(data, losr, rng, step_counts)
+        step_counts["los_reduction"] = pd.DataFrame(step_counts["los_reduction"])
         # return the data (select just the columns we have updated in modelling)
+        change_factors = pd.melt(
+            pd.concat(step_counts)
+            .rename_axis(["change_factor", "strategy"])
+            .reset_index(),
+            ["change_factor", "strategy"],
+            ["admissions", "beddays"],
+            "measure",
+        )
+        change_factors["value"] = change_factors["value"].astype(int)
+        return (change_factors, data.drop(["hsagrp"], axis="columns").set_index(["rn"]))
+
+    def aggregate(self, model_results):
+        """
+        Aggregate the model results
+        """
+        model_results["age_group"] = age_groups(model_results["age"])
+        # find the rows we need to convert to outpatients
+        ip_op_row_ix = model_results["classpat"] == "-1"
+        return pd.concat(
+            [
+                self._aggregate_ip_rows(model_results[~ip_op_row_ix]),
+                self._aggregate_op_rows(model_results[ip_op_row_ix]),
+            ]
+        )
+
+    @staticmethod
+    def _aggregate_op_rows(op_rows):
+        op_rows = op_rows.copy()
         return (
-            step_counts,
-            data.reset_index(drop=True)[["rn", "speldur", "classpat"]],
+            op_rows.value_counts(["age_group", "sex", "tretspef"])
+            .to_frame("value")
+            .reset_index()
+            .assign(pod="op_procedure", measure="attendances")
+        )
+
+    @staticmethod
+    def _aggregate_ip_rows(ip_rows):
+        ip_rows = ip_rows.copy()
+        # create an admission group column
+        ip_rows["admission_group"] = "ip_non-elective"
+        ip_rows.loc[
+            ip_rows["admimeth"].str.startswith("1"), "admission_group"
+        ] = "ip_elective"
+        # quick dq fix: convert any "non-elective" daycases to "elective"
+        ip_rows.loc[
+            ip_rows["classpat"].isin(["2", "3"]), "admission_group"
+        ] = "ip_elective"
+        # create a "pod" column, starting with the admission group
+        ip_rows["pod"] = ip_rows["admission_group"]
+        ip_rows.loc[ip_rows["classpat"].isin(["1", "4"]), "pod"] += "_admission"
+        ip_rows.loc[ip_rows["classpat"].isin(["2", "3"]), "pod"] += "_daycase"
+        ip_rows.loc[ip_rows["classpat"] == "5", "pod"] += "_birth-episode"
+        ip_rows["beddays"] = ip_rows["speldur"] + 1
+
+        ip_agg = (
+            ip_rows.groupby(
+                ["age_group", "sex", "tretspef", "pod"],
+                as_index=False,
+            )
+            .agg({"speldur": len, "beddays": np.sum})
+            .rename({"speldur": "admissions"}, axis="columns")
+        )
+
+        return pd.melt(
+            ip_agg,
+            ["age_group", "sex", "tretspef", "pod"],
+            ["admissions", "beddays"],
+            "measure",
         )

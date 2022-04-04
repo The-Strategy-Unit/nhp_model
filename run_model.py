@@ -14,7 +14,6 @@ will run a single run of the inpatients model, returning the results to display.
 """
 
 import argparse
-import json
 import os
 import time
 
@@ -29,7 +28,7 @@ def timeit(func, *args):
     """
     start = time.time()
     results = func(*args)
-    print(f"elapsed: {time.time() - start:.3f}")
+    print(f"elapsed: {time.time() - start:.3f}s")
     return results
 
 
@@ -107,10 +106,18 @@ def main():
             args.type != "all"
         ), "can only debug a single model at a time: make sure to set the --type argument"
         model = models[args.type](args.results_path[0])
+        print("running model... ", end="")
         change_factors, results = timeit(model.run, args.run_start[0])
-        print(json.dumps(change_factors, indent=2))
+        print("aggregating results... ", end="")
+        agg_results = timeit(model.aggregate, results)
+        #
         print()
-        print(results)
+        print("change factors:")
+        print(change_factors)
+        #
+        print()
+        print("aggregated results:")
+        print(agg_results)
     else:
         for i in models.values():
             run_model(

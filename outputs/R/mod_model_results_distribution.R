@@ -39,7 +39,7 @@ mod_model_results_distribution_server <- function(id, data) {
       d <- req(selected_data())
       req(nrow(d) > 0)
 
-      b <- dplyr::filter(d, .data$model_run == 0)$value
+      b <- dplyr::filter(d, .data$model_run == -1)$value
 
       p <- d |>
         dplyr::filter(.data$model_run > 0) |>

@@ -7,6 +7,7 @@ Implements the Outpatients model.
 import numpy as np
 import pandas as pd
 
+from model.helpers import age_groups
 from model.model import Model
 
 
@@ -61,26 +62,101 @@ class OutpatientsModel(Model):
         pd.set_option("mode.chained_assignment", options)
 
     #
-    def _run(self, rng, data, run_params, hsa_f):
+    def _run(
+        self, rng, data, run_params, aav_f, hsa_f
+    ):  # pylint: disable=too-many-arguments
         """
         Run the model once
 
         returns: a tuple of the selected varient and the updated DataFrame
         """
         params = run_params["outpatient_factors"]
-        # create a single factor for how many times to select that row
-        factor = (
-            data["factor"].to_numpy()
-            * hsa_f
-            * self._followup_reduction(data, params)
-            * self._consultant_to_consultant_reduction(data, params)
+        #
+        sc_a, sc_t = data[["attendances", "tele_attendances"]].sum()
+        step_counts = {
+            "baseline": pd.DataFrame(
+                {"attendances": [sc_a], "tele_attendances": [sc_t]}, ["-"]
+            )
+        }
+
+        def update_stepcounts(name):
+            nonlocal data, step_counts, sc_a, sc_t
+            # update the step count values
+            sc_ap = sum(data["attendances"])
+            sc_tp = sum(data["tele_attendances"])
+            step_counts[name] = pd.DataFrame(
+                {"attendances": [sc_ap - sc_a], "tele_attendances": [sc_tp - sc_t]},
+                ["-"],
+            )
+            # replace the values
+            sc_a, sc_t = sc_ap, sc_tp
+
+        def run_step(factor, name):
+            nonlocal data
+            # perform the step
+            data.loc[:, "attendances"] = rng.poisson(
+                data["attendances"].to_numpy() * factor
+            )
+            data.loc[:, "tele_attendances"] = rng.poisson(
+                data["tele_attendances"].to_numpy() * factor
+            )
+            # remove rows where the overall number of attendances was 0
+            data = data[data["attendances"] + data["tele_attendances"] > 0]
+            update_stepcounts(name)
+
+        # captue current pandas options, and set chainged assignment off
+        pd_options = pd.set_option("mode.chained_assignment", None)
+        # before we do anything, reset the index to keep the row number
+        data.reset_index(inplace=True)
+        # first, run hsa as we have the factor already created
+        run_step(hsa_f, "health_status_adjustment")
+        # then, demographic modelling
+        run_step(aav_f[data["rn"]], "population_factors")
+        # now run strategies
+        run_step(self._followup_reduction(data, params), "followup_reduction")
+        run_step(
+            self._consultant_to_consultant_reduction(data, params),
+            "consultant_to_consultant_referrals",
         )
-        # update the number of attendances / tele_attendances
-        data["attendances"] = rng.poisson(data["attendances"] * factor)
-        data["tele_attendances"] = rng.poisson(data["tele_attendances"] * factor)
-        # remove rows where the overall number of attendances was 0
-        data = data[data["attendances"] + data["tele_attendances"] > 0]
+        # now run_step's are finished, restore pandas options
+        pd.set_option("mode.chained_assignment", pd_options)
         # convert attendances to tele attendances
         self._convert_to_tele(data, params)
+        update_stepcounts("tele_conversion")
         # return the data
-        return ({}, data[["attendances", "tele_attendances"]].reset_index())
+        change_factors = pd.melt(
+            pd.concat(step_counts)
+            .rename_axis(["change_factor", "strategy"])
+            .reset_index(),
+            ["change_factor", "strategy"],
+            ["attendances", "tele_attendances"],
+            "measure",
+        )
+        change_factors["value"] = change_factors["value"].astype(int)
+        return (change_factors, data.drop(["hsagrp"], axis="columns"))
+
+    def aggregate(self, model_results):
+        """
+        Aggregate the model results
+        """
+        model_results["age_group"] = age_groups(model_results["age"])
+
+        return self._aggregate_op_rows(model_results)
+
+    @staticmethod
+    def _aggregate_op_rows(op_rows):
+        op_rows.loc[op_rows["is_first"], "pod"] = "op_first"
+        op_rows.loc[~op_rows["is_first"], "pod"] = "op_follow-up"
+        op_rows.loc[op_rows["has_procedures"], "pod"] = "op_procedure"
+
+        op_agg = op_rows.groupby(
+            ["age_group", "sex", "tretspef", "pod"],
+            as_index=False,
+        ).agg({"attendances": np.sum, "tele_attendances": np.sum})
+
+        return pd.melt(
+            op_agg,
+            ["age_group", "sex", "tretspef", "pod"],
+            ["attendances", "tele_attendances"],
+            "measure",
+        )

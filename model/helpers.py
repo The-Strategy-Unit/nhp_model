@@ -3,6 +3,7 @@ Helper methods for the model package
 """
 
 import numpy as np
+import pandas as pd
 
 
 def inrange(value, low=0, high=1):
@@ -30,3 +31,15 @@ def np_encoder(obj):
     if isinstance(obj, np.generic):
         return obj.item()
     return obj
+
+
+def age_groups(age):
+    """
+    cut age into groups
+    """
+    return pd.cut(
+        age,
+        [0, 5, 15, 35, 50, 65, 85, 1000],
+        False,
+        [" 0- 4", " 5-14", "15-34", "35-49", "50-64", "65-84", "85+"],
+    ).astype(str)

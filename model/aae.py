@@ -4,6 +4,10 @@ Accident and Emergency Module
 Implements the A&E model.
 """
 
+import numpy as np
+import pandas as pd
+
+from model.helpers import age_groups
 from model.model import Model
 
 
@@ -42,22 +46,91 @@ class AaEModel(Model):
         )
 
     #
-    def _run(self, rng, data, run_params, hsa_f):
+    def _run(
+        self, rng, data, run_params, aav_f, hsa_f
+    ):  # pylint: disable=too-many-arguments
         """
         Run the model once
 
         returns: a tuple of the selected varient and the updated DataFrame
         """
         params = run_params["aae_factors"]
-        # create a single factor for how many times to select that row
-        factor = (
-            data["factor"].to_numpy()
-            * hsa_f
-            * self._low_cost_discharged(data, params)
-            * self._left_before_seen(data, params)
-            * self._frequent_attenders(data, params)
+        #
+        sc_a = sum(data["arrivals"])
+        step_counts = {
+            "baseline": pd.DataFrame({"measure": ["arrivals"], "value": [sc_a]}, ["-"])
+        }
+        #
+        def update_step_counts(name):
+            nonlocal data, step_counts, sc_a
+            sc_ap = sum(data["arrivals"])
+            step_counts[name] = pd.DataFrame(
+                {"measure": ["arrivals"], "value": [sc_ap - sc_a]}, ["-"]
+            )
+            # replace the values
+            sc_a = sc_ap
+
+        #
+        def run_poisson_step(factor, name):
+            nonlocal data
+            # perform the step
+            data["arrivals"] = rng.poisson(data["arrivals"].to_numpy() * factor)
+            # remove rows where the overall number of attendances was 0
+            data = data[data["arrivals"] > 0]
+            # update the step count values
+            update_step_counts(name)
+
+        #
+        def run_binomial_step(factor, name):
+            nonlocal data
+            # perform the step
+            data["arrivals"] = rng.binomial(data["arrivals"].to_numpy(), factor)
+            # remove rows where the overall number of attendances was 0
+            data = data[data["arrivals"] > 0]
+            # update the step count values
+            update_step_counts(name)
+
+        # captue current pandas options, and set chainged assignment off
+        pd_options = pd.set_option("mode.chained_assignment", None)
+        # before we do anything, reset the index to keep the row number
+        data.reset_index(inplace=True)
+        # first, run hsa as we have the factor already created
+        run_poisson_step(hsa_f, "health_status_adjustment")
+        # then, demographic modelling
+        run_poisson_step(aav_f[data["rn"]], "population_factors")
+        # now run strategies
+        run_binomial_step(
+            self._low_cost_discharged(data, params), "low_cost_discharged"
         )
-        data["arrivals"] = rng.poisson(data["arrivals"] * factor)
-        data = data[data["arrivals"] > 0]
+        run_binomial_step(self._left_before_seen(data, params), "left_before_seen")
+        run_binomial_step(self._frequent_attenders(data, params), "frequent_attenders")
+        # now run_step's are finished, restore pandas options
+        pd.set_option("mode.chained_assignment", pd_options)
         # return the data
-        return ({}, data[["arrivals"]].reset_index())
+        change_factors = (
+            pd.concat(step_counts)
+            .rename_axis(["change_factor", "strategy"])
+            .reset_index()
+        )
+        change_factors["value"] = change_factors["value"].astype(int)
+        return (change_factors, data.drop(["hsagrp"], axis="columns"))
+
+    def aggregate(self, model_results):
+        """
+        Aggregate the model results
+        """
+        model_results["age_group"] = age_groups(model_results["age"])
+
+        return self._aggregate_aae_rows(model_results)
+
+    @staticmethod
+    def _aggregate_aae_rows(aae_rows):
+        aae_rows["pod"] = "aae_type-" + aae_rows["aedepttype"]
+        aae_rows["measure"] = "walk-in"
+        aae_rows.loc[aae_rows["aearrivalmode"] == "1", "measure"] = "ambulance"
+        aae_rows["tretspef"] = "Other"
+        aae_agg = aae_rows.groupby(
+            ["age_group", "sex", "tretspef", "pod", "measure"],
+            as_index=False,
+        ).agg({"arrivals": np.sum})
+        return aae_agg.rename(columns={"arrivals": "value"})

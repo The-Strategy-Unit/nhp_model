@@ -25,12 +25,9 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
   moduleServer(id, function(input, output, session) {
     change_factors_summarised <- reactive({
       change_factors() |>
-        dplyr::filter(.data$dataset == "ip", .data$model_run == 0) |>
+        dplyr::filter(.data$dataset == "ip", .data$model_run == 0, .data$measure == "Admissions") |>
         dplyr::group_by(.data$change_factor) |>
-        dplyr::summarise(dplyr::across(c(.data$rows, .data$beddays), sum, na.rm = TRUE)) |>
-        tidyr::pivot_longer(c(.data$rows, .data$beddays)) |>
-        dplyr::filter(.data$name == "rows") |>
-        dplyr::select(-.data$name) |>
+        dplyr::summarise(dplyr::across(.data$value, sum, na.rm = TRUE)) |>
         dplyr::mutate(cuvalue = cumsum(.data$value))
     })
 

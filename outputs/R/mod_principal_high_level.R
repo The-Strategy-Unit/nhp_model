@@ -58,14 +58,16 @@ mod_principal_high_level_server <- function(id, data) {
 
     summary_data <- reactive({
       d <- data() |>
-        dplyr::filter(.data$model_run == 0)
+        dplyr::filter(.data$model_run <= 0)
 
       dplyr::bind_rows(
         aae <- d |>
           dplyr::filter(.data$dataset == "aae") |>
-          dplyr::mutate(pod = "A&E Attendances"),
+          dplyr::mutate(pod = "A&E Attendances") |>
+          dplyr::collect(),
         d |>
           dplyr::filter(.data$dataset == "op", .data$measure == "attendances") |>
+          dplyr::collect() |>
           dplyr::mutate(
             dplyr::across(
               .data$pod,
@@ -77,22 +79,23 @@ mod_principal_high_level_server <- function(id, data) {
           ),
         d |>
           dplyr::filter(.data$dataset == "ip", .data$measure == "admissions") |>
+          dplyr::collect() |>
           dplyr::mutate(
             dplyr::across(
               .data$pod,
               forcats::fct_recode,
-              "IP Elective Admissions" = "elective_admission",
-              "IP Non-Elective Admissions" = "non-elective_admission",
-              "Daycase Admissions" = "elective_daycase"
+              "IP Elective Admissions" = "ip_elective_admission",
+              "IP Non-Elective Admissions" = "ip_non-elective_admission",
+              "Daycase Admissions" = "ip_elective_daycase"
             )
           )
       ) |>
-        dplyr::count(.data$pod, .data$type, wt = .data$value) |>
+        dplyr::count(.data$pod, .data$model_run, wt = .data$value) |>
         dplyr::mutate(
           dplyr::across(.data$pod, forcats::fct_relevel, sort),
-          year = ifelse(.data$type == "baseline", start_year, end_year)
+          year = ifelse(.data$model_run == -1, start_year, end_year)
         ) |>
-        dplyr::select(-.data$type) |>
+        dplyr::select(-.data$model_run) |>
         tidyr::complete(
           year = seq(start_year, end_year),
           .data$pod
