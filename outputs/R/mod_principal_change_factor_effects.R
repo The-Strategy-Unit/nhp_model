@@ -10,8 +10,11 @@
 mod_principal_change_factor_effects_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
-    shiny::h1("Core change factor effects"),
-    shiny::h2("Inpatient spell estimated impact (principal projection)"),
+    shiny::h1("Core change factor effects (principal projection)"),
+    shiny::fluidRow(
+      col_6(shiny::selectInput(ns("activity_type"), "Activity Type", NULL)),
+      col_6(shiny::selectInput(ns("measure"), "Measure", NULL))
+    ),
     shinycssloaders::withSpinner(
       plotly::plotlyOutput(ns("change_factors"), height = "600px")
     )
@@ -23,9 +26,36 @@ mod_principal_change_factor_effects_ui <- function(id) {
 #' @noRd
 mod_principal_change_factor_effects_server <- function(id, change_factors) {
   moduleServer(id, function(input, output, session) {
+    observe({
+      d <- change_factors() |>
+        distinct(.data$dataset)
+      req(nrow(d) > 0)
+
+      activity_types <- dataset_display |>
+        dplyr::semi_join(d, by = "dataset") |>
+        (function(.x) purrr::set_names(.x[[1]], .x[[2]]))()
+
+      shiny::updateSelectInput(session, "activity_type", choices = activity_types)
+    })
+
+    observeEvent(input$activity_type, {
+      at <- req(input$activity_type)
+
+      measures <- change_factors() |>
+        filter(.data$dataset == at) |>
+        pull(.data$measure) |>
+        unique()
+      req(length(measures) > 0)
+
+      shiny::updateSelectInput(session, "measure", choices = measures)
+    })
+
     change_factors_summarised <- reactive({
+      at <- req(input$activity_type)
+      m <- req(input$measure)
+
       change_factors() |>
-        dplyr::filter(.data$dataset == "ip", .data$model_run == 0, .data$measure == "Admissions") |>
+        dplyr::filter(.data$dataset == at, .data$model_run == 0, .data$measure == m) |>
         dplyr::group_by(.data$change_factor) |>
         dplyr::summarise(dplyr::across(.data$value, sum, na.rm = TRUE)) |>
         dplyr::mutate(cuvalue = cumsum(.data$value))
@@ -42,7 +72,11 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
           ),
           across(.data$value, abs)
         ) |>
-        dplyr::select(-.data$cuvalue) |>
+        dplyr::select(-.data$cuvalue)
+
+      levels <- c(levels(forcats::fct_drop(d$change_factor)), "Estimate")
+
+      d <- d |>
         dplyr::bind_rows(
           dplyr::tibble(
             change_factor = "Estimate",
@@ -58,7 +92,7 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
           across(
             .data$change_factor,
             forcats::fct_relevel,
-            rev(c(levels(change_factors()$change_factor), "Estimate"))
+            rev(levels)
           )
         )
 
