@@ -21,7 +21,7 @@ The simplest way to test the model is to press `F5` in VS code. There are a numb
 
 You can use all of the VS code debugging tools like breakpoints and the debug console. Consult the [VS code documentation](https://code.visualstudio.com/docs/python/debugging) for more on how to do this.
 
-There is a Jupyter notebook, [`run_model.ipynb`](`run_model.ipynb`) which runs the models for a given params file. It will create a folder to store the results in the form `data/[DATASET]/results/[SCENARIO]/[RUNTIME]`.
+There is a Jupyter notebook, [`run_model.ipynb`](run_model.ipynb) which runs the models for a given params file. It will create a folder to store the results in the form `data/[DATASET]/results/[SCENARIO]/[RUNTIME]`.
 
 You can also run the model directly from the command line by running
 
@@ -33,6 +33,6 @@ Here you pass the path to where the `params.json` file is stored, the 0 is to st
 
 `ACTIVITY_TYPE` should be one of `"aae", "ip", "op"`.
 
-The rest of the arguments in the file path need to be setup before hand, e.g. with [`run_model.ipynb`](`run_model.ipynb`).
+The rest of the arguments in the file path need to be setup before hand, e.g. with [`run_model.ipynb`](run_model.ipynb).
 
 If you remove the --debug flag the model will run for as many iterations as you ask for, but will run in parallel. Instead of displaying the results it will save the results to parquet files in `data/[DATASET]/[SCENARIO]/[RUNTIME]/results`.
