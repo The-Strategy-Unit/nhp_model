@@ -66,6 +66,8 @@ class Model:  # pylint: disable=too-many-instance-attributes
         }
         # generate the run parameters
         self._generate_run_params()
+        # save the baseline aggregated rows
+        self.aggregate_baseline()
 
     #
     def _select_variant(self, rng):
@@ -143,6 +145,22 @@ class Model:  # pylint: disable=too-many-instance-attributes
             .f.fillna(1)
             .to_numpy()
         )
+
+    def aggregate_baseline(self):
+        """
+        Save the aggregated results for the baseline
+        """
+        if not self._params.get("aggregate_results", True):
+            return
+        path_fn = lambda t: os.path.join(
+            self._results_path,
+            t,
+            f"dataset={self._model_type}",
+            f"model_run=-1",
+        )
+        data = self._data["principal"]
+        os.makedirs(aggregated_path := path_fn("aggregated_results"), exist_ok=True)
+        self.aggregate(data).to_parquet(f"{aggregated_path}/-1.parquet")
 
     #
     def save_run(self, model_run):
