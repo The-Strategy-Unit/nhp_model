@@ -131,12 +131,13 @@ class InpatientsModel(Model):
         data_aa = data.merge(
             admission_avoidance, left_on="rn", right_index=True
         ).groupby("admission_avoidance_strategy")
-        sc_n_aa = data_aa["rn"].agg(len) - sc_n_aa
-        sc_b_aa = data_aa["speldur"].agg(sum) - sc_b_aa
+        # handle the case of a strategy eliminating all rows
+        sc_n_aa_post = defaultdict(lambda: 0, data_aa["rn"].agg(len).to_dict())
+        sc_b_aa_post = defaultdict(lambda: 0, data_aa["speldur"].agg(sum).to_dict())
         return pd.DataFrame(
             {
-                "admissions": sc_n_aa.to_dict(),
-                "beddays": sc_b_aa.to_dict(),
+                "admissions": {k: sc_n_aa_post[k] - sc_n_aa[k] for k in sc_n_aa.index},
+                "beddays": {k: sc_b_aa_post[k] - sc_b_aa[k] for k in sc_b_aa.index},
             }
         )
 
@@ -286,7 +287,7 @@ class InpatientsModel(Model):
         #
         sc_n, sc_b = len(data.index), sum(data["speldur"] + 1)
         step_counts = {
-            "baseline": pd.DataFrame({"admissions": [sc_n], "beddays": [sc_b]}, ['-'])
+            "baseline": pd.DataFrame({"admissions": [sc_n], "beddays": [sc_b]}, ["-"])
         }
         #
         def run_step(thing, name):
@@ -300,7 +301,7 @@ class InpatientsModel(Model):
             sc_np = int(sum(select_row_n_times))
             sc_bp = int(sum(data["speldur"] + 1))
             step_counts[name] = pd.DataFrame(
-                {"admissions": [sc_np - sc_n], "beddays": [sc_bp - sc_b]}, ['-']
+                {"admissions": [sc_np - sc_n], "beddays": [sc_bp - sc_b]}, ["-"]
             )
             # replace the values
             sc_n, sc_b = sc_np, sc_bp
