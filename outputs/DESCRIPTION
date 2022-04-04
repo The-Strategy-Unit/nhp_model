@@ -11,6 +11,7 @@ Imports:
     config (>= 0.3.1),
     DescTools,
     DT,
+    duckdb,
     glue,
     golem (>= 0.3.1),
     gt,
