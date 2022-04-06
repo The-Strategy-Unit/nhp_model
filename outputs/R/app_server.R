@@ -8,26 +8,10 @@ app_server <- function(input, output, session) {
   # this module returns a reactive which contains the data path
   data_path <- mod_result_selection_server("result_selection")
   data <- reactive({
-    p <- shiny::req(data_path())
-    arrow::open_dataset(file.path(p, "aggregated_results")) |>
-      arrow::to_duckdb()
+    get_data(shiny::req(data_path()))
   })
   change_factors <- reactive({
-    p <- shiny::req(data_path())
-    arrow::open_dataset(file.path(p, "change_factors"), format = "csv") |>
-      dplyr::collect() |>
-      dplyr::mutate(
-        dplyr::across(
-          c(.data$change_factor, .data$strategy),
-          forcats::fct_inorder
-        ),
-        dplyr::across(
-          c(.data$change_factor, .data$strategy, .data$measure),
-          forcats::fct_relabel,
-          snakecase::to_title_case
-        ),
-        dplyr::across(.data$strategy, forcats::fct_recode, "NULL Strategy" = "Null")
-      )
+    get_change_factors(shiny::req(data_path()))
   })
 
   mod_principal_high_level_server("principal_high_level", data)
