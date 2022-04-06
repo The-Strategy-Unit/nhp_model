@@ -123,10 +123,10 @@ class InpatientsModel(Model):
         sc_b_aa = data_aa["speldur"].agg(sum)
         # then, work out the admission avoidance factors for each row
         aaf = [ada[k] for k in admission_avoidance[data["rn"]]]
-        # work out how many times to sample each row
-        select_row_n_times = rng.poisson(aaf)
+        # decide whether to select this row or not
+        select_row = rng.binomial(n=1, p=aaf).astype(bool)
         # select each row as many times as it was sampeld
-        data = data.loc[data.index.repeat(select_row_n_times)].reset_index(drop=True)
+        data = data[select_row].reset_index(drop=True)
         # update our number of rows and update step_counts
         data_aa = data.merge(
             admission_avoidance, left_on="rn", right_index=True
