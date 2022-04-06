@@ -98,7 +98,7 @@ mod_measure_selection_server <- function(id, data) {
           .data$model_run == 0 ~ "principal",
           TRUE ~ "model"
         )) |>
-        dplyr::group_by(.data$sex, agg = .data[[a]], .data$type, .data$model_run) |>
+        dplyr::group_by(.data$sex, agg = .data[[a]], .data$type, .data$model_run, .data$variant) |>
         dplyr::summarise(dplyr::across(.data$value, sum), .groups = "drop")
 
       attr(d, "aggregation") <- input$aggregation
