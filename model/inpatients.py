@@ -120,7 +120,11 @@ class InpatientsModel(Model):
             admission_avoidance, left_on="rn", right_index=True
         ).groupby("admission_avoidance_strategy")
         sc_n_aa = data_aa["rn"].agg(len)
-        sc_b_aa = data_aa["speldur"].agg(sum)
+        sc_b_aa = (
+            # add rows to convert los to beddays
+            data_aa["speldur"].agg(sum)
+            + sc_n_aa
+        )
         # then, work out the admission avoidance factors for each row
         aaf = [ada[k] for k in admission_avoidance[data["rn"]]]
         # decide whether to select this row or not
@@ -132,13 +136,23 @@ class InpatientsModel(Model):
             admission_avoidance, left_on="rn", right_index=True
         ).groupby("admission_avoidance_strategy")
         # handle the case of a strategy eliminating all rows
-        sc_n_aa_post = defaultdict(lambda: 0, data_aa["rn"].agg(len).to_dict())
-        sc_b_aa_post = defaultdict(lambda: 0, data_aa["speldur"].agg(sum).to_dict())
-        return pd.DataFrame(
-            {
-                "admissions": {k: sc_n_aa_post[k] - sc_n_aa[k] for k in sc_n_aa.index},
-                "beddays": {k: sc_b_aa_post[k] - sc_b_aa[k] for k in sc_b_aa.index},
-            }
+        sc_n_aa_post = data_aa["rn"].agg(len)
+        # as above, convert los to beddays
+        sc_b_aa_post = data_aa["speldur"].agg(sum) + sc_n_aa_post
+        # convert to default dict's: if a strategy eliminates all rows the final step will fail
+        # returning NaN values for these strategies
+        sc_n_aa_post = defaultdict(lambda: 0, sc_n_aa_post.to_dict())
+        sc_b_aa_post = defaultdict(lambda: 0, sc_b_aa_post.to_dict())
+        return (
+            data,
+            pd.DataFrame(
+                {
+                    "admissions": {
+                        k: sc_n_aa_post[k] - sc_n_aa[k] for k in sc_n_aa.index
+                    },
+                    "beddays": {k: sc_b_aa_post[k] - sc_b_aa[k] for k in sc_b_aa.index},
+                }
+            ),
         )
 
     #
@@ -315,7 +329,7 @@ class InpatientsModel(Model):
         # waiting list adjustments
         run_step(self._waiting_list_adjustment(data), "waiting_list_adjustment")
         # Admission Avoidance ----------------------------------------------------------------------
-        step_counts["admission_avoidance"] = self._admission_avoidance_step(
+        data, step_counts["admission_avoidance"] = self._admission_avoidance_step(
             rng, data, admission_avoidance, run_params
         )
         # done with row count adjustment
