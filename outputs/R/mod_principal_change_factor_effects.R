@@ -148,7 +148,6 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
     observeEvent(individual_change_factors(), {
       d <- individual_change_factors()
 
-      cat("should we show?", ns("individual_change_factors"), nrow(d), nrow(d) > 0, "\n")
       shinyjs::toggle("individial_change_factors", condition = nrow(d) > 0)
     })
 
