@@ -12,11 +12,25 @@ mod_principal_change_factor_effects_ui <- function(id) {
   shiny::tagList(
     shiny::h1("Core change factor effects (principal projection)"),
     shiny::fluidRow(
-      col_6(shiny::selectInput(ns("activity_type"), "Activity Type", NULL)),
-      col_6(shiny::selectInput(ns("measure"), "Measure", NULL))
+      col_4(shiny::selectInput(ns("activity_type"), "Activity Type", NULL)),
+      col_4(shiny::selectInput(ns("measure"), "Measure", NULL)),
+      shiny::checkboxInput(ns("include_baseline"), "Include baseline?", TRUE)
     ),
     shinycssloaders::withSpinner(
       plotly::plotlyOutput(ns("change_factors"), height = "600px")
+    ),
+    shinyjs::hidden(
+      shiny::tags$div(
+        id = ns("individial_change_factors"),
+        shiny::h2("Individual Change Factors"),
+        shiny::selectInput(ns("sort_type"), "Sort By", c("alphabetical", "descending value")),
+        shinycssloaders::withSpinner(
+          fluidRow(
+            col_6(plotly::plotlyOutput(ns("admission_avoidance"), height = "600px")),
+            col_6(plotly::plotlyOutput(ns("los_reduction"), height = "600px"))
+          )
+        )
+      )
     )
   )
 }
@@ -26,6 +40,8 @@ mod_principal_change_factor_effects_ui <- function(id) {
 #' @noRd
 mod_principal_change_factor_effects_server <- function(id, change_factors) {
   moduleServer(id, function(input, output, session) {
+    ns <- session$ns
+
     observe({
       d <- change_factors() |>
         distinct(.data$dataset)
@@ -50,12 +66,23 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
       shiny::updateSelectInput(session, "measure", choices = measures)
     })
 
-    change_factors_summarised <- reactive({
+    principal_change_factors <- reactive({
       at <- req(input$activity_type)
       m <- req(input$measure)
 
       change_factors() |>
-        dplyr::filter(.data$dataset == at, .data$model_run == 0, .data$measure == m) |>
+        dplyr::filter(
+          .data$dataset == at,
+          .data$model_run == 0,
+          .data$measure == m
+        )
+    })
+
+    change_factors_summarised <- reactive({
+      principal_change_factors() |>
+        dplyr::filter(
+          input$include_baseline | .data$change_factor != "Baseline"
+        ) |>
         dplyr::group_by(.data$change_factor) |>
         dplyr::summarise(dplyr::across(.data$value, sum, na.rm = TRUE)) |>
         dplyr::mutate(cuvalue = cumsum(.data$value))
@@ -102,6 +129,43 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
 
       plotly::ggplotly(p) |>
         plotly::layout(showlegend = FALSE)
+    })
+
+    individual_change_factors <- reactive({
+      d <- principal_change_factors() |>
+        dplyr::filter(
+          .data$strategy != "",
+          .data$value < 0
+        )
+
+      if (input$sort_type == "descending value") {
+        d <- dplyr::mutate(d, dplyr::across(.data$strategy, forcats::fct_reorder, -.data$value))
+      }
+
+      d
+    })
+
+    observeEvent(individual_change_factors(), {
+      d <- individual_change_factors()
+
+      cat("should we show?", ns("individual_change_factors"), nrow(d), nrow(d) > 0, "\n")
+      shinyjs::toggle("individial_change_factors", condition = nrow(d) > 0)
+    })
+
+    output$admission_avoidance <- plotly::renderPlotly({
+      individual_change_factors() |>
+        dplyr::filter(.data$change_factor == "Admission Avoidance") |>
+        ggplot2::ggplot(aes(.data$value, .data$strategy)) +
+        ggplot2::geom_col(fill = "#f9bf07") +
+        labs(x = "", y = "")
+    })
+
+    output$los_reduction <- plotly::renderPlotly({
+      individual_change_factors() |>
+        dplyr::filter(.data$change_factor == "Los Reduction") |>
+        ggplot2::ggplot(aes(.data$value, .data$strategy)) +
+        ggplot2::geom_col(fill = "#ec6555") +
+        labs(x = "", y = "")
     })
   })
 }
