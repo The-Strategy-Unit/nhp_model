@@ -31,7 +31,7 @@ mod_principal_detailed_server <- function(id, data) {
 
       d |>
         dplyr::filter(.data$type != "model") |>
-        dplyr::select(-.data$model_run) |>
+        dplyr::select(-.data$model_run, -.data$variant) |>
         tidyr::pivot_wider(names_from = .data$type, values_from = .data$value, values_fill = 0) |>
         dplyr::rename(final = .data$principal) |>
         dplyr::mutate(change = final - baseline, change_pcnt = change / baseline)
