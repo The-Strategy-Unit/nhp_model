@@ -6,3 +6,6 @@ dev_history.R
 $run_dev.*
 ^LICENSE\.md$
 ^README\.Rmd$
+^outputs\.Rproj$
+^app\.R$
+^rsconnect$
