@@ -21,7 +21,7 @@ mod_result_selection_ui <- function(id) {
 #' @noRd
 mod_result_selection_server <- function(id) {
   moduleServer(id, function(input, output, session) {
-    datasets_path <- get_golem_config("datasets_path")
+    datasets_path <- get_golem_config("datasets_path") %||% app_sys("data")
 
     get_values_for_dropdowns <- function(path) {
       d1 <- dir(path, full.names = TRUE)
