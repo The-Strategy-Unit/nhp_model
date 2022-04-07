@@ -1,14 +1,15 @@
 #!/bin/env python3
-from datetime import date, datetime, timedelta
 import json
 import os
+from datetime import date, datetime, timedelta
 
-from batch.connections import connect_adls, connect_blob_storage, connect_batch_client
-from batch.jobs import create_job, add_task, wait_for_tasks_to_complete
 from azure.batch import BatchServiceClient
 from azure.storage.blob import BlobServiceClient
 
 import batch.config as config
+from batch.connections import (connect_adls, connect_batch_client,
+                               connect_blob_storage)
+from batch.jobs import add_task, create_job, wait_for_tasks_to_complete
 
 
 def prep_file(runs_per_task: int, path: str, file: str) -> None:
@@ -38,8 +39,6 @@ def prep_file(runs_per_task: int, path: str, file: str) -> None:
     results_path = f"{params['input_data']}/results/{job_path}"
     # connect to adls
     d = adls_client.get_directory_client("data", results_path)
-    # create the necessary folders in the results container
-    [d.get_sub_directory_client(x).create_directory() for x in ["aae", "ip", "op"]]
     # upload the json to the results container
     d.get_file_client("params.json").upload_data(json.dumps(params), overwrite=True)
     #
