@@ -18,3 +18,4 @@ def print_batch_exception(batch_exception) -> None:
             for mesg in batch_exception.error.values:
                 print("{}:\t{}".format(mesg.key, mesg.value))
     print("-------------------------------------------")
+    

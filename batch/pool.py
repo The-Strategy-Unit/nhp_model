@@ -1,8 +1,13 @@
-import time
-import batch.config as config
+"""
+Manage batch bool
+"""
 
-from azure.batch import BatchServiceClient
+import time
+
 import azure.batch.models as batchmodels
+from azure.batch import BatchServiceClient
+
+import batch.config as config
 
 
 def create_pool(batch_service_client: BatchServiceClient, pool_id: str) -> None:
@@ -37,14 +42,14 @@ def create_pool(batch_service_client: BatchServiceClient, pool_id: str) -> None:
         ),
     )
 
-    vm = batchmodels.VirtualMachineConfiguration(
+    vmc = batchmodels.VirtualMachineConfiguration(
         image_reference=vm_image, node_agent_sku_id="batch.node.ubuntu 20.04"
     )
 
     mount = lambda container: batchmodels.MountConfiguration(
         azure_blob_file_system_configuration=batchmodels.AzureBlobFileSystemConfiguration(
-            account_name=config._STORAGE_ACCOUNT_NAME,
-            account_key=config._STORAGE_ACCOUNT_KEY,
+            account_name=config.STORAGE_ACCOUNT_NAME,
+            account_key=config.STORAGE_ACCOUNT_KEY,
             container_name=container,
             relative_mount_path=container,
         )
@@ -52,11 +57,11 @@ def create_pool(batch_service_client: BatchServiceClient, pool_id: str) -> None:
 
     pool = batchmodels.PoolAddParameter(
         id=pool_id,
-        vm_size=config._POOL_VM_SIZE,
-        virtual_machine_configuration=vm,
+        vm_size=config.POOL_VM_SIZE,
+        virtual_machine_configuration=vmc,
         mount_configuration=[mount(x) for x in ["data", "queue", "app"]],
-        target_dedicated_nodes=config._POOL_NODE_DEDICATED_COUNT,
-        target_low_priority_nodes=config._POOL_NODE_LOW_PRIORITY_COUNT,
+        target_dedicated_nodes=config.POOL_NODE_DEDICATED_COUNT,
+        target_low_priority_nodes=config.POOL_NODE_LOW_PRIORITY_COUNT,
         start_task=start_task_conf,
     )
 
@@ -114,16 +119,16 @@ def wait_for_pool_resize(
     """
 
     print("waiting for nodes to be allocated")
-    ps = lambda: batch_service_client.pool.get(pool_id)
-    while ps().allocation_state != "steady":
+    pool = lambda: batch_service_client.pool.get(pool_id)
+    while pool().allocation_state != "steady":
         time.sleep(1)
 
-    ns = lambda: [
+    nodes = lambda: [
         n
         for n in batch_service_client.compute_node.list(pool_id)
         if n.state == "starting"
     ]
     print("nodes allocated, waiting for vm's to be ready")
-    while not ns():
+    while not nodes():
         time.sleep(1)
     print("pool ready")

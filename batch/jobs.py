@@ -1,15 +1,16 @@
+"""
+Create and run batch jobs
+"""
+
 import io
-import re
 import sys
 import time
 from datetime import datetime, timedelta
 
 import azure.batch.models as batchmodels
 from azure.batch import BatchServiceClient
-from azure.storage.blob import BlobServiceClient
 
 import batch.config as config
-from batch.batch_exception import print_batch_exception
 
 
 def create_job(
@@ -22,7 +23,7 @@ def create_job(
       * job_id: The ID for the job.
       * pool_id: The ID for the pool.
     """
-    print("Creating job [{}]...".format(job_id))
+    print(f"Creating job [{job_id}]...")
 
     job = batchmodels.JobAddParameter(
         id=job_id, pool_info=batchmodels.PoolInformation(pool_id=pool_id)
@@ -46,7 +47,9 @@ def add_task(
       * input_files: A collection of input files. One task will be created for each input file.
     """
     #
-    command_line = f"/usr/bin/python3 {config._APP_PATH}/run_model.py '{config._DATA_PATH}/{results_path}'"
+    command_line = (
+        f"/usr/bin/python3 {config.APP_PATH}/run_model.py '{config.DATA_PATH}/{results_path}'"
+    )
     create_task = lambda run_start: batchmodels.TaskAddParameter(
         id=f"Run{run_start}-{run_start+runs_per_task - 1}",
         command_line=f"{command_line} {run_start} {runs_per_task}",
@@ -70,13 +73,13 @@ def wait_for_tasks_to_complete(
 
       * batch_service_client: A Batch service client.
       * job_id: The id of the job whose tasks should be to monitored.
-      * timeout: The duration to wait for task completion. If all tasks in the specified job do not reach Completed state
-        within this time period, an exception will be raised.
+      * timeout: The duration to wait for task completion. If all tasks in the specified job do not
+        reach Completed state within this time period, an exception will be raised.
     """
     timeout_expiration = datetime.now() + timeout
 
     print(
-        "Monitoring all tasks for 'Completed' state, timeout in {}...".format(timeout),
+        f"Monitoring all tasks for 'Completed' state, timeout in {timeout}...",
         end="",
     )
 
@@ -91,8 +94,7 @@ def wait_for_tasks_to_complete(
         if not incomplete_tasks:
             print()
             return True
-        else:
-            time.sleep(1)
+        time.sleep(1)
 
     print()
     raise RuntimeError(
@@ -137,13 +139,14 @@ def print_task_output(
 
     for task in tasks:
         node_id = batch_service_client.task.get(job_id, task.id).node_info.node_id
-        print("Task: {}".format(task.id))
-        print("Node: {}".format(node_id))
+        print(f"Task: {task.id}")
+        print(f"Node: {node_id}")
 
         stream = batch_service_client.file.get_from_task(
-            job_id, task.id, config._STANDARD_OUT_FILE_NAME
+            job_id, task.id, config.STANDARD_OUT_FILE_NAME
         )
 
         file_text = _read_stream_as_string(stream, encoding)
         print("Standard output:")
         print(file_text)
+        

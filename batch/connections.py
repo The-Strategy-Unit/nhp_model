@@ -1,7 +1,11 @@
-from azure.storage.blob import BlobServiceClient
-from azure.storage.filedatalake import DataLakeServiceClient
+"""
+Connections to azure services
+"""
+
 from azure.batch import BatchServiceClient
 from azure.batch.batch_auth import SharedKeyCredentials
+from azure.storage.blob import BlobServiceClient
+from azure.storage.filedatalake import DataLakeServiceClient
 
 import batch.config as config
 
@@ -12,8 +16,8 @@ def connect_blob_storage() -> BlobServiceClient:
     """
 
     return BlobServiceClient(
-        account_url=f"https://{config._STORAGE_ACCOUNT_NAME}.blob.core.windows.net/",
-        credential=config._STORAGE_ACCOUNT_KEY,
+        account_url=f"https://{config.STORAGE_ACCOUNT_NAME}.blob.core.windows.net/",
+        credential=config.STORAGE_ACCOUNT_KEY,
     )
 
 
@@ -23,8 +27,8 @@ def connect_adls() -> DataLakeServiceClient:
     """
 
     return DataLakeServiceClient(
-        account_url=f"https://{config._STORAGE_ACCOUNT_NAME}.dfs.core.windows.net/",
-        credential=config._STORAGE_ACCOUNT_KEY,
+        account_url=f"https://{config.STORAGE_ACCOUNT_NAME}.dfs.core.windows.net/",
+        credential=config.STORAGE_ACCOUNT_KEY,
     )
 
 
@@ -34,6 +38,7 @@ def connect_batch_client() -> BatchServiceClient:
     """
 
     credentials = SharedKeyCredentials(
-        config._BATCH_ACCOUNT_NAME, config._BATCH_ACCOUNT_KEY
+        config.BATCH_ACCOUNT_NAME, config.BATCH_ACCOUNT_KEY
     )
-    return BatchServiceClient(credentials, batch_url=config._BATCH_ACCOUNT_URL)
+    return BatchServiceClient(credentials, batch_url=config.BATCH_ACCOUNT_URL)
+    
