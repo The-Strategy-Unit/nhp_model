@@ -12,15 +12,19 @@ Imports:
     DescTools,
     DT,
     duckdb,
+    ggbeeswarm,
     glue,
     golem (>= 0.3.1),
     gt,
     htmltools,
+    pkgload,
     plotly,
     scales,
     shiny (>= 1.7.1),
     shinycssloaders,
     shinyjs,
+    snakecase,
+    zeallot,
     zoo
 Encoding: UTF-8
 LazyData: true
