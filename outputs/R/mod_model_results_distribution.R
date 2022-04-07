@@ -47,24 +47,37 @@ mod_model_results_distribution_server <- function(id, data) {
         "high_migration" = "#5881c1"
       ))
 
+      theme <- ggplot2::theme(
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank()
+      )
+
       p1 <- plotly::ggplotly({
         d |>
           dplyr::filter(.data$model_run > 0) |>
-          ggplot2::ggplot(aes(.data$value, fill = .data$variant)) +
-          ggplot2::geom_density(colour = "#2c2825", alpha = 0.5) +
+          ggplot2::ggplot(aes(.data$value)) +
+          ggplot2::geom_density(fill = "#f9bf07", colour = "#2c2825", alpha = 0.5) +
           ggplot2::geom_vline(xintercept = b) +
-          ggplot2::expand_limits(x = ifelse(input$show_origin, 0, b))
+          ggplot2::expand_limits(x = ifelse(input$show_origin, 0, b)) +
+          theme
       })
 
       p2 <- plotly::ggplotly({
         d |>
           dplyr::filter(.data$model_run > 0) |>
-          ggplot2::ggplot(aes(.data$variant, .data$value, colour = .data$variant)) +
-          ggplot2::geom_violin(show.legend = FALSE) +
+          ggplot2::ggplot(aes("1", .data$value, colour = .data$variant)) +
+          # ggplot2::geom_violin(show.legend = FALSE) +
           ggbeeswarm::geom_quasirandom(groupOnX = TRUE, alpha = 0.5) +
           ggplot2::geom_hline(yintercept = b) +
           ggplot2::expand_limits(y = ifelse(input$show_origin, 0, b)) +
-          ggplot2::coord_flip() # have to use coord flip with boxplots/violin plots and plotly...
+          ggplot2::scale_colour_manual(values = list(
+            "principal" = "#5881c1",
+            "high migration" = "#ec6555"
+          )) +
+          # have to use coord flip with boxplots/violin plots and plotly...
+          ggplot2::coord_flip() +
+          theme
       })
 
       plotly::subplot(p1, p2, nrows = 2) |>
