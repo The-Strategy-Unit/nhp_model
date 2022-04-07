@@ -1,15 +1,15 @@
-from datetime import datetime, timedelta
 import io
 import re
 import sys
 import time
+from datetime import datetime, timedelta
+
+import azure.batch.models as batchmodels
+from azure.batch import BatchServiceClient
+from azure.storage.blob import BlobServiceClient
 
 import batch.config as config
 from batch.batch_exception import print_batch_exception
-
-from azure.batch import BatchServiceClient
-from azure.storage.blob import BlobServiceClient
-import azure.batch.models as batchmodels
 
 
 def create_job(
@@ -58,7 +58,7 @@ def add_task(
         ),
     )
     #
-    tasks = [create_task(rs) for rs in range(0, model_runs, runs_per_task)]
+    tasks = [create_task(rs) for rs in range(0, model_runs + 1, runs_per_task)]
     batch_service_client.task.add_collection(job_id, tasks)
 
 
