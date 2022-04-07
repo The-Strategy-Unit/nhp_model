@@ -48,9 +48,11 @@ mod_model_core_activity_server <- function(id, data) {
             .data$model_run,
             fill = list(value = 0)
           ) |>
-          dplyr::summarise(dplyr::across(.data$value, list), .groups = "drop") |>
-          dplyr::mutate(dplyr::across(.data$value, purrr::map, DescTools::MeanCI, conf.level = 0.9)) |>
-          tidyr::unnest_wider(.data$value),
+          dplyr::summarise(
+            mean = mean(.data$value),
+            lwr.ci = quantile(.data$value, 0.05),
+            upr.ci = quantile(.data$value, 0.95)
+          ),
         by = c("dataset", "pod", "measure")
       )
     })
