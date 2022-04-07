@@ -125,7 +125,8 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
 
       p <- ggplot2::ggplot(d, aes(.data$value, .data$change_factor)) +
         ggplot2::geom_col(aes(fill = .data$colour), show.legend = FALSE, position = "stack") +
-        ggplot2::scale_fill_identity()
+        ggplot2::scale_fill_identity() +
+        ggplot2::scale_x_continuous(labels = scales::comma)
 
       plotly::ggplotly(p) |>
         plotly::layout(showlegend = FALSE)
@@ -156,6 +157,7 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
         dplyr::filter(.data$change_factor == "Admission Avoidance") |>
         ggplot2::ggplot(aes(.data$value, .data$strategy)) +
         ggplot2::geom_col(fill = "#f9bf07") +
+        ggplot2::scale_x_continuous(labels = scales::comma) +
         labs(x = "", y = "")
     })
 
@@ -164,6 +166,7 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
         dplyr::filter(.data$change_factor == "Los Reduction") |>
         ggplot2::ggplot(aes(.data$value, .data$strategy)) +
         ggplot2::geom_col(fill = "#ec6555") +
+        ggplot2::scale_x_continuous(labels = scales::comma) +
         labs(x = "", y = "")
     })
   })

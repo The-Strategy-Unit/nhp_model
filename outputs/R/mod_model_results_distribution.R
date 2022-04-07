@@ -47,11 +47,6 @@ mod_model_results_distribution_server <- function(id, data) {
         "high_migration" = "#5881c1"
       ))
 
-      theme <- ggplot2::theme(
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank(),
-        axis.ticks.y = element_blank()
-      )
 
       p1 <- plotly::ggplotly({
         d |>
@@ -60,7 +55,11 @@ mod_model_results_distribution_server <- function(id, data) {
           ggplot2::geom_density(fill = "#f9bf07", colour = "#2c2825", alpha = 0.5) +
           ggplot2::geom_vline(xintercept = b) +
           ggplot2::expand_limits(x = ifelse(input$show_origin, 0, b)) +
-          theme
+          ggplot2::theme(
+            axis.text = element_blank(),
+            axis.title = element_blank(),
+            axis.ticks = element_blank()
+          )
       })
 
       p2 <- plotly::ggplotly({
@@ -77,7 +76,12 @@ mod_model_results_distribution_server <- function(id, data) {
           )) +
           # have to use coord flip with boxplots/violin plots and plotly...
           ggplot2::coord_flip() +
-          theme
+          ggplot2::scale_y_continuous(labels = scales::comma) +
+          ggplot2::theme(
+            axis.text.y = element_blank(),
+            axis.title.y = element_blank(),
+            axis.ticks.y = element_blank()
+          )
       })
 
       plotly::subplot(p1, p2, nrows = 2) |>
