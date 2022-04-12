@@ -1,8 +1,0 @@
-azure-batch==11.0.0
-azure-storage-blob==12.9.0
-azure-storage-file-datalake==12.5.0
-numpy==1.22.3
-pandas==1.4.1
-pyarrow==6.0.1
-pygam==0.8.0
-tqdm==4.63.0

@@ -48,7 +48,7 @@ def add_task(
     """
     #
     command_line = (
-        f"/usr/bin/python3 {config.APP_PATH}/run_model.py '{config.DATA_PATH}/{results_path}'"
+        f"/opt/nhp/bin/python {config.APP_PATH}/run_model.py '{config.DATA_PATH}/{results_path}'"
     )
     create_task = lambda run_start: batchmodels.TaskAddParameter(
         id=f"Run{run_start}-{run_start+runs_per_task - 1}",
@@ -61,7 +61,7 @@ def add_task(
         ),
     )
     #
-    tasks = [create_task(rs) for rs in range(0, model_runs + 1, runs_per_task)]
+    tasks = [create_task(rs) for rs in range(0, model_runs, runs_per_task)]
     batch_service_client.task.add_collection(job_id, tasks)
 
 

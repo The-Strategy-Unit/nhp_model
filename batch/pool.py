@@ -26,8 +26,8 @@ def create_pool(batch_service_client: BatchServiceClient, pool_id: str) -> None:
 
     task_commands = ";".join(
         [
-            "apt install -y python3-pip",
-            "pip install -r /mnt/batch/tasks/fsmounts/app/requirements.txt",
+            "mkdir /opt/nhp",
+            "tar -xzf /mnt/batch/tasks/fsmounts/app/nhp.tar.gz -C /opt/nhp",
         ]
     )
 
@@ -60,8 +60,8 @@ def create_pool(batch_service_client: BatchServiceClient, pool_id: str) -> None:
         vm_size=config.POOL_VM_SIZE,
         virtual_machine_configuration=vmc,
         mount_configuration=[mount(x) for x in ["data", "queue", "app"]],
-        target_dedicated_nodes=config.POOL_NODE_DEDICATED_COUNT,
-        target_low_priority_nodes=config.POOL_NODE_LOW_PRIORITY_COUNT,
+        target_dedicated_nodes=0,
+        target_low_priority_nodes=0,
         start_task=start_task_conf,
     )
 
