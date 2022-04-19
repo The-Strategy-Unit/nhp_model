@@ -1,9 +1,44 @@
 #!/usr/bin/python3
 
+"""
+Run Model in Azure Batch
+
+Helper tool to run the model in azure batch.
+
+Usage:
+
+python run_batch.py [ARG]
+
+where [ARG] is:
+
+  * create_pool: creates a pool in batch (configured in batch/config.py)
+  * delete_pool: deletes the pool in batch
+  * start_pool: starts the pool by creating the nodes (configured in batch/config.py)
+  * stop_pool: stops the pool by deleting the nodes
+  * run_tasks [RUNS_PER_TASK] [QUEUE_PATH]: runs the model param files in the folder [QUEUE_PATH]
+      with [RUNS_PER_TASK] model iterations on each node in the pool
+
+Generally, `create_pool` and `delete_pool` do not need to be used and are only there for setting
+the batch environment up.
+
+Before using `run_tasks`, the pool must be started with `start_pool`. Once `start_pool` is run, the
+batch account will start incurring costs for the amount of nodes that are started. Once your tasks
+have finished running you should run `stop_pool` as soon as possible to stop being billed for the
+nodes.
+"""
+
 import sys
 from datetime import datetime
 
-from batch import *
+from batch import (
+    config,
+    connect_batch_client,
+    connect_blob_storage,
+    create_pool,
+    delete_pool,
+    prep_queue,
+    resize_pool,
+)
 
 if __name__ == "__main__":
 
@@ -14,10 +49,10 @@ if __name__ == "__main__":
     blob_service_client = connect_blob_storage()
     batch_client = connect_batch_client()
 
-    err_msg = "please provide argument: prep_queue, run_queue, create_pool, start_pool, stop_pool, delete_pool"
+    ERR_MSG = "please provide argument: run_tasks, create_pool, start_pool, stop_pool, delete_pool"
     if len(sys.argv) == 1:
-        raise Exception(err_msg)
-    elif sys.argv[1] == "prep_queue":
+        raise Exception(ERR_MSG)
+    elif sys.argv[1] == "run_tasks":
         if len(sys.argv) != 4:
             raise Exception(
                 "missing arguments, expecting: prep_queue RUNS_PER_TASK QUEUE_PATH"
@@ -37,7 +72,7 @@ if __name__ == "__main__":
     elif sys.argv[1] == "delete_pool":
         delete_pool(batch_client, config.POOL_ID)
     else:
-        raise Exception(err_msg)
+        raise Exception(ERR_MSG)
 
     # Print out some timing info
     end_time = datetime.now().replace(microsecond=0)
