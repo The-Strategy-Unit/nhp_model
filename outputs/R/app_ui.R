@@ -9,6 +9,11 @@ app_ui <- function(request) {
   sidebar <- bs4Dash::dashboardSidebar(
     bs4Dash::sidebarMenu(
       id = "sidebarMenu",
+      bs4Dash::sidebarHeader("Run Model"),
+      bs4Dash::menuItem(
+        text = "Upload Params",
+        tabName = "tab_up"
+      ),
       bs4Dash::sidebarHeader("Model Run Selection"),
       mod_result_selection_ui("result_selection"),
       bs4Dash::sidebarHeader("Principal Projection"),
@@ -38,6 +43,10 @@ app_ui <- function(request) {
 
   body <- bs4Dash::dashboardBody(
     bs4Dash::tabItems(
+      bs4Dash::tabItem(
+        tabName = "tab_up",
+        mod_params_upload_ui("params_upload_ui")
+      ),
       bs4Dash::tabItem(
         tabName = "tab_phl",
         mod_principal_high_level_ui("principal_high_level")

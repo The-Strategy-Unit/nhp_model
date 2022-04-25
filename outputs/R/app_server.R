@@ -14,6 +14,8 @@ app_server <- function(input, output, session) {
     get_change_factors(shiny::req(data_path()))
   })
 
+  mod_params_upload_server("params_upload_ui")
+
   mod_principal_high_level_server("principal_high_level", data)
   mod_principal_detailed_server("principal_detailed", data)
   mod_principal_change_factor_effects_server("principal_change_factor_effects", change_factors)
