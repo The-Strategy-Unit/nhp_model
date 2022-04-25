@@ -19,8 +19,14 @@ process_param_file <- function(path, input_data, demographics_file, scenario_nam
     "am_tc_op",
     "am_e_ip"
   ) |>
-    set_names() |>
-    map(read_excel, path = path)
+    purrr::set_names() |>
+    map(readxl::read_excel, path = path)
+
+  wla <- data$dsi_wl |>
+    tibble::deframe() |>
+    as.list()
+
+  wla["X01"] <- wla["Other"]
 
   params <- list(
     name = scenario_name,
@@ -41,9 +47,7 @@ process_param_file <- function(path, input_data, demographics_file, scenario_nam
       max_age = max(data$pc_hsa$age),
       intervals = pmap(data$pc_hsa, \(lo, hi, ...) c(lo, hi))
     ),
-    waiting_list_adjustment = list(
-      inpatients = pmap(data$dsi_wl, \(lo, hi, ...) c(lo, hi)) |> set_names(data$dsi_wl$tretspef)
-    )
+    waiting_list_adjustment = list(inpatients = wla)
   )
 
   params$strategy_params <- list(
@@ -57,56 +61,53 @@ process_param_file <- function(path, input_data, demographics_file, scenario_nam
 
   params$strategy_params$los_reduction <- c(
     data$am_e_ip |>
-      filter(include != 0) |>
-      mutate(type = case_when(
-        strategy |> str_starts("ambulatory_emergency_care") ~ "aec",
-        strategy |> str_starts("pre-op") ~ "pre-op",
+      dplyr::filter(include != 0) |>
+      dplyr::mutate(type = case_when(
+        strategy |> stringr::str_starts("ambulatory_emergency_care") ~ "aec",
+        strategy |> stringr::str_starts("pre-op") ~ "pre-op",
         TRUE ~ "all"
       )) |>
-      rowwise() |>
-      transmute(strategy, value = list(list(type = type, interval = list(c(lo, hi))))) |>
-      deframe(),
+      dplyr::rowwise() |>
+      dplyr::transmute(strategy, value = list(list(type = type, interval = list(lo, hi)))) |>
+      tibble::deframe(),
     data$am_tc_ip |>
-      filter(include != 0) |>
-      mutate(target_type = ifelse(
-        strategy |> str_detect("outpatients"),
+      dplyr::filter(include != 0) |>
+      dplyr::mutate(target_type = ifelse(
+        strategy |> stringr::str_detect("outpatients"),
         "outpatients",
         "daycase"
       )) |>
-      rowwise() |>
-      transmute(strategy, value = list(
+      dplyr::rowwise() |>
+      dplyr::transmute(strategy, value = list(
         list(
           type = "bads",
           target_type = target_type,
-          interval = list(c(lo, hi)),
+          interval = list(lo, hi),
           baseline_target_rate = baseline_target_rate,
           op_dc_split = op_dc_split
         )
       )) |>
-      deframe()
+      tibble::deframe()
   )
 
-  params$outpatient_factors <- bind_rows(data[c("am_a_op", "am_tc_op")]) |>
-    filter(include != 0) |>
-    rowwise() |>
-    transmute(strategy, value = list(list(interval = list(c(lo, hi))))) |>
-    separate(strategy, c("strategy", "sub_group"), "\\|") |>
-    group_nest(strategy) |>
-    mutate(across(data, map, deframe)) |>
-    deframe()
+  params$outpatient_factors <- dplyr::bind_rows(data[c("am_a_op", "am_tc_op")]) |>
+    dplyr::filter(include != 0) |>
+    dplyr::rowwise() |>
+    dplyr::transmute(strategy, value = list(list(interval = list(lo, hi)))) |>
+    tidyr::separate(strategy, c("strategy", "sub_group"), "\\|") |>
+    dplyr::group_nest(strategy) |>
+    dplyr::mutate(dplyr::across(data, map, deframe)) |>
+    tibble::deframe()
 
   params$aae_factors <- data$am_a_aae |>
-    filter(include != 0) |>
-    rowwise() |>
-    transmute(strategy, value = list(list(interval = list(c(lo, hi))))) |>
-    separate(strategy, c("strategy", "sub_group"), "\\|") |>
-    group_nest(strategy) |>
-    mutate(across(data, map, deframe)) |>
-    deframe()
+    dplyr::filter(include != 0) |>
+    dplyr::rowwise() |>
+    dplyr::transmute(strategy, value = list(list(interval = list(lo, hi)))) |>
+    tidyr::separate(strategy, c("strategy", "sub_group"), "\\|") |>
+    dplyr::group_nest(strategy) |>
+    dplyr::mutate(dplyr::across(data, purrr::map, tibble::deframe)) |>
+    tibble::deframe()
 
 
-  params |> jsonlite::toJSON(auto_unbox = TRUE, pretty = TRUE)
-
-  # should save this file...
-
+  params
 }
