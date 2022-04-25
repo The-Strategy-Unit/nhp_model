@@ -71,8 +71,14 @@ class InpatientsModel(Model):
 
         returns: an updated DataFrame with a new column for the selected strategy
         """
+        strategies = self._strategies[strategy_type]
+        # first, filter the strategies to only include those listed in the params file
+        valid_strategies = list(
+            self._params["strategy_params"][strategy_type].keys()
+        ) + ["NULL"]
+        strategies = strategies[strategies.isin(valid_strategies)]
         return (
-            self._strategies[strategy_type]
+            strategies
             # take all of the rows and randomly reshuffle them into a new order. We *do not* want to
             # use resampling here. make sure to use the same random state using rng.bit_generator
             .sample(frac=1, random_state=rng.bit_generator)
