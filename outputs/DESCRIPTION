@@ -20,11 +20,13 @@ Imports:
     pkgload,
     plotly,
     readxl,
+    reticulate,
     scales,
     shiny (>= 1.7.1),
     shinycssloaders,
     shinyjs,
     snakecase,
+    withr,
     zeallot,
     zoo
 Encoding: UTF-8
