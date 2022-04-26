@@ -32,7 +32,7 @@ mod_params_upload_server <- function(id) {
       shiny::updateSelectInput(session, "dataset", choices = c("synthetic", "RL4"))
     })
 
-    status <- shiny::reactive("waiting")
+    status <- shiny::reactiveVal("waiting")
 
     observeEvent(input$submit_run, {
       file <- shiny::req(input$params_upload)
