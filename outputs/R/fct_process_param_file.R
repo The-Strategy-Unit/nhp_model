@@ -22,6 +22,22 @@ process_param_file <- function(path, input_data, demographics_file, scenario_nam
     purrr::set_names() |>
     map(readxl::read_excel, path = path)
 
+  base_year <- format(data$run_settings$baseline_year, "%Y")
+  model_year <- format(data$run_settings$model_year, "%Y")
+
+  life_expectancy <- readRDS(app_sys("life_expectancy.rds")) |>
+    dplyr::filter(.data$base == "2018b", .data$year %in% c(base_year, model_year)) |>
+    dplyr::arrange(.data$age, .data$sex, .data$year) |>
+    dplyr::group_by(.data$age, .data$sex) |>
+    dplyr::summarise(dplyr::across(.data$ex, diff), .groups = "drop") |>
+    dplyr::group_by(dplyr::across(.data$age, pmin, 90), .data$sex) |>
+    dplyr::summarise(dplyr::across(.data$ex, mean), .groups = "drop") |>
+    dplyr::group_nest(.data$sex) |>
+    dplyr::mutate(dplyr::across(.data$data, purrr::map, tibble::deframe)) |>
+    tibble::deframe()
+  life_expectancy$min_age <- 0
+  life_expectancy$max_age <- 90
+
   wla <- data$dsi_wl |>
     tibble::deframe() |>
     as.list()
@@ -42,11 +58,8 @@ process_param_file <- function(path, input_data, demographics_file, scenario_nam
         deframe() |>
         as.list()
     ),
-    health_status_adjustment = list(
-      min_age = min(data$pc_hsa$age),
-      max_age = max(data$pc_hsa$age),
-      intervals = pmap(data$pc_hsa, \(lo, hi, ...) c(lo, hi))
-    ),
+    health_status_adjustment = unlist(data$pc_hsa),
+    life_expectancy = life_expectancy,
     waiting_list_adjustment = list(inpatients = wla)
   )
 

@@ -95,23 +95,31 @@ class Model:  # pylint: disable=too-many-instance-attributes
 
     #
     def _health_status_adjustment(self, data, run_params):
-        params = self._params["health_status_adjustment"]
-        #
-        ages = np.arange(params["min_age"], params["max_age"] + 1)
-        adjusted_ages = ages - run_params["health_status_adjustment"]
+        lep = self._params["life_expectancy"]
+        ages = np.tile(np.arange(lep["min_age"], lep["max_age"] + 1), 2)
+        sexs = np.repeat([1, 2], len(ages) // 2)
+        lex = pd.DataFrame({"age": ages, "sex": sexs, "ex": lep["m"] + lep["f"]})
+        lex["ex"] *= run_params["health_status_adjustment"]
+        lex["adjusted_age"] = lex["age"] - lex["ex"]
+
+        lex.set_index("sex", inplace=True)
+
         hsa = pd.concat(
             [
                 pd.DataFrame(
                     {
-                        "hsagrp": a,
+                        "hsagrp": h,
                         "sex": int(s),
-                        "age": ages,
-                        "hsa_f": g.predict(adjusted_ages) / g.predict(ages),
+                        "age": lex.loc[
+                            int(s), "age"
+                        ],
+                        "hsa_f": g.predict(lex.loc[int(s), "adjusted_age"])
+                        / g.predict(lex.loc[int(s), "age"]),
                     }
                 )
-                for (a, s), g in self._hsa_gams.items()
+                for (h, s), g in self._hsa_gams.items()
             ]
-        )
+        ).reset_index(drop = True)
         return (
             (
                 data.reset_index()
@@ -261,8 +269,8 @@ class Model:  # pylint: disable=too-many-instance-attributes
             ).tolist(),
             "seeds": rng.integers(0, 65535, model_runs).tolist(),
             "health_status_adjustment": [
-                [gen_value(m, *i) for m in range(model_runs)]
-                for i in params["health_status_adjustment"]["intervals"]
+                gen_value(m, *params["health_status_adjustment"])
+                for m in range(model_runs)
             ],
             "waiting_list_adjustment": params["waiting_list_adjustment"],
             **{
@@ -293,9 +301,7 @@ class Model:  # pylint: disable=too-many-instance-attributes
         params = self._run_params
         return {
             "variant": params["variant"][model_run],
-            "health_status_adjustment": [
-                v[model_run] for v in params["health_status_adjustment"]
-            ],
+            "health_status_adjustment": params["health_status_adjustment"][model_run],
             "seed": params["seeds"][model_run],
             **{
                 k0: {
