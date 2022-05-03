@@ -50,7 +50,6 @@ rsconnect/
 .Rproj.user
 
 # ignore config files
-config.py
 config*.py
 
 # ignore test/data folder
