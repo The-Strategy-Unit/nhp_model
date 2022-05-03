@@ -6,7 +6,6 @@
 #'
 #' @noRd
 process_param_file <- function(path, input_data, demographics_file, scenario_name) {
-
   data <- c(
     "run_settings",
     "dsi_wl",
@@ -69,7 +68,7 @@ process_param_file <- function(path, input_data, demographics_file, scenario_nam
       rowwise() |>
       transmute(strategy, interval = list(c(lo, hi))) |>
       deframe() |>
-      map(~list(interval = .x))
+      map(~ list(interval = .x))
   )
 
   params$strategy_params$los_reduction <- c(
@@ -120,7 +119,6 @@ process_param_file <- function(path, input_data, demographics_file, scenario_nam
     dplyr::group_nest(strategy) |>
     dplyr::mutate(dplyr::across(data, purrr::map, tibble::deframe)) |>
     tibble::deframe()
-
 
   params
 }
