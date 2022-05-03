@@ -26,7 +26,7 @@ process_param_file <- function(path, input_data, demographics_file, scenario_nam
   model_year <- format(data$run_settings$model_year, "%Y")
 
   life_expectancy <- readRDS(app_sys("life_expectancy.rds")) |>
-    dplyr::filter(.data$base == "2018b", .data$year %in% c(base_year, model_year)) |>
+    dplyr::filter(.data$base == "2018b", .data$year %in% c(base_year, model_year), .data$age >= 55) |>
     dplyr::arrange(.data$age, .data$sex, .data$year) |>
     dplyr::group_by(.data$age, .data$sex) |>
     dplyr::summarise(dplyr::across(.data$ex, diff), .groups = "drop") |>
@@ -35,7 +35,7 @@ process_param_file <- function(path, input_data, demographics_file, scenario_nam
     dplyr::group_nest(.data$sex) |>
     dplyr::mutate(dplyr::across(.data$data, purrr::map, tibble::deframe)) |>
     tibble::deframe()
-  life_expectancy$min_age <- 0
+  life_expectancy$min_age <- 55
   life_expectancy$max_age <- 90
 
   wla <- data$dsi_wl |>
