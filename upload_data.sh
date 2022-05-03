@@ -1,4 +1,8 @@
-#/bin/sh
+#!/bin/bash
+
+set -eo pipefail
+
+export saname=nhpsa
 
 if [ $# -eq 0 ]
 then
@@ -16,6 +20,6 @@ do
     # create the blob name: strip data/ from the start of file
     blob_name=${file#"data/"}
     # upload the file to blob storage
-    az storage blob upload --account-name nhpdev -c data -f $file -n $blob_name --only-show-errors
+    az storage blob upload --account-name $saname -c data -f $file -n $blob_name --only-show-errors
   fi
 done

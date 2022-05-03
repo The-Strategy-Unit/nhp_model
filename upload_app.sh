@@ -1,4 +1,6 @@
-#/bin/sh
+#!/bin/bash
+
+set -eo pipefail
 
 export saname=nhpsa
 
