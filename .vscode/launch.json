@@ -10,9 +10,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "data/synthetic/results/test/20220101_000000",
-        "0",
-        "1",
+        "results/params/dataset=synthetic/scenario=test/create_datetime=20220101_000000.json",
         "--debug",
         "--type=ip"
       ],
@@ -24,9 +22,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "data/synthetic/results/test/20220101_000000",
-        "0",
-        "1",
+        "results/params/dataset=synthetic/scenario=test/create_datetime=20220101_000000.json",
         "--debug",
         "--type=op"
       ],
@@ -38,9 +34,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "data/synthetic/results/test/20220101_000000",
-        "0",
-        "1",
+        "results/params/dataset=synthetic/scenario=test/create_datetime=20220101_000000.json",
         "--debug",
         "--type=aae"
       ],
@@ -52,9 +46,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "data/synthetic/results/test/20220101_000000",
-        "0",
-        "1",
+        "results/params/dataset=synthetic/scenario=test/create_datetime=20220101_000000.json",
         "-b=1",
         "-c=1"
       ],
@@ -66,9 +58,8 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "data/synthetic/results/test/20220101_000000",
-        "0",
-        "257",
+        "results/params/dataset=synthetic/scenario=test/create_datetime=20220101_000000.json",
+        "--model_runs=257",
         "-b=8"
       ],
       "console": "integratedTerminal"

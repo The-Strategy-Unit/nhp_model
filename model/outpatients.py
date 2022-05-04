@@ -20,9 +20,9 @@ class OutpatientsModel(Model):
     Implements the model for outpatient data. See `Model()` for documentation on the generic class.
     """
 
-    def __init__(self, results_path):
+    def __init__(self, params, data_path: str, results_path: str):
         # call the parent init function
-        Model.__init__(self, "op", results_path)
+        Model.__init__(self, "op", params, data_path, results_path)
 
     #
     def _followup_reduction(self, data, run_params):

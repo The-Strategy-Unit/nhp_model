@@ -8,7 +8,6 @@ import json
 import os
 import pickle
 from multiprocessing import Pool
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -37,18 +36,19 @@ class Model:  # pylint: disable=too-many-instance-attributes
     saving the results to disk to use later.
     """
 
-    def __init__(self, model_type, results_path, columns_to_load=None):
+    def __init__(
+        self, model_type, params_file, data_path, results_path, columns_to_load=None
+    ):  # pylint: disable=too-many-arguments
         self._model_type = model_type
-        # load the parameters file
-        with open(f"{results_path}/params.json", "r", encoding="UTF-8") as params_file:
-            self._params = json.load(params_file)
+        with open(params_file, "r", encoding="UTF-8") as prf:
+            self._params = json.load(prf)
         # store the path where the data is stored and the results are stored
-        self._path = str(Path(results_path).parent.parent.parent)
+        self._data_path = os.path.join(data_path, self._params["input_data"])
         self._results_path = results_path
         #
         # load the data that's shared across different model types
         #
-        with open(f"{self._path}/hsa_gams.pkl", "rb") as hsa_pkl:
+        with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
             self._hsa_gams = pickle.load(hsa_pkl)
         self._load_demog_factors()
         # load the data. we only need some of the columns for the model, so just load what we need
@@ -83,7 +83,7 @@ class Model:  # pylint: disable=too-many-instance-attributes
         start_year = dfp.get("start_year", "2018")
         end_year = dfp.get("end_year", "2043")
         #
-        demog_factors = pd.read_csv(os.path.join(self._path, dfp["file"]))
+        demog_factors = pd.read_csv(os.path.join(self._data_path, dfp["file"]))
         demog_factors[["age", "sex"]] = demog_factors[["age", "sex"]].astype(int)
         demog_factors["factor"] = demog_factors[end_year] / demog_factors[start_year]
         self._demog_factors = demog_factors.set_index(["age", "sex"])[
@@ -136,7 +136,7 @@ class Model:  # pylint: disable=too-many-instance-attributes
         You can selectively load columns by passing an array of column names to *args.
         """
         return pq.read_pandas(
-            os.path.join(self._path, f"{file}.parquet"), *args
+            os.path.join(self._data_path, f"{file}.parquet"), *args
         ).to_pandas()
 
     #
@@ -152,21 +152,28 @@ class Model:  # pylint: disable=too-many-instance-attributes
             .to_numpy()
         )
 
+    def _save_path(self, model_run, save_type):
+        path = os.path.join(
+            self._results_path,
+            save_type,
+            f"activity_type={self._model_type}",
+            f"dataset={self._params['input_data']}",
+            f"scenario={self._params['name']}",
+            f"create_datetime={self._params['create_datetime']}",
+            f"model_run={model_run}",
+        )
+        os.makedirs(path, exist_ok=True)
+        return path
+
     def aggregate_baseline(self):
         """
         Save the aggregated results for the baseline
         """
         if not self._params.get("aggregate_results", True):
             return
-        path_fn = lambda t: os.path.join(
-            self._results_path,
-            t,
-            f"dataset={self._model_type}",
-            "model_run=-1",
-        )
         data = self._data["principal"]
-        os.makedirs(aggregated_path := path_fn("aggregated_results"), exist_ok=True)
-        self.aggregate(data).to_parquet(f"{aggregated_path}/-1.parquet")
+        aggregated_path = self._save_path(-1, "aggregated_results")
+        self.aggregate(data).to_parquet(f"{aggregated_path}/0.parquet")
 
     #
     def save_run(self, model_run):
@@ -179,26 +186,18 @@ class Model:  # pylint: disable=too-many-instance-attributes
         """
         # run the model
         change_factors, mr_data = self.run(model_run)
-        path_fn = lambda t: os.path.join(
-            self._results_path,
-            t,
-            f"dataset={self._model_type}",
-            f"model_run={model_run}",
-        )
         # save row level results (if param is not set, defaults to not saving row level results)
         if self._params.get("save_all_results", False):
-            os.makedirs(results_path := path_fn("model_results"), exist_ok=True)
-            mr_data.to_parquet(f"{results_path}/{model_run}.parquet")
+            results_path = self._save_path(model_run, "model_results")
+            mr_data.to_parquet(f"{results_path}/0.parquet")
         # aggregate the results (if param is not set, defaults to saving aggregated results)
         if self._params.get("aggregate_results", True):
-            os.makedirs(aggregated_path := path_fn("aggregated_results"), exist_ok=True)
-            self.aggregate(mr_data).to_parquet(f"{aggregated_path}/{model_run}.parquet")
+            aggregated_path = self._save_path(model_run, "aggregated_results")
+            self.aggregate(mr_data).to_parquet(f"{aggregated_path}/0.parquet")
         # Save the change factors, so long as it's not an empty dictionary
         if change_factors is not None:
-            change_factors_path = path_fn("change_factors")
-            os.makedirs(change_factors_path, exist_ok=True)
-            change_factors_file = f"{change_factors_path}/{model_run}.csv"
-            change_factors.to_csv(change_factors_file, index=False)
+            change_factors_path = self._save_path(model_run, "change_factors")
+            change_factors.to_csv(f"{change_factors_path}/0.csv", index=False)
         return (change_factors, mr_data)
 
     #
@@ -239,15 +238,27 @@ class Model:  # pylint: disable=too-many-instance-attributes
 
     #
     def _generate_run_params(self):
-        # the principal projection will have run number 0. all other runs start indexing from 1
-        run_params_path = f"{self._results_path}/run_params.json"
-        # load the params if they have previously been created
+        params = self._params
+        path_fn = lambda save_type: os.path.join(
+            self._results_path,
+            save_type,
+            f"dataset={self._params['input_data']}",
+            f"scenario={self._params['name']}",
+        )
+        json_name = f"create_datetime={self._params['create_datetime']}.json"
+        # if the params file doesn't exist in it's results folder, save it there now
+        params_path = os.path.join(path_fn("params"), json_name)
+        if not os.path.exists(params_path):
+            with open(params_path, "w", encoding="UTF-8") as params_file:
+                json.dump(params, params_file)
+        # load the run params if they have previously been created
+        run_params_path = os.path.join(path_fn("run_params"), json_name)
         if os.path.exists(run_params_path):
             with open(run_params_path, "r", encoding="UTF-8") as run_params_file:
                 self._run_params = json.load(run_params_file)
                 return
         #
-        params = self._params
+        # the principal projection will have run number 0. all other runs start indexing from 1
         rng = np.random.default_rng(params["seed"])
         model_runs = params["model_runs"] + 1  # add 1 for the principal
 
@@ -288,6 +299,7 @@ class Model:  # pylint: disable=too-many-instance-attributes
             },
         }
         # save the run params
+        os.makedirs(path_fn("run_params"), exist_ok=True)
         with open(run_params_path, "w", encoding="UTF-8") as run_params_file:
             json.dump(self._run_params, run_params_file)
 

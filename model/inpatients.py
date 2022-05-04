@@ -21,11 +21,13 @@ class InpatientsModel(Model):
     Implements the model for inpatient data. See `Model()` for documentation on the generic class.
     """
 
-    def __init__(self, results_path: str):
+    def __init__(self, params, data_path: str, results_path: str):
         # call the parent init function
         Model.__init__(
             self,
             "ip",
+            params,
+            data_path,
             results_path,
             [
                 "rn",

@@ -32,11 +32,22 @@ def timeit(func, *args):
     return results
 
 
-def run_model(model_type, results_path, run_start, model_runs, cpus, batch_size):
+def run_model(
+    model_type,
+    params_file,
+    data_path,
+    results_path,
+    run_start,
+    model_runs,
+    cpus,
+    batch_size,
+):
     """
     Run the model
 
     * model_type: which model to run? one of AaEModel, InpatientsModel, OutpatientsModel
+    * params_file: the params file to use for this model run
+    * data_path: where the model data is stored
     * results_path: where the model run's data is stored, see notes below.
     * run_start: the model run to start at
     * model_runs: how many runs to perform
@@ -46,7 +57,7 @@ def run_model(model_type, results_path, run_start, model_runs, cpus, batch_size)
     The results_path should be of the form `data/[DATASET]/results/[SCENARIO]/[RUN_TIME]`.
     """
     try:
-        model = model_type(results_path)
+        model = model_type(params_file, data_path, results_path)
     except FileNotFoundError as exc:
         # handle the dataset not existing: we simply skip
         if str(exc).endswith(".parquet"):
@@ -65,12 +76,17 @@ def main():
     Runs when __name__ == "__main__"
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("results_path", nargs=1, help="Path to the results")
+    parser.add_argument("params_file", help="Path to the params.json file")
+    parser.add_argument("--data_path", help="Path to the data", default="data")
+    parser.add_argument("--results_path", help="Path to the results", default="results")
     parser.add_argument(
-        "run_start", nargs=1, help="Where to start model run from", type=int
+        "--run_start", help="Where to start model run from", type=int, default=0
     )
     parser.add_argument(
-        "model_runs", nargs=1, help="How many model runs to perform", type=int
+        "--model_runs",
+        help="How many model runs to perform",
+        type=int,
+        default=1,
     )
     parser.add_argument(
         "-t",
@@ -105,9 +121,9 @@ def main():
         assert (
             args.type != "all"
         ), "can only debug a single model at a time: make sure to set the --type argument"
-        model = models[args.type](args.results_path[0])
+        model = models[args.type](args.params_file, args.data_path, args.results_path)
         print("running model... ", end="")
-        change_factors, results = timeit(model.run, args.run_start[0])
+        change_factors, results = timeit(model.run, args.run_start)
         print("aggregating results... ", end="")
         agg_results = timeit(model.aggregate, results)
         #
@@ -122,9 +138,11 @@ def main():
         for i in models.values():
             run_model(
                 i,
-                args.results_path[0],
-                args.run_start[0],
-                args.model_runs[0],
+                args.params_file,
+                args.data_path,
+                args.results_path,
+                args.run_start,
+                args.model_runs,
                 args.cpus,
                 args.batch_size,
             )

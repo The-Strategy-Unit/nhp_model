@@ -21,9 +21,9 @@ class AaEModel(Model):
     generic class.
     """
 
-    def __init__(self, results_path):
+    def __init__(self, params, data_path: str, results_path: str):
         # call the parent init function
-        Model.__init__(self, "aae", results_path)
+        Model.__init__(self, "aae", params, data_path, results_path)
 
     #
     def _low_cost_discharged(self, data, run_params):
