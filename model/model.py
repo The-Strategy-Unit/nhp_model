@@ -110,16 +110,14 @@ class Model:  # pylint: disable=too-many-instance-attributes
                     {
                         "hsagrp": h,
                         "sex": int(s),
-                        "age": lex.loc[
-                            int(s), "age"
-                        ],
+                        "age": lex.loc[int(s), "age"],
                         "hsa_f": g.predict(lex.loc[int(s), "adjusted_age"])
                         / g.predict(lex.loc[int(s), "age"]),
                     }
                 )
                 for (h, s), g in self._hsa_gams.items()
             ]
-        ).reset_index(drop = True)
+        ).reset_index(drop=True)
         return (
             (
                 data.reset_index()
@@ -164,7 +162,7 @@ class Model:  # pylint: disable=too-many-instance-attributes
             self._results_path,
             t,
             f"dataset={self._model_type}",
-            f"model_run=-1",
+            "model_run=-1",
         )
         data = self._data["principal"]
         os.makedirs(aggregated_path := path_fn("aggregated_results"), exist_ok=True)
