@@ -32,6 +32,8 @@ AAD_APPLICATION_ID = c.AAD_APPLICATION_ID
 
 STANDARD_OUT_FILE_NAME = "stdout.txt"
 
-DATA_PATH = "/mnt/batch/tasks/fsmounts/data"
-APP_PATH = "/mnt/batch/tasks/fsmounts/app"
-QUEUE_PATH = "/mnt/batch/tasks/fsmounts/queue"
+MOUNT_PATH = "/mnt/batch/tasks/fsmounts"
+APP_PATH = f"{MOUNT_PATH}/app"
+DATA_PATH = f"{MOUNT_PATH}/data"
+RESULTS_PATH = f"{MOUNT_PATH}/data"
+QUEUE_PATH = f"{MOUNT_PATH}/queue"
