@@ -7,67 +7,6 @@ import time
 import azure.batch.models as batchmodels
 from azure.batch import BatchServiceClient
 
-import batch.config as config
-
-
-def create_pool(batch_service_client: BatchServiceClient, pool_id: str) -> None:
-    """
-    Creates a pool of VM's
-
-      * batch_service_client: A Batch service client.
-      * pool_id: The ID for the pool.
-    """
-    vm_image = batchmodels.ImageReference(
-        publisher="microsoft-azure-batch",
-        offer="ubuntu-server-container",
-        sku="20-04-lts",
-        version="latest",
-    )
-
-    task_commands = ";".join(
-        [
-            "mkdir /opt/nhp",
-            "tar -xzf /mnt/batch/tasks/fsmounts/app/nhp.tar.gz -C /opt/nhp",
-        ]
-    )
-
-    start_task_conf = batchmodels.StartTask(
-        command_line=f"/bin/bash -c 'set -e; set -o pipefail; {task_commands}; wait'",
-        wait_for_success=True,
-        user_identity=batchmodels.UserIdentity(
-            auto_user=batchmodels.AutoUserSpecification(
-                elevation_level=batchmodels.ElevationLevel.admin,
-                scope=batchmodels.AutoUserScope.pool,
-            )
-        ),
-    )
-
-    vmc = batchmodels.VirtualMachineConfiguration(
-        image_reference=vm_image, node_agent_sku_id="batch.node.ubuntu 20.04"
-    )
-
-    mount = lambda container: batchmodels.MountConfiguration(
-        azure_blob_file_system_configuration=batchmodels.AzureBlobFileSystemConfiguration(
-            account_name=config.STORAGE_ACCOUNT_NAME,
-            account_key=config.STORAGE_ACCOUNT_KEY,
-            container_name=container,
-            relative_mount_path=container,
-        )
-    )
-
-    pool = batchmodels.PoolAddParameter(
-        id=pool_id,
-        vm_size=config.POOL_VM_SIZE,
-        virtual_machine_configuration=vmc,
-        mount_configuration=[mount(x) for x in ["data", "queue", "app"]],
-        target_dedicated_nodes=0,
-        target_low_priority_nodes=0,
-        start_task=start_task_conf,
-    )
-
-    batch_service_client.pool.add(pool)
-    wait_for_pool_resize(batch_service_client, pool_id)
-
 
 def resize_pool(
     batch_service_client: BatchServiceClient,
@@ -91,21 +30,6 @@ def resize_pool(
         ),
     )
     wait_for_pool_resize(batch_service_client, pool_id)
-
-
-def delete_pool(batch_service_client: BatchServiceClient, pool_id: str) -> None:
-    """
-    Deletes a pool of VM's
-
-      * batch_service_client: A Batch service client.
-      * pool_id: The ID for the pool.
-    """
-
-    batch_service_client.pool.delete(pool_id)
-    print("pool deleting: waiting for nodes to be deallocated")
-    while batch_service_client.pool.exists(pool_id):
-        time.sleep(1)
-    print("pool deleted")
 
 
 def wait_for_pool_resize(

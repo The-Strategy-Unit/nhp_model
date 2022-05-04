@@ -34,8 +34,6 @@ from batch import (
     config,
     connect_batch_client,
     connect_blob_storage,
-    create_pool,
-    delete_pool,
     prep_queue,
     resize_pool,
 )
@@ -49,7 +47,7 @@ if __name__ == "__main__":
     blob_service_client = connect_blob_storage()
     batch_client = connect_batch_client()
 
-    ERR_MSG = "please provide argument: run_tasks, create_pool, start_pool, stop_pool, delete_pool"
+    ERR_MSG = "please provide argument: run_tasks, start_pool, stop_pool"
     if len(sys.argv) == 1:
         raise Exception(ERR_MSG)
     elif sys.argv[1] == "run_tasks":
@@ -58,8 +56,6 @@ if __name__ == "__main__":
                 "missing arguments, expecting: prep_queue RUNS_PER_TASK QUEUE_PATH"
             )
         prep_queue(int(sys.argv[2]), sys.argv[3])
-    elif sys.argv[1] == "create_pool":
-        create_pool(batch_client, config.POOL_ID)
     elif sys.argv[1] == "start_pool":
         resize_pool(
             batch_client,
@@ -69,8 +65,6 @@ if __name__ == "__main__":
         )
     elif sys.argv[1] == "stop_pool":
         resize_pool(batch_client, config.POOL_ID, 0, 0)
-    elif sys.argv[1] == "delete_pool":
-        delete_pool(batch_client, config.POOL_ID)
     else:
         raise Exception(ERR_MSG)
 
