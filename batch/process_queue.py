@@ -4,11 +4,11 @@ Process queue of model runs
 
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import batch.config as config
 from batch.connections import connect_adls, connect_batch_client
-from batch.jobs import add_task, create_job, wait_for_tasks_to_complete
+from batch.jobs import add_task, create_job
 
 
 def prep_file(runs_per_task: int, path: str, file: str) -> None:
@@ -32,25 +32,30 @@ def prep_file(runs_per_task: int, path: str, file: str) -> None:
     #   "yyyy-mm-dd HH:MM:SS" to "yyyy-mm-dd_HH:MM:SS"
     # create_time = params["create_datetime"].replace(":", "").replace(" ", "_").replace("-", "")
     create_time = f"{datetime.now():%Y%m%d_%H%M%S}"
+    params["create_datetime"] = create_time
     # the name of the job in the batch service
-    job_path = f"{params['name']}/{create_time}"
-    job_id = job_path.replace("/", "_")
+    job_id = f"{params['name']}_{create_time}"
     # create the path where we will store the results
-    results_path = f"{params['input_data']}/results/{job_path}"
+    params_path = f"dataset={params['input_data']}/scenario={params['name']}"
     # connect to adls
-    adls = adls_client.get_directory_client("data", results_path)
+    adls = adls_client.get_directory_client("queue", params_path)
     # upload the json to the results container
-    adls.get_file_client("params.json").upload_data(json.dumps(params), overwrite=True)
+    adls.get_file_client(f"create_datetime={create_time}.json").upload_data(
+        json.dumps(params), overwrite=True
+    )
     #
-    # get how many runs of the model to perform
-    model_runs = params["model_runs"]
     # create a job
     batch_client = connect_batch_client()
     create_job(batch_client, job_id, config.POOL_ID)
     # add the tasks for this job
-    add_task(batch_client, job_id, results_path, model_runs, runs_per_task)
-    wait_for_tasks_to_complete(batch_client, job_id, timedelta(minutes=30))
-    batch_client.job.terminate(job_id)
+    add_task(
+        batch_client,
+        job_id,
+        f"{params_path}/create_datetime={create_time}.json",
+        runs_per_task,
+        params,
+    )
+    # wait_for_tasks_to_complete(batch_client, job_id, timedelta(minutes=30))
 
 
 def prep_queue(runs_per_task: int, queue_path: str) -> None:

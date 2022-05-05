@@ -26,7 +26,10 @@ def create_job(
     print(f"Creating job [{job_id}]...")
 
     job = batchmodels.JobAddParameter(
-        id=job_id, pool_info=batchmodels.PoolInformation(pool_id=pool_id)
+        id=job_id,
+        pool_info=batchmodels.PoolInformation(pool_id=pool_id),
+        on_all_tasks_complete="terminateJob",
+        uses_task_dependencies=True
     )
 
     batch_service_client.job.add(job)
@@ -35,34 +38,58 @@ def create_job(
 def add_task(
     batch_service_client: BatchServiceClient,
     job_id: str,
-    results_path: str,
-    model_runs: int,
+    params_file: str,
     runs_per_task: int,
+    params: list,
 ) -> None:
     """
     Adds a task for each input file in the collection to the specified job.
 
       * batch_service_client: A Batch service client.
       * job_id: The ID of the job to which to add the tasks.
-      * input_files: A collection of input files. One task will be created for each input file.
+      * params_file: The path to the params file
+      * model_runs: How many runs of the model to perform
     """
-    #
-    command_line = (
-        f"/opt/nhp/bin/python {config.APP_PATH}/run_model.py '{config.DATA_PATH}/{results_path}'"
+    # define the user to use in batch
+    user=batchmodels.UserIdentity(
+        auto_user=batchmodels.AutoUserSpecification(
+            scope=batchmodels.AutoUserScope.pool,
+            elevation_level=batchmodels.ElevationLevel.admin,
+        )
     )
-    create_task = lambda run_start: batchmodels.TaskAddParameter(
-        id=f"Run{run_start}-{run_start+runs_per_task - 1}",
-        command_line=f"{command_line} {run_start} {runs_per_task}",
-        user_identity=batchmodels.UserIdentity(
-            auto_user=batchmodels.AutoUserSpecification(
-                scope=batchmodels.AutoUserScope.pool,
-                elevation_level=batchmodels.ElevationLevel.admin,
-            )
-        ),
-    )
+    # get how many runs of the model to perform
+    model_runs = params["model_runs"]
+    def create_task (run_start):
+        command_line = " ".join([
+            "/opt/nhp/bin/python",
+            f"{config.APP_PATH}/run_model.py",
+            f"{config.QUEUE_PATH}/{params_file}",
+            f"--data_path={config.DATA_PATH}",
+            f"--results_path={config.RESULTS_PATH}",
+            f"--run_start={run_start}",
+            f"--model_runs={runs_per_task}"
+        ])
+        return batchmodels.TaskAddParameter(
+            id=f"run{run_start}-{run_start+runs_per_task - 1}",
+            display_name=f"Model Run [{run_start} to {run_start+runs_per_task -1}]",
+            command_line=command_line,
+            user_identity= user
+        )
     #
     tasks = [create_task(rs) for rs in range(0, model_runs, runs_per_task)]
+    
+    combine_command = " ".join([
+        "/opt/nhp/bin/python",
+        "combine_results.py",
+        params["input_data"],
+        params["name"],
+        params["create_datetime"]
+    ])
+    combine_task = batchmodels.TaskAddParameter(id="combine", display_name = "Combine Results",
+    command_line=combine_command, user_identity=user, depends_on=[t.id for t in tasks])
+
     batch_service_client.task.add_collection(job_id, tasks)
+    batch_service_client.task.add(job_id, combine_task)
 
 
 def wait_for_tasks_to_complete(

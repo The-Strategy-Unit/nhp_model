@@ -63,6 +63,17 @@
         "-b=8"
       ],
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Batch: Run Queue",
+      "type": "python",
+      "request": "launch",
+      "program": "run_batch.py",
+      "args": [
+        "run_tasks",
+        "256",
+        "test/queue"
+      ]
     }
   ]
 }
