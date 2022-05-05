@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 import azure.batch.models as batchmodels
 from azure.batch import BatchServiceClient
 
-import batch.config as config
+from batch import config
 
 
 def create_job(
@@ -77,16 +77,22 @@ def add_task(
         )
     #
     tasks = [create_task(rs) for rs in range(0, model_runs, runs_per_task)]
-    
+
     combine_command = " ".join([
         "/opt/nhp/bin/python",
-        "combine_results.py",
+        f"{config.APP_PATH}/combine_results.py",
+        config.RESULTS_PATH,
         params["input_data"],
         params["name"],
         params["create_datetime"]
     ])
-    combine_task = batchmodels.TaskAddParameter(id="combine", display_name = "Combine Results",
-    command_line=combine_command, user_identity=user, depends_on=[t.id for t in tasks])
+    combine_task = batchmodels.TaskAddParameter(
+        id="combine",
+        display_name = "Combine Results",
+        command_line=combine_command,
+        user_identity=user,
+        depends_on=batchmodels.TaskDependencies(task_ids = [t.id for t in tasks])
+    )
 
     batch_service_client.task.add_collection(job_id, tasks)
     batch_service_client.task.add(job_id, combine_task)

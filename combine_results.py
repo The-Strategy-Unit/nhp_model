@@ -15,9 +15,12 @@ import pyarrow as pa
 import pyarrow.dataset as ds
 
 
-def _combine_results(result_type, data_format, dataset, scenario, create_datetime):
+def _combine_results(
+    results_path, result_type, data_format, dataset, scenario, create_datetime
+):  # pylint: disable=too-many-arguments
+    print(f"combine_results: {result_type=}")
     path = lambda type: os.path.join(
-        "results",
+        results_path,
         result_type,
         f"activity_type={type}",
         f"dataset={dataset}",
@@ -28,12 +31,16 @@ def _combine_results(result_type, data_format, dataset, scenario, create_datetim
     partitioning = ds.HivePartitioning(pa.schema([("model_run", pa.int16())]))
 
     def load(activity_type):
-        dataset = ds.dataset(
-            path(activity_type),
-            format=data_format,
-            partitioning=partitioning,
+        print(f"* load({activity_type})")
+        dts = (
+            ds.dataset(
+                path(activity_type),
+                format=data_format,
+                partitioning=partitioning,
+            )
+            .to_table()
+            .to_pandas()
         )
-        dts = dataset.to_table().to_pandas()
         # Synapse doesn't support hive partitioned columns in external tables
         dts["dataset"] = dataset
         dts["activity_type"] = activity_type
@@ -42,50 +49,60 @@ def _combine_results(result_type, data_format, dataset, scenario, create_datetim
         return dts
 
     activity_types = ["ip", "op", "aae"]
-    all_data = pd.concat(load(t) for t in activity_types)
+    all_data = [load(t) for t in activity_types if os.path.exists(path(t))]
+    if len(all_data) == 0:
+        print("no data: exiting")
+        return
 
-    results_path = path("").replace("activity_type=", "combined")
-    os.makedirs(results_path, exist_ok=True)
+    all_data = pd.concat(all_data)
+    all_data["value"] = all_data["value"].astype(int)
 
+    combined_results_path = (
+        path("")
+        .replace("activity_type=", "combined")
+        .replace(f"create_datetime={create_datetime}", "")
+    )
+    os.makedirs(combined_results_path, exist_ok=True)
+
+    print("* saving data")
     if data_format == "parquet":
-        all_data.to_parquet(f"{results_path}/0.parquet")
+        all_data.to_parquet(
+            f"{combined_results_path}/{create_datetime}.parquet", index=False
+        )
     else:
-        all_data.to_csv(f"{results_path}/0.csv", index=False)
+        all_data.to_csv(f"{combined_results_path}/{create_datetime}.csv", index=False)
 
-    # remove the individual model run folders
-    for mrf in [
-        os.path.join(path(t), i)
-        for t in activity_types
-        for i in os.listdir(path(t))
-        if i.startswith("model_run")
-    ]:
-        shutil.rmtree(mrf)
+    print("* done\n")
 
 
-def _combine_model_results(activity_type, dataset, scenario, create_datetime):
+def _combine_model_results(
+    results_path, activity_type, dataset, scenario, create_datetime
+):
+    print(f"combine model results: {activity_type=}")
     path = os.path.join(
-        "results",
+        results_path,
         "model_results",
         f"activity_type={activity_type}",
         f"dataset={dataset}",
         f"scenario={scenario}",
         f"create_datetime={create_datetime}",
     )
-    model_runs = [i for i in os.listdir(path) if i.startswith("model_run")]
+    if not os.path.exists(path):
+        return
 
     partitioning = ds.HivePartitioning(pa.schema([("model_run", pa.int16())]))
 
-    dataset = ds.dataset(path, format="parquet", partitioning=partitioning)
-    dts = dataset.to_table().to_pandas()
+    print("* load data")
+    (
+        ds.dataset(path, format="parquet", partitioning=partitioning)
+        .to_table()
+        .to_pandas()
+        .to_parquet(f"{path}/combined.parquet")
+    )
+    print("* done \n")
 
-    dts.to_parquet(f"{path}/combined.parquet")
 
-    # remove the individual model run folders
-    for mrf in model_runs:
-        shutil.rmtree(os.path.join(path, mrf))
-
-
-def combine(dataset, scenario, create_datetime):
+def combine(results_path, dataset, scenario, create_datetime):
     """Combine model run files into single files
 
     * dataset: name of the dataset
@@ -96,11 +113,18 @@ def combine(dataset, scenario, create_datetime):
     model run files and combine into a single file.
     """
     _combine_results(
-        "aggregated_results", "parquet", dataset, scenario, create_datetime
+        results_path,
+        "aggregated_results",
+        "parquet",
+        dataset,
+        scenario,
+        create_datetime,
     )
-    _combine_results("change_factors", "csv", dataset, scenario, create_datetime)
+    _combine_results(
+        results_path, "change_factors", "csv", dataset, scenario, create_datetime
+    )
     for i in ["op", "aae", "ip"]:
-        _combine_model_results(i, dataset, scenario, create_datetime)
+        _combine_model_results(results_path, i, dataset, scenario, create_datetime)
 
 
 def main():
@@ -110,6 +134,7 @@ def main():
     Runs when __name__ == "__main__"
     """
     parser = argparse.ArgumentParser()
+    parser.add_argument("results_path", help="The path to the results")
     parser.add_argument("dataset", help="The name of the dataset")
     parser.add_argument("scenario", help="The name of the scenario")
     parser.add_argument(
@@ -119,7 +144,7 @@ def main():
     # grab the Arguments
     args = parser.parse_args()
     # run combine
-    combine(args.dataset, args.scenario, args.create_datetime)
+    combine(args.results_path, args.dataset, args.scenario, args.create_datetime)
 
 
 if __name__ == "__main__":
