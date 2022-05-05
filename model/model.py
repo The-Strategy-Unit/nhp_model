@@ -7,6 +7,7 @@ Implements the generic class for all other model types.
 import json
 import os
 import pickle
+from datetime import datetime
 from multiprocessing import Pool
 
 import numpy as np
@@ -42,6 +43,9 @@ class Model:  # pylint: disable=too-many-instance-attributes
         self._model_type = model_type
         with open(params_file, "r", encoding="UTF-8") as prf:
             self._params = json.load(prf)
+        # add model runtime if it doesn't exist
+        if not "create_datetime" in self._params:
+            self._params["create_datetime"] = f"{datetime.now():%Y%m%d_%H%M%S}"
         # store the path where the data is stored and the results are stored
         self._data_path = os.path.join(data_path, self._params["input_data"])
         self._results_path = results_path
