@@ -249,6 +249,7 @@ class Model:  # pylint: disable=too-many-instance-attributes
         # if the params file doesn't exist in it's results folder, save it there now
         params_path = os.path.join(path_fn("params"), json_name)
         if not os.path.exists(params_path):
+            os.makedirs(path_fn("params"), exist_ok=True)
             with open(params_path, "w", encoding="UTF-8") as params_file:
                 json.dump(params, params_file)
         # load the run params if they have previously been created
