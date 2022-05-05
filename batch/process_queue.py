@@ -4,11 +4,11 @@ Process queue of model runs
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import batch.config as config
 from batch.connections import connect_adls, connect_batch_client
-from batch.jobs import add_task, create_job
+from batch.jobs import add_task, create_job, wait_for_tasks_to_complete
 
 
 def prep_file(runs_per_task: int, path: str, file: str) -> None:
@@ -34,7 +34,7 @@ def prep_file(runs_per_task: int, path: str, file: str) -> None:
     create_time = f"{datetime.now():%Y%m%d_%H%M%S}"
     params["create_datetime"] = create_time
     # the name of the job in the batch service
-    job_id = f"{params['name']}_{create_time}"
+    job_id = f"{params['input_data']}_{params['name']}_{create_time}"
     # create the path where we will store the results
     params_path = f"dataset={params['input_data']}/scenario={params['name']}"
     # connect to adls
@@ -55,7 +55,9 @@ def prep_file(runs_per_task: int, path: str, file: str) -> None:
         runs_per_task,
         params,
     )
-    # wait_for_tasks_to_complete(batch_client, job_id, timedelta(minutes=30))
+    wait_for_tasks_to_complete(batch_client, job_id, timedelta(minutes=30))
+    # TODO: clean up folders
+    # adls = adls_client.get_directory_client("results", f"aggregated_results/")
 
 
 def prep_queue(runs_per_task: int, queue_path: str) -> None:
