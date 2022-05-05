@@ -62,12 +62,10 @@ mod_principal_high_level_server <- function(id, data) {
 
       dplyr::bind_rows(
         aae <- d |>
-          dplyr::filter(.data$dataset == "aae") |>
-          dplyr::mutate(pod = "A&E Attendances") |>
-          dplyr::collect(),
+          dplyr::filter(.data$activity_type == "aae") |>
+          dplyr::mutate(pod = "A&E Attendances"),
         d |>
-          dplyr::filter(.data$dataset == "op", .data$measure == "attendances") |>
-          dplyr::collect() |>
+          dplyr::filter(.data$activity_type == "op", .data$measure == "attendances") |>
           dplyr::mutate(
             dplyr::across(
               .data$pod,
@@ -78,8 +76,7 @@ mod_principal_high_level_server <- function(id, data) {
             )
           ),
         d |>
-          dplyr::filter(.data$dataset == "ip", .data$measure == "admissions") |>
-          dplyr::collect() |>
+          dplyr::filter(.data$activity_type == "ip", .data$measure == "admissions") |>
           dplyr::mutate(
             dplyr::across(
               .data$pod,

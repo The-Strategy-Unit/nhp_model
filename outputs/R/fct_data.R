@@ -5,20 +5,18 @@
 #' @return The return value, if any, from executing the function.
 #'
 #' @noRd
-get_data <- function(p) {
-  selected_variants <- jsonlite::read_json(file.path(p, "run_params.json"))[["variant"]] |>
-    purrr::flatten_chr() |>
-    tibble::enframe("model_run", "variant") |>
-    dplyr::mutate(dplyr::across(.data$model_run, `-`, 1)) |> # R uses 1 based indexing, so subtract 1
-    arrow::to_duckdb()
-
-  arrow::open_dataset(file.path(p, "aggregated_results")) |>
-    arrow::to_duckdb() |>
-    dplyr::left_join(selected_variants, by = "model_run")
+get_data <- function(db_con, ds, sc, mr) {
+  dplyr::tbl(db_con, "aggregated_results") |>
+    dplyr::filter(.data$dataset == ds, .data$scenario == sc, .data$create_datetime == mr) |>
+    dplyr::select(-.data$dataset, -.data$scenario, -.data$create_datetime) |>
+    dplyr::collect() |>
+    dplyr::mutate(variant = "TODO", dplyr::across(.data$value, as.numeric))
 }
 
-get_change_factors <- function(p) {
-  arrow::open_dataset(file.path(p, "change_factors"), format = "csv") |>
+get_change_factors <- function(db_con, ds, sc, mr) {
+  dplyr::tbl(db_con, "change_factors") |>
+    dplyr::filter(.data$dataset == ds, .data$scenario == sc, .data$create_datetime == mr) |>
+    dplyr::select(-.data$dataset, -.data$scenario, -.data$create_datetime) |>
     dplyr::collect() |>
     dplyr::mutate(
       dplyr::across(

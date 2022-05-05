@@ -39,12 +39,11 @@ mod_measure_selection_server <- function(id, data) {
     # handle onload
     observe({
       d <- data() |>
-        dplyr::distinct(.data$dataset) |>
-        dplyr::collect()
+        dplyr::distinct(.data$activity_type)
       req(nrow(d) > 0)
 
-      activity_types <- dataset_display |>
-        dplyr::semi_join(d, by = "dataset") |>
+      activity_types <- activity_type_display |>
+        dplyr::semi_join(d, by = "activity_type") |>
         (function(.x) purrr::set_names(.x[[1]], .x[[2]]))()
 
       shiny::updateSelectInput(session, "activity_type", choices = activity_types)
@@ -54,9 +53,8 @@ mod_measure_selection_server <- function(id, data) {
       at <- req(input$activity_type)
 
       d <- data() |>
-        dplyr::filter(.data$dataset == at) |>
-        dplyr::distinct(.data$pod) |>
-        dplyr::collect()
+        dplyr::filter(.data$activity_type == at) |>
+        dplyr::distinct(.data$pod)
 
       pods <- pod_display |>
         dplyr::semi_join(d, by = "pod") |>
@@ -69,9 +67,8 @@ mod_measure_selection_server <- function(id, data) {
       at <- req(input$activity_type)
       p <- req(input$pod)
       d <- data() |>
-        dplyr::filter(.data$dataset == at, .data$pod == p) |>
-        dplyr::distinct(.data$measure) |>
-        dplyr::collect()
+        dplyr::filter(.data$activity_type == at, .data$pod == p) |>
+        dplyr::distinct(.data$measure)
 
       measures <- measure_display |>
         dplyr::semi_join(d, by = "measure") |>
@@ -91,15 +88,18 @@ mod_measure_selection_server <- function(id, data) {
       )
 
       d <- data() |>
-        dplyr::filter(.data$dataset == at, .data$pod == p, .data$measure == m) |>
-        dplyr::collect() |>
+        dplyr::filter(.data$activity_type == at, .data$pod == p, .data$measure == m) |>
         dplyr::mutate(type = dplyr::case_when(
           .data$model_run == -1 ~ "baseline",
           .data$model_run == 0 ~ "principal",
           TRUE ~ "model"
         )) |>
         dplyr::group_by(.data$sex, agg = .data[[a]], .data$type, .data$model_run, .data$variant) |>
-        dplyr::summarise(dplyr::across(.data$value, sum), .groups = "drop")
+        dplyr::summarise(dplyr::across(
+          .data$value,
+          # for some reason without as.numeric this get's promoted to int64
+          purrr::compose(as.numeric, sum)
+        ), .groups = "drop")
 
       attr(d, "aggregation") <- input$aggregation
 

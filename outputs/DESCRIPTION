@@ -5,12 +5,10 @@ Authors@R: person('Tom', 'Jemmett', email = 'thomas.jemmett@nhs.net', role = c('
 Description: A shiny app for showing outputs of the NHP model.
 License: MIT + file LICENSE
 Imports: 
-    arrow,
     attempt,
     bs4Dash,
     config (>= 0.3.1),
     DT,
-    duckdb,
     ggbeeswarm,
     glue,
     golem (>= 0.3.1),

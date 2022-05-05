@@ -5,8 +5,8 @@
 #' @return The return value, if any, from executing the function.
 #'
 #' @noRd
-dataset_display <- tibble::tribble(
-  ~dataset, ~dataset_display,
+activity_type_display <- tibble::tribble(
+  ~activity_type, ~activity_type_display,
   "aae",    "A&E",
   "ip",     "Inpatients",
   "op",     "Outpatients"

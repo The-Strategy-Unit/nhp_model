@@ -43,6 +43,7 @@ mod_model_results_distribution_server <- function(id, data) {
       b <- dplyr::filter(d, .data$model_run == -1)$value
 
       colour_scale <- ggplot2::scale_fill_manual(values = c(
+        "TODO" = "#f9bf07",
         "principal" = "#f9bf07",
         "high_migration" = "#5881c1"
       ))
@@ -70,10 +71,7 @@ mod_model_results_distribution_server <- function(id, data) {
           ggbeeswarm::geom_quasirandom(groupOnX = TRUE, alpha = 0.5) +
           ggplot2::geom_hline(yintercept = b) +
           ggplot2::expand_limits(y = ifelse(input$show_origin, 0, b)) +
-          ggplot2::scale_colour_manual(values = list(
-            "principal" = "#5881c1",
-            "high migration" = "#ec6555"
-          )) +
+          colour_scale +
           # have to use coord flip with boxplots/violin plots and plotly...
           ggplot2::coord_flip() +
           ggplot2::scale_y_continuous(labels = scales::comma) +

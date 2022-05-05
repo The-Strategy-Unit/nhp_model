@@ -6,12 +6,12 @@
 app_server <- function(input, output, session) {
 
   # this module returns a reactive which contains the data path
-  data_path <- mod_result_selection_server("result_selection")
+  selected_model_run <- mod_result_selection_server("result_selection")
   data <- reactive({
-    get_data(shiny::req(data_path()))
+    selected_model_run()$data
   })
   change_factors <- reactive({
-    get_change_factors(shiny::req(data_path()))
+    selected_model_run()$change_factors
   })
 
   mod_params_upload_server("params_upload_ui")

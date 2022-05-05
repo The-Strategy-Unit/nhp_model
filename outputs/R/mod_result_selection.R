@@ -11,8 +11,8 @@ mod_result_selection_ui <- function(id) {
   ns <- NS(id)
   tagList(
     shiny::selectInput(ns("dataset"), "Dataset", NULL),
-    shiny::selectInput(ns("model_name"), "Model Name", NULL),
-    shiny::selectInput(ns("model_run"), "Model Run", NULL)
+    shiny::selectInput(ns("scenario"), "Scenario", NULL),
+    shiny::selectInput(ns("model_run"), "Model Run Time", NULL)
   )
 }
 
@@ -20,38 +20,63 @@ mod_result_selection_ui <- function(id) {
 #'
 #' @noRd
 mod_result_selection_server <- function(id) {
+  con_str <- glue::glue(
+    .sep = ";",
+    "Driver={{ODBC Driver 18 for SQL Server}}",
+    "server={Sys.getenv('DB_SERVER')}",
+    "database={Sys.getenv('DB_DATABASE')}",
+    "Authentication={Sys.getenv('DB_AUTHENTICATION_TYPE')}"
+  )
+  db_con <- DBI::dbConnect(odbc::odbc(), .connection_string = con_str)
+
   moduleServer(id, function(input, output, session) {
-    datasets_path <- get_golem_config("datasets_path") %||% app_sys("data")
-
-    get_values_for_dropdowns <- function(path) {
-      d1 <- dir(path, full.names = TRUE)
-      d2 <- dir(path)
-      purrr::set_names(d1, d2)
-    }
-
-    # on load, update the datasets dropdown
+     # on load, update the datasets dropdown
     observe({
-      datasets <- get_values_for_dropdowns(datasets_path)
+      datasets <- dplyr::tbl(db_con, "aggregated_results") |>
+        dplyr::distinct(.data$dataset) |>
+        dplyr::pull(.data$dataset)
+
       shiny::updateSelectInput(session, "dataset", choices = datasets)
     })
 
     observeEvent(input$dataset, {
       ds <- req(input$dataset)
-      model_names <- get_values_for_dropdowns(file.path(ds, "results"))
-      shiny::updateSelectInput(session, "model_name", choices = model_names)
+
+      scenarios <- dplyr::tbl(db_con, "aggregated_results") |>
+        dplyr::filter(.data$dataset == ds) |>
+        dplyr::distinct(.data$scenario) |>
+        dplyr::pull(.data$scenario)
+
+      shiny::updateSelectInput(session, "scenario", choices = scenarios)
     })
 
-    observeEvent(input$model_name, {
-      mn <- req(input$model_name)
-      model_runs <- get_values_for_dropdowns(mn)
+    observeEvent(input$scenario, {
+      ds <- req(input$dataset)
+      sc <- req(input$scenario)
+
+      model_runs <- dplyr::tbl(db_con, "aggregated_results") |>
+        dplyr::filter(.data$dataset == ds, .data$scenario == sc) |>
+        dplyr::distinct(.data$create_datetime) |>
+        dplyr::pull(.data$create_datetime)
+
       shiny::updateSelectInput(session, "model_run", choices = model_runs)
     })
 
-    data_path <- reactive({
+    selected_model_run <- reactive({
+      ds <- req(input$dataset)
+      sc <- req(input$scenario)
       mr <- req(input$model_run)
-      return(mr)
+
+      cat("loading data...")
+      dfs <- list(
+        data = get_data(db_con, ds, sc, mr),
+        change_factors = get_change_factors(db_con, ds, sc, mr)
+      )
+      cat(" done\n\n")
+
+      dfs
     })
 
-    return(data_path)
+    return(selected_model_run)
   })
 }

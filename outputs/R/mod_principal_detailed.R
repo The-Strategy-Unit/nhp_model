@@ -72,7 +72,7 @@ mod_principal_detailed_server <- function(id, data) {
       at <- req(input$activity_type)
 
       p <- dropdown_options() |>
-        dplyr::filter(.data$dataset == at) |>
+        dplyr::filter(.data$activity_type == at) |>
         dplyr::pull(.data$pod) |>
         unique()
 
@@ -84,7 +84,7 @@ mod_principal_detailed_server <- function(id, data) {
       p <- req(input$pod)
 
       m <- dropdown_options() |>
-        dplyr::filter(.data$dataset == at, .data$pod == p) |>
+        dplyr::filter(.data$activity_type == at, .data$pod == p) |>
         dplyr::pull(.data$measure) |>
         unique()
 

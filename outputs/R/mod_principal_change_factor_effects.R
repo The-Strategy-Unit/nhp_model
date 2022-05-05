@@ -44,11 +44,11 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
 
     observe({
       d <- change_factors() |>
-        distinct(.data$dataset)
+        distinct(.data$activity_type)
       req(nrow(d) > 0)
 
-      activity_types <- dataset_display |>
-        dplyr::semi_join(d, by = "dataset") |>
+      activity_types <- activity_type_display |>
+        dplyr::semi_join(d, by = "activity_type") |>
         (function(.x) purrr::set_names(.x[[1]], .x[[2]]))()
 
       shiny::updateSelectInput(session, "activity_type", choices = activity_types)
@@ -58,7 +58,7 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
       at <- req(input$activity_type)
 
       measures <- change_factors() |>
-        filter(.data$dataset == at) |>
+        filter(.data$activity_type == at) |>
         pull(.data$measure) |>
         unique()
       req(length(measures) > 0)
@@ -72,7 +72,7 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
 
       change_factors() |>
         dplyr::filter(
-          .data$dataset == at,
+          .data$activity_type == at,
           .data$model_run == 0,
           .data$measure == m
         )
