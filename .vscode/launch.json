@@ -10,7 +10,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "results/params/dataset=synthetic/scenario=test/create_datetime=20220101_000000.json",
+        "test/queue/synthetic.json",
         "--debug",
         "--type=ip"
       ],
@@ -22,7 +22,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "results/params/dataset=synthetic/scenario=test/create_datetime=20220101_000000.json",
+        "test/queue/synthetic.json",
         "--debug",
         "--type=op"
       ],
@@ -34,7 +34,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "results/params/dataset=synthetic/scenario=test/create_datetime=20220101_000000.json",
+        "test/queue/synthetic.json",
         "--debug",
         "--type=aae"
       ],
@@ -46,7 +46,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "results/params/dataset=synthetic/scenario=test/create_datetime=20220101_000000.json",
+        "test/queue/synthetic.json",
         "-b=1",
         "-c=1"
       ],
@@ -58,11 +58,23 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "results/params/dataset=synthetic/scenario=test/create_datetime=20220101_000000.json",
+        "test/queue/synthetic.json",
         "--model_runs=257",
         "-b=8"
       ],
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Python: Combine Results",
+      "type": "python",
+      "request": "launch",
+      "program": "combine_results.py",
+      "args": [
+        "results",
+        "synthetic",
+        "test",
+        "20220101_000000"
+      ]
     },
     {
       "name": "Batch: Run Queue",
@@ -71,7 +83,7 @@
       "program": "run_batch.py",
       "args": [
         "run_tasks",
-        "256",
+        "64",
         "test/queue"
       ]
     }
