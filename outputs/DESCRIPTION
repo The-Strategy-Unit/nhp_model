@@ -16,6 +16,7 @@ Imports:
     gt,
     htmltools,
     jsonlite,
+    lubridate,
     odbc,
     pkgload,
     plotly,
