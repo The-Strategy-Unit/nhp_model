@@ -5,17 +5,20 @@
 #' @return The return value, if any, from executing the function.
 #'
 #' @noRd
-get_data <- function(db_con, ds, sc, mr) {
+get_data <- function(db_con, ds, sc, cd) {
+  selected_variants_query <- glue::glue_sql(.con = db_con, "SELECT * FROM selected_variant({ds}, {sc}, {cd})")
+  selected_variants <- DBI::dbGetQuery(db_con, selected_variants_query)
+
   dplyr::tbl(db_con, "aggregated_results") |>
-    dplyr::filter(.data$dataset == ds, .data$scenario == sc, .data$create_datetime == mr) |>
+    dplyr::filter(.data$dataset == ds, .data$scenario == sc, .data$create_datetime == cd) |>
     dplyr::select(-.data$dataset, -.data$scenario, -.data$create_datetime) |>
     dplyr::collect() |>
-    dplyr::mutate(variant = "TODO", dplyr::across(.data$value, as.numeric))
+    dplyr::left_join(selected_variants, by = "model_run")
 }
 
-get_change_factors <- function(db_con, ds, sc, mr) {
+get_change_factors <- function(db_con, ds, sc, cd) {
   dplyr::tbl(db_con, "change_factors") |>
-    dplyr::filter(.data$dataset == ds, .data$scenario == sc, .data$create_datetime == mr) |>
+    dplyr::filter(.data$dataset == ds, .data$scenario == sc, .data$create_datetime == cd) |>
     dplyr::select(-.data$dataset, -.data$scenario, -.data$create_datetime) |>
     dplyr::collect() |>
     dplyr::mutate(
