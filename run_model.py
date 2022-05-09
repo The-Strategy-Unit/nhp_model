@@ -82,7 +82,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("params_file", help="Path to the params.json file")
     parser.add_argument("--data_path", help="Path to the data", default="data")
-    parser.add_argument("--results_path", help="Path to the results", default="results")
+    parser.add_argument(
+        "--results_path", help="Path to the results", default="run_results"
+    )
     parser.add_argument(
         "--run_start", help="Where to start model run from", type=int, default=0
     )

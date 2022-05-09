@@ -70,6 +70,7 @@
       "request": "launch",
       "program": "combine_results.py",
       "args": [
+        "run_results",
         "results",
         "synthetic",
         "test",

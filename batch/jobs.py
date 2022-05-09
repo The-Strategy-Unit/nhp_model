@@ -59,13 +59,14 @@ def add_task(
     )
     # get how many runs of the model to perform
     model_runs = params["model_runs"]
+    run_results_path=f"{config.BATCH_PATH}/{job_id}"
     def create_task (run_start):
         command_line = " ".join([
             "/opt/nhp/bin/python",
             f"{config.APP_PATH}/run_model.py",
             f"{config.QUEUE_PATH}/{params_file}",
             f"--data_path={config.DATA_PATH}",
-            f"--results_path={config.RESULTS_PATH}",
+            f"--results_path={run_results_path}",
             f"--run_start={run_start}",
             f"--model_runs={runs_per_task}"
         ])
@@ -81,6 +82,7 @@ def add_task(
     combine_command = " ".join([
         "/opt/nhp/bin/python",
         f"{config.APP_PATH}/combine_results.py",
+        run_results_path,
         config.RESULTS_PATH,
         params["input_data"],
         params["name"],

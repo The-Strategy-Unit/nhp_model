@@ -34,6 +34,7 @@ STANDARD_OUT_FILE_NAME = "stdout.txt"
 
 MOUNT_PATH = "/mnt/batch/tasks/fsmounts"
 APP_PATH = f"{MOUNT_PATH}/app"
+BATCH_PATH = f"{MOUNT_PATH}/batch"
 DATA_PATH = f"{MOUNT_PATH}/data"
 RESULTS_PATH = f"{MOUNT_PATH}/results"
 QUEUE_PATH = f"{MOUNT_PATH}/queue"
