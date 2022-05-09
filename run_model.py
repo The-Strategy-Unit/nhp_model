@@ -14,6 +14,7 @@ will run a single run of the inpatients model, returning the results to display.
 """
 
 import argparse
+import json
 import os
 import time
 
@@ -33,7 +34,6 @@ def timeit(func, *args):
 
 
 def run_model(
-    model_type,
     params_file,
     data_path,
     results_path,
@@ -56,17 +56,21 @@ def run_model(
 
     The results_path should be of the form `data/[DATASET]/results/[SCENARIO]/[RUN_TIME]`.
     """
-    try:
-        model = model_type(params_file, data_path, results_path)
-    except FileNotFoundError as exc:
-        # handle the dataset not existing: we simply skip
-        if str(exc).endswith(".parquet"):
-            print(f"file {str(exc)} not found: skipping")
-        # if it's not the data file that missing, re-raise the error
-        else:
-            raise exc
-    print(f"Running: {model.__class__.__name__}")
-    model.multi_model_runs(run_start, model_runs, cpus, batch_size)
+
+    def run_model_fn(model_type):
+        try:
+            model = model_type(params_file, data_path, results_path)
+        except FileNotFoundError as exc:
+            # handle the dataset not existing: we simply skip
+            if str(exc).endswith(".parquet"):
+                print(f"file {str(exc)} not found: skipping")
+            # if it's not the data file that missing, re-raise the error
+            else:
+                raise exc
+        print(f"Running: {model.__class__.__name__}")
+        model.multi_model_runs(run_start, model_runs, cpus, batch_size)
+
+    return run_model_fn
 
 
 def main():
@@ -117,11 +121,13 @@ def main():
     if args.type != "all":
         models = {args.type: models[args.type]}
     #
+    with open(args.params_file, "r", encoding="UTF-8") as prf:
+        params = json.load(prf)
     if args.debug:
         assert (
             args.type != "all"
         ), "can only debug a single model at a time: make sure to set the --type argument"
-        model = models[args.type](args.params_file, args.data_path, args.results_path)
+        model = models[args.type](params, args.data_path, args.results_path)
         print("running model... ", end="")
         change_factors, results = timeit(model.run, args.run_start)
         print("aggregating results... ", end="")
@@ -135,17 +141,17 @@ def main():
         print("aggregated results:")
         print(agg_results)
     else:
+        runner = run_model(
+            params,
+            args.data_path,
+            args.results_path,
+            args.run_start,
+            args.model_runs,
+            args.cpus,
+            args.batch_size,
+        )
         for i in models.values():
-            run_model(
-                i,
-                args.params_file,
-                args.data_path,
-                args.results_path,
-                args.run_start,
-                args.model_runs,
-                args.cpus,
-                args.batch_size,
-            )
+            runner(i)
 
 
 if __name__ == "__main__":

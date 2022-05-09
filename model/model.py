@@ -38,11 +38,10 @@ class Model:  # pylint: disable=too-many-instance-attributes
     """
 
     def __init__(
-        self, model_type, params_file, data_path, results_path, columns_to_load=None
+        self, model_type, params, data_path, results_path, columns_to_load=None
     ):  # pylint: disable=too-many-arguments
         self._model_type = model_type
-        with open(params_file, "r", encoding="UTF-8") as prf:
-            self._params = json.load(prf)
+        self._params = params
         # add model runtime if it doesn't exist
         if not "create_datetime" in self._params:
             self._params["create_datetime"] = f"{datetime.now():%Y%m%d_%H%M%S}"
@@ -249,7 +248,7 @@ class Model:  # pylint: disable=too-many-instance-attributes
             f"dataset={self._params['input_data']}",
             f"scenario={self._params['name']}",
         )
-        json_name = f"create_datetime={self._params['create_datetime']}.json"
+        json_name = f"{self._params['create_datetime']}.json"
         # if the params file doesn't exist in it's results folder, save it there now
         params_path = os.path.join(path_fn("params"), json_name)
         if not os.path.exists(params_path):
