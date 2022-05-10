@@ -51,6 +51,7 @@ mod_principal_high_level_ui <- function(id) {
 #' @noRd
 mod_principal_high_level_server <- function(id, data) {
   shiny::moduleServer(id, function(input, output, session) {
+    # TODO: load out of the params
     start_year <- 2018
     end_year <- 2029
 
@@ -61,7 +62,7 @@ mod_principal_high_level_server <- function(id, data) {
         dplyr::filter(.data$model_run <= 0)
 
       dplyr::bind_rows(
-        aae <- d |>
+        d |>
           dplyr::filter(.data$activity_type == "aae") |>
           dplyr::mutate(pod = "A&E Attendances"),
         d |>

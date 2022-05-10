@@ -64,3 +64,6 @@ __pycache__
 # ignore any potential data/artifacts
 *.zip
 *.parquet
+
+# ignore shiny cache directory
+outputs/.cache

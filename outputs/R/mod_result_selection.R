@@ -29,6 +29,9 @@ mod_result_selection_server <- function(id) {
   )
   db_con <- DBI::dbConnect(odbc::odbc(), .connection_string = con_str)
 
+  # create a 200 MiB cache on disk
+  data_cache <- cachem::cache_disk(dir = ".cache/data_cache", max_size = 200 * 1024^2)
+
   moduleServer(id, function(input, output, session) {
     dropdown_options <- reactive({
       dplyr::tbl(db_con, "aggregated_results") |>
@@ -47,7 +50,7 @@ mod_result_selection_server <- function(id) {
 
     observe(
       {
-        ds <- req(input$dataset)
+        ds <- shiny::req(input$dataset)
 
         scenarios <- dropdown_options() |>
           dplyr::filter(.data$dataset == ds) |>
@@ -61,8 +64,8 @@ mod_result_selection_server <- function(id) {
 
     observe(
       {
-        ds <- req(input$dataset)
-        sc <- req(input$scenario)
+        ds <- shiny::req(input$dataset)
+        sc <- shiny::req(input$scenario)
 
         labels <- \(.x) .x |>
           lubridate::as_datetime("%Y%m%d_%H%M%S", tz = "UTC") |>
@@ -80,15 +83,15 @@ mod_result_selection_server <- function(id) {
     )
 
     selected_model_run <- reactive({
-      ds <- req(input$dataset)
-      sc <- req(input$scenario)
-      cd <- req(input$create_datetime)
+      ds <- shiny::req(input$dataset)
+      sc <- shiny::req(input$scenario)
+      cd <- shiny::req(input$create_datetime)
 
       valid_options_selected <- dropdown_options() |>
         dplyr::filter(.data$dataset == ds, .data$scenario == sc, .data$create_datetime == cd) |>
         nrow() == 1
 
-      req(valid_options_selected)
+      shiny::req(valid_options_selected)
 
       cat("loading data...")
       dfs <- list(
@@ -98,7 +101,8 @@ mod_result_selection_server <- function(id) {
       cat(" done\n\n")
 
       dfs
-    })
+    }) |>
+      shiny::bindCache(input$dataset, input$scenario, input$create_datetime, cache = data_cache)
 
     return(selected_model_run)
   })
