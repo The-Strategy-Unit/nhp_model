@@ -34,8 +34,7 @@ mod_result_selection_server <- function(id) {
 
   moduleServer(id, function(input, output, session) {
     dropdown_options <- reactive({
-      dplyr::tbl(db_con, "aggregated_results") |>
-        dplyr::distinct(.data$dataset, .data$scenario, .data$create_datetime) |>
+      dplyr::tbl(db_con, "model_runs") |>
         dplyr::arrange(.data$dataset, .data$scenario, .data$create_datetime) |>
         dplyr::collect()
     })
@@ -87,16 +86,19 @@ mod_result_selection_server <- function(id) {
       sc <- shiny::req(input$scenario)
       cd <- shiny::req(input$create_datetime)
 
-      valid_options_selected <- dropdown_options() |>
-        dplyr::filter(.data$dataset == ds, .data$scenario == sc, .data$create_datetime == cd) |>
-        nrow() == 1
+      options_selected <- dropdown_options() |>
+        dplyr::filter(.data$dataset == ds, .data$scenario == sc, .data$create_datetime == cd)
 
-      shiny::req(valid_options_selected)
+      shiny::req(nrow(options_selected) == 1)
 
       cat("loading data...")
       dfs <- list(
         data = get_data(db_con, ds, sc, cd),
-        change_factors = get_change_factors(db_con, ds, sc, cd)
+        change_factors = get_change_factors(db_con, ds, sc, cd),
+        years = list(
+          start_year = options_selected$start_year,
+          end_year = options_selected$end_year
+        )
       )
       cat(" done\n\n")
 

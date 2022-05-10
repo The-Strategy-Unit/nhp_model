@@ -49,15 +49,14 @@ mod_principal_high_level_ui <- function(id) {
 #' principal_high_level Server Functions
 #'
 #' @noRd
-mod_principal_high_level_server <- function(id, data) {
+mod_principal_high_level_server <- function(id, data, years) {
   shiny::moduleServer(id, function(input, output, session) {
-    # TODO: load out of the params
-    start_year <- 2018
-    end_year <- 2029
-
     fyear_str <- function(y) glue::glue("{y}/{(y + 1) %% 100}")
 
     summary_data <- reactive({
+      start_year <- as.integer(years()$start_year)
+      end_year <- as.integer(years()$end_year)
+
       d <- data() |>
         dplyr::filter(.data$model_run <= 0)
 
@@ -123,6 +122,9 @@ mod_principal_high_level_server <- function(id, data) {
     })
 
     plot_fn <- function(data, activity_type) {
+      start_year <- as.integer(years()$start_year)
+      end_year <- as.integer(years()$end_year)
+      
       d <- data |>
         dplyr::filter(.data$pod |> stringr::str_starts(activity_type))
 
