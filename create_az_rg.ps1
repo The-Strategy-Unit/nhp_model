@@ -305,9 +305,9 @@ Function New-NhpResourceGroup {
 Function Add-NhpBatchPool {
   Param(
     [string]$rgname,
-    [string]$vnetname,
-    [string]$saname,
-    [string]$batchname,
+    [string]$vnetname = "$($rgname)-vnet",
+    [string]$saname = "$($rgname)sa",
+    [string]$batchname = "$($rgname)batch",
     [string]$vmsize = 'STANDARD_D16D_V5'
   )
 
@@ -368,13 +368,13 @@ Function Add-NhpBatchPool {
   $startTaskReference.MaxTaskRetryCount = 0
 
   # if the pool already exists, delete it
-  try {
+  if ((Get-AzBatchPool -BatchContext $batch -Filter "id eq '$($poolname)'").Count -eq 1) {
     Remove-AzBatchPool -Id $poolname -BatchContext $batch -Force 2>$null
+    # wait 30 seconds for the pool to be deleted
+    Write-Host 'Deleted old pool, waiting 30s to create new pool...'
+    Start-Sleep -s 30
   }
-  catch {
-    # Nothing to do
-  }
-
+  
   # create the pool
   New-AzBatchPool `
     -Id $poolname `
