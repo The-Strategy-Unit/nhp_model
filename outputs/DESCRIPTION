@@ -6,6 +6,8 @@ Description: A shiny app for showing outputs of the NHP model.
 License: MIT + file LICENSE
 Imports: 
     attempt,
+    AzureAuth,
+    AzureStor,
     bs4Dash,
     config (>= 0.3.1),
     DBI,
@@ -15,6 +17,7 @@ Imports:
     golem (>= 0.3.1),
     gt,
     htmltools,
+    httr,
     jsonlite,
     lubridate,
     odbc,
