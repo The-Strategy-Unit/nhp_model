@@ -18,6 +18,7 @@ app_server <- function(input, output, session) {
   })
 
   mod_params_upload_server("params_upload_ui")
+  mod_running_models_server("running_models")
 
   mod_principal_high_level_server("principal_high_level", data, years)
   mod_principal_detailed_server("principal_detailed", data)

@@ -14,6 +14,10 @@ app_ui <- function(request) {
         text = "Upload Params",
         tabName = "tab_up"
       ),
+      bs4Dash::menuItem(
+        text = "Running Models",
+        tabName = "tab_rm"
+      ),
       bs4Dash::sidebarHeader("Model Run Selection"),
       mod_result_selection_ui("result_selection"),
       bs4Dash::sidebarHeader("Principal Projection"),
@@ -46,6 +50,10 @@ app_ui <- function(request) {
       bs4Dash::tabItem(
         tabName = "tab_up",
         mod_params_upload_ui("params_upload_ui")
+      ),
+      bs4Dash::tabItem(
+        tabName = "tab_rm",
+        mod_running_models_ui("running_models")
       ),
       bs4Dash::tabItem(
         tabName = "tab_phl",
