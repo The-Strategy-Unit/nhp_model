@@ -52,6 +52,7 @@ mod_model_results_distribution_server <- function(id, data) {
       p1 <- plotly::ggplotly({
         d |>
           dplyr::filter(.data$model_run > 0) |>
+          dplyr::mutate(dplyr::across(.data$value, as.integer)) |>
           ggplot2::ggplot(aes(.data$value)) +
           ggplot2::geom_density(fill = "#f9bf07", colour = "#2c2825", alpha = 0.5) +
           ggplot2::geom_vline(xintercept = b) +
@@ -66,6 +67,7 @@ mod_model_results_distribution_server <- function(id, data) {
       p2 <- plotly::ggplotly({
         d |>
           dplyr::filter(.data$model_run > 0) |>
+          dplyr::mutate(dplyr::across(.data$value, as.integer)) |>
           ggplot2::ggplot(aes("1", .data$value, colour = .data$variant)) +
           # ggplot2::geom_violin(show.legend = FALSE) +
           ggbeeswarm::geom_quasirandom(groupOnX = TRUE, alpha = 0.5) +
