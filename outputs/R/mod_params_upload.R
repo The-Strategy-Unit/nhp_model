@@ -67,7 +67,7 @@ mod_params_upload_server <- function(id) {
     job_name <- shiny::observeEvent(params(), {
       params <- req(params())
 
-      job_name <- add_job(params)
+      job_name <- batch_add_job(params)
 
       status(paste("submitted to batch:", job_name))
     })

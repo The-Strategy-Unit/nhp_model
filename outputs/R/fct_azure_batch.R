@@ -1,4 +1,4 @@
-token_fn <- function(resource) {
+batch_token_fn <- function(resource) {
   suppressMessages({
     if (Sys.getenv("AAD_TENANT_ID") == "") {
       AzureAuth::get_managed_token(resource)
@@ -13,8 +13,8 @@ token_fn <- function(resource) {
   })
 }
 
-get_pools <- function() {
-  t <- token_fn(BATCH_EP)
+batch_get_pools <- function() {
+  t <- batch_token_fn(BATCH_EP)
   pool_req <- httr::GET(
     Sys.getenv("BATCH_URL"),
     path = c("pools"),
@@ -35,8 +35,8 @@ get_pools <- function() {
     )
 }
 
-get_jobs <- function() {
-  t <- token_fn(BATCH_EP)
+batch_get_jobs <- function() {
+  t <- batch_token_fn(BATCH_EP)
   jobs_req <- httr::GET(
     Sys.getenv("BATCH_URL"),
     path = c("jobs"),
@@ -69,8 +69,8 @@ get_jobs <- function() {
     )
 }
 
-get_tasks <- function(job_id) {
-  t <- token_fn(BATCH_EP)
+batch_get_tasks <- function(job_id) {
+  t <- batch_token_fn(BATCH_EP)
   tasks_req <- httr::GET(
     Sys.getenv("BATCH_URL"),
     path = c("jobs", job_id, "tasks"),
@@ -105,8 +105,8 @@ get_tasks <- function(job_id) {
     dplyr::arrange(.data$id)
 }
 
-add_job <- function(params) {
-  sa_t <- token_fn(STORAGE_EP)
+batch_add_job <- function(params) {
+  sa_t <- batch_token_fn(STORAGE_EP)
   cont <- AzureStor::storage_container(
     glue::glue("{Sys.getenv('STORAGE_URL')}/queue"),
     token = AzureAuth::extract_jwt(sa_t)
@@ -128,7 +128,7 @@ add_job <- function(params) {
   AzureStor::upload_blob(cont, filename)
 
   # create the job
-  ba_t <- token_fn(BATCH_EP)
+  ba_t <- batch_token_fn(BATCH_EP)
   req <- httr::POST(
     Sys.getenv("BATCH_URL"),
     path = c("jobs"),

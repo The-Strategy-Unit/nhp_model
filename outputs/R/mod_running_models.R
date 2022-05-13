@@ -32,7 +32,7 @@ mod_running_models_server <- function(id){
           )
       }
 
-      get_jobs() |>
+      batch_get_jobs() |>
         dplyr::filter(.data$state != "completed") |>
         dplyr::mutate(status = purrr::map_dfr(.data$id, job_status)) |>
         tidyr::unnest(status)
