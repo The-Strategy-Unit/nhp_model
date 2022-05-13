@@ -266,14 +266,14 @@ class Model:  # pylint: disable=too-many-instance-attributes
         rng = np.random.default_rng(params["seed"])
         model_runs = params["model_runs"] + 1  # add 1 for the principal
 
-        def gen_value(model_run, i, j=None):
+        def gen_value(model_run, i):
             # we haven't received an interval, just a single value
-            if j is None:
+            if not isinstance(i, list):
                 return i
             # for the principal projection, just use the midpoint of the interval
             if model_run == 0:
-                return (i + j) / 2
-            return rnorm(rng, i, j)  # otherwise,
+                return sum(i) / 2
+            return rnorm(rng, *i)  # otherwise
 
         #
         self._run_params = {
@@ -284,12 +284,12 @@ class Model:  # pylint: disable=too-many-instance-attributes
             ).tolist(),
             "seeds": rng.integers(0, 65535, model_runs).tolist(),
             "health_status_adjustment": [
-                gen_value(m, *params["health_status_adjustment"])
+                gen_value(m, params["health_status_adjustment"])
                 for m in range(model_runs)
             ],
             # "waiting_list_adjustment": params["waiting_list_adjustment"],
             "waiting_list_adjustment": {
-                k: gen_value(m, *v)
+                k: gen_value(m, v)
                 for m in range(model_runs)
                 for k, v in params["waiting_list_adjustment"].items()
             },
@@ -298,7 +298,7 @@ class Model:  # pylint: disable=too-many-instance-attributes
                     k1: {
                         k2: [
                             inrange(
-                                gen_value(m, *v2["interval"]), *v2.get("range", [0, 1])
+                                gen_value(m, v2["interval"]), *v2.get("range", [0, 1])
                             )
                             for m in range(model_runs)
                         ]
