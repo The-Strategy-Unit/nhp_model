@@ -68,6 +68,7 @@ mod_result_selection_server <- function(id) {
 
         labels <- \(.x) .x |>
           lubridate::as_datetime("%Y%m%d_%H%M%S", tz = "UTC") |>
+          lubridate::with_tz() |>
           format("%d/%m/%Y %H:%M:%S")
 
         create_datetimes <- dropdown_options() |>
