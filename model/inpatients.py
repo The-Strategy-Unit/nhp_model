@@ -108,7 +108,7 @@ class InpatientsModel(Model):
         """
         # extract the waiting list adjustment parameters - we convert this to a default dictionary
         # that uses the "X01" specialty as the default value
-        pwla = self._params["waiting_list_adjustment"]["inpatients"].copy()
+        pwla = self._run_params["waiting_list_adjustment"].copy()
         default_specialty = pwla.pop("X01")
         pwla = defaultdict(lambda: default_specialty, pwla)
         # waiting list adjustment values

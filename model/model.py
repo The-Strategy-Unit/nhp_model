@@ -266,11 +266,13 @@ class Model:  # pylint: disable=too-many-instance-attributes
         rng = np.random.default_rng(params["seed"])
         model_runs = params["model_runs"] + 1  # add 1 for the principal
 
-        def gen_value(model_run, i, j):
+        def gen_value(model_run, i, j=None):
+            # we haven't received an interval, just a single value
+            if j is None:
+                return i
+            # for the principal projection, just use the midpoint of the interval
             if model_run == 0:
-                return (
-                    i + j
-                ) / 2  # for the principal projection, just use the midpoint of the interval
+                return (i + j) / 2
             return rnorm(rng, i, j)  # otherwise,
 
         #
@@ -285,7 +287,12 @@ class Model:  # pylint: disable=too-many-instance-attributes
                 gen_value(m, *params["health_status_adjustment"])
                 for m in range(model_runs)
             ],
-            "waiting_list_adjustment": params["waiting_list_adjustment"],
+            # "waiting_list_adjustment": params["waiting_list_adjustment"],
+            "waiting_list_adjustment": {
+                k: gen_value(m, *v)
+                for m in range(model_runs)
+                for k, v in params["waiting_list_adjustment"].items()
+            },
             **{
                 k0: {
                     k1: {
