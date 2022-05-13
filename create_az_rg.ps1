@@ -130,6 +130,17 @@ Function New-NhpResourceGroup {
     -AllowBlobPublicAccess $false `
     -EnableHierarchicalNamespace $true `
     -AssignIdentity `
+    -NetworkRuleSet (@{
+      bypass              = 'AzureServices';
+      virtualNetworkRules = (@{
+          VirtualNetworkResourceId = $batchsubnet.id;
+          Action                   = 'allow'
+        });
+      ipRules             = (@{
+          IPAddressOrRange = $mypublicip
+        });
+      defaultAction       = 'Deny'
+    }) `
     -Tag $tags
 
   # grant Key Vault access to Azure Storage
@@ -145,23 +156,6 @@ Function New-NhpResourceGroup {
     -KeyvaultEncryption `
     -KeyName $sakeyname `
     -KeyVaultUri $kv.VaultUri
-
-  # update storage network access
-  Set-AzStorageAccount `
-    -ResourceGroupName $rgname `
-    -AccountName $saname `
-    -NetworkRuleSet (@{
-      bypass              = 'Logging,Metrics';
-      virtualNetworkRules = (@{
-          VirtualNetworkResourceId = $batchsubnet.id;
-          Action                   = 'allow'
-        });
-      defaultAction       = 'Deny'
-    })
-  Add-AzStorageAccountNetworkRule `
-    -ResourceGroupName $rgname `
-    -AccountName $saname `
-    -IPAddressOrRange $mypublicip
 
   # create containers
   'app', 'data', 'results', 'queue' | ForEach-Object -Process {
@@ -374,7 +368,7 @@ Function Add-NhpBatchPool {
     Write-Host 'Deleted old pool, waiting 30s to create new pool...'
     Start-Sleep -s 30
   }
-  
+
   # create the pool
   New-AzBatchPool `
     -Id $poolname `
