@@ -42,7 +42,7 @@ class InpatientsModel(Model):
         )
         # load the strategies, store each strategy file as a separate entry in a dictionary
         self._strategies = {
-            x: self._load_parquet(f"ip_{x}_strategies").set_index(["rn"]).iloc[:, 0]
+            x: self._load_parquet(f"ip_{x}_strategies").set_index(["rn"])
             for x in ["admission_avoidance", "los_reduction"]
         }
 
@@ -74,7 +74,11 @@ class InpatientsModel(Model):
         returns: an updated DataFrame with a new column for the selected strategy
         """
         strategies = self._strategies[strategy_type]
-        # first, filter the strategies to only include those listed in the params file
+        # sample from the strategies based on the sample_rate column, then select just the strategy column
+        strategies = strategies[
+            rng.binomial(1, strategies["sample_rate"]).astype(bool)
+        ].iloc[:, 0]
+        # filter the strategies to only include those listed in the params file
         valid_strategies = list(
             self._params["strategy_params"][strategy_type].keys()
         ) + ["NULL"]
