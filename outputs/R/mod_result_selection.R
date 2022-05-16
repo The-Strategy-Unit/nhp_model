@@ -32,6 +32,20 @@ mod_result_selection_server <- function(id) {
   # create a 200 MiB cache on disk
   data_cache <- cachem::cache_disk(dir = ".cache/data_cache", max_size = 200 * 1024^2)
 
+  # in case we need to invalidate the cache on rsconnect quickly, we can increment the "CACHE_VERSION" env var
+  cache_version <- ifelse(
+    file.exists(".cache/cache_version.txt"),
+    as.numeric(readLines(".cache/cache_version.txt")),
+    -1
+  )
+
+  if (Sys.getenv("CACHE_VERSION", 0) > cache_version) {
+    cat("Invalidating cache\n")
+    data_cache$reset()
+    cache_version <- Sys.getenv("CACHE_VERSION", 0)
+    writeLines(as.character(cache_version), ".cache/cache_version.txt")
+  }
+
   moduleServer(id, function(input, output, session) {
     dropdown_options <- reactive({
       dplyr::tbl(db_con, "model_runs") |>
@@ -92,7 +106,7 @@ mod_result_selection_server <- function(id) {
 
       shiny::req(nrow(options_selected) == 1)
 
-      cat("loading data...")
+      cat("loading data (", ds, ", ", sc, ", ", cd, "):", sep = "")
       dfs <- list(
         data = get_data(db_con, ds, sc, cd),
         change_factors = get_change_factors(db_con, ds, sc, cd),
