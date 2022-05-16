@@ -24,10 +24,16 @@ batch_get_pools <- function() {
     )
   )
 
-  httr::content(pool_req) |>
+  df <- httr::content(pool_req) |>
     purrr::pluck("value") |>
     purrr::map_dfr(as.data.frame) |>
-    tibble::as_tibble() |>
+    tibble::as_tibble()
+
+  if (nrow(df) == 0) {
+    return(NULL)
+  }
+
+  df |>
     dplyr::select(
       .data$id,
       .data$state:.data$vmSize,
@@ -46,10 +52,16 @@ batch_get_jobs <- function() {
     )
   )
 
-  httr::content(jobs_req) |>
+  df <- httr::content(jobs_req) |>
     purrr::pluck("value") |>
     purrr::map_dfr(as.data.frame) |>
-    tibble::as_tibble() |>
+    tibble::as_tibble()
+
+  if (nrow(df) == 0) {
+    return(NULL)
+  }
+
+  df |>
     dplyr::select(
       .data$id,
       .data$creationTime,
@@ -80,10 +92,16 @@ batch_get_tasks <- function(job_id) {
     )
   )
 
-  httr::content(tasks_req) |>
+  df <- httr::content(tasks_req) |>
     purrr::pluck("value") |>
     purrr::map_dfr(as.data.frame) |>
-    tibble::as_tibble() |>
+    tibble::as_tibble()
+
+  if (nrow(df) == 0) {
+    return(NULL)
+  }
+
+  df |>
     dplyr::select(
       .data$id,
       .data$displayName,
