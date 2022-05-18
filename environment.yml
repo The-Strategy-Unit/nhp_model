@@ -11,4 +11,5 @@ dependencies:
   - pandas=1.4.*
   - pyarrow=6.0.*
   - pygam=0.8.*
+  - python-dotenv=0.20.*
   - tqdm=4.63.*

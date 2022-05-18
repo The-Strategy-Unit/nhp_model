@@ -21,11 +21,10 @@ class AaEModel(Model):
     generic class.
     """
 
-    def __init__(self, params, data_path: str, results_path: str):
+    def __init__(self, params, data_path: str):
         # call the parent init function
-        Model.__init__(self, "aae", params, data_path, results_path)
+        Model.__init__(self, "aae", params, data_path)
 
-    #
     def _low_cost_discharged(self, data, run_params):
         return self._factor_helper(
             data,
@@ -33,19 +32,16 @@ class AaEModel(Model):
             {"is_low_cost_referred_or_discharged": 1},
         )
 
-    #
     def _left_before_seen(self, data, run_params):
         return self._factor_helper(
             data, run_params["left_before_seen"], {"is_left_before_treatment": 1}
         )
 
-    #
     def _frequent_attenders(self, data, run_params):
         return self._factor_helper(
             data, run_params["frequent_attenders"], {"is_frequent_attender": 1}
         )
 
-    #
     def _run(
         self, rng, data, run_params, aav_f, hsa_f
     ):  # pylint: disable=too-many-arguments
@@ -55,12 +51,12 @@ class AaEModel(Model):
         returns: a tuple of the selected varient and the updated DataFrame
         """
         params = run_params["aae_factors"]
-        #
+
         sc_a = sum(data["arrivals"])
         step_counts = {
             "baseline": pd.DataFrame({"measure": ["arrivals"], "value": [sc_a]}, ["-"])
         }
-        #
+
         def update_step_counts(name):
             nonlocal data, step_counts, sc_a
             sc_ap = sum(data["arrivals"])
@@ -70,7 +66,6 @@ class AaEModel(Model):
             # replace the values
             sc_a = sc_ap
 
-        #
         def run_poisson_step(factor, name):
             nonlocal data
             # perform the step
@@ -80,7 +75,6 @@ class AaEModel(Model):
             # update the step count values
             update_step_counts(name)
 
-        #
         def run_binomial_step(factor, name):
             nonlocal data
             # perform the step
@@ -115,22 +109,30 @@ class AaEModel(Model):
         change_factors["value"] = change_factors["value"].astype(int)
         return (change_factors, data.drop(["hsagrp"], axis="columns"))
 
-    def aggregate(self, model_results):
+    @staticmethod
+    def aggregate(model_results):
         """
         Aggregate the model results
         """
         model_results["age_group"] = age_groups(model_results["age"])
 
-        return self._aggregate_aae_rows(model_results)
+        model_results["pod"] = "aae_type-" + model_results["aedepttype"]
+        model_results["measure"] = "walk-in"
+        model_results.loc[
+            model_results["aearrivalmode"] == "1", "measure"
+        ] = "ambulance"
+        model_results["tretspef"] = "Other"
 
-    @staticmethod
-    def _aggregate_aae_rows(aae_rows):
-        aae_rows["pod"] = "aae_type-" + aae_rows["aedepttype"]
-        aae_rows["measure"] = "walk-in"
-        aae_rows.loc[aae_rows["aearrivalmode"] == "1", "measure"] = "ambulance"
-        aae_rows["tretspef"] = "Other"
-        aae_agg = aae_rows.groupby(
-            ["age_group", "sex", "tretspef", "pod", "measure"],
-            as_index=False,
-        ).agg({"arrivals": np.sum})
-        return aae_agg.rename(columns={"arrivals": "value"})
+        def agg(cols):
+            return (
+                model_results.groupby(cols + ["measure"], as_index=False)
+                .agg({"arrivals": np.sum})
+                .rename(columns={"arrivals": "value"})
+                .to_dict("records")
+            )
+
+        return {
+            "default": agg(["pod"]),
+            "sex+age_group": agg(["pod", "sex", "age_group"]),
+            "sex+tretspef": agg(["pod", "sex", "tretspef"]),
+        }
