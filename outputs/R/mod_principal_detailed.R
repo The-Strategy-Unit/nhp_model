@@ -21,9 +21,9 @@ mod_principal_detailed_ui <- function(id) {
 #' principal_detailed Server Functions
 #'
 #' @noRd
-mod_principal_detailed_server <- function(id, data) {
+mod_principal_detailed_server <- function(id, selected_model_run, data_cache) {
   moduleServer(id, function(input, output, session) {
-    filtered_data <- mod_measure_selection_server("measure_selection", data)
+    filtered_data <- mod_measure_selection_server("measure_selection", selected_model_run, data_cache)
 
     selected_data <- reactive({
       d <- filtered_data()

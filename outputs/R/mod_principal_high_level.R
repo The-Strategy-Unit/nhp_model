@@ -49,65 +49,45 @@ mod_principal_high_level_ui <- function(id) {
 #' principal_high_level Server Functions
 #'
 #' @noRd
-mod_principal_high_level_server <- function(id, data, years) {
+mod_principal_high_level_server <- function(id, selected_model_run, data_cache) {
   shiny::moduleServer(id, function(input, output, session) {
     fyear_str <- function(y) glue::glue("{y}/{(y + 1) %% 100}")
 
+    pods <- get_activity_type_pod_measure_options() |>
+      dplyr::filter(.data$activity_type != "aae") |>
+      distinct(.data$activity_type, .data$pod, .data$pod_name) |>
+      dplyr::bind_rows(data.frame(activity_type = "aae", pod = "aae", pod_name = "A&E Attendance")) |>
+      dplyr::mutate(dplyr::across(.data$pod_name, forcats::fct_inorder))
+
     summary_data <- reactive({
-      start_year <- as.integer(years()$start_year)
-      end_year <- as.integer(years()$end_year)
+      c(ds, sc, cd) %<-% selected_model_run()
 
-      d <- data() |>
-        dplyr::filter(.data$model_run <= 0)
+      params <- cosmos_get_params(ds, sc, cd)
 
-      dplyr::bind_rows(
-        d |>
-          dplyr::filter(.data$activity_type == "aae") |>
-          dplyr::mutate(pod = "A&E Attendances"),
-        d |>
-          dplyr::filter(.data$activity_type == "op", .data$measure == "attendances") |>
-          dplyr::mutate(
-            dplyr::across(
-              .data$pod,
-              forcats::fct_recode,
-              "OP 1st Attendances" = "op_first",
-              "OP Follow up Attendances" = "op_follow-up",
-              "OP Procedures" = "op_procedure"
-            )
-          ),
-        d |>
-          dplyr::filter(.data$activity_type == "ip", .data$measure == "admissions") |>
-          dplyr::mutate(
-            dplyr::across(
-              .data$pod,
-              forcats::fct_recode,
-              "IP Elective Admissions" = "ip_elective_admission",
-              "IP Non-Elective Admissions" = "ip_non-elective_admission",
-              "Daycase Admissions" = "ip_elective_daycase"
-            )
-          )
-      ) |>
-        dplyr::count(.data$pod, .data$model_run, wt = .data$value) |>
-        dplyr::mutate(
-          dplyr::across(.data$pod, forcats::fct_relevel, sort),
-          year = ifelse(.data$model_run == -1, start_year, end_year)
-        ) |>
+      # TODO: this is **NOT** being handled correctly **ANYWHERE** currently. __REVIEW__
+      start_year <- params[["start_year"]] %||% 2018
+      end_year <- params[["end_year"]] %||% 2043
+
+      cosmos_get_principal_highlevel(ds, sc, cd) |>
+        dplyr::mutate(year = ifelse(.data$model_run == "baseline", start_year, end_year)) |>
         dplyr::select(-.data$model_run) |>
         tidyr::complete(
           year = seq(start_year, end_year),
           .data$pod
         ) |>
-        dplyr::group_by(.data$pod) |>
+        dplyr::inner_join(pods, by = "pod") |>
+        dplyr::group_by(.data$activity_type, pod = .data$pod_name) |>
         dplyr::mutate(
           dplyr::across(n, purrr::compose(as.integer, zoo::na.approx)),
           fyear = fyear_str(.data$year)
         ) |>
         dplyr::ungroup()
-    })
+    }) |>
+      shiny::bindCache(selected_model_run(), cache = data_cache)
 
     output$activity <- gt::render_gt({
       summary_data() |>
-        dplyr::select(-.data$year) |>
+        dplyr::select(-.data$activity_type, -.data$year) |>
         tidyr::pivot_wider(names_from = .data$fyear, values_from = .data$n) |>
         gt::gt() |>
         gt::cols_align(
@@ -122,11 +102,10 @@ mod_principal_high_level_server <- function(id, data, years) {
     })
 
     plot_fn <- function(data, activity_type) {
-      start_year <- as.integer(years()$start_year)
-      end_year <- as.integer(years()$end_year)
-      
+      c(start_year, end_year) %<-% range(data$year)
+
       d <- data |>
-        dplyr::filter(.data$pod |> stringr::str_starts(activity_type))
+        dplyr::filter(.data$activity_type == .env$activity_type)
 
       p <- d |>
         ggplot2::ggplot(aes(.data$year, .data$n, colour = .data$pod)) +
@@ -149,18 +128,15 @@ mod_principal_high_level_server <- function(id, data, years) {
     }
 
     output$aae <- plotly::renderPlotly({
-      summary_data() |>
-        plot_fn("A&E")
+      plot_fn(summary_data(), "aae")
     })
 
     output$ip <- plotly::renderPlotly({
-      summary_data() |>
-        plot_fn("IP")
+      plot_fn(summary_data(), "ip")
     })
 
     output$op <- plotly::renderPlotly({
-      summary_data() |>
-        plot_fn("OP")
+      plot_fn(summary_data(), "op")
     })
   })
 }

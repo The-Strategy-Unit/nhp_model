@@ -20,43 +20,11 @@ mod_result_selection_ui <- function(id) {
 #'
 #' @noRd
 mod_result_selection_server <- function(id) {
-  con_str <- glue::glue(
-    .sep = ";",
-    "Driver={{ODBC Driver 18 for SQL Server}}",
-    "server={Sys.getenv('DB_SERVER')}",
-    "database={Sys.getenv('DB_DATABASE')}",
-    "Authentication={Sys.getenv('DB_AUTHENTICATION_TYPE')}"
-  )
-  db_con <- DBI::dbConnect(odbc::odbc(), .connection_string = con_str)
-
-  # create a 200 MiB cache on disk
-  data_cache <- cachem::cache_disk(dir = ".cache/data_cache", max_size = 200 * 1024^2)
-
-  # in case we need to invalidate the cache on rsconnect quickly, we can increment the "CACHE_VERSION" env var
-  cache_version <- ifelse(
-    file.exists(".cache/cache_version.txt"),
-    as.numeric(readLines(".cache/cache_version.txt")),
-    -1
-  )
-
-  if (Sys.getenv("CACHE_VERSION", 0) > cache_version) {
-    cat("Invalidating cache\n")
-    data_cache$reset()
-    cache_version <- Sys.getenv("CACHE_VERSION", 0)
-    writeLines(as.character(cache_version), ".cache/cache_version.txt")
-  }
 
   moduleServer(id, function(input, output, session) {
-    dropdown_options <- reactive({
-      dplyr::tbl(db_con, "model_runs") |>
-        dplyr::arrange(.data$dataset, .data$scenario, .data$create_datetime) |>
-        dplyr::collect()
-    })
 
     observe({
-      datasets <- dropdown_options() |>
-        dplyr::pull(.data$dataset) |>
-        unique()
+      datasets <- cosmos_get_datasets()
 
       shiny::updateSelectInput(session, "dataset", choices = datasets)
     })
@@ -65,10 +33,7 @@ mod_result_selection_server <- function(id) {
       {
         ds <- shiny::req(input$dataset)
 
-        scenarios <- dropdown_options() |>
-          dplyr::filter(.data$dataset == ds) |>
-          dplyr::pull(.data$scenario) |>
-          unique()
+        scenarios <- cosmos_get_scenarios(ds)
 
         shiny::updateSelectInput(session, "scenario", choices = scenarios)
       },
@@ -85,10 +50,7 @@ mod_result_selection_server <- function(id) {
           lubridate::with_tz() |>
           format("%d/%m/%Y %H:%M:%S")
 
-        create_datetimes <- dropdown_options() |>
-          dplyr::filter(.data$dataset == ds, .data$scenario == sc) |>
-          dplyr::pull(.data$create_datetime) |>
-          unique() |>
+        create_datetimes <- cosmos_get_create_datetimes(ds, sc) |>
           purrr::set_names(labels)
 
         shiny::updateSelectInput(session, "create_datetime", choices = create_datetimes)
@@ -101,25 +63,8 @@ mod_result_selection_server <- function(id) {
       sc <- shiny::req(input$scenario)
       cd <- shiny::req(input$create_datetime)
 
-      options_selected <- dropdown_options() |>
-        dplyr::filter(.data$dataset == ds, .data$scenario == sc, .data$create_datetime == cd)
-
-      shiny::req(nrow(options_selected) == 1)
-
-      cat("loading data (", ds, ", ", sc, ", ", cd, "):", sep = "")
-      dfs <- list(
-        data = get_data(db_con, ds, sc, cd),
-        change_factors = get_change_factors(db_con, ds, sc, cd),
-        years = list(
-          start_year = options_selected$start_year,
-          end_year = options_selected$end_year
-        )
-      )
-      cat(" done\n\n")
-
-      dfs
-    }) |>
-      shiny::bindCache(input$dataset, input$scenario, input$create_datetime, cache = data_cache)
+      list(dataset = ds, scenario = sc, create_datetime = cd)
+    })
 
     return(selected_model_run)
   })
