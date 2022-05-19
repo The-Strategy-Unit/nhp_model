@@ -175,7 +175,7 @@ batch_add_job <- function(params) {
   )
 
   md <- "/mnt/batch/tasks/fsmounts"
-  run_results_path <- glue::glue("{md}/batch/{job_name}")
+  run_results_path <- "nhp_results"
   task_command <- function(run_start, runs_per_task) {
     glue::glue(
       .sep = " ",
@@ -183,6 +183,7 @@ batch_add_job <- function(params) {
       "{md}/app/run_model.py",
       "{md}/queue/{filename}",
       "--data_path={md}/data",
+      "--save_type=cosmos",
       "--results_path={run_results_path}",
       "--run_start={run_start}",
       "--model_runs={runs_per_task}"
@@ -222,40 +223,8 @@ batch_add_job <- function(params) {
 
   tasks <- purrr::map(seq(1, model_runs, runs_per_task), task_fn)
 
-  combine_command <- glue::glue(
-    .sep = " ",
-    "/opt/nhp/bin/python",
-    "{md}/app/combine_results.py",
-    "{run_results_path}",
-    "{md}/results",
-    params[["input_data"]],
-    params[["name"]],
-    cdt
-  )
-
-  combine_task <- list(
-    id = "runs_combine",
-    displayName = "Combine Results",
-    commandLine = combine_command,
-    userIdentity = user_id,
-    dependsOn = list(taskIds = c(principal_run$id, purrr::map_chr(tasks, "id")))
-  )
-
-  remove_queue_task <- list(
-    id = "runs_remove_queue",
-    displayName = "Remove queue file",
-    commandLine = glue::glue("rm {md}/queue/{filename}"),
-    userIdentity = user_id,
-    dependsOn = list(taskIds = combine_task$id)
-  )
-
   all_tasks <- jsonlite::toJSON(
-    list(
-      value = c(
-        list(principal_run, combine_task, remove_queue_task),
-        tasks
-      )
-    ),
+    list(value = c(list(principal_run), tasks)),
     pretty = TRUE,
     auto_unbox = TRUE
   ) |>
