@@ -1,13 +1,13 @@
 
 cosmos_get_container <- function(container) {
   endp <- AzureCosmosR::cosmos_endpoint(
-    Sys.getenv("COSMOS_DB_ENDPOINT"),
-    Sys.getenv("COSMOS_DB_KEY")
+    Sys.getenv("COSMOS_ENDPOINT"),
+    Sys.getenv("COSMOS_KEY")
   )
 
-  db <- get_cosmos_database(endp, "nhp_results")
+  db <- AzureCosmosR::get_cosmos_database(endp, "nhp_results")
 
-  get_cosmos_container(db, container)
+  AzureCosmosR::get_cosmos_container(db, container)
 }
 
 cosmos_get_datasets <- function() {
@@ -91,7 +91,7 @@ AND
     dplyr::as_tibble() |>
     dplyr::mutate(
       dplyr::across(.data$model_run, model_run_type),
-      dplyr::across(.data$pod, ~ifelse(stringr::str_starts(.x, "aae"), "aae", .x))
+      dplyr::across(.data$pod, ~ ifelse(stringr::str_starts(.x, "aae"), "aae", .x))
     ) |>
     dplyr::count(.data$model_run, .data$pod, wt = .data$value)
 }
