@@ -182,11 +182,11 @@ batch_add_job <- function(params) {
       "/opt/nhp/bin/python",
       "{md}/app/run_model.py",
       "{md}/queue/{filename}",
-      "--data_path={md}/data",
-      "--save_type=cosmos",
-      "--results_path={run_results_path}",
-      "--run_start={run_start}",
-      "--model_runs={runs_per_task}"
+      "--data-path={md}/data",
+      "--save-type=cosmos",
+      "--results-path={run_results_path}",
+      "--run-start={run_start}",
+      "--model-runs={runs_per_task}"
     )
   }
 
@@ -200,6 +200,19 @@ batch_add_job <- function(params) {
     pad = "0"
   )
 
+  env_vars <- list(
+    list(name = "COSMOS_ENDPOINT", value = Sys.getenv("COSMOS_ENDPOINT")),
+    list(name = "COSMOS_KEY", value = Sys.getenv("COSMOS_KEY"))
+  )
+
+  principal_run <- list(
+    id = "principal_run",
+    displayName = "Principal Model Run",
+    commandLine = task_command(0, 1),
+    userIdentity = user_id,
+    environmentSettings = env_vars
+  )
+
   task_fn <- function(run_start) {
     run_end <- run_start + runs_per_task - 1
 
@@ -210,16 +223,10 @@ batch_add_job <- function(params) {
       ),
       commandLine = task_command(run_start, runs_per_task),
       userIdentity = user_id,
-      dependsOn = list(taskIds = principal_run$id)
+      dependsOn = list(taskIds = principal_run$id),
+      environmentSettings = env_vars
     )
   }
-
-  principal_run <- list(
-    id = "principal_run",
-    displayName = "Principal Model Run",
-    commandLine = task_command(0, 1),
-    userIdentity = user_id
-  )
 
   tasks <- purrr::map(seq(1, model_runs, runs_per_task), task_fn)
 
