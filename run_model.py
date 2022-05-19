@@ -87,7 +87,7 @@ def multi_model_runs(save_model, run_start, model_runs, n_cpus=1, batch_size=16)
 
 
 def run_model(
-    params_file,
+    params,
     data_path,
     save_model_class,
     save_model_path,
@@ -113,7 +113,7 @@ def run_model(
 
     def run_model_fn(model_type):
         try:
-            model = model_type(params_file, data_path)
+            model = model_type(params, data_path)
         except FileNotFoundError as exc:
             # handle the dataset not existing: we simply skip
             if str(exc).endswith(".parquet"):

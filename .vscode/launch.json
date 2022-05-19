@@ -77,30 +77,6 @@
         "-b=16"
       ],
       "console": "integratedTerminal"
-    },
-    {
-      "name": "Python: Combine Results",
-      "type": "python",
-      "request": "launch",
-      "program": "combine_results.py",
-      "args": [
-        "run_results",
-        "results",
-        "synthetic",
-        "test",
-        "20220101_000000"
-      ]
-    },
-    {
-      "name": "Batch: Run Queue",
-      "type": "python",
-      "request": "launch",
-      "program": "run_batch.py",
-      "args": [
-        "run_tasks",
-        "64",
-        "test/queue"
-      ]
     }
   ]
 }
