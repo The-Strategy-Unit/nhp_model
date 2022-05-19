@@ -59,7 +59,7 @@ process_param_file <- function(path, input_data, demographics_file, scenario_nam
     ),
     health_status_adjustment = unlist(data$pc_hsa),
     life_expectancy = life_expectancy,
-    waiting_list_adjustment = list(inpatients = wla)
+    waiting_list_adjustment = wla
   )
 
   params$strategy_params <- list(
