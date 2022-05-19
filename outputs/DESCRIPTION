@@ -7,6 +7,7 @@ License: MIT + file LICENSE
 Imports: 
     attempt,
     AzureAuth,
+    AzureCosmosR,
     AzureStor,
     bs4Dash,
     config (>= 0.3.1),
