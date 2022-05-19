@@ -38,50 +38,52 @@ mod_principal_change_factor_effects_ui <- function(id) {
 #' principal_change_factor_effects Server Functions
 #'
 #' @noRd
-mod_principal_change_factor_effects_server <- function(id, change_factors) {
+mod_principal_change_factor_effects_server <- function(id, selected_model_run, data_cache) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
     observe({
-      d <- change_factors() |>
-        distinct(.data$activity_type)
-      req(nrow(d) > 0)
-
-      activity_types <- activity_type_display |>
-        dplyr::semi_join(d, by = "activity_type") |>
-        (function(.x) purrr::set_names(.x[[1]], .x[[2]]))()
+      activity_types <- get_activity_type_pod_measure_options() |>
+        dplyr::distinct(
+          dplyr::across(
+            tidyselect::starts_with("activity_type")
+          )
+        ) |>
+        set_names()
 
       shiny::updateSelectInput(session, "activity_type", choices = activity_types)
     })
 
-    observeEvent(input$activity_type, {
+    principal_change_factors <- reactive({
       at <- req(input$activity_type)
 
-      measures <- change_factors() |>
-        filter(.data$activity_type == at) |>
-        pull(.data$measure) |>
-        unique()
+      c(ds, sc, cd) %<-% selected_model_run()
+
+      cosmos_get_principal_change_factors(ds, sc, cd, at) |>
+        dplyr::mutate(
+          dplyr::across(.data$change_factor, forcats::fct_inorder)
+        )
+    }) |>
+      shiny::bindCache(selected_model_run(), input$activity_type, cache = data_cache)
+
+    observeEvent(principal_change_factors(), {
+      at <- req(input$activity_type)
+      pcf <- req(principal_change_factors())
+
+      measures <- unique(pcf$measure)
+
       req(length(measures) > 0)
 
       shiny::updateSelectInput(session, "measure", choices = measures)
     })
 
-    principal_change_factors <- reactive({
-      at <- req(input$activity_type)
+    change_factors_summarised <- reactive({
       m <- req(input$measure)
 
-      change_factors() |>
-        dplyr::filter(
-          .data$activity_type == at,
-          .data$model_run == 0,
-          .data$measure == m
-        )
-    })
-
-    change_factors_summarised <- reactive({
       principal_change_factors() |>
         dplyr::filter(
-          input$include_baseline | .data$change_factor != "Baseline"
+          .data$measure == m,
+          input$include_baseline | .data$change_factor != "baseline"
         ) |>
         dplyr::group_by(.data$change_factor) |>
         dplyr::summarise(dplyr::across(.data$value, sum, na.rm = TRUE)) |>
@@ -133,17 +135,20 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
     })
 
     individual_change_factors <- reactive({
+      m <- req(input$measure)
+
       d <- principal_change_factors() |>
         dplyr::filter(
-          .data$strategy != "",
+          .data$measure == m,
+          .data$strategy != "-",
           .data$value < 0
         )
 
       if (input$sort_type == "descending value") {
-        d <- dplyr::mutate(d, dplyr::across(.data$strategy, forcats::fct_reorder, -.data$value))
+        dplyr::mutate(d, dplyr::across(.data$strategy, forcats::fct_reorder, -.data$value))
+      } else {
+        dplyr::mutate(d, dplyr::across(.data$strategy, forcats::fct_reorder, .data$strategy))
       }
-
-      d
     })
 
     observeEvent(individual_change_factors(), {
@@ -154,7 +159,7 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
 
     output$admission_avoidance <- plotly::renderPlotly({
       individual_change_factors() |>
-        dplyr::filter(.data$change_factor == "Admission Avoidance") |>
+        dplyr::filter(.data$change_factor == "admission_avoidance") |>
         ggplot2::ggplot(aes(.data$value, .data$strategy)) +
         ggplot2::geom_col(fill = "#f9bf07") +
         ggplot2::scale_x_continuous(labels = scales::comma) +
@@ -163,7 +168,7 @@ mod_principal_change_factor_effects_server <- function(id, change_factors) {
 
     output$los_reduction <- plotly::renderPlotly({
       individual_change_factors() |>
-        dplyr::filter(.data$change_factor == "Los Reduction") |>
+        dplyr::filter(.data$change_factor == "los_reduction") |>
         ggplot2::ggplot(aes(.data$value, .data$strategy)) +
         ggplot2::geom_col(fill = "#ec6555") +
         ggplot2::scale_x_continuous(labels = scales::comma) +

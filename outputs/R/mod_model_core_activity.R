@@ -19,63 +19,56 @@ mod_model_core_activity_ui <- function(id) {
 #' model_core_activity Server Functions
 #'
 #' @noRd
-mod_model_core_activity_server <- function(id, data) {
+mod_model_core_activity_server <- function(id, selected_model_run, data_cache) {
   moduleServer(id, function(input, output, session) {
+
+    atpmo <- get_activity_type_pod_measure_options()
+
     summarised_data <- reactive({
-      inner_join(
-        data() |>
-          dplyr::filter(.data$model_run == -1) |>
-          dplyr::group_by(
-            .data$activity_type,
-            .data$pod,
-            .data$measure
-          ) |>
-          dplyr::summarise(baseline = as.numeric(sum(.data$value, na.rm = TRUE)), .groups = "drop"),
-        data() |>
-          dplyr::filter(.data$model_run > 0) |>
-          dplyr::group_by(
-            .data$activity_type,
-            .data$pod,
-            .data$measure,
-            .data$model_run
-          ) |>
-          dplyr::summarise(
-            dplyr::across(
-              .data$value,
-              purrr::compose(as.numeric, sum),
-              na.rm = TRUE
-            ),
-            .groups = "drop_last"
-          ) |>
-          # if there are any model runs that had no data, add them back in with a value of 0
-          grouped_complete(
-            tidyr::nesting(activity_type, pod, measure),
-            .data$model_run,
-            fill = list(value = 0)
-          ) |>
-          dplyr::summarise(
-            mean = mean(.data$value),
-            lwr.ci = quantile(.data$value, 0.05),
-            upr.ci = quantile(.data$value, 0.95),
-            .groups = "drop"
-          ),
-        by = c("activity_type", "pod", "measure")
-      )
-    })
+      c(ds, sc, cd) %<-% selected_model_run()
+
+      d <- cosmos_get_model_core_activity(ds, sc, cd) |>
+        # if there are any model runs that had no data, add them back in with a value of 0
+        tidyr::complete(
+          tidyr::nesting(pod, measure),
+          .data$model_run,
+          fill = list(value = 0)
+        )
+
+      baseline <- d |>
+        dplyr::filter(.data$model_run == -1) |>
+        dplyr::select(.data$pod, .data$measure, baseline = .data$value)
+
+      model <- d |>
+        dplyr::filter(.data$model_run > 0) |>
+        dplyr::group_by(.data$pod, .data$measure) |>
+        dplyr::summarise(
+          mean = mean(.data$value),
+          lwr.ci = quantile(.data$value, 0.05),
+          upr.ci = quantile(.data$value, 0.95),
+          .groups = "drop"
+        )
+
+      inner_join(baseline, model, by = c("pod", "measure")) |>
+        inner_join(atpmo, by = c("pod", "measure" = "measures"))
+    }) |>
+      shiny::bindCache(selected_model_run(), cache = data_cache)
 
     output$core_activity <- gt::render_gt({
       summarised_data() |>
-        dplyr::inner_join(activity_type_display, by = "activity_type") |>
-        dplyr::select(-.data$activity_type) |>
-        dplyr::inner_join(pod_display, by = "pod") |>
-        dplyr::select(-.data$pod) |>
-        dplyr::inner_join(measure_display, by = "measure") |>
-        dplyr::select(-.data$measure) |>
-        dplyr::relocate(tidyselect::ends_with("display"), .before = everything()) |>
-        gt::gt(groupname_col = c("activity_type_display", "pod_display")) |>
+        dplyr::select(
+          .data$activity_type_name,
+          .data$pod_name,
+          .data$measure,
+          .data$baseline,
+          .data$mean,
+          .data$lwr.ci,
+          .data$upr.ci
+        ) |>
+        gt::gt(groupname_col = c("activity_type_name", "pod_name")) |>
         gt::fmt_integer(c("baseline", "mean", "lwr.ci", "upr.ci")) |>
         gt::cols_label(
-          "measure_display" = "Measure",
+          "measure" = "Measure",
           "baseline" = "Baseline",
           "mean" = "Central Estimate",
           "lwr.ci" = "Lower",

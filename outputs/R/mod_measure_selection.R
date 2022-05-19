@@ -24,6 +24,7 @@ mod_measure_selection_ui <- function(id, aggregation = TRUE) {
         selectInput(
           ns("aggregation"),
           "Aggregation",
+          # TODO: this should be taken from golem-config.yml
           c("Age Group", "Treatment Specialty")
         )
       )
@@ -34,17 +35,20 @@ mod_measure_selection_ui <- function(id, aggregation = TRUE) {
 #' measure_selection Server Functions
 #'
 #' @noRd
-mod_measure_selection_server <- function(id, data) {
+mod_measure_selection_server <- function(id, selected_model_run, data_cache) {
   moduleServer(id, function(input, output, session) {
+
+    atpmo <- get_activity_type_pod_measure_options()
+
     # handle onload
     observe({
-      d <- data() |>
-        dplyr::distinct(.data$activity_type)
-      req(nrow(d) > 0)
-
-      activity_types <- activity_type_display |>
-        dplyr::semi_join(d, by = "activity_type") |>
-        (function(.x) purrr::set_names(.x[[1]], .x[[2]]))()
+      activity_types <- atpmo |>
+        dplyr::distinct(
+          dplyr::across(
+            tidyselect::starts_with("activity_type")
+          )
+        ) |>
+        set_names()
 
       shiny::updateSelectInput(session, "activity_type", choices = activity_types)
     })
@@ -52,13 +56,14 @@ mod_measure_selection_server <- function(id, data) {
     shiny::observeEvent(input$activity_type, {
       at <- req(input$activity_type)
 
-      d <- data() |>
+      pods <- atpmo |>
         dplyr::filter(.data$activity_type == at) |>
-        dplyr::distinct(.data$pod)
-
-      pods <- pod_display |>
-        dplyr::semi_join(d, by = "pod") |>
-        (function(.x) purrr::set_names(.x[[1]], .x[[2]]))()
+        dplyr::distinct(
+          dplyr::across(
+            tidyselect::starts_with("pod")
+          )
+        ) |>
+        set_names()
 
       shiny::updateSelectInput(session, "pod", choices = pods)
     })
@@ -66,45 +71,36 @@ mod_measure_selection_server <- function(id, data) {
     shiny::observeEvent(input$pod, {
       at <- req(input$activity_type)
       p <- req(input$pod)
-      d <- data() |>
-        dplyr::filter(.data$activity_type == at, .data$pod == p) |>
-        dplyr::distinct(.data$measure)
 
-      measures <- measure_display |>
-        dplyr::semi_join(d, by = "measure") |>
-        (function(.x) purrr::set_names(.x[[1]], .x[[2]]))()
+      measures <- atpmo |>
+        dplyr::filter(.data$activity_type == at, .data$pod == p) |>
+        purrr::pluck("measures")
 
       shiny::updateSelectInput(session, "measure", choices = measures)
     })
 
     filtered_data <- reactive({
-      at <- req(input$activity_type)
+      c(ds, sc, cd) %<-% selected_model_run()
+
       p <- req(input$pod)
       m <- req(input$measure)
 
-      a <- switch(req(input$aggregation),
+      # ensure a valid set of pod/measure has been selected. If activity type changes we may end up with invalid options
+      req(nrow(dplyr::filter(atpmo, .data$pod == p, .data$measures == m)) > 0)
+
+      agg_col <- switch(req(input$aggregation),
         "Age Group" = "age_group",
         "Treatment Specialty" = "tretspef"
       )
 
-      d <- data() |>
-        dplyr::filter(.data$activity_type == at, .data$pod == p, .data$measure == m) |>
-        dplyr::mutate(type = dplyr::case_when(
-          .data$model_run == -1 ~ "baseline",
-          .data$model_run == 0 ~ "principal",
-          TRUE ~ "model"
-        )) |>
-        dplyr::group_by(.data$sex, agg = .data[[a]], .data$type, .data$model_run, .data$variant) |>
-        dplyr::summarise(dplyr::across(
-          .data$value,
-          # for some reason without as.numeric this get's promoted to int64
-          purrr::compose(as.numeric, sum)
-        ), .groups = "drop")
+      d <- cosmos_get_aggregation(ds, sc, cd, p, m, agg_col) |>
+        dplyr::rename(agg = tidyselect::all_of(agg_col))
 
       attr(d, "aggregation") <- input$aggregation
 
       return(d)
-    })
+    }) |>
+      shiny::bindCache(selected_model_run(), input$pod, input$measure, input$aggregation, cache = data_cache)
 
     return(filtered_data)
   })

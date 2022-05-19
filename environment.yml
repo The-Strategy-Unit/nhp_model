@@ -5,10 +5,12 @@ dependencies:
   - python=3.10.4
   - pyjanitor=0.22.*
   - azure-batch=11.0.*
+  - azure-cosmos=4.2.*
   - azure-storage-blob=12.9.*
   - azure-storage-file-datalake=12.5.*
   - numpy=1.22.*
   - pandas=1.4.*
   - pyarrow=6.0.*
   - pygam=0.8.*
+  - python-dotenv=0.20.*
   - tqdm=4.63.*

@@ -20,17 +20,15 @@ class OutpatientsModel(Model):
     Implements the model for outpatient data. See `Model()` for documentation on the generic class.
     """
 
-    def __init__(self, params, data_path: str, results_path: str):
+    def __init__(self, params, data_path: str):
         # call the parent init function
-        Model.__init__(self, "op", params, data_path, results_path)
+        Model.__init__(self, "op", params, data_path)
 
-    #
     def _followup_reduction(self, data, run_params):
         return self._factor_helper(
             data, run_params["followup_reduction"], {"has_procedures": 0, "is_first": 0}
         )
 
-    #
     def _consultant_to_consultant_reduction(self, data, run_params):
         return self._factor_helper(
             data,
@@ -38,7 +36,6 @@ class OutpatientsModel(Model):
             {"is_cons_cons_ref": 1},
         )
 
-    #
     @staticmethod
     def _convert_to_tele(data, run_params):
         # temp disable chained assignment warnings
@@ -61,7 +58,6 @@ class OutpatientsModel(Model):
         # restore chained assignment warnings
         pd.set_option("mode.chained_assignment", options)
 
-    #
     def _run(
         self, rng, data, run_params, aav_f, hsa_f
     ):  # pylint: disable=too-many-arguments
@@ -71,7 +67,6 @@ class OutpatientsModel(Model):
         returns: a tuple of the selected varient and the updated DataFrame
         """
         params = run_params["outpatient_factors"]
-        #
         sc_a, sc_t = data[["attendances", "tele_attendances"]].sum()
         step_counts = {
             "baseline": pd.DataFrame(
@@ -135,28 +130,28 @@ class OutpatientsModel(Model):
         change_factors["value"] = change_factors["value"].astype(int)
         return (change_factors, data.drop(["hsagrp"], axis="columns"))
 
-    def aggregate(self, model_results):
+    @staticmethod
+    def aggregate(model_results):
         """
         Aggregate the model results
         """
         model_results["age_group"] = age_groups(model_results["age"])
 
-        return self._aggregate_op_rows(model_results)
+        model_results.loc[model_results["is_first"], "pod"] = "op_first"
+        model_results.loc[~model_results["is_first"], "pod"] = "op_follow-up"
+        model_results.loc[model_results["has_procedures"], "pod"] = "op_procedure"
 
-    @staticmethod
-    def _aggregate_op_rows(op_rows):
-        op_rows.loc[op_rows["is_first"], "pod"] = "op_first"
-        op_rows.loc[~op_rows["is_first"], "pod"] = "op_follow-up"
-        op_rows.loc[op_rows["has_procedures"], "pod"] = "op_procedure"
+        def agg(cols):
+            return (
+                model_results.groupby(cols)
+                .agg({"attendances": np.sum, "tele_attendances": np.sum})
+                .reset_index()
+                .melt(cols, ["attendances", "tele_attendances"], "measure")
+                .to_dict("records")
+            )
 
-        op_agg = op_rows.groupby(
-            ["age_group", "sex", "tretspef", "pod"],
-            as_index=False,
-        ).agg({"attendances": np.sum, "tele_attendances": np.sum})
-
-        return pd.melt(
-            op_agg,
-            ["age_group", "sex", "tretspef", "pod"],
-            ["attendances", "tele_attendances"],
-            "measure",
-        )
+        return {
+            "default": agg(["pod"]),
+            "sex+age_group": agg(["pod", "sex", "age_group"]),
+            "sex+tretspef": agg(["pod", "sex", "tretspef"]),
+        }

@@ -21,14 +21,13 @@ class InpatientsModel(Model):
     Implements the model for inpatient data. See `Model()` for documentation on the generic class.
     """
 
-    def __init__(self, params, data_path: str, results_path: str):
+    def __init__(self, params: list, data_path: str):
         # call the parent init function
         Model.__init__(
             self,
             "ip",
             params,
             data_path,
-            results_path,
             [
                 "rn",
                 "speldur",
@@ -46,14 +45,13 @@ class InpatientsModel(Model):
             for x in ["admission_avoidance", "los_reduction"]
         }
 
-    #
     def _los_reduction(self, run_params):
         """
         Create a dictionary of the los reduction factors to use for a run
 
         * rng: an instance of np.random.default_rng, created for each model iteration
         """
-        params = self._params["strategy_params"]["los_reduction"]
+        params = self.params["strategy_params"]["los_reduction"]
         # convert the parameters dictionary to a dataframe: each item becomes a row (with the item
         # being the name of the row in the index), and then each sub-item becoming a column
         losr = pd.DataFrame.from_dict(params, orient="index")
@@ -62,7 +60,6 @@ class InpatientsModel(Model):
         ]
         return losr
 
-    #
     def _random_strategy(self, rng, strategy_type):
         """
         Select one strategy per record
@@ -74,13 +71,14 @@ class InpatientsModel(Model):
         returns: an updated DataFrame with a new column for the selected strategy
         """
         strategies = self._strategies[strategy_type]
-        # sample from the strategies based on the sample_rate column, then select just the strategy column
+        # sample from the strategies based on the sample_rate column, then select just the strategy
+        # column
         strategies = strategies[
             rng.binomial(1, strategies["sample_rate"]).astype(bool)
         ].iloc[:, 0]
         # filter the strategies to only include those listed in the params file
         valid_strategies = list(
-            self._params["strategy_params"][strategy_type].keys()
+            self.params["strategy_params"][strategy_type].keys()
         ) + ["NULL"]
         strategies = strategies[strategies.isin(valid_strategies)]
         return (
@@ -92,7 +90,6 @@ class InpatientsModel(Model):
             .groupby(level=0).head(1)
         )
 
-    #
     def _waiting_list_adjustment(self, data):
         """
         Create a series of factors for waiting list adjustment.
@@ -108,7 +105,7 @@ class InpatientsModel(Model):
         """
         # extract the waiting list adjustment parameters - we convert this to a default dictionary
         # that uses the "X01" specialty as the default value
-        pwla = self._run_params["waiting_list_adjustment"].copy()
+        pwla = self.run_params["waiting_list_adjustment"].copy()
         default_specialty = pwla.pop("X01")
         pwla = defaultdict(lambda: default_specialty, pwla)
         # waiting list adjustment values
@@ -167,7 +164,6 @@ class InpatientsModel(Model):
             ),
         )
 
-    #
     @staticmethod
     def _losr_all(data, losr, rng, step_counts):
         """
@@ -253,7 +249,7 @@ class InpatientsModel(Model):
         data.loc[i, "classpat"] = bads_df["classpat"]
         # set the speldur to 0 if we aren't inpatients
         data.loc[i, "speldur"] *= data.loc[i, "classpat"] == 1
-        #
+
         step_counts["los_reduction"]["admissions"] = {
             **step_counts["los_reduction"]["admissions"],
             **((data.loc[i, "classpat"] == "-1").groupby(level=0).sum() * -1)
@@ -301,7 +297,6 @@ class InpatientsModel(Model):
             **change_los.to_dict(),
         }
 
-    #
     def _run(
         self, rng, data, run_params, aav_f, hsa_f
     ):  # pylint: disable=too-many-arguments
@@ -310,12 +305,12 @@ class InpatientsModel(Model):
         los_reduction = self._random_strategy(rng, "los_reduction")
         # choose length of stay reduction factors
         losr = self._los_reduction(run_params)
-        #
+
         sc_n, sc_b = len(data.index), sum(data["speldur"] + 1)
         step_counts = {
             "baseline": pd.DataFrame({"admissions": [sc_n], "beddays": [sc_b]}, ["-"])
         }
-        #
+
         def run_step(thing, name):
             nonlocal data, step_counts, sc_n, sc_b
             select_row_n_times = rng.poisson(thing)
@@ -366,33 +361,19 @@ class InpatientsModel(Model):
         change_factors["value"] = change_factors["value"].astype(int)
         return (change_factors, data.drop(["hsagrp"], axis="columns").set_index(["rn"]))
 
-    def aggregate(self, model_results):
+    @staticmethod
+    def aggregate(model_results):
         """
         Aggregate the model results
         """
         model_results["age_group"] = age_groups(model_results["age"])
-        # find the rows we need to convert to outpatients
+        # row's with a classpat of -1 are outpatients and need to be handled separately
         ip_op_row_ix = model_results["classpat"] == "-1"
-        return pd.concat(
-            [
-                self._aggregate_ip_rows(model_results[~ip_op_row_ix]),
-                self._aggregate_op_rows(model_results[ip_op_row_ix]),
-            ]
-        )
-
-    @staticmethod
-    def _aggregate_op_rows(op_rows):
-        op_rows = op_rows.copy()
-        return (
-            op_rows.value_counts(["age_group", "sex", "tretspef"])
-            .to_frame("value")
-            .reset_index()
-            .assign(pod="op_procedure", measure="attendances")
-        )
-
-    @staticmethod
-    def _aggregate_ip_rows(ip_rows):
-        ip_rows = ip_rows.copy()
+        ip_rows = model_results[~ip_op_row_ix].copy()
+        op_rows = model_results[ip_op_row_ix].copy()
+        # handle OP rows
+        op_rows["pod"] = "op_procedure"
+        # handle IP rows
         # create an admission group column
         ip_rows["admission_group"] = "ip_non-elective"
         ip_rows.loc[
@@ -409,18 +390,26 @@ class InpatientsModel(Model):
         ip_rows.loc[ip_rows["classpat"] == "5", "pod"] += "_birth-episode"
         ip_rows["beddays"] = ip_rows["speldur"] + 1
 
-        ip_agg = (
-            ip_rows.groupby(
-                ["age_group", "sex", "tretspef", "pod"],
-                as_index=False,
-            )
-            .agg({"speldur": len, "beddays": np.sum})
-            .rename({"speldur": "admissions"}, axis="columns")
-        )
+        def agg(cols):
+            return pd.concat(
+                [
+                    (
+                        op_rows.value_counts(cols)
+                        .to_frame("value")
+                        .assign(measure="procedures")
+                        .reset_index()
+                    ),
+                    (
+                        ip_rows.groupby(cols, as_index=False)
+                        .agg({"speldur": len, "beddays": np.sum})
+                        .rename({"speldur": "admissions"}, axis="columns")
+                        .melt(cols, ["admissions", "beddays"], "measure")
+                    ),
+                ]
+            ).to_dict("records")
 
-        return pd.melt(
-            ip_agg,
-            ["age_group", "sex", "tretspef", "pod"],
-            ["admissions", "beddays"],
-            "measure",
-        )
+        return {
+            "default": agg(["pod"]),
+            "sex+age_group": agg(["pod", "sex", "age_group"]),
+            "sex+tretspef": agg(["pod", "sex", "tretspef"]),
+        }

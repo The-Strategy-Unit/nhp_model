@@ -41,7 +41,7 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "Python: Run All Principal Projections",
+      "name": "Python: Run All Principal Projections (local save)",
       "type": "python",
       "request": "launch",
       "program": "run_model.py",
@@ -53,7 +53,7 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "Python: Run All Models (parallel)",
+      "name": "Python: Run All Models (parallel/local save)",
       "type": "python",
       "request": "launch",
       "program": "run_model.py",
@@ -65,28 +65,18 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "Python: Combine Results",
+      "name": "Python: Run All Models (parallel/cosmos save)",
       "type": "python",
       "request": "launch",
-      "program": "combine_results.py",
+      "program": "run_model.py",
       "args": [
-        "run_results",
-        "results",
-        "synthetic",
-        "test",
-        "20220101_000000"
-      ]
-    },
-    {
-      "name": "Batch: Run Queue",
-      "type": "python",
-      "request": "launch",
-      "program": "run_batch.py",
-      "args": [
-        "run_tasks",
-        "64",
-        "test/queue"
-      ]
+        "test/queue/synthetic.json",
+        "--save-type=cosmos",
+        "--results_path=nhp_results",
+        "--model_runs=257",
+        "-b=16"
+      ],
+      "console": "integratedTerminal"
     }
   ]
 }

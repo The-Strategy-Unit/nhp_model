@@ -4,16 +4,13 @@ Model Module
 Implements the generic class for all other model types.
 """
 
-import json
 import os
 import pickle
 from datetime import datetime
-from multiprocessing import Pool
 
 import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
-from tqdm import tqdm
 
 from model.helpers import inrange, rnorm
 
@@ -38,19 +35,16 @@ class Model:  # pylint: disable=too-many-instance-attributes
     """
 
     def __init__(
-        self, model_type, params, data_path, results_path, columns_to_load=None
+        self, model_type, params, data_path, columns_to_load=None
     ):  # pylint: disable=too-many-arguments
         self._model_type = model_type
-        self._params = params
+        self.params = params
         # add model runtime if it doesn't exist
-        if not "create_datetime" in self._params:
-            self._params["create_datetime"] = f"{datetime.now():%Y%m%d_%H%M%S}"
+        if not "create_datetime" in self.params:
+            self.params["create_datetime"] = f"{datetime.now():%Y%m%d_%H%M%S}"
         # store the path where the data is stored and the results are stored
-        self._data_path = os.path.join(data_path, self._params["input_data"])
-        self._results_path = results_path
-        #
+        self._data_path = os.path.join(data_path, self.params["input_data"])
         # load the data that's shared across different model types
-        #
         with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
             self._hsa_gams = pickle.load(hsa_pkl)
         self._load_demog_factors()
@@ -63,42 +57,37 @@ class Model:  # pylint: disable=too-many-instance-attributes
             ).groupby(["variant"])
         )
         # we now store the data in a dictionary keyed by the population variant
-        self._data = {
+        self.data = {
             k: v.drop(["variant"], axis="columns").set_index(["rn"])
             for k, v in tuple(data)
         }
         # generate the run parameters
         self._generate_run_params()
-        # save the baseline aggregated rows
-        self.aggregate_baseline()
 
-    #
     def _select_variant(self, rng):
         """
         Randomly select a single variant to use for a model run
         """
         variant = rng.choice(self._variants, p=self._probabilities)
-        return (variant, self._data[variant])
+        return (variant, self.data[variant])
 
-    #
     def _load_demog_factors(self):
-        dfp = self._params["demographic_factors"]
+        dfp = self.params["demographic_factors"]
         start_year = dfp.get("start_year", "2018")
         end_year = dfp.get("end_year", "2043")
-        #
+
         demog_factors = pd.read_csv(os.path.join(self._data_path, dfp["file"]))
         demog_factors[["age", "sex"]] = demog_factors[["age", "sex"]].astype(int)
         demog_factors["factor"] = demog_factors[end_year] / demog_factors[start_year]
         self._demog_factors = demog_factors.set_index(["age", "sex"])[
             ["variant", "factor"]
         ]
-        #
+
         self._variants = list(dfp["variant_probabilities"].keys())
         self._probabilities = list(dfp["variant_probabilities"].values())
 
-    #
     def _health_status_adjustment(self, data, run_params):
-        lep = self._params["life_expectancy"]
+        lep = self.params["life_expectancy"]
         ages = np.tile(np.arange(lep["min_age"], lep["max_age"] + 1), 2)
         sexs = np.repeat([1, 2], len(ages) // 2)
         lex = pd.DataFrame({"age": ages, "sex": sexs, "ex": lep["m"] + lep["f"]})
@@ -131,7 +120,6 @@ class Model:  # pylint: disable=too-many-instance-attributes
             .to_numpy()
         )
 
-    #
     def _load_parquet(self, file, *args):
         """
         Load a parquet file from the file path created by the constructor.
@@ -142,7 +130,6 @@ class Model:  # pylint: disable=too-many-instance-attributes
             os.path.join(self._data_path, f"{file}.parquet"), *args
         ).to_pandas()
 
-    #
     @staticmethod
     def _factor_helper(data, params, column_values):
         factor = {k: [v] * len(params) for k, v in column_values.items()}
@@ -155,113 +142,9 @@ class Model:  # pylint: disable=too-many-instance-attributes
             .to_numpy()
         )
 
-    def _save_path(self, model_run, save_type):
-        path = os.path.join(
-            self._results_path,
-            save_type,
-            f"activity_type={self._model_type}",
-            f"dataset={self._params['input_data']}",
-            f"scenario={self._params['name']}",
-            f"create_datetime={self._params['create_datetime']}",
-            f"model_run={model_run}",
-        )
-        os.makedirs(path, exist_ok=True)
-        return path
-
-    def aggregate_baseline(self):
-        """
-        Save the aggregated results for the baseline
-        """
-        if not self._params.get("aggregate_results", True):
-            return
-        data = self._data["principal"]
-        aggregated_path = self._save_path(-1, "aggregated_results")
-        self.aggregate(data).to_parquet(f"{aggregated_path}/0.parquet")
-
-    #
-    def save_run(self, model_run):
-        """
-        Save the model run and run parameters
-
-        * model_run: the number of this model run
-
-        returns: the results of `self.run(model_run)`
-        """
-        # run the model
-        change_factors, mr_data = self.run(model_run)
-        # save row level results (if param is not set, defaults to not saving row level results)
-        if self._params.get("save_all_results", False):
-            results_path = self._save_path(model_run, "model_results")
-            mr_data.to_parquet(f"{results_path}/0.parquet")
-        # aggregate the results (if param is not set, defaults to saving aggregated results)
-        if self._params.get("aggregate_results", True):
-            aggregated_path = self._save_path(model_run, "aggregated_results")
-            self.aggregate(mr_data).to_parquet(f"{aggregated_path}/0.parquet")
-        # Save the change factors, so long as it's not an empty dictionary
-        if change_factors is not None:
-            change_factors_path = self._save_path(model_run, "change_factors")
-            change_factors.to_csv(f"{change_factors_path}/0.csv", index=False)
-        return (change_factors, mr_data)
-
-    #
-    def batch_save(self, i, j, batch_size):
-        """
-        Run a batch of model runs and save the results
-        """
-        return [self.save_run(mr) for mr in range(i, min(j, i + batch_size))]
-
-    #
-    def multi_model_runs(self, run_start, model_runs, n_cpus=1, batch_size=4):
-        """
-        Run multiple model runs in parallel
-        """
-        pbar = tqdm(total=model_runs)
-        with Pool(n_cpus) as pool:
-            run_end = run_start + model_runs
-            results = [
-                pool.apply_async(
-                    self.batch_save,
-                    (
-                        i,
-                        run_end,
-                        batch_size,
-                    ),
-                    callback=lambda _: pbar.update(batch_size),
-                )
-                for i in range(run_start, run_end, batch_size)
-            ]
-            pool.close()
-            pool.join()
-            pbar.close()
-        # make sure to get the results - if we don't then no errors that occurred will be raised
-        print(
-            f"Model runs completed: {sum(len(r.get()) for r in results)} / {model_runs}"
-        )
-        assert sum(len(r.get()) for r in results) == model_runs
-
-    #
     def _generate_run_params(self):
-        params = self._params
-        path_fn = lambda save_type: os.path.join(
-            self._results_path,
-            save_type,
-            f"dataset={self._params['input_data']}",
-            f"scenario={self._params['name']}",
-        )
-        json_name = f"{self._params['create_datetime']}.json"
-        # if the params file doesn't exist in it's results folder, save it there now
-        params_path = os.path.join(path_fn("params"), json_name)
-        if not os.path.exists(params_path):
-            os.makedirs(path_fn("params"), exist_ok=True)
-            with open(params_path, "w", encoding="UTF-8") as params_file:
-                json.dump(params, params_file)
-        # load the run params if they have previously been created
-        run_params_path = os.path.join(path_fn("run_params"), json_name)
-        if os.path.exists(run_params_path):
-            with open(run_params_path, "r", encoding="UTF-8") as run_params_file:
-                self._run_params = json.load(run_params_file)
-                return
-        #
+        params = self.params
+
         # the principal projection will have run number 0. all other runs start indexing from 1
         rng = np.random.default_rng(params["seed"])
         model_runs = params["model_runs"] + 1  # add 1 for the principal
@@ -275,8 +158,7 @@ class Model:  # pylint: disable=too-many-instance-attributes
                 return sum(i) / 2
             return rnorm(rng, *i)  # otherwise
 
-        #
-        self._run_params = {
+        self.run_params = {
             # for the principal run, select the most probable variant
             "variant": [self._variants[np.argmax(self._probabilities)]]
             + rng.choice(
@@ -309,17 +191,12 @@ class Model:  # pylint: disable=too-many-instance-attributes
                 for k0 in ["strategy_params", "outpatient_factors", "aae_factors"]
             },
         }
-        # save the run params
-        os.makedirs(path_fn("run_params"), exist_ok=True)
-        with open(run_params_path, "w", encoding="UTF-8") as run_params_file:
-            json.dump(self._run_params, run_params_file)
 
-    #
     def _get_run_params(self, model_run):
         """
         Gets the parameters for a particular model run
         """
-        params = self._run_params
+        params = self.run_params
         return {
             "variant": params["variant"][model_run],
             "health_status_adjustment": params["health_status_adjustment"][model_run],
@@ -351,7 +228,7 @@ class Model:  # pylint: disable=too-many-instance-attributes
         # get the run params
         run_params = self._get_run_params(model_run)
         rng = np.random.default_rng(run_params["seed"])
-        data = self._data[run_params["variant"]].copy()
+        data = self.data[run_params["variant"]].copy()
         # admission avoidance
         aav_f = data["factor"]
         data.drop(["factor"], axis="columns", inplace=True)
@@ -360,10 +237,10 @@ class Model:  # pylint: disable=too-many-instance-attributes
         # choose which function to use
         return self._run(rng, data, run_params, aav_f, hsa_f)
 
-    def aggregate(self, model_results):
+    @staticmethod
+    def aggregate(model_results):
         """
         Aggregate the model results
 
         To be implemented by specific classes
         """
-        return model_results
