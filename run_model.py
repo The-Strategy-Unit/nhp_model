@@ -17,9 +17,9 @@ import argparse
 import json
 import os
 import time
+from multiprocessing import Pool
 
 import pandas as pd
-import pathos
 from tqdm.auto import tqdm
 
 from model.aae import AaEModel
@@ -67,16 +67,18 @@ def multi_model_runs(save_model, run_start, model_runs, n_cpus=1, batch_size=16)
 
     run_end = run_start + model_runs
 
-    pool = pathos.pools._ProcessPool(n_cpus)  # pylint: disable=protected-access
-    results = list(
-        tqdm(
-            pool.imap(
-                save_model.run_model, range(run_start, run_end), chunksize=batch_size
-            ),
-            "Running model",
-            total=model_runs,
+    with Pool(n_cpus) as pool:
+        results = list(
+            tqdm(
+                pool.imap(
+                    save_model.run_model,
+                    range(run_start, run_end),
+                    chunksize=batch_size,
+                ),
+                "Running model",
+                total=model_runs,
+            )
         )
-    )
 
     save_model.post_runs(results)
 
@@ -131,15 +133,15 @@ def run_model(
 def _run_model_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("params_file", help="Path to the params.json file")
-    parser.add_argument("--data_path", help="Path to the data", default="data")
+    parser.add_argument("--data-path", help="Path to the data", default="data")
     parser.add_argument(
-        "--results_path", help="Path to the results", default="run_results"
+        "--results-path", help="Path to the results", default="run_results"
     )
     parser.add_argument(
-        "--run_start", help="Where to start model run from", type=int, default=0
+        "--run-start", help="Where to start model run from", type=int, default=0
     )
     parser.add_argument(
-        "--model_runs",
+        "--model-runs",
         help="How many model runs to perform",
         type=int,
         default=1,
