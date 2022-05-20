@@ -28,7 +28,8 @@ mod_params_upload_ui <- function(id) {
     shiny::textInput(ns("start_year"), "Start Year"),
     shiny::textInput(ns("end_year"), "End Year"),
     shiny::textInput(ns("model_iterations"), "Model Iterations"),
-    shiny::actionButton(ns("submit_model_run"), "Submit Model Run")
+    shiny::actionButton(ns("submit_model_run"), "Submit Model Run"),
+    shiny::downloadButton(ns("download_params"), "Download params.json")
   )
 
   tab_demographics <- shiny::tagList(
@@ -178,6 +179,7 @@ mod_params_upload_server <- function(id) {
 
       shinyjs::toggleState("params_upload", valid)
       shinyjs::toggleState("submit_model_run", valid)
+      shinyjs::toggleState("download_params", valid)
       shinyjs::toggleState("ip_am_a", valid)
       shinyjs::toggleState("op_am_a", valid)
       shinyjs::toggleState("aae_am_a", valid)
@@ -352,6 +354,18 @@ mod_params_upload_server <- function(id) {
 
       status(paste("Submitted to batch:", job_name, "(Goto running models tab to view progress)"))
     })
+
+    output$download_params <- shiny::downloadHandler(
+      filename = function() {
+        params <- shiny::req(params())
+        c(ds, sc) %<-% params[c("input_data", "name")]
+        glue::glue("{ds}_{sc}.json")
+      },
+      content = function(file) {
+        params <- shiny::req(params())
+        jsonlite::write_json(params, file, pretty = TRUE, auto_unbox = TRUE)
+      }
+    )
 
     output$status <- shiny::renderText({
       status()
