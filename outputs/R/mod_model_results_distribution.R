@@ -43,7 +43,6 @@ mod_model_results_distribution_server <- function(id, selected_model_run, data_c
       b <- dplyr::filter(d, .data$model_run == -1)$value
 
       colour_scale <- ggplot2::scale_fill_manual(values = c(
-        "TODO" = "#f9bf07",
         "principal" = "#f9bf07",
         "high_migration" = "#5881c1"
       ))
