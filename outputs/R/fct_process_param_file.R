@@ -21,8 +21,8 @@ process_param_file <- function(path, input_data, demographics_file, scenario_nam
     purrr::set_names() |>
     map(readxl::read_excel, path = path)
 
-  base_year <- format(data$run_settings$baseline_year, "%Y")
-  model_year <- format(data$run_settings$model_year, "%Y")
+  base_year <- lubridate::year(data$run_settings$baseline_year)
+  model_year <- lubridate::year(data$run_settings$model_year)
 
   life_expectancy <- readRDS(app_sys("life_expectancy.rds")) |>
     dplyr::filter(.data$base == "2018b", .data$year %in% c(base_year, model_year), .data$age >= 55) |>
@@ -48,8 +48,8 @@ process_param_file <- function(path, input_data, demographics_file, scenario_nam
     input_data = input_data,
     seed = sample(1:1e5, 1),
     model_runs = data$run_settings$n_iterations,
-    start_year = lubridate::year(data$run_settings$baseline_year),
-    end_year = lubridate::year(data$run_settings$model_year),
+    start_year = base_year,
+    end_year = model_year,
     demographic_factors = list(
       file = demographics_file,
       start_year = base_year,
