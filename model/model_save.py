@@ -152,7 +152,7 @@ class CosmosDBSave:
         item = {"model_run": model_run, **self._base_item}
         if model_run == -1:
             variant = self._model.run_params["variant"][0]
-            item["results"] = self._model.aggregate(variant)
+            item["results"] = self._model.aggregate(self._model.data[variant])
         else:
             change_factors, results = self._model.run(model_run)
             item["selected_variant"] = self._variants[model_run]
