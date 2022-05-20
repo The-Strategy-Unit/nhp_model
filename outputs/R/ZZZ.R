@@ -2,11 +2,6 @@
 #' @importFrom rlang .data
 NULL
 
-# null coalesce
-`%||%` <- function(x, y) {
-  if (is.null(x)) y else x
-}
-
 # converts a two column tibble into a named list suitable for shiny selectInput choices
 set_names <- function(.x) {
   purrr::set_names(.x[[1]], .x[[2]])
@@ -21,7 +16,7 @@ STORAGE_EP <- "https://storage.azure.com/"
 model_run_type <- function(mr) {
   case_when(
     mr == -1 ~ "baseline",
-    mr ==  0 ~ "principal",
-    mr  >  0 ~ "model"
+    mr == 0 ~ "principal",
+    mr > 0 ~ "model"
   )
 }

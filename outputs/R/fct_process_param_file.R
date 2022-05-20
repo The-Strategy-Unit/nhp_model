@@ -52,6 +52,8 @@ process_param_file <- function(path, input_data, demographics_file, scenario_nam
     end_year = lubridate::year(data$run_settings$model_year),
     demographic_factors = list(
       file = demographics_file,
+      start_year = base_year,
+      end_year = model_year,
       variant_probabilities = data$pc_pg |>
         filter(probability > 0) |>
         deframe() |>

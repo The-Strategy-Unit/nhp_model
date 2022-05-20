@@ -73,8 +73,8 @@ class Model:  # pylint: disable=too-many-instance-attributes
 
     def _load_demog_factors(self):
         dfp = self.params["demographic_factors"]
-        start_year = dfp.get("start_year", "2018")
-        end_year = dfp.get("end_year", "2043")
+        start_year = str(dfp["start_year"])
+        end_year = str(dfp["end_year"])
 
         demog_factors = pd.read_csv(os.path.join(self._data_path, dfp["file"]))
         demog_factors[["age", "sex"]] = demog_factors[["age", "sex"]].astype(int)

@@ -64,9 +64,7 @@ mod_principal_high_level_server <- function(id, selected_model_run, data_cache) 
 
       params <- cosmos_get_params(ds, sc, cd)
 
-      # TODO: this is **NOT** being handled correctly **ANYWHERE** currently. __REVIEW__
-      start_year <- params[["start_year"]] %||% 2018
-      end_year <- params[["end_year"]] %||% 2043
+      c(start_year, end_year) %<-% params[["demographic_factors"]][c("start_year", "end_year")]
 
       cosmos_get_principal_highlevel(ds, sc, cd) |>
         dplyr::mutate(year = ifelse(.data$model_run == "baseline", start_year, end_year)) |>
