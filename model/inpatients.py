@@ -396,7 +396,7 @@ class InpatientsModel(Model):
                     (
                         op_rows.value_counts(cols)
                         .to_frame("value")
-                        .assign(measure="procedures")
+                        .assign(measure="attendances")
                         .reset_index()
                     ),
                     (
