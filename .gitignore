@@ -68,3 +68,7 @@ __pycache__
 
 # ignore shiny cache directory
 outputs/.cache
+
+# pyinstaller folders
+build/
+dist/
