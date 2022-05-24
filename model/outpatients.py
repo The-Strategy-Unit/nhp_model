@@ -130,8 +130,7 @@ class OutpatientsModel(Model):
         change_factors["value"] = change_factors["value"].astype(int)
         return (change_factors, data.drop(["hsagrp"], axis="columns"))
 
-    @staticmethod
-    def aggregate(model_results):
+    def aggregate(self, model_results):
         """
         Aggregate the model results
         """
@@ -141,17 +140,15 @@ class OutpatientsModel(Model):
         model_results.loc[~model_results["is_first"], "pod"] = "op_follow-up"
         model_results.loc[model_results["has_procedures"], "pod"] = "op_procedure"
 
-        def agg(cols):
-            return (
-                model_results.groupby(cols)
-                .agg({"attendances": np.sum, "tele_attendances": np.sum})
-                .reset_index()
-                .melt(cols, ["attendances", "tele_attendances"], "measure")
-                .to_dict("records")
-            )
+        measures = model_results.melt(
+            ["rn"], ["attendances", "tele_attendances"], "measure"
+        )
+        model_results = model_results.drop(
+            ["attendances", "tele_attendances"], axis="columns"
+        ).merge(measures, on="rn")
 
         return {
-            "default": agg(["pod"]),
-            "sex+age_group": agg(["pod", "sex", "age_group"]),
-            "sex+tretspef": agg(["pod", "sex", "tretspef"]),
+            **self._create_agg(model_results),
+            **self._create_agg(model_results, ["sex", "age_group"]),
+            **self._create_agg(model_results, ["sex", "tretspef"]),
         }

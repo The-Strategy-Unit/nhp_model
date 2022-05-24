@@ -361,8 +361,7 @@ class InpatientsModel(Model):
         change_factors["value"] = change_factors["value"].astype(int)
         return (change_factors, data.drop(["hsagrp"], axis="columns").set_index(["rn"]))
 
-    @staticmethod
-    def aggregate(model_results):
+    def aggregate(self, model_results):
         """
         Aggregate the model results
         """
@@ -373,6 +372,8 @@ class InpatientsModel(Model):
         op_rows = model_results[ip_op_row_ix].copy()
         # handle OP rows
         op_rows["pod"] = "op_procedure"
+        op_rows["measure"] = "attendances"
+        op_rows["value"] = 1
         # handle IP rows
         # create an admission group column
         ip_rows["admission_group"] = "ip_non-elective"
@@ -388,28 +389,20 @@ class InpatientsModel(Model):
         ip_rows.loc[ip_rows["classpat"].isin(["1", "4"]), "pod"] += "_admission"
         ip_rows.loc[ip_rows["classpat"].isin(["2", "3"]), "pod"] += "_daycase"
         ip_rows.loc[ip_rows["classpat"] == "5", "pod"] += "_birth-episode"
-        ip_rows["beddays"] = ip_rows["speldur"] + 1
 
-        def agg(cols):
-            return pd.concat(
-                [
-                    (
-                        op_rows.value_counts(cols)
-                        .to_frame("value")
-                        .assign(measure="attendances")
-                        .reset_index()
-                    ),
-                    (
-                        ip_rows.groupby(cols, as_index=False)
-                        .agg({"speldur": len, "beddays": np.sum})
-                        .rename({"speldur": "admissions"}, axis="columns")
-                        .melt(cols, ["admissions", "beddays"], "measure")
-                    ),
-                ]
-            ).to_dict("records")
+        ip_rows["beddays"] = ip_rows["speldur"] + 1
+        measures = (
+            ip_rows.assign(admissions=1)
+            .reset_index()
+            .melt(["rn"], ["admissions", "beddays"], "measure")
+        )
+
+        model_results = pd.concat(
+            [op_rows, ip_rows.merge(measures, left_index=True, right_on="rn")]
+        )
 
         return {
-            "default": agg(["pod"]),
-            "sex+age_group": agg(["pod", "sex", "age_group"]),
-            "sex+tretspef": agg(["pod", "sex", "tretspef"]),
+            **self._create_agg(model_results),
+            **self._create_agg(model_results, ["sex", "age_group"]),
+            **self._create_agg(model_results, ["sex", "tretspef"]),
         }

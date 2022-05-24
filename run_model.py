@@ -54,7 +54,9 @@ def debug_run(model, model_run):
     print()
     print("aggregated (default) results:")
     print(
-        pd.DataFrame.from_dict(agg_results["default"])
+        pd.DataFrame.from_dict(
+            [{**k._asdict(), "value": v} for k, v in agg_results["default"].items()]
+        )
         .pivot(index="pod", columns="measure")
         .fillna(0)
     )

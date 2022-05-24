@@ -4,7 +4,6 @@ Accident and Emergency Module
 Implements the A&E model.
 """
 
-import numpy as np
 import pandas as pd
 
 from model.helpers import age_groups
@@ -109,8 +108,7 @@ class AaEModel(Model):
         change_factors["value"] = change_factors["value"].astype(int)
         return (change_factors, data.drop(["hsagrp"], axis="columns"))
 
-    @staticmethod
-    def aggregate(model_results):
+    def aggregate(self, model_results):
         """
         Aggregate the model results
         """
@@ -121,18 +119,9 @@ class AaEModel(Model):
         model_results.loc[
             model_results["aearrivalmode"] == "1", "measure"
         ] = "ambulance"
-        model_results["tretspef"] = "Other"
-
-        def agg(cols):
-            return (
-                model_results.groupby(cols + ["measure"], as_index=False)
-                .agg({"arrivals": np.sum})
-                .rename(columns={"arrivals": "value"})
-                .to_dict("records")
-            )
+        model_results.rename(columns={"arrivals": "value"}, inplace=True)
 
         return {
-            "default": agg(["pod"]),
-            "sex+age_group": agg(["pod", "sex", "age_group"]),
-            "sex+tretspef": agg(["pod", "sex", "tretspef"]),
+            **self._create_agg(model_results),
+            **self._create_agg(model_results, ["sex", "age_group"]),
         }

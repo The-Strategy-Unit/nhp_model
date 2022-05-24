@@ -6,6 +6,7 @@ Implements the generic class for all other model types.
 
 import os
 import pickle
+from collections import namedtuple
 from datetime import datetime
 
 import numpy as np
@@ -230,10 +231,20 @@ class Model:  # pylint: disable=too-many-instance-attributes
         # choose which function to use
         return self._run(rng, data, run_params, aav_f, hsa_f)
 
-    @staticmethod
-    def aggregate(model_results):
+    def aggregate(self, model_results):
         """
         Aggregate the model results
 
         To be implemented by specific classes
         """
+
+    @staticmethod
+    def _create_agg(model_results, cols=None, name=None):
+        if name is None:
+            name = "+".join(cols) if cols else "default"
+        cols = ["pod", "measure"] + (cols if cols else [])
+        result = namedtuple("results", cols)
+        agg = model_results.groupby(cols)["value"].sum()
+        agg.index.names = agg.index.names[:-1] + ["measure"]
+
+        return {name: {result(*k): v for k, v in agg.iteritems()}}
