@@ -8,12 +8,15 @@ Allows the user to change the way that model results are saved. Currently implem
 
 import json
 import os
+import shutil
+from collections import defaultdict
+from tempfile import mkdtemp
 
+import dill
+import numpy as np
+import pandas as pd
 from azure.cosmos import CosmosClient
 from dotenv import load_dotenv
-from tqdm.auto import tqdm
-
-load_dotenv()
 
 
 class ModelSave:
@@ -21,31 +24,29 @@ class ModelSave:
 
     This is a generic implementation and should not be used  directly"""
 
-    def __init__(self, model):
+    def __init__(self, model, results_path, temp_path=None):
         self._dataset = model.params["input_data"]
         self._scenario = model.params["name"]
         self._create_datetime = model.params["create_datetime"]
         #
+        self._run_id = f"{self._dataset}__{self._scenario}__{self._create_datetime}"
+        #
+        self._model_runs = model.params["model_runs"]
+        #
         self._activity_type = model._model_type
         self._model = model
-
-
-class LocalSave(ModelSave):
-    """Save the results locally to disk
-
-    This will save the results and params in a data lake structure to locally available storage
-    """
-
-    def __init__(self, model, results_path):
-        super().__init__(model)
+        #
         self._base_results_path = results_path
         self._results_path = os.path.join(
             f"dataset={self._dataset}",
             f"scenario={self._scenario}",
             f"create_datetime={self._create_datetime}",
         )
-        #
-        self.save_params()
+        self._temp_path = temp_path or mkdtemp()
+        self._ar_path = os.path.join(self._temp_path, "aggregated_results")
+        os.makedirs(self._ar_path, exist_ok=True)
+        self._cf_path = os.path.join(self._temp_path, "change_factors")
+        os.makedirs(self._cf_path, exist_ok=True)
 
     def run_model(self, model_run):
         """Run the model and save the results
@@ -60,135 +61,208 @@ class LocalSave(ModelSave):
         """
         # do nothing for the baseline model run
         if model_run == -1:
-            return
-        # run the model
-        change_factors, results = self._model.run(model_run)
+            results = self._model.data.copy()
+        else:
+            # run the model
+            change_factors, results = self._model.run(model_run)
+            # save results
+            mr_path = os.path.join(
+                self._base_results_path,
+                "model_results",
+                f"activity_type={self._activity_type}",
+                self._results_path,
+                f"{model_run=}",
+            )
+            os.makedirs(mr_path, exist_ok=True)
+            results.to_parquet(f"{mr_path}/0.parquet")
+            # save change factors
+            change_factors.assign(model_run=model_run).to_csv(
+                f"{self._cf_path}/{self._activity_type}_{model_run}.csv"
+            )
 
-        # function for generating the paths
-        path = lambda save_type: os.path.join(
-            self._base_results_path,
-            save_type,
-            f"activity_type={self._activity_type}",
-            self._results_path,
-            f"{model_run=}",
+        # save aggregated results
+        aggregated_results = self._model.aggregate(results)
+        with open(
+            f"{self._ar_path}/{self._activity_type}_{model_run}.dill", "wb"
+        ) as arf:
+            dill.dump(aggregated_results, arf)
+
+    def _combine_aggregated_results(self):
+        aggregated_results = {}
+        for dataset in ["aae", "ip", "op"]:
+            aggregated_results[dataset] = list()
+            for model_run in range(-1, self._model_runs + 1):
+                with open(f"{self._ar_path}/{dataset}_{model_run}.dill", "rb") as arf:
+                    aggregated_results[dataset].append(dill.load(arf))
+        return self._flip_results(aggregated_results)
+
+    @staticmethod
+    def _flip_results(results):
+        """Take array of model run results and flip
+
+        Takes an array of aggregate type/aggregate: value, and flips so we have a dictionary
+        of aggregate type/aggregates: [value].
+
+        We split out the baseline and principal values, as well as calculating summary statistics
+        on the model run values
+        """
+        # create a nested defaultdict which contains an array of 0's the lenght of the results:
+        # that gives us a value even if a model run did not output a row for a given aggregate
+        flipped = defaultdict(lambda: defaultdict(lambda: [0] * len(results["aae"])))
+        for dataset_results in results.values():
+            # iterate over each result
+            for idx, result in enumerate(dataset_results):
+                # iterate over the aggregate types in each result
+                for agg_type, agg_type_v in result.items():
+                    # iterate the aggregates inside the aggregate type, use += as some measures
+                    # appear in both ip/op and need to be combined
+                    for aggregate, aggregate_v in agg_type_v.items():
+                        flipped[agg_type][aggregate][idx] += aggregate_v
+        # convert our defaultdicts to regular dict's, splitting out the baseline and principal
+        # model run results from the monte carlo sim.
+        # only keep the full model results if the aggregate type is "default"
+        return dict(
+            {
+                k1: [
+                    {
+                        **k2._asdict(),  # expand out the namedtuple to a dictionary
+                        "baseline": int(v2[0]),
+                        "principal": int(v2[1]),
+                        "median": np.median(v2[2:]),
+                        "lwr_ci": np.quantile(v2[2:], 0.05),
+                        "upr_ci": np.quantile(v2[2:], 0.95),
+                        **(
+                            {"model_runs": [int(vv) for vv in v2[2:]]}
+                            if k1 == "default"
+                            else {}
+                        ),
+                    }
+                    for k2, v2 in v1.items()
+                ]
+                for k1, v1 in flipped.items()
+            }
         )
-        # save results
-        os.makedirs(mr_path := path("model_results"), exist_ok=True)
-        results.to_parquet(f"{mr_path}/0.parquet")
-        # save change factors
-        os.makedirs(cf_path := path("change_factors"), exist_ok=True)
-        change_factors.to_csv(f"{cf_path}/0.csv")
 
-        return None
-
-    def post_runs(self, items):
-        """Post running of all model runs
-
-        For local save, this does nothing
-        """
-
-    def save_params(self):
-        """Save the params items
-
-        Saves the params and run params dictionaries to the path:
-            `params/dataset=.../scenario=.../create_datetime=.../`
-        as params.json and run_params.json
-        """
-        path = os.path.join(self._base_results_path, "params", self._results_path)
-        os.makedirs(path, exist_ok=True)
-        with open(os.path.join(path, "params.json"), "w", encoding="UTF-8") as prf:
-            json.dump(self._model.params, prf)
-        with open(os.path.join(path, "run_params.json"), "w", encoding="UTF-8") as prf:
-            json.dump(self._model.run_params, prf)
+    def _combine_change_factors(self):
+        return pd.concat(
+            [pd.read_csv(f"{self._cf_path}/{i}") for i in os.listdir(self._cf_path)]
+        )
 
 
-class CosmosDBSave:
-    """Save the results to Azure Cosmos DB
+class LocalSave(ModelSave):
+    """Save the model results locally
 
-    This will save the results and params into an existing Azure Cosmos DB account
+    Utilises ModelSave to store results locally
     """
 
-    # note: split the running of models and saving of results in cosmos
-    # the database connection isn't multiprocessor safe, so we first run the model runs in parallel
-    # then upload the results to cosmos after
+    def __init__(self, *args):
+        super().__init__(*args)
 
-    def __init__(self, model, database):
-        #
-        self._database = database
-        #
-        self._model = model
-        #
-        activity_type = model._model_type
-        dataset = model.params["input_data"]
-        scenario = model.params["name"]
-        create_datetime = model.params["create_datetime"]
-        #
-        self._base_item = {
-            "id": f"{dataset}|{scenario}|{create_datetime}|{activity_type}",
-            "dataset": dataset,
-            "scenario": scenario,
-            "create_datetime": create_datetime,
-        }
-        self._variants = model.run_params["variant"]
-        #
-        self.save_params()
-        baseline = self.run_model(-1)
-        self.post_runs([baseline])
+    def post_runs(self):
+        """Post running of all model runs"""
+        # save params
+        os.makedirs(pr_path := f"{self._base_results_path}/params", exist_ok=True)
+        with open(f"{pr_path}/{self._run_id}.json", "w", encoding="UTF-8") as prf:
+            json.dump(self._model.params, prf)
 
-    def _get_database_container(self, container):
-        client = CosmosClient(os.getenv("COSMOS_ENDPOINT"), os.getenv("COSMOS_KEY"))
-        return client.get_database_client(self._database).get_container_client(
-            container
+        # save aggregated results
+        os.makedirs(
+            ar_path := f"{self._base_results_path}/aggregated_results", exist_ok=True
+        )
+        with open(f"{ar_path}/{self._run_id}.json", "w", encoding="UTF-8") as arf:
+            json.dump(self._combine_aggregated_results(), arf)
+
+        # save change factors
+        os.makedirs(
+            cf_path := f"{self._base_results_path}/changed_factors", exist_ok=True
+        )
+        self._combine_change_factors().to_csv(f"{cf_path}/{self._run_id}.csv")
+
+        # clean up temporary files
+        shutil.rmtree(self._temp_path)
+
+
+class CosmosDBSave(ModelSave):
+    """Save the model results to Cosmos DB
+
+    Utilises ModelSave to store results to both the file paths and to Cosmos DB"""
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        #
+        self._ar_path = os.path.join(self._temp_path, "aggregated_results")
+        os.makedirs(self._ar_path, exist_ok=True)
+        self._cf_path = os.path.join(self._temp_path, "change_factors_path")
+        os.makedirs(self._cf_path, exist_ok=True)
+        #
+        load_dotenv()
+        self._database = os.getenv("COSMOS_DB")
+        self._cosmos_endpoint = os.getenv("COSMOS_ENDPOINT")
+        self._cosmos_key = os.getenv("COSMOS_KEY")
+
+    def post_runs(self):
+        """Post running of all model runs"""
+        self._upload_results()
+        self._upload_change_factors()
+        self._upload_params()
+        shutil.rmtree(self._temp_path)
+
+    def _upload_results(self):
+        aggregated_results = self._combine_aggregated_results()
+
+        item = {"id": self._run_id, **aggregated_results}
+
+        self._get_database_container("results").upsert_item(
+            item, partition_key=self._run_id
         )
 
-    def run_model(self, model_run):
-        """Run the model
+    def _upload_change_factors(self):
+        def agg_fn(change_factor):
+            acf = (
+                change_factor.drop(["dataset", "measure"], axis="columns")
+                .set_index(["change_factor", "strategy", "model_run"])
+                .unstack(fill_value=0)
+                .stack()
+                .reset_index()
+                .groupby(["change_factor", "strategy"], as_index=False)
+                .agg({"value": list})
+                .to_dict("records")
+            )
+            for i in acf:
+                if i["strategy"] == "-":
+                    i.pop("strategy")
+                if i["change_factor"] == "baseline":
+                    i["baseline"] = i["value"].pop()
+                else:
+                    i["principal"] = i["value"].pop()
+                    i["model_runs"] = i["value"]
+                i.pop("value")
+                return acf
 
-        * model_run: the iteration of the model we want to run
+        change_factors = self._combine_change_factors()
 
-        Returns the item to be uploaded to Cosmos later
+        item = {
+            "id": self._run_id,
+            **{
+                d: [
+                    {"measure": m, "change_factors": agg_fn(v2)}
+                    for m, v2 in tuple(v1.groupby(["measure"]))
+                ]
+                for d, v1 in tuple(change_factors.groupby(["dataset"]))
+            },
+        }
 
-        """
-        item = {"model_run": model_run, **self._base_item}
-        if model_run == -1:
-            variant = self._model.run_params["variant"][0]
-            item["results"] = self._model.aggregate(self._model.data[variant])
-        else:
-            change_factors, results = self._model.run(model_run)
-            item["selected_variant"] = self._variants[model_run]
-            item["results"] = self._model.aggregate(results)
-            item["change_factors"] = change_factors.to_dict(orient="records")
+        self._get_database_container("change_factors").upsert_item(
+            item, partition_key=self._run_id
+        )
 
-        return (model_run, item)
-
-    def post_runs(self, items):
-        """Upload results to Cosmos
-
-        Saves the results and change factors of a model run into the "results" container in the
-        Cosmos database.
-
-        Data is stored partitioned by `model_run` and saved with an id built up like:
-            `dataset|scenario|create_datetime|activity_type`
-        """
-        container = self._get_database_container("results")
-        for model_run, item in tqdm(items, "Uploading to cosmos", total=len(items)):
-            container.upsert_item(item, partition_key=model_run)
-
-    def save_params(self):
-        """Save the params items
-
-        Saves the params and run params dictionaries into separate containers in the Cosmos
-        database.
-        """
-        # create connections to the database containers
+    def _upload_params(self):
         params_container = self._get_database_container("params")
-        run_params_container = self._get_database_container("run_params")
-        # extract the params objects from the model
         params = self._model.params
-        run_params = self._model.run_params
-        # create an ID to use in the Cosmos item
-        run_id = f"{params['input_data']}|{params['name']}|{params['create_datetime']}"
-        run_params["id"] = params["id"] = run_id
-        # upload the param files to their respective database containers
+        params["id"] = self._run_id
         params_container.upsert_item(params)
-        run_params_container.upsert_item(run_params)
+
+    def _get_database_container(self, container):
+        client = CosmosClient(self._cosmos_endpoint, self._cosmos_key)
+        database = client.get_database_client(self._database)
+        return database.get_container_client(container)

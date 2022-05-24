@@ -82,19 +82,14 @@ def multi_model_runs(save_model, run_start, model_runs, n_cpus=1, batch_size=16)
             )
         )
 
-    save_model.post_runs(results)
-
     assert len(results) == model_runs
-    # # make sure to get the results - if we don't then no errors that occurred will be raised
-    # print(f"Model runs completed: {sum(len(r) for r in results.get())} / {model_runs}")
-    # assert sum(len(r.get()) for r in results) == model_runs
 
 
 def run_model(
     params,
     data_path,
     save_model_class,
-    save_model_path,
+    save_model_path_args,
     run_start,
     model_runs,
     cpus,
@@ -126,7 +121,7 @@ def run_model(
             else:
                 raise exc
         print(f"Running: {model.__class__.__name__}")
-        save_model = save_model_class(model, save_model_path)
+        save_model = save_model_class(model, *save_model_path_args)
         multi_model_runs(save_model, run_start, model_runs, cpus, batch_size)
 
     return run_model_fn
@@ -136,8 +131,11 @@ def _run_model_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("params_file", help="Path to the params.json file")
     parser.add_argument("--data-path", help="Path to the data", default="data")
+    parser.add_argument("--results-path", help="Path to the results", default="results")
     parser.add_argument(
-        "--results-path", help="Path to the results", default="run_results"
+        "--temp-results-path",
+        help="Path to the temporary results path",
+        default=None,
     )
     parser.add_argument(
         "--run-start", help="Where to start model run from", type=int, default=0
@@ -212,7 +210,7 @@ def main():
             params,
             args.data_path,
             save_model_class,
-            args.results_path,
+            [args.results_path, args.temp_results_path],
             args.run_start,
             args.model_runs,
             args.cpus,
