@@ -10,7 +10,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "test/queue/synthetic.json",
+        "sample_params.json",
         "--debug",
         "--type=ip"
       ],
@@ -22,7 +22,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "test/queue/synthetic.json",
+        "sample_params.json",
         "--debug",
         "--type=op"
       ],
@@ -34,7 +34,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "test/queue/synthetic.json",
+        "sample_params.json",
         "--debug",
         "--type=aae"
       ],
@@ -46,7 +46,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "test/queue/synthetic.json",
+        "sample_params.json",
         "-b=1",
         "-c=1"
       ],
@@ -58,7 +58,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "test/queue/synthetic.json",
+        "sample_params.json",
         "--run-start=-1",
         "--model-runs=258",
         "--run-postruns",
@@ -72,9 +72,11 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "test/queue/synthetic.json",
+        "sample_params.json",
         "--save-type=cosmos",
-        "--model-runs=257",
+        "--run-start=-1",
+        "--model-runs=258",
+        "--run-postruns",
         "-b=16"
       ],
       "console": "integratedTerminal"
