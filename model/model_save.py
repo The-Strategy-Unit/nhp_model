@@ -24,17 +24,16 @@ class ModelSave:
 
     This is a generic implementation and should not be used  directly"""
 
-    def __init__(self, model, results_path, temp_path=None):
-        self._dataset = model.params["input_data"]
-        self._scenario = model.params["name"]
-        self._create_datetime = model.params["create_datetime"]
+    def __init__(self, params, results_path, temp_path=None):
+        self._dataset = params["input_data"]
+        self._scenario = params["name"]
+        self._create_datetime = params["create_datetime"]
         #
         self._run_id = f"{self._dataset}__{self._scenario}__{self._create_datetime}"
         #
-        self._model_runs = model.params["model_runs"]
-        #
-        self._activity_type = model._model_type
-        self._model = model
+        self._model_runs = params["model_runs"]
+        self._params = params
+        self._model = None
         #
         self._base_results_path = results_path
         self._results_path = os.path.join(
@@ -48,6 +47,10 @@ class ModelSave:
         self._cf_path = os.path.join(self._temp_path, "change_factors")
         os.makedirs(self._cf_path, exist_ok=True)
 
+    def set_model(self, model):
+        """Set the current model"""
+        self._model = model
+
     def run_model(self, model_run):
         """Run the model and save the results
 
@@ -59,17 +62,19 @@ class ModelSave:
 
         Uses a hive partition scheme so it is easy to load the data with pyarrow
         """
+        model = self._model
+        activity_type = model._model_type  # pylint: disable=protected-access
         # do nothing for the baseline model run
         if model_run == -1:
-            results = self._model.data.copy()
+            results = model.data.copy()
         else:
             # run the model
-            change_factors, results = self._model.run(model_run)
+            change_factors, results = model.run(model_run)
             # save results
             mr_path = os.path.join(
                 self._base_results_path,
                 "model_results",
-                f"activity_type={self._activity_type}",
+                f"{activity_type=}",
                 self._results_path,
                 f"{model_run=}",
             )
@@ -77,14 +82,12 @@ class ModelSave:
             results.to_parquet(f"{mr_path}/0.parquet")
             # save change factors
             change_factors.assign(model_run=model_run).to_csv(
-                f"{self._cf_path}/{self._activity_type}_{model_run}.csv"
+                f"{self._cf_path}/{activity_type}_{model_run}.csv"
             )
 
         # save aggregated results
-        aggregated_results = self._model.aggregate(results)
-        with open(
-            f"{self._ar_path}/{self._activity_type}_{model_run}.dill", "wb"
-        ) as arf:
+        aggregated_results = model.aggregate(results)
+        with open(f"{self._ar_path}/{activity_type}_{model_run}.dill", "wb") as arf:
             dill.dump(aggregated_results, arf)
 
     def _combine_aggregated_results(self):
@@ -163,7 +166,7 @@ class LocalSave(ModelSave):
         # save params
         os.makedirs(pr_path := f"{self._base_results_path}/params", exist_ok=True)
         with open(f"{pr_path}/{self._run_id}.json", "w", encoding="UTF-8") as prf:
-            json.dump(self._model.params, prf)
+            json.dump(self._params, prf)
 
         # save aggregated results
         os.makedirs(
@@ -258,7 +261,7 @@ class CosmosDBSave(ModelSave):
 
     def _upload_params(self):
         params_container = self._get_database_container("params")
-        params = self._model.params
+        params = self._params
         params["id"] = self._run_id
         params_container.upsert_item(params)
 

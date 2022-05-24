@@ -61,6 +61,7 @@
         "test/queue/synthetic.json",
         "--run-start=-1",
         "--model-runs=258",
+        "--run-postruns",
         "-b=8"
       ],
       "console": "integratedTerminal"

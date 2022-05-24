@@ -77,7 +77,7 @@ def multi_model_runs(save_model, run_start, model_runs, n_cpus=1, batch_size=16)
                     range(run_start, run_end),
                     chunksize=batch_size,
                 ),
-                "Running model",
+                f"Running {save_model._model.__class__.__name__}",
                 total=model_runs,
             )
         )
@@ -88,8 +88,7 @@ def multi_model_runs(save_model, run_start, model_runs, n_cpus=1, batch_size=16)
 def run_model(
     params,
     data_path,
-    save_model_class,
-    save_model_path_args,
+    save_model,
     run_start,
     model_runs,
     cpus,
@@ -98,21 +97,22 @@ def run_model(
     """
     Run the model
 
-    * model_type: which model to run? one of AaEModel, InpatientsModel, OutpatientsModel
-    * params_file: the params file to use for this model run
+    * params: the parameters dictionary (loaded from json
     * data_path: where the model data is stored
-    * results_path: where the model run's data is stored, see notes below.
+    * save_model: an instance of ModelSave class
     * run_start: the model run to start at
     * model_runs: how many runs to perform
     * cpus: how many cpu cores should we use
     * batch_size: how many runs should we perform each iteration
 
-    The results_path should be of the form `data/[DATASET]/results/[SCENARIO]/[RUN_TIME]`.
+    returns a function which accepts a model type, then runs that model type
     """
 
     def run_model_fn(model_type):
         try:
             model = model_type(params, data_path)
+            save_model.set_model(model)
+            multi_model_runs(save_model, run_start, model_runs, cpus, batch_size)
         except FileNotFoundError as exc:
             # handle the dataset not existing: we simply skip
             if str(exc).endswith(".parquet"):
@@ -120,9 +120,6 @@ def run_model(
             # if it's not the data file that missing, re-raise the error
             else:
                 raise exc
-        print(f"Running: {model.__class__.__name__}")
-        save_model = save_model_class(model, *save_model_path_args)
-        multi_model_runs(save_model, run_start, model_runs, cpus, batch_size)
 
     return run_model_fn
 
@@ -175,6 +172,9 @@ def _run_model_argparser():
         help="What type of save method to use",
         type=str,
     )
+    parser.add_argument(
+        "--run-postruns", help="Run the ModelSave post_run method", action="store_true"
+    )
     parser.add_argument("-d", "--debug", action="store_true")
     return parser
 
@@ -206,17 +206,23 @@ def main():
             save_model_class = LocalSave
         elif args.save_type == "cosmos":
             save_model_class = CosmosDBSave
+
+        save_model = save_model_class(params, args.results_path, args.temp_results_path)
+
         runner = run_model(
             params,
             args.data_path,
-            save_model_class,
-            [args.results_path, args.temp_results_path],
+            save_model,
             args.run_start,
             args.model_runs,
             args.cpus,
             args.batch_size,
         )
         list(map(runner, models.values()))
+
+        if args.run_postruns:
+            print("Running post-runs step:")
+            save_model.post_runs()
 
 
 if __name__ == "__main__":
