@@ -10,8 +10,18 @@
 mod_principal_detailed_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    h1("Detailed activity estimates (principal projection)"),
-    mod_measure_selection_ui(ns("measure_selection")),
+    shiny::h1("Detailed activity estimates (principal projection)"),
+    shiny::fluidRow(
+      mod_measure_selection_ui(ns("measure_selection"), width = 3),
+      col_3(
+        selectInput(
+          ns("aggregation"),
+          "Aggregation",
+          # TODO: this should be taken from golem-config.yml
+          c("Age Group", "Treatment Specialty")
+        )
+      )
+    ),
     shinycssloaders::withSpinner(
       gt::gt_output(ns("results"))
     )
@@ -23,17 +33,28 @@ mod_principal_detailed_ui <- function(id) {
 #' @noRd
 mod_principal_detailed_server <- function(id, selected_model_run, data_cache) {
   moduleServer(id, function(input, output, session) {
-    filtered_data <- mod_measure_selection_server("measure_selection", selected_model_run, data_cache)
+    selected_measure <- mod_measure_selection_server("measure_selection")
 
     selected_data <- reactive({
-      d <- filtered_data()
-      req(nrow(d) > 0)
+      id <- selected_model_run()
+      c(pod, measure) %<-% selected_measure()
 
-      d |>
-        dplyr::select(-(.data$median:.data$upr_ci)) |>
-        dplyr::rename(final = .data$principal) |>
-        dplyr::mutate(change = final - baseline, change_pcnt = change / baseline)
-    })
+      agg_col <- switch(
+        req(input$aggregation),
+        "Age Group" = "age_group",
+        "Treatment Specialty" = "tretspef"
+      )
+
+      cosmos_get_aggregation(id, pod, measure, agg_col) |>
+        dplyr::transmute(
+          .data$sex,
+          agg = .data[[agg_col]],
+          .data$baseline,
+          final = .data$principal,
+          change = final - baseline, change_pcnt = change / baseline
+        )
+    }) |>
+      shiny::bindCache(selected_model_run(), selected_measure(), cache = data_cache)
 
     output$results <- gt::render_gt({
       d <- selected_data()
@@ -51,7 +72,7 @@ mod_principal_detailed_server <- function(id, selected_model_run, data_cache) {
         ) |>
         gt::gt(groupname_col = "sex") |>
         gt::cols_label(
-          agg = attr(filtered_data(), "aggregation"),
+          agg = req(input$aggregation),
           baseline = "Baseline",
           final = "Final",
           change = "Change",
