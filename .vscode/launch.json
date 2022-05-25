@@ -10,7 +10,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "test/queue/synthetic.json",
+        "sample_params.json",
         "--debug",
         "--type=ip"
       ],
@@ -22,7 +22,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "test/queue/synthetic.json",
+        "sample_params.json",
         "--debug",
         "--type=op"
       ],
@@ -34,7 +34,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "test/queue/synthetic.json",
+        "sample_params.json",
         "--debug",
         "--type=aae"
       ],
@@ -46,7 +46,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "test/queue/synthetic.json",
+        "sample_params.json",
         "-b=1",
         "-c=1"
       ],
@@ -58,7 +58,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "test/queue/synthetic.json",
+        "sample_params.json",
         "--model_runs=257",
         "-b=8"
       ],
@@ -70,7 +70,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "test/queue/synthetic.json",
+        "sample_params.json",
         "--save-type=cosmos",
         "--results_path=nhp_results",
         "--model_runs=257",
