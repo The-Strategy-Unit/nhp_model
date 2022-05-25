@@ -47,13 +47,13 @@ class ModelSave:
         self._cf_path = os.path.join(self._temp_path, "change_factors")
         os.makedirs(self._cf_path, exist_ok=True)
         #
-        # TODO: add in who submitted the model run
         self._item_base = {
             "id": self._run_id,
             "dataset": self._dataset,
             "scenario": self._scenario,
             "create_datetime": self._create_datetime,
             "model_runs": self._model_runs,
+            "submitted_by": params["submitted_by"],
             "start_year": params["demographic_factors"]["start_year"],
             "end_year": params["demographic_factors"]["end_year"],
         }
