@@ -61,9 +61,14 @@ mod_principal_change_factor_effects_server <- function(id, selected_model_run, d
 
       cosmos_get_principal_change_factors(id, at) |>
         dplyr::mutate(
-          # TODO: sort out order manually?
           dplyr::across(.data$change_factor, forcats::fct_inorder),
-          dplyr::across(.data$change_factor, forcats::fct_relevel, "baseline")
+          dplyr::across(
+            .data$change_factor,
+            forcats::fct_relevel,
+            "baseline",
+            "population_factors",
+            "health_status_adjustment"
+          )
         )
     }) |>
       shiny::bindCache(selected_model_run(), input$activity_type, cache = data_cache)
