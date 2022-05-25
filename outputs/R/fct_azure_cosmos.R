@@ -139,8 +139,6 @@ cosmos_get_aggregation <- function(id, pod, measure, agg_col) {
       r.measure = '{measure}'
   ")
 
-  cat(qry, "\n")
-
   AzureCosmosR::query_documents(container, qry, partition_key = id) |>
     dplyr::as_tibble()
 }
