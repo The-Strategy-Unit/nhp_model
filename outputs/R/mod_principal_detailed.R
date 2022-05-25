@@ -13,14 +13,7 @@ mod_principal_detailed_ui <- function(id) {
     shiny::h1("Detailed activity estimates (principal projection)"),
     shiny::fluidRow(
       mod_measure_selection_ui(ns("measure_selection"), width = 3),
-      col_3(
-        selectInput(
-          ns("aggregation"),
-          "Aggregation",
-          # TODO: this should be taken from golem-config.yml
-          c("Age Group", "Treatment Specialty")
-        )
-      )
+      col_3(selectInput(ns("aggregation"), "Aggregation", NULL))
     ),
     shinycssloaders::withSpinner(
       gt::gt_output(ns("results"))
@@ -35,15 +28,35 @@ mod_principal_detailed_server <- function(id, selected_model_run, data_cache) {
   moduleServer(id, function(input, output, session) {
     selected_measure <- mod_measure_selection_server("measure_selection")
 
+    available_aggregations <- reactive({
+      id <- selected_model_run()
+
+      cosmos_get_available_aggregations(id)
+    }) |>
+      shiny::bindCache(selected_model_run(), cache = data_cache)
+
+    shiny::observe({
+      c(activity_type, pod, measure) %<-% selected_measure()
+
+      a <- available_aggregations()[[activity_type]] |>
+        stringr::str_subset("^default$", negate = TRUE) |>
+        stringr::str_remove_all("^.*\\+")
+
+      an <- c("age_group" = "Age Group", "tretspef" = "Treatment Specialty")
+
+      shiny::updateSelectInput(session, "aggregation", choices = unname(an[a]))
+    })
+
     selected_data <- reactive({
       id <- selected_model_run()
-      c(pod, measure) %<-% selected_measure()
+      c(activity_type, pod, measure) %<-% selected_measure()
 
-      agg_col <- switch(
-        req(input$aggregation),
+      agg_col <- switch(req(input$aggregation),
         "Age Group" = "age_group",
         "Treatment Specialty" = "tretspef"
       )
+
+      cat(paste("\"", c(id, pod, measure, input$aggregation, agg_col), "\"", sep = "", collapse = ", "), "\n")
 
       cosmos_get_aggregation(id, pod, measure, agg_col) |>
         dplyr::transmute(
@@ -54,7 +67,7 @@ mod_principal_detailed_server <- function(id, selected_model_run, data_cache) {
           change = final - baseline, change_pcnt = change / baseline
         )
     }) |>
-      shiny::bindCache(selected_model_run(), selected_measure(), cache = data_cache)
+      shiny::bindCache(selected_model_run(), selected_measure(), input$aggregation, cache = data_cache)
 
     output$results <- gt::render_gt({
       d <- selected_data()

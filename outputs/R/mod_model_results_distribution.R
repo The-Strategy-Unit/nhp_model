@@ -30,7 +30,7 @@ mod_model_results_distribution_server <- function(id, selected_model_run, data_c
 
     selected_data <- reactive({
       id <- selected_model_run()
-      c(pod, measure) %<-% selected_measure()
+      c(activity_type, pod, measure) %<-% selected_measure()
 
       cosmos_get_model_run_distribution(id, pod, measure)
     }) |>
