@@ -10,8 +10,11 @@
 mod_principal_detailed_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    h1("Detailed activity estimates (principal projection)"),
-    mod_measure_selection_ui(ns("measure_selection")),
+    shiny::h1("Detailed activity estimates (principal projection)"),
+    shiny::fluidRow(
+      mod_measure_selection_ui(ns("measure_selection"), width = 3),
+      col_3(selectInput(ns("aggregation"), "Aggregation", NULL))
+    ),
     shinycssloaders::withSpinner(
       gt::gt_output(ns("results"))
     )
@@ -23,19 +26,48 @@ mod_principal_detailed_ui <- function(id) {
 #' @noRd
 mod_principal_detailed_server <- function(id, selected_model_run, data_cache) {
   moduleServer(id, function(input, output, session) {
-    filtered_data <- mod_measure_selection_server("measure_selection", selected_model_run, data_cache)
+    selected_measure <- mod_measure_selection_server("measure_selection")
+
+    available_aggregations <- reactive({
+      id <- selected_model_run()
+
+      cosmos_get_available_aggregations(id)
+    }) |>
+      shiny::bindCache(selected_model_run(), cache = data_cache)
+
+    shiny::observe({
+      c(activity_type, pod, measure) %<-% selected_measure()
+
+      a <- available_aggregations()[[activity_type]] |>
+        stringr::str_subset("^default$", negate = TRUE) |>
+        stringr::str_remove_all("^.*\\+")
+
+      an <- c("age_group" = "Age Group", "tretspef" = "Treatment Specialty")
+
+      shiny::updateSelectInput(session, "aggregation", choices = unname(an[a]))
+    })
 
     selected_data <- reactive({
-      d <- filtered_data()
-      req(nrow(d) > 0)
+      id <- selected_model_run()
+      c(activity_type, pod, measure) %<-% selected_measure()
 
-      d |>
-        dplyr::filter(.data$type != "model") |>
-        dplyr::select(-.data$model_run, -.data$variant) |>
-        tidyr::pivot_wider(names_from = .data$type, values_from = .data$value, values_fill = 0) |>
-        dplyr::rename(final = .data$principal) |>
-        dplyr::mutate(change = final - baseline, change_pcnt = change / baseline)
-    })
+      agg_col <- switch(req(input$aggregation),
+        "Age Group" = "age_group",
+        "Treatment Specialty" = "tretspef"
+      )
+
+      cat(paste("\"", c(id, pod, measure, input$aggregation, agg_col), "\"", sep = "", collapse = ", "), "\n")
+
+      cosmos_get_aggregation(id, pod, measure, agg_col) |>
+        dplyr::transmute(
+          .data$sex,
+          agg = .data[[agg_col]],
+          .data$baseline,
+          final = .data$principal,
+          change = final - baseline, change_pcnt = change / baseline
+        )
+    }) |>
+      shiny::bindCache(selected_model_run(), selected_measure(), input$aggregation, cache = data_cache)
 
     output$results <- gt::render_gt({
       d <- selected_data()
@@ -53,7 +85,7 @@ mod_principal_detailed_server <- function(id, selected_model_run, data_cache) {
         ) |>
         gt::gt(groupname_col = "sex") |>
         gt::cols_label(
-          agg = attr(filtered_data(), "aggregation"),
+          agg = req(input$aggregation),
           baseline = "Baseline",
           final = "Final",
           change = "Change",
@@ -66,29 +98,6 @@ mod_principal_detailed_server <- function(id, selected_model_run, data_cache) {
           columns = c("agg", "final", "change", "change_pcnt")
         ) |>
         gt_theme()
-    })
-
-    observeEvent(input$activity_type, {
-      at <- req(input$activity_type)
-
-      p <- dropdown_options() |>
-        dplyr::filter(.data$activity_type == at) |>
-        dplyr::pull(.data$pod) |>
-        unique()
-
-      shiny::updateSelectInput(session, "pod", choices = p)
-    })
-
-    observeEvent(input$pod, {
-      at <- req(input$activity_type)
-      p <- req(input$pod)
-
-      m <- dropdown_options() |>
-        dplyr::filter(.data$activity_type == at, .data$pod == p) |>
-        dplyr::pull(.data$measure) |>
-        unique()
-
-      shiny::updateSelectInput(session, "measure", choices = m)
     })
   })
 }

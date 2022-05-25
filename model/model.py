@@ -6,6 +6,7 @@ Implements the generic class for all other model types.
 
 import os
 import pickle
+from collections import namedtuple
 from datetime import datetime
 
 import numpy as np
@@ -47,41 +48,35 @@ class Model:  # pylint: disable=too-many-instance-attributes
         # load the data that's shared across different model types
         with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
             self._hsa_gams = pickle.load(hsa_pkl)
-        self._load_demog_factors()
         # load the data. we only need some of the columns for the model, so just load what we need
-        data = (
-            self._load_parquet(self._model_type, columns_to_load)
-            # merge the demographic factors to the data
-            .merge(
-                self._demog_factors, left_on=["age", "sex"], right_index=True
-            ).groupby(["variant"])
-        )
-        # we now store the data in a dictionary keyed by the population variant
-        self.data = {
-            k: v.drop(["variant"], axis="columns").set_index(["rn"])
-            for k, v in tuple(data)
-        }
+        self.data = self._load_parquet(self._model_type, columns_to_load)
+        # now data is loaded we can load the demographic factors
+        self._load_demog_factors()
         # generate the run parameters
         self._generate_run_params()
-
-    def _select_variant(self, rng):
-        """
-        Randomly select a single variant to use for a model run
-        """
-        variant = rng.choice(self._variants, p=self._probabilities)
-        return (variant, self.data[variant])
 
     def _load_demog_factors(self):
         dfp = self.params["demographic_factors"]
         start_year = str(dfp["start_year"])
         end_year = str(dfp["end_year"])
 
+        merge_cols = ["age", "sex"]
+
         demog_factors = pd.read_csv(os.path.join(self._data_path, dfp["file"]))
-        demog_factors[["age", "sex"]] = demog_factors[["age", "sex"]].astype(int)
+        demog_factors[merge_cols] = demog_factors[merge_cols].astype(int)
         demog_factors["factor"] = demog_factors[end_year] / demog_factors[start_year]
-        self._demog_factors = demog_factors.set_index(["age", "sex"])[
-            ["variant", "factor"]
-        ]
+        demog_factors.set_index(merge_cols, inplace=True)
+
+        self._demog_factors = (
+            self.data[["rn"] + merge_cols]
+            .merge(
+                demog_factors.pivot(None, "variant", "factor"),
+                left_on=merge_cols,
+                right_index=True,
+            )
+            .drop(merge_cols, axis="columns")
+            .set_index("rn")
+        )
 
         self._variants = list(dfp["variant_probabilities"].keys())
         self._probabilities = list(dfp["variant_probabilities"].values())
@@ -228,19 +223,28 @@ class Model:  # pylint: disable=too-many-instance-attributes
         # get the run params
         run_params = self._get_run_params(model_run)
         rng = np.random.default_rng(run_params["seed"])
-        data = self.data[run_params["variant"]].copy()
-        # admission avoidance
-        aav_f = data["factor"]
-        data.drop(["factor"], axis="columns", inplace=True)
+        data = self.data.copy()
+        # demographics factor
+        aav_f = self._demog_factors[run_params["variant"]]
         # hsa
         hsa_f = self._health_status_adjustment(data, run_params)
         # choose which function to use
         return self._run(rng, data, run_params, aav_f, hsa_f)
 
-    @staticmethod
-    def aggregate(model_results):
+    def aggregate(self, model_results):
         """
         Aggregate the model results
 
         To be implemented by specific classes
         """
+
+    @staticmethod
+    def _create_agg(model_results, cols=None, name=None):
+        if name is None:
+            name = "+".join(cols) if cols else "default"
+        cols = ["pod", "measure"] + (cols if cols else [])
+        result = namedtuple("results", cols)
+        agg = model_results.groupby(cols)["value"].sum()
+        agg.index.names = agg.index.names[:-1] + ["measure"]
+
+        return {name: {result(*k): v for k, v in agg.iteritems()}}

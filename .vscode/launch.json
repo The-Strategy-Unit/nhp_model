@@ -59,7 +59,9 @@
       "program": "run_model.py",
       "args": [
         "sample_params.json",
-        "--model_runs=257",
+        "--run-start=-1",
+        "--model-runs=258",
+        "--run-postruns",
         "-b=8"
       ],
       "console": "integratedTerminal"
@@ -72,8 +74,9 @@
       "args": [
         "sample_params.json",
         "--save-type=cosmos",
-        "--results_path=nhp_results",
-        "--model_runs=257",
+        "--run-start=-1",
+        "--model-runs=258",
+        "--run-postruns",
         "-b=16"
       ],
       "console": "integratedTerminal"

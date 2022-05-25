@@ -7,37 +7,21 @@
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
-mod_measure_selection_ui <- function(id, aggregation = TRUE) {
+mod_measure_selection_ui <- function(id, width = 4) {
   ns <- NS(id)
 
-  width <- if (aggregation) 3 else 4
-
   tagList(
-    fluidRow(
-      column(width, selectInput(ns("activity_type"), "Activity Type", NULL)),
-      column(width, selectInput(ns("pod"), "POD", NULL)),
-      column(width, selectInput(ns("measure"), "Measure", NULL)),
-      # no matter what, we need to include this input, but we can hide it with CSS
-      column(
-        width,
-        style = glue::glue("display: {if (aggregation) 'block' else 'none'}"),
-        selectInput(
-          ns("aggregation"),
-          "Aggregation",
-          # TODO: this should be taken from golem-config.yml
-          c("Age Group", "Treatment Specialty")
-        )
-      )
-    )
+    column(width, selectInput(ns("activity_type"), "Activity Type", NULL)),
+    column(width, selectInput(ns("pod"), "POD", NULL)),
+    column(width, selectInput(ns("measure"), "Measure", NULL))
   )
 }
 
 #' measure_selection Server Functions
 #'
 #' @noRd
-mod_measure_selection_server <- function(id, selected_model_run, data_cache) {
+mod_measure_selection_server <- function(id) {
   moduleServer(id, function(input, output, session) {
-
     atpmo <- get_activity_type_pod_measure_options()
 
     # handle onload
@@ -79,29 +63,16 @@ mod_measure_selection_server <- function(id, selected_model_run, data_cache) {
       shiny::updateSelectInput(session, "measure", choices = measures)
     })
 
-    filtered_data <- reactive({
-      c(ds, sc, cd) %<-% selected_model_run()
-
+    selected_measure <- reactive({
+      at <- req(input$activity_type)
       p <- req(input$pod)
       m <- req(input$measure)
 
       # ensure a valid set of pod/measure has been selected. If activity type changes we may end up with invalid options
       req(nrow(dplyr::filter(atpmo, .data$pod == p, .data$measures == m)) > 0)
 
-      agg_col <- switch(req(input$aggregation),
-        "Age Group" = "age_group",
-        "Treatment Specialty" = "tretspef"
-      )
-
-      d <- cosmos_get_aggregation(ds, sc, cd, p, m, agg_col) |>
-        dplyr::rename(agg = tidyselect::all_of(agg_col))
-
-      attr(d, "aggregation") <- input$aggregation
-
-      return(d)
-    }) |>
-      shiny::bindCache(selected_model_run(), input$pod, input$measure, input$aggregation, cache = data_cache)
-
-    return(filtered_data)
+      c(activity_type = at, pod = p, measure = m)
+    })
+    return(selected_measure)
   })
 }

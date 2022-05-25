@@ -28,6 +28,7 @@ mod_params_upload_ui <- function(id) {
     shiny::textInput(ns("start_year"), "Start Year"),
     shiny::textInput(ns("end_year"), "End Year"),
     shiny::textInput(ns("model_iterations"), "Model Iterations"),
+    shiny::textInput(ns("user"), "Submitting User"),
     shiny::actionButton(ns("submit_model_run"), "Submit Model Run"),
     shiny::downloadButton(ns("download_params"), "Download params.json")
   )
@@ -220,6 +221,7 @@ mod_params_upload_server <- function(id) {
       shiny::updateTextInput(session, "start_year", value = p$start_year)
       shiny::updateTextInput(session, "end_year", value = p$end_year)
       shiny::updateTextInput(session, "model_iterations", value = p$model_runs)
+      shiny::updateTextInput(session, "user", value = session$user)
 
       # demographics
       vp <- p$demographic_factors$variant_probabilities
@@ -346,6 +348,8 @@ mod_params_upload_server <- function(id) {
 
     shiny::observeEvent(input$submit_model_run, {
       params <- shiny::req(params())
+
+      params[["submitted_by"]] <- session$user
 
       shinyjs::disable("submit_model_run")
       shiny::updateActionButton(session, "submit_model_run", "Submitted...")

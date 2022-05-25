@@ -11,7 +11,9 @@ mod_model_results_distribution_ui <- function(id) {
   ns <- NS(id)
   tagList(
     h1("Simulation Results"),
-    mod_measure_selection_ui(ns("measure_selection"), FALSE),
+    fluidRow(
+      mod_measure_selection_ui(ns("measure_selection"), 4),
+    ),
     shiny::checkboxInput(ns("show_origin"), "Show Origin (zero)?"),
     shinycssloaders::withSpinner(
       plotly::plotlyOutput(ns("distribution"), height = "800px")
@@ -24,23 +26,21 @@ mod_model_results_distribution_ui <- function(id) {
 #' @noRd
 mod_model_results_distribution_server <- function(id, selected_model_run, data_cache) {
   moduleServer(id, function(input, output, session) {
-    filtered_data <- mod_measure_selection_server("measure_selection", selected_model_run, data_cache)
+    selected_measure <- mod_measure_selection_server("measure_selection")
 
     selected_data <- reactive({
-      d <- filtered_data()
-      req(nrow(d) > 0)
+      id <- selected_model_run()
+      c(activity_type, pod, measure) %<-% selected_measure()
 
-      d |>
-        dplyr::filter(.data$type != "principal") |>
-        dplyr::group_by(.data$model_run, .data$variant) |>
-        dplyr::summarise(dplyr::across(.data$value, sum), .groups = "drop")
-    })
+      cosmos_get_model_run_distribution(id, pod, measure)
+    }) |>
+      shiny::bindCache(selected_model_run(), selected_measure(), cache = data_cache)
 
     output$distribution <- plotly::renderPlotly({
       d <- req(selected_data())
       req(nrow(d) > 0)
 
-      b <- dplyr::filter(d, .data$model_run == -1)$value
+      b <- d$baseline[[1]]
 
       colour_scale <- ggplot2::scale_fill_manual(values = c(
         "principal" = "#f9bf07",
@@ -50,8 +50,6 @@ mod_model_results_distribution_server <- function(id, selected_model_run, data_c
 
       p1 <- plotly::ggplotly({
         d |>
-          dplyr::filter(.data$model_run > 0) |>
-          dplyr::mutate(dplyr::across(.data$value, as.integer)) |>
           ggplot2::ggplot(aes(.data$value)) +
           ggplot2::geom_density(fill = "#f9bf07", colour = "#2c2825", alpha = 0.5) +
           ggplot2::geom_vline(xintercept = b) +
@@ -65,8 +63,6 @@ mod_model_results_distribution_server <- function(id, selected_model_run, data_c
 
       p2 <- plotly::ggplotly({
         d |>
-          dplyr::filter(.data$model_run > 0) |>
-          dplyr::mutate(dplyr::across(.data$value, as.integer)) |>
           ggplot2::ggplot(aes("1", .data$value, colour = .data$variant)) +
           # ggplot2::geom_violin(show.legend = FALSE) +
           ggbeeswarm::geom_quasirandom(groupOnX = TRUE, alpha = 0.5) +
