@@ -54,6 +54,8 @@ class ModelSave:
             "scenario": self._scenario,
             "create_datetime": self._create_datetime,
             "model_runs": self._model_runs,
+            "start_year": params["demographic_factors"]["start_year"],
+            "end_year": params["demographic_factors"]["end_year"],
         }
 
     def set_model(self, model):
@@ -249,7 +251,7 @@ class CosmosDBSave(ModelSave):
     def _upload_change_factors(self):
         def agg_fn(change_factor):
             acf = (
-                change_factor.drop(["dataset", "measure"], axis="columns")
+                change_factor.drop(["activity_type", "measure"], axis="columns")
                 .set_index(["change_factor", "strategy", "model_run"])
                 .unstack(fill_value=0)
                 .stack()
@@ -278,7 +280,7 @@ class CosmosDBSave(ModelSave):
                     {"measure": m, "change_factors": agg_fn(v2)}
                     for m, v2 in tuple(v1.groupby(["measure"]))
                 ]
-                for d, v1 in tuple(change_factors.groupby(["dataset"]))
+                for d, v1 in tuple(change_factors.groupby(["activity_type"]))
             },
         }
 
