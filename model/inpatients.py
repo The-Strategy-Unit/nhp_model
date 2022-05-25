@@ -391,15 +391,13 @@ class InpatientsModel(Model):
         ip_rows.loc[ip_rows["classpat"] == "5", "pod"] += "_birth-episode"
 
         ip_rows["beddays"] = ip_rows["speldur"] + 1
-        measures = (
+        ip_rows = (
             ip_rows.assign(admissions=1)
             .reset_index()
-            .melt(["rn"], ["admissions", "beddays"], "measure")
+            .melt(["rn", "age_group", "sex", "tretspef", "pod"], ["admissions", "beddays"], "measure")
         )
 
-        model_results = pd.concat(
-            [op_rows, ip_rows.merge(measures, left_index=True, right_on="rn")]
-        )
+        model_results = pd.concat([op_rows, ip_rows])
 
         return {
             **self._create_agg(model_results),
