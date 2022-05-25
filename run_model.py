@@ -77,7 +77,7 @@ def multi_model_runs(save_model, run_start, model_runs, n_cpus=1, batch_size=16)
                     range(run_start, run_end),
                     chunksize=batch_size,
                 ),
-                f"Running {save_model._model.__class__.__name__}",
+                f"Running {save_model._model.__class__.__name__[:-5].rjust(11)} model",  # pylint: disable=protected-access
                 total=model_runs,
             )
         )
@@ -221,7 +221,7 @@ def main():
         list(map(runner, models.values()))
 
         if args.run_postruns:
-            print("Running post-runs step:")
+            print("Running         post-runs")
             save_model.post_runs()
 
 
