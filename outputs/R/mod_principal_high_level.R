@@ -106,7 +106,7 @@ mod_principal_high_level_server <- function(id, selected_model_run, data_cache) 
         dplyr::filter(.data$activity_type == .env$activity_type)
 
       p <- d |>
-        ggplot2::ggplot(aes(.data$year, .data$value, colour = .data$pod)) +
+        ggplot2::ggplot(aes(.data$year, .data$value, colour = .data$pod_name)) +
         ggplot2::geom_line() +
         ggplot2::geom_point() +
         ggplot2::scale_x_continuous(
