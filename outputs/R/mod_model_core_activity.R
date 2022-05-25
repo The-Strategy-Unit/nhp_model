@@ -25,31 +25,8 @@ mod_model_core_activity_server <- function(id, selected_model_run, data_cache) {
     atpmo <- get_activity_type_pod_measure_options()
 
     summarised_data <- reactive({
-      c(ds, sc, cd) %<-% selected_model_run()
-
-      d <- cosmos_get_model_core_activity(ds, sc, cd) |>
-        # if there are any model runs that had no data, add them back in with a value of 0
-        tidyr::complete(
-          tidyr::nesting(pod, measure),
-          .data$model_run,
-          fill = list(value = 0)
-        )
-
-      baseline <- d |>
-        dplyr::filter(.data$model_run == -1) |>
-        dplyr::select(.data$pod, .data$measure, baseline = .data$value)
-
-      model <- d |>
-        dplyr::filter(.data$model_run > 0) |>
-        dplyr::group_by(.data$pod, .data$measure) |>
-        dplyr::summarise(
-          mean = mean(.data$value),
-          lwr.ci = quantile(.data$value, 0.05),
-          upr.ci = quantile(.data$value, 0.95),
-          .groups = "drop"
-        )
-
-      inner_join(baseline, model, by = c("pod", "measure")) |>
+      id <- selected_model_run()
+      cosmos_get_model_core_activity(id) |>
         inner_join(atpmo, by = c("pod", "measure" = "measures"))
     }) |>
       shiny::bindCache(selected_model_run(), cache = data_cache)
@@ -61,22 +38,22 @@ mod_model_core_activity_server <- function(id, selected_model_run, data_cache) {
           .data$pod_name,
           .data$measure,
           .data$baseline,
-          .data$mean,
-          .data$lwr.ci,
-          .data$upr.ci
+          .data$median,
+          .data$lwr_ci,
+          .data$upr_ci
         ) |>
         gt::gt(groupname_col = c("activity_type_name", "pod_name")) |>
-        gt::fmt_integer(c("baseline", "mean", "lwr.ci", "upr.ci")) |>
+        gt::fmt_integer(c("baseline", "median", "lwr_ci", "upr_ci")) |>
         gt::cols_label(
           "measure" = "Measure",
           "baseline" = "Baseline",
-          "mean" = "Central Estimate",
-          "lwr.ci" = "Lower",
-          "upr.ci" = "Upper"
+          "median" = "Central Estimate",
+          "lwr_ci" = "Lower",
+          "upr_ci" = "Upper"
         ) |>
         gt::tab_spanner(
           "90% Confidence Interval",
-          c("lwr.ci", "upr.ci")
+          c("lwr_ci", "upr_ci")
         ) |>
         gt_theme()
     })

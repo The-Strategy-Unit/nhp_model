@@ -30,9 +30,7 @@ mod_principal_detailed_server <- function(id, selected_model_run, data_cache) {
       req(nrow(d) > 0)
 
       d |>
-        dplyr::filter(.data$type != "model") |>
-        dplyr::select(-.data$model_run, -.data$variant) |>
-        tidyr::pivot_wider(names_from = .data$type, values_from = .data$value, values_fill = 0) |>
+        dplyr::select(-(.data$median:.data$upr_ci)) |>
         dplyr::rename(final = .data$principal) |>
         dplyr::mutate(change = final - baseline, change_pcnt = change / baseline)
     })
@@ -66,29 +64,6 @@ mod_principal_detailed_server <- function(id, selected_model_run, data_cache) {
           columns = c("agg", "final", "change", "change_pcnt")
         ) |>
         gt_theme()
-    })
-
-    observeEvent(input$activity_type, {
-      at <- req(input$activity_type)
-
-      p <- dropdown_options() |>
-        dplyr::filter(.data$activity_type == at) |>
-        dplyr::pull(.data$pod) |>
-        unique()
-
-      shiny::updateSelectInput(session, "pod", choices = p)
-    })
-
-    observeEvent(input$pod, {
-      at <- req(input$activity_type)
-      p <- req(input$pod)
-
-      m <- dropdown_options() |>
-        dplyr::filter(.data$activity_type == at, .data$pod == p) |>
-        dplyr::pull(.data$measure) |>
-        unique()
-
-      shiny::updateSelectInput(session, "measure", choices = m)
     })
   })
 }

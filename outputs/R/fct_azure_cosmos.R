@@ -10,156 +10,144 @@ cosmos_get_container <- function(container) {
   AzureCosmosR::get_cosmos_container(db, container)
 }
 
-cosmos_get_datasets <- function() {
+cosmos_get_result_sets <- function() {
   container <- cosmos_get_container("results")
 
-  qry <- glue::glue("
-SELECT DISTINCT
-    c.dataset
-FROM c
-WHERE
-    c.model_run = 0
-")
-  AzureCosmosR::query_documents(container, qry, cross_partion = FALSE, partition_key = 0) |>
-    purrr::pluck("dataset") |>
-    sort()
-}
-
-cosmos_get_scenarios <- function(ds) {
-  container <- cosmos_get_container("results")
-
-  qry <- glue::glue("
-SELECT DISTINCT
-    c.scenario
-FROM c
-WHERE
-    c.model_run = 0
-AND
-    c.dataset = '{ds}'
-")
-  AzureCosmosR::query_documents(container, qry, cross_partion = FALSE, partition_key = 0) |>
-    purrr::pluck("scenario") |>
-    sort()
-}
-
-cosmos_get_create_datetimes <- function(ds, sc) {
-  container <- cosmos_get_container("results")
-
-  qry <- glue::glue("
-SELECT DISTINCT
-    c.create_datetime
-FROM c
-WHERE
-    c.model_run = 0
-AND
-    c.dataset = '{ds}'
-AND
-    c.scenario = '{sc}'
-")
-  AzureCosmosR::query_documents(container, qry, cross_partion = FALSE, partition_key = 0) |>
-    purrr::pluck("create_datetime") |>
-    sort()
-}
-
-cosmos_get_params <- function(ds, sc, cd) {
-  container <- cosmos_get_container("params")
-
-  id <- glue::glue("{ds}|{sc}|{cd}")
-
-  AzureCosmosR::get_document(container, id, id)$data
-}
-
-cosmos_get_principal_highlevel <- function(ds, sc, cd) {
-  container <- cosmos_get_container("results")
-
-  qry <- glue::glue("
-SELECT
-    c.model_run,
-    r.pod,
-    r[\"value\"]
-FROM c
-JOIN r IN c.results[\"default\"]
-WHERE
-    c.model_run <= 0
-AND
-    c.id LIKE '{ds}|{sc}|{cd}|%'
-AND
-    r.measure IN ('admissions', 'attendances', 'procedures', 'ambulance', 'walk-in')
-")
-
+  qry <- "SELECT c.id, c.dataset, c.scenario, c.create_datetime FROM c"
   AzureCosmosR::query_documents(container, qry) |>
+    dplyr::bind_rows() |>
+    dplyr::arrange(dplyr::across(tidyselect::everything()))
+}
+
+cosmos_get_model_run_years <- function(id) {
+  container <- cosmos_get_container("results")
+
+  qry <- "SELECT c.start_year, c.end_year FROM c"
+  AzureCosmosR::query_documents(
+    container, qry,
+    partition_key = id,
+    as_data_frame = FALSE,
+    metadata = FALSE
+  )[[1]]$data
+}
+
+cosmos_get_principal_highlevel <- function(id) {
+  container <- cosmos_get_container("results")
+
+  qry <- paste(
+    "SELECT r.pod, r.baseline, r.principal",
+    "FROM c JOIN r in c.results['default']",
+    "WHERE r.measure NOT IN ('beddays', 'tele_attendances')"
+  )
+
+  AzureCosmosR::query_documents(container, qry, partition_key = id) |>
     dplyr::as_tibble() |>
     dplyr::mutate(
-      dplyr::across(.data$model_run, model_run_type),
       dplyr::across(.data$pod, ~ ifelse(stringr::str_starts(.x, "aae"), "aae", .x))
     ) |>
-    dplyr::count(.data$model_run, .data$pod, wt = .data$value)
+    dplyr::group_by(.data$pod) |>
+    dplyr::summarise(dplyr::across(where(is.numeric), sum))
 }
 
-cosmos_get_model_core_activity <- function(ds, sc, cd) {
+cosmos_get_model_core_activity <- function(id) {
   container <- cosmos_get_container("results")
 
   qry <- glue::glue("
-SELECT
-    c.model_run,
-    r.pod,
-    r.measure,
-    r[\"value\"]
-FROM c
-JOIN r IN c.results[\"default\"]
-WHERE
-    c.model_run != 0
-AND
-    c.id LIKE '{ds}|{sc}|{cd}|%'
-")
+    SELECT
+      r.pod,
+      r.measure,
+      r.baseline,
+      r.median,
+      r.lwr_ci,
+      r.upr_ci
+    FROM c
+    JOIN r IN c.results[\"default\"]
+  ")
 
-  AzureCosmosR::query_documents(container, qry) |>
+  AzureCosmosR::query_documents(container, qry, partition_key = id) |>
     dplyr::as_tibble()
 }
 
-cosmos_get_aggregation <- function(ds, sc, cd, pod, measure, agg_col) {
+cosmos_get_model_run_distribution <- function(id, pod, measure) {
+  container <- cosmos_get_container("results")
+
+  variants <- AzureCosmosR::query_documents(
+    container,
+    "SELECT c.selected_variants FROM c",
+    partition_key = id,
+    as_data_frame = FALSE,
+    metadata = FALSE
+  ) |>
+    purrr::pluck(1, "data", "selected_variants") |>
+    {\(.x) .x[-1]}() |>
+    tibble::enframe("model_run", "variant")
+
+  qry <- glue::glue("
+    SELECT
+        r.baseline,
+        r.model_runs
+    FROM c
+    JOIN r IN c.results[\"default\"]
+    WHERE
+        r.pod = '{pod}'
+    AND
+        r.measure = '{measure}'
+  ")
+
+  AzureCosmosR::query_documents(container, qry, partition_key = id) |>
+    dplyr::as_tibble() |>
+    dplyr::mutate(
+      dplyr::across(
+        .data$model_runs,
+        purrr::map,
+        tibble::enframe,
+        name = "model_run"
+      )
+    ) |>
+    tidyr::unnest(.data$model_runs) |>
+    dplyr::inner_join(variants, by = "model_run")
+}
+
+cosmos_get_aggregation <- function(id, pod, measure, agg_col) {
   container <- cosmos_get_container("results")
 
   agg_type <- glue::glue("sex+{agg_col}")
   qry <- glue::glue("
-SELECT
-    c.model_run,
-    c.selected_variant as variant,
-    r.sex,
-    r.{agg_col},
-    r[\"value\"]
-FROM c
-JOIN r IN c.results[\"{agg_type}\"]
-WHERE
-    c.id LIKE '{ds}|{sc}|{cd}|%'
-AND
-    r.pod = '{pod}'
-AND
-    r.measure = '{measure}'
-")
+    SELECT
+      r.sex,
+      r.{agg_col},
+      r.baseline,
+      r.principal,
+      r.median,
+      r.lwr_ci,
+      r.upr_ci
+    FROM c
+    JOIN r in c.results[\"{agg_type}\"]
+    WHERE
+      r.pod = '{pod}'
+    AND
+      r.measure = '{measure}'
+  ")
 
-  AzureCosmosR::query_documents(container, qry) |>
-    dplyr::as_tibble() |>
-    dplyr::mutate(type = model_run_type(.data$model_run))
+  AzureCosmosR::query_documents(container, qry, partition_key = id) |>
+    dplyr::as_tibble()
 }
 
-cosmos_get_principal_change_factors <- function(ds, sc, cd, activity_type) {
-  container <- cosmos_get_container("results")
+cosmos_get_principal_change_factors <- function(id, activity_type) {
+  container <- cosmos_get_container("change_factors")
 
   qry <- glue::glue("
-SELECT
-    r.change_factor,
-    r.strategy,
-    r.measure,
-    r[\"value\"]
-FROM c
-JOIN r IN c.change_factors
-WHERE
-    c.id LIKE '{ds}|{sc}|{cd}|{activity_type}'
-AND
-    c.model_run = 0
-")
+    SELECT
+      r.measure,
+      s.change_factor,
+      s.strategy,
+      s.baseline ?? s[\"value\"][0] \"value\"
+    FROM c
+    JOIN r IN c.{activity_type}
+    JOIN s IN r.change_factors
+  ")
 
-  AzureCosmosR::query_documents(container, qry) |>
-    dplyr::as_tibble()
+  AzureCosmosR::query_documents(container, qry, partition_key = id) |>
+    dplyr::as_tibble() |>
+    dplyr::mutate(dplyr::across(.data$strategy, tidyr::replace_na, "-"))
 }

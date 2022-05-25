@@ -57,11 +57,13 @@ mod_principal_change_factor_effects_server <- function(id, selected_model_run, d
     principal_change_factors <- reactive({
       at <- req(input$activity_type)
 
-      c(ds, sc, cd) %<-% selected_model_run()
+      id <- selected_model_run()
 
-      cosmos_get_principal_change_factors(ds, sc, cd, at) |>
+      cosmos_get_principal_change_factors(id, at) |>
         dplyr::mutate(
-          dplyr::across(.data$change_factor, forcats::fct_inorder)
+          # TODO: sort out order manually?
+          dplyr::across(.data$change_factor, forcats::fct_inorder),
+          dplyr::across(.data$change_factor, forcats::fct_relevel, "baseline")
         )
     }) |>
       shiny::bindCache(selected_model_run(), input$activity_type, cache = data_cache)

@@ -20,50 +20,53 @@ mod_result_selection_ui <- function(id) {
 #'
 #' @noRd
 mod_result_selection_server <- function(id) {
-
   moduleServer(id, function(input, output, session) {
+    results_sets <- reactive({
+      cosmos_get_result_sets() |>
+        dplyr::relocate(.data$id, .after = tidyselect::everything()) |>
+        dplyr::group_nest(.data$dataset, .data$scenario, .key = "create_datetime") |>
+        dplyr::mutate(
+          dplyr::across(.data$create_datetime, purrr::map, tibble::deframe)
+        ) |>
+        dplyr::group_nest(dataset, .key = "scenario") |>
+        dplyr::mutate(
+          dplyr::across(.data$scenario, purrr::map, tibble::deframe)
+        ) |>
+        tibble::deframe()
+    })
 
     observe({
-      datasets <- cosmos_get_datasets()
-
+      datasets <- names(results_sets())
       shiny::updateSelectInput(session, "dataset", choices = datasets)
     })
 
-    observe(
-      {
-        ds <- shiny::req(input$dataset)
+    observe({
+      ds <- shiny::req(input$dataset)
+      scenarios <- names(results_sets()[[ds]])
+      shiny::updateSelectInput(session, "scenario", choices = scenarios)
+    })
 
-        scenarios <- cosmos_get_scenarios(ds)
+    observe({
+      ds <- shiny::req(input$dataset)
+      sc <- shiny::req(input$scenario)
 
-        shiny::updateSelectInput(session, "scenario", choices = scenarios)
-      },
-      priority = 90
-    )
+      labels <- \(.x) .x |>
+        lubridate::as_datetime("%Y%m%d_%H%M%S", tz = "UTC") |>
+        lubridate::with_tz() |>
+        format("%d/%m/%Y %H:%M:%S")
 
-    observe(
-      {
-        ds <- shiny::req(input$dataset)
-        sc <- shiny::req(input$scenario)
+      create_datetimes <- names(results_sets()[[ds]][[sc]]) |>
+        purrr::set_names(labels)
 
-        labels <- \(.x) .x |>
-          lubridate::as_datetime("%Y%m%d_%H%M%S", tz = "UTC") |>
-          lubridate::with_tz() |>
-          format("%d/%m/%Y %H:%M:%S")
-
-        create_datetimes <- cosmos_get_create_datetimes(ds, sc) |>
-          purrr::set_names(labels)
-
-        shiny::updateSelectInput(session, "create_datetime", choices = create_datetimes)
-      },
-      priority = 80
-    )
+      shiny::updateSelectInput(session, "create_datetime", choices = create_datetimes)
+    })
 
     selected_model_run <- reactive({
       ds <- shiny::req(input$dataset)
       sc <- shiny::req(input$scenario)
       cd <- shiny::req(input$create_datetime)
 
-      list(dataset = ds, scenario = sc, create_datetime = cd)
+      results_sets()[[ds]][[sc]][[cd]]
     })
 
     return(selected_model_run)

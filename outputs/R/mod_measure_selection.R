@@ -72,6 +72,14 @@ mod_measure_selection_server <- function(id, selected_model_run, data_cache) {
       at <- req(input$activity_type)
       p <- req(input$pod)
 
+      # TODO: could there be a better way of handling this?
+      aggregations <- c("Age Group", "Treatment Specialty")
+      if (at == "aae") {
+        shiny::updateSelectInput(session, "aggregation", choices = aggregations[1])
+      } else {
+        shiny::updateSelectInput(session, "aggregation", choices = aggregations)
+      }
+
       measures <- atpmo |>
         dplyr::filter(.data$activity_type == at, .data$pod == p) |>
         purrr::pluck("measures")
@@ -80,7 +88,7 @@ mod_measure_selection_server <- function(id, selected_model_run, data_cache) {
     })
 
     filtered_data <- reactive({
-      c(ds, sc, cd) %<-% selected_model_run()
+      id <- selected_model_run()
 
       p <- req(input$pod)
       m <- req(input$measure)
@@ -93,7 +101,7 @@ mod_measure_selection_server <- function(id, selected_model_run, data_cache) {
         "Treatment Specialty" = "tretspef"
       )
 
-      d <- cosmos_get_aggregation(ds, sc, cd, p, m, agg_col) |>
+      d <- cosmos_get_aggregation(id, p, m, agg_col) |>
         dplyr::rename(agg = tidyselect::all_of(agg_col))
 
       attr(d, "aggregation") <- input$aggregation

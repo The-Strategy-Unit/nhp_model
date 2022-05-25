@@ -60,13 +60,12 @@ mod_principal_high_level_server <- function(id, selected_model_run, data_cache) 
       dplyr::mutate(dplyr::across(.data$pod_name, forcats::fct_inorder))
 
     summary_data <- reactive({
-      c(ds, sc, cd) %<-% selected_model_run()
+      id <- selected_model_run()
 
-      params <- cosmos_get_params(ds, sc, cd)
+      c(start_year, end_year) %<-% cosmos_get_model_run_years(id)
 
-      c(start_year, end_year) %<-% params[["demographic_factors"]][c("start_year", "end_year")]
-
-      cosmos_get_principal_highlevel(ds, sc, cd) |>
+      cosmos_get_principal_highlevel(id) |>
+        tidyr::pivot_longer(-.data$pod, names_to = "model_run") |>
         dplyr::mutate(year = ifelse(.data$model_run == "baseline", start_year, end_year)) |>
         dplyr::select(-.data$model_run) |>
         tidyr::complete(
@@ -74,9 +73,10 @@ mod_principal_high_level_server <- function(id, selected_model_run, data_cache) 
           .data$pod
         ) |>
         dplyr::inner_join(pods, by = "pod") |>
-        dplyr::group_by(.data$activity_type, pod = .data$pod_name) |>
+        dplyr::select(-.data$pod) |>
+        dplyr::group_by(.data$activity_type, .data$pod_name) |>
         dplyr::mutate(
-          dplyr::across(n, purrr::compose(as.integer, zoo::na.approx)),
+          dplyr::across(.data$value, purrr::compose(as.integer, zoo::na.approx)),
           fyear = fyear_str(.data$year)
         ) |>
         dplyr::ungroup()
@@ -86,14 +86,14 @@ mod_principal_high_level_server <- function(id, selected_model_run, data_cache) 
     output$activity <- gt::render_gt({
       summary_data() |>
         dplyr::select(-.data$activity_type, -.data$year) |>
-        tidyr::pivot_wider(names_from = .data$fyear, values_from = .data$n) |>
+        tidyr::pivot_wider(names_from = .data$fyear, values_from = .data$value) |>
         gt::gt() |>
         gt::cols_align(
           align = "left",
-          columns = "pod"
+          columns = "pod_name"
         ) |>
         gt::cols_label(
-          "pod" = ""
+          "pod_name" = ""
         ) |>
         gt::fmt_integer(tidyselect::matches("\\d{4}/\\d{2}")) |>
         gt_theme()
@@ -106,7 +106,7 @@ mod_principal_high_level_server <- function(id, selected_model_run, data_cache) 
         dplyr::filter(.data$activity_type == .env$activity_type)
 
       p <- d |>
-        ggplot2::ggplot(aes(.data$year, .data$n, colour = .data$pod)) +
+        ggplot2::ggplot(aes(.data$year, .data$value, colour = .data$pod)) +
         ggplot2::geom_line() +
         ggplot2::geom_point() +
         ggplot2::scale_x_continuous(
