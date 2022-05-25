@@ -19,6 +19,14 @@ cosmos_get_result_sets <- function() {
     dplyr::arrange(dplyr::across(tidyselect::everything()))
 }
 
+cosmos_get_available_aggregations <- function(id) {
+  container <- cosmos_get_container("results")
+
+  qry <- glue::glue("SELECT c.available_aggregations FROM c")
+  AzureCosmosR::query_documents(container, qry, partition_key = id, as_data_frame = FALSE) |>
+    purrr::pluck(1, "data", "available_aggregations")
+}
+
 cosmos_get_model_run_years <- function(id) {
   container <- cosmos_get_container("results")
 
@@ -79,7 +87,9 @@ cosmos_get_model_run_distribution <- function(id, pod, measure) {
     metadata = FALSE
   ) |>
     purrr::pluck(1, "data", "selected_variants") |>
-    {\(.x) .x[-1]}() |>
+    {
+      \(.x) .x[-1]
+    }() |>
     tibble::enframe("model_run", "variant")
 
   qry <- glue::glue("
@@ -128,6 +138,8 @@ cosmos_get_aggregation <- function(id, pod, measure, agg_col) {
     AND
       r.measure = '{measure}'
   ")
+
+  cat(qry, "\n")
 
   AzureCosmosR::query_documents(container, qry, partition_key = id) |>
     dplyr::as_tibble()
