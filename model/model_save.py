@@ -46,6 +46,15 @@ class ModelSave:
         os.makedirs(self._ar_path, exist_ok=True)
         self._cf_path = os.path.join(self._temp_path, "change_factors")
         os.makedirs(self._cf_path, exist_ok=True)
+        #
+        # TODO: add in who submitted the model run
+        self._item_base = {
+            "id": self._run_id,
+            "dataset": self._dataset,
+            "scenario": self._scenario,
+            "create_datetime": self._create_datetime,
+            "model_runs": self._model_runs,
+        }
 
     def set_model(self, model):
         """Set the current model"""
@@ -81,14 +90,27 @@ class ModelSave:
             os.makedirs(mr_path, exist_ok=True)
             results.to_parquet(f"{mr_path}/0.parquet")
             # save change factors
-            change_factors.assign(model_run=model_run).to_csv(
-                f"{self._cf_path}/{activity_type}_{model_run}.csv"
-            )
+            change_factors.assign(
+                activity_type=activity_type, model_run=model_run
+            ).to_csv(f"{self._cf_path}/{activity_type}_{model_run}.csv", index=False)
 
         # save aggregated results
         aggregated_results = model.aggregate(results)
         with open(f"{self._ar_path}/{activity_type}_{model_run}.dill", "wb") as arf:
             dill.dump(aggregated_results, arf)
+
+    def post_runs(self):
+        """Post running of all model runs"""
+        # save params
+        os.makedirs(pr_path := f"{self._base_results_path}/params", exist_ok=True)
+        with open(f"{pr_path}/{self._run_id}.json", "w", encoding="UTF-8") as prf:
+            json.dump(self._params, prf)
+        # save run params
+        os.makedirs(pr_path := f"{self._base_results_path}/run_params", exist_ok=True)
+        with open(f"{pr_path}/{self._run_id}.json", "w", encoding="UTF-8") as prf:
+            json.dump(self._model.run_params, prf)
+        # clean up temporary files
+        shutil.rmtree(self._temp_path)
 
     def _combine_aggregated_results(self):
         aggregated_results = {}
@@ -97,7 +119,14 @@ class ModelSave:
             for model_run in range(-1, self._model_runs + 1):
                 with open(f"{self._ar_path}/{dataset}_{model_run}.dill", "rb") as arf:
                     aggregated_results[dataset].append(dill.load(arf))
-        return self._flip_results(aggregated_results)
+
+        flipped_results = self._flip_results(aggregated_results)
+        return {
+            **self._item_base,
+            "available_aggregations": list(flipped_results.keys()),
+            "selected_variants": self._model.run_params["variant"],
+            "results": flipped_results,
+        }
 
     @staticmethod
     def _flip_results(results):
@@ -141,6 +170,7 @@ class ModelSave:
                         ),
                     }
                     for k2, v2 in v1.items()
+                    if sum(v2) > 0  # skip if this aggregation has no activity
                 ]
                 for k1, v1 in flipped.items()
             }
@@ -163,10 +193,6 @@ class LocalSave(ModelSave):
 
     def post_runs(self):
         """Post running of all model runs"""
-        # save params
-        os.makedirs(pr_path := f"{self._base_results_path}/params", exist_ok=True)
-        with open(f"{pr_path}/{self._run_id}.json", "w", encoding="UTF-8") as prf:
-            json.dump(self._params, prf)
 
         # save aggregated results
         os.makedirs(
@@ -179,10 +205,12 @@ class LocalSave(ModelSave):
         os.makedirs(
             cf_path := f"{self._base_results_path}/changed_factors", exist_ok=True
         )
-        self._combine_change_factors().to_csv(f"{cf_path}/{self._run_id}.csv")
+        self._combine_change_factors().to_csv(
+            f"{cf_path}/{self._run_id}.csv", index=False
+        )
 
-        # clean up temporary files
-        shutil.rmtree(self._temp_path)
+        # call base method
+        super().post_runs()
 
 
 class CosmosDBSave(ModelSave):
@@ -207,8 +235,7 @@ class CosmosDBSave(ModelSave):
         """Post running of all model runs"""
         self._upload_results()
         self._upload_change_factors()
-        self._upload_params()
-        shutil.rmtree(self._temp_path)
+        super().post_runs()
 
     def _upload_results(self):
         aggregated_results = self._combine_aggregated_results()
@@ -245,7 +272,7 @@ class CosmosDBSave(ModelSave):
         change_factors = self._combine_change_factors()
 
         item = {
-            "id": self._run_id,
+            **self._item_base,
             **{
                 d: [
                     {"measure": m, "change_factors": agg_fn(v2)}
@@ -258,12 +285,6 @@ class CosmosDBSave(ModelSave):
         self._get_database_container("change_factors").upsert_item(
             item, partition_key=self._run_id
         )
-
-    def _upload_params(self):
-        params_container = self._get_database_container("params")
-        params = self._params
-        params["id"] = self._run_id
-        params_container.upsert_item(params)
 
     def _get_database_container(self, container):
         client = CosmosClient(self._cosmos_endpoint, self._cosmos_key)
