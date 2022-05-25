@@ -394,7 +394,11 @@ class InpatientsModel(Model):
         ip_rows = (
             ip_rows.assign(admissions=1)
             .reset_index()
-            .melt(["rn", "age_group", "sex", "tretspef", "pod"], ["admissions", "beddays"], "measure")
+            .melt(
+                ["rn", "age_group", "sex", "tretspef", "pod"],
+                ["admissions", "beddays"],
+                "measure",
+            )
         )
 
         model_results = pd.concat([op_rows, ip_rows])
