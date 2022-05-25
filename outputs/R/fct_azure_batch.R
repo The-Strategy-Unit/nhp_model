@@ -175,7 +175,8 @@ batch_add_job <- function(params) {
   )
 
   md <- "/mnt/batch/tasks/fsmounts"
-  run_results_path <- "nhp_results"
+  results_path <- glue::glue("{md}/results")
+  temp_results_path <- glue::glue("{md}/batch/{uuid::UUIDgenerate()}")
   task_command <- function(run_start, runs_per_task) {
     glue::glue(
       .sep = " ",
@@ -183,8 +184,9 @@ batch_add_job <- function(params) {
       "{md}/app/run_model.py",
       "{md}/queue/{filename}",
       "--data-path={md}/data",
+      "--results-path={results_path}",
+      "--temp-results-path={temp_results_path}",
       "--save-type=cosmos",
-      "--results-path={run_results_path}",
       "--run-start={run_start}",
       "--model-runs={runs_per_task}"
     )
@@ -202,15 +204,8 @@ batch_add_job <- function(params) {
 
   env_vars <- list(
     list(name = "COSMOS_ENDPOINT", value = Sys.getenv("COSMOS_ENDPOINT")),
-    list(name = "COSMOS_KEY", value = Sys.getenv("COSMOS_KEY"))
-  )
-
-  principal_run <- list(
-    id = "principal_run",
-    displayName = "Principal Model Run",
-    commandLine = task_command(0, 1),
-    userIdentity = user_id,
-    environmentSettings = env_vars
+    list(name = "COSMOS_KEY", value = Sys.getenv("COSMOS_KEY")),
+    list(name = "COSMOS_DB", value = Sys.getenv("COSMOS_DB"))
   )
 
   task_fn <- function(run_start) {
@@ -222,20 +217,30 @@ batch_add_job <- function(params) {
         "Model Run [{run_start} to {run_end}]"
       ),
       commandLine = task_command(run_start, runs_per_task),
-      userIdentity = user_id,
-      dependsOn = list(taskIds = principal_run$id),
-      environmentSettings = env_vars
+      userIdentity = user_id
     )
   }
 
   tasks <- purrr::map(seq(1, model_runs, runs_per_task), task_fn)
 
-  all_tasks <- jsonlite::toJSON(
-    list(value = c(list(principal_run), tasks)),
-    pretty = TRUE,
-    auto_unbox = TRUE
-  ) |>
-    stringr::str_replace_all("(?<=\"taskIds\": )\".*\"", "[\\0]")
+  upload_to_cosmos <- list(
+    id = "upload_to_cosmos",
+    displayName = "Run Principal + Upload to Cosmos",
+    commandLine = paste(task_command(-1, 2), "--run-postruns"),
+    userIdentity = user_id,
+    environmentSettings = env_vars,
+    dependsOn = list(taskIds = purrr::map_chr(tasks, "id"))
+  )
+
+  clean_up_queue <- list(
+    id = "clean_queue",
+    displayName = "Clean up queue",
+    commandLine = glue::glue("rm -rf {md}/queue/{filename}"),
+    userIdentity = user_id,
+    dependsOn = list(taskIds = c(purrr::map_chr(tasks, "id"), upload_to_cosmos$id))
+  )
+
+  all_tasks <- list(value = c(tasks, list(upload_to_cosmos, clean_up_queue)))
 
   httr::POST(
     Sys.getenv("BATCH_URL"),
@@ -244,7 +249,7 @@ batch_add_job <- function(params) {
     query = list(
       "api-version" = "2022-01-01.15.0"
     ),
-    encode = "raw",
+    encode = "json",
     httr::add_headers(
       "Authorization" = paste("Bearer", AzureAuth::extract_jwt(ba_t)),
       "Content-Type" = "application/json;odata=minimalmetadata"
