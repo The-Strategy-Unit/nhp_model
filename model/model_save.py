@@ -53,7 +53,7 @@ class ModelSave:
             "scenario": self._scenario,
             "create_datetime": self._create_datetime,
             "model_runs": self._model_runs,
-            "submitted_by": params["submitted_by"],
+            "submitted_by": params.get("submitted_by", None),
             "start_year": params["demographic_factors"]["start_year"],
             "end_year": params["demographic_factors"]["end_year"],
         }
@@ -123,9 +123,18 @@ class ModelSave:
                     aggregated_results[dataset].append(dill.load(arf))
 
         flipped_results = self._flip_results(aggregated_results)
+
+        available_aggregations = defaultdict(set)
+        for key, val in flipped_results.items():
+            for i in val:
+                activity_type = i["pod"][:3].replace("_", "")
+                available_aggregations[activity_type].add(key)
+
         return {
             **self._item_base,
-            "available_aggregations": list(flipped_results.keys()),
+            "available_aggregations": {
+                k: list(v) for k, v in available_aggregations.items()
+            },
             "selected_variants": self._model.run_params["variant"],
             "results": flipped_results,
         }
