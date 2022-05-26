@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
-from model.helpers import inrange, rnorm
+from model.helpers import age_groups, inrange, rnorm
 
 
 class Model:  # pylint: disable=too-many-instance-attributes
@@ -50,6 +50,7 @@ class Model:  # pylint: disable=too-many-instance-attributes
             self._hsa_gams = pickle.load(hsa_pkl)
         # load the data. we only need some of the columns for the model, so just load what we need
         self.data = self._load_parquet(self._model_type, columns_to_load)
+        self.data["age_group"] = age_groups(self.data["age"])
         # now data is loaded we can load the demographic factors
         self._load_demog_factors()
         # generate the run parameters
@@ -57,8 +58,8 @@ class Model:  # pylint: disable=too-many-instance-attributes
 
     def _load_demog_factors(self):
         dfp = self.params["demographic_factors"]
-        start_year = str(dfp["start_year"])
-        end_year = str(dfp["end_year"])
+        start_year = str(self.params["start_year"])
+        end_year = str(self.params["end_year"])
 
         merge_cols = ["age", "sex"]
 
@@ -164,11 +165,13 @@ class Model:  # pylint: disable=too-many-instance-attributes
                 gen_value(m, params["health_status_adjustment"])
                 for m in range(model_runs)
             ],
-            # "waiting_list_adjustment": params["waiting_list_adjustment"],
-            "waiting_list_adjustment": {
-                k: gen_value(m, v)
-                for m in range(model_runs)
-                for k, v in params["waiting_list_adjustment"].items()
+            "waiting_list_adjustment": params["waiting_list_adjustment"],
+            "non-demographic_adjustment": {
+                k1: {
+                    k2: [gen_value(m, v2) for m in range(model_runs)]
+                    for k2, v2 in v1.items()
+                }
+                for k1, v1 in params["non-demographic_adjustment"].items()
             },
             **{
                 k0: {
@@ -201,7 +204,12 @@ class Model:  # pylint: disable=too-many-instance-attributes
                     k1: {k2: v2[model_run] for k2, v2 in v1.items()}
                     for k1, v1 in params[k0].items()
                 }
-                for k0 in ["strategy_params", "outpatient_factors", "aae_factors"]
+                for k0 in [
+                    "non-demographic_adjustment",
+                    "strategy_params",
+                    "outpatient_factors",
+                    "aae_factors",
+                ]
             },
         }
 

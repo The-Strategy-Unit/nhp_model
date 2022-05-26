@@ -6,7 +6,6 @@ Implements the A&E model.
 
 import pandas as pd
 
-from model.helpers import age_groups
 from model.model import Model
 
 
@@ -110,8 +109,6 @@ class AaEModel(Model):
         """
         Aggregate the model results
         """
-        model_results["age_group"] = age_groups(model_results["age"])
-
         model_results["pod"] = "aae_type-" + model_results["aedepttype"]
         model_results["measure"] = "walk-in"
         model_results.loc[

@@ -11,6 +11,7 @@ process_param_file <- function(path, input_data, demographics_file, scenario_nam
     "dsi_wl",
     "pc_pg",
     "pc_hsa",
+    "nd_t1h",
     "am_a_ip",
     "am_a_op",
     "am_a_aae",
@@ -19,7 +20,7 @@ process_param_file <- function(path, input_data, demographics_file, scenario_nam
     "am_e_ip"
   ) |>
     purrr::set_names() |>
-    map(readxl::read_excel, path = path)
+    purrr::map(readxl::read_excel, path = path)
 
   base_year <- lubridate::year(data$run_settings$baseline_year)
   model_year <- lubridate::year(data$run_settings$model_year)
@@ -43,6 +44,17 @@ process_param_file <- function(path, input_data, demographics_file, scenario_nam
 
   wla["X01"] <- wla["Other"]
 
+  nda <- data$nd_t1h |>
+    dplyr::mutate(
+      dplyr::across(.data$age_group, ~ ifelse(.x == "85+", .x, stringr::str_pad(.x, width = 5)))
+    ) |>
+    dplyr::rowwise() |>
+    dplyr::mutate(interval = list(c(.data$lo, .data$hi))) |>
+    dplyr::select(-.data$lo, -.data$hi) |>
+    dplyr::group_nest(.data$admigrp) |>
+    dplyr::mutate(dplyr::across(.data$data, purrr::map, tibble::deframe)) |>
+    tibble::deframe()
+
   params <- list(
     name = scenario_name,
     input_data = input_data,
@@ -61,7 +73,8 @@ process_param_file <- function(path, input_data, demographics_file, scenario_nam
     ),
     health_status_adjustment = unlist(data$pc_hsa),
     life_expectancy = life_expectancy,
-    waiting_list_adjustment = wla
+    waiting_list_adjustment = wla,
+    "non-demographic_adjustment" = nda
   )
 
   params$strategy_params <- list(

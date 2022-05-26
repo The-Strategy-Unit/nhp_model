@@ -8,7 +8,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 
-from model.helpers import age_groups, inrange
+from model.helpers import inrange
 from model.model import Model
 
 
@@ -117,6 +117,29 @@ class InpatientsModel(Model):
         wlav[i] = [pwla[t] for t in data[i].tretspef]
         # return the waiting list adjustment factor series
         return wlav
+
+    @staticmethod
+    def _non_demographic_adjustment(data, run_params):
+        ndp = (
+            pd.DataFrame.from_dict(
+                run_params["non-demographic_adjustment"], orient="index"
+            )
+            .reset_index()
+            .rename(columns={"index": "admigroup"})
+            .melt(["admigroup"], var_name="age_group")
+        )
+        admigroup = np.where(
+            data["admimeth"].str.startswith("1"),
+            "elective",
+            np.where(data["admimeth"].str.startswith("3"), "maternity", "non-elective"),
+        )
+
+        return (
+            data[["age_group"]]
+            .assign(admigroup=admigroup)
+            .merge(ndp, on=["age_group", "admigroup"])["value"]
+            .to_numpy()
+        )
 
     @staticmethod
     def _admission_avoidance_step(rng, data, admission_avoidance, run_params):
@@ -333,6 +356,11 @@ class InpatientsModel(Model):
         run_step(aav_f[data["rn"]], "population_factors")
         # waiting list adjustments
         run_step(self._waiting_list_adjustment(data), "waiting_list_adjustment")
+        # non-demographic adjustment
+        run_step(
+            self._non_demographic_adjustment(data, run_params),
+            "non-demographic_adjustment",
+        )
         # Admission Avoidance ----------------------------------------------------------------------
         data, step_counts["admission_avoidance"] = self._admission_avoidance_step(
             rng, data, admission_avoidance, run_params
@@ -363,7 +391,6 @@ class InpatientsModel(Model):
         """
         Aggregate the model results
         """
-        model_results["age_group"] = age_groups(model_results["age"])
         # row's with a classpat of -1 are outpatients and need to be handled separately
         ip_op_row_ix = model_results["classpat"] == "-1"
         ip_rows = model_results[~ip_op_row_ix].copy()

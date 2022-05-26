@@ -7,7 +7,6 @@ Implements the Outpatients model.
 import numpy as np
 import pandas as pd
 
-from model.helpers import age_groups
 from model.model import Model
 
 
@@ -132,8 +131,6 @@ class OutpatientsModel(Model):
         """
         Aggregate the model results
         """
-        model_results["age_group"] = age_groups(model_results["age"])
-
         model_results.loc[model_results["is_first"], "pod"] = "op_first"
         model_results.loc[~model_results["is_first"], "pod"] = "op_follow-up"
         model_results.loc[model_results["has_procedures"], "pod"] = "op_procedure"

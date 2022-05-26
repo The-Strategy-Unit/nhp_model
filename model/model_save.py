@@ -54,8 +54,8 @@ class ModelSave:
             "create_datetime": self._create_datetime,
             "model_runs": self._model_runs,
             "submitted_by": params.get("submitted_by", None),
-            "start_year": params["demographic_factors"]["start_year"],
-            "end_year": params["demographic_factors"]["end_year"],
+            "start_year": params["start_year"],
+            "end_year": params["end_year"],
         }
 
     def set_model(self, model):
