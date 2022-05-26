@@ -77,6 +77,11 @@ cosmos_get_model_core_activity <- function(id) {
 }
 
 cosmos_get_model_run_distribution <- function(id, pod, measure) {
+  stopifnot(
+    "invalid characters in pod" = stringr::str_remove_all(pod, "[\\w-]") == "",
+    "invalid characters in measure" = stringr::str_remove_all(measure, "[\\w-]") == ""
+  )
+
   container <- cosmos_get_container("results")
 
   variants <- AzureCosmosR::query_documents(
@@ -119,6 +124,11 @@ cosmos_get_model_run_distribution <- function(id, pod, measure) {
 }
 
 cosmos_get_aggregation <- function(id, pod, measure, agg_col) {
+  stopifnot(
+    "invalid characters in pod" = stringr::str_remove_all(pod, "[\\w-]") == "",
+    "invalid characters in measure" = stringr::str_remove_all(measure, "[\\w-]") == ""
+  )
+
   container <- cosmos_get_container("results")
 
   agg_type <- glue::glue("sex+{agg_col}")
@@ -138,7 +148,6 @@ cosmos_get_aggregation <- function(id, pod, measure, agg_col) {
     AND
       r.measure = '{measure}'
   ")
-
   AzureCosmosR::query_documents(container, qry, partition_key = id) |>
     dplyr::as_tibble()
 }
