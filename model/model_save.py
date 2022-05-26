@@ -75,7 +75,7 @@ class ModelSave:
         """
         model = self._model
         activity_type = model._model_type  # pylint: disable=protected-access
-        # do nothing for the baseline model run
+        # don't run the model if it's the baseline: just run the aggregate step
         if model_run == -1:
             results = model.data.copy()
         else:
@@ -85,12 +85,37 @@ class ModelSave:
             mr_path = os.path.join(
                 self._base_results_path,
                 "model_results",
-                f"{activity_type=}",
+                f"activity_type={activity_type}",
                 self._results_path,
                 f"{model_run=}",
             )
             os.makedirs(mr_path, exist_ok=True)
-            results.to_parquet(f"{mr_path}/0.parquet")
+            # select just the columns we want to save from each activity type
+            if activity_type == "ip":
+                ip_op_row_ix = results["classpat"] == "-1"
+                # save the op converted rows
+                op_rows_path = os.path.join(
+                    self._base_results_path,
+                    "model_results",
+                    "activity_type=op_conversion",
+                    self._results_path,
+                    f"{model_run=}",
+                )
+                os.makedirs(op_rows_path, exist_ok=True)
+                results[ip_op_row_ix].groupby(
+                    ["age", "sex", "tretspef"]
+                ).size().to_frame("attendances").assign(
+                    tele_attendances=0
+                ).reset_index().to_parquet(
+                    f"{op_rows_path}/0.parquet"
+                )
+                # remove the op converted rows
+                mr_data = results.loc[~ip_op_row_ix, ["speldur", "classpat"]]
+            elif activity_type == "aae":
+                mr_data = results.set_index(["rn"])[["arrivals"]]
+            elif activity_type == "op":
+                mr_data = results.set_index(["rn"])[["attendances", "tele_attendances"]]
+            mr_data.to_parquet(f"{mr_path}/0.parquet")
             # save change factors
             change_factors.assign(
                 activity_type=activity_type, model_run=model_run
