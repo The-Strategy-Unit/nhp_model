@@ -85,8 +85,6 @@ class AaEModel(Model):
 
         # captue current pandas options, and set chainged assignment off
         pd_options = pd.set_option("mode.chained_assignment", None)
-        # before we do anything, reset the index to keep the row number
-        data.reset_index(inplace=True)
         # first, run hsa as we have the factor already created
         run_poisson_step(hsa_f, "health_status_adjustment")
         # then, demographic modelling

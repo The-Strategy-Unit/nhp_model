@@ -327,8 +327,6 @@ class InpatientsModel(Model):
             # replace the values
             sc_n, sc_b = sc_np, sc_bp
 
-        # before we do anything, reset the index to keep the row number
-        data.reset_index(inplace=True)
         # first, run hsa as we have the factor already created
         run_step(hsa_f, "health_status_adjustment")
         # then, demographic modelling
