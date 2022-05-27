@@ -2,6 +2,8 @@
 Helper methods for the model package
 """
 
+import json
+
 import numpy as np
 import pandas as pd
 
@@ -43,3 +45,15 @@ def age_groups(age):
         False,
         [" 0- 4", " 5-14", "15-34", "35-49", "50-64", "65-84", "85+"],
     ).astype(str)
+
+
+def load_params(filename: str) -> dict:
+    """Load a params file
+
+    * filename: the full name of the file that we wish to load
+
+    returns: a dictionary of the model parameters
+    """
+
+    with open(filename, "r", encoding="UTF-8") as prf:
+        return json.load(prf)

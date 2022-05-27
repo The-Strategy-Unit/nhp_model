@@ -14,7 +14,6 @@ will run a single run of the inpatients model, returning the results to display.
 """
 
 import argparse
-import json
 import os
 import time
 from multiprocessing import Pool
@@ -24,6 +23,7 @@ import pandas as pd
 from tqdm.auto import tqdm
 
 from model.aae import AaEModel
+from model.helpers import load_params
 from model.inpatients import InpatientsModel
 from model.model import Model
 from model.model_save import CosmosDBSave, LocalSave, ModelSave
@@ -179,8 +179,7 @@ def main() -> None:
     if args.type != "all":
         models = {args.type: models[args.type]}
     #
-    with open(args.params_file, "r", encoding="UTF-8") as prf:
-        params = json.load(prf)
+    params = load_params(args.params_file)
     if args.debug:
         assert (
             args.type != "all"
