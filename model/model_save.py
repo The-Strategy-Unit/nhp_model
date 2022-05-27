@@ -15,8 +15,10 @@ from tempfile import mkdtemp
 import dill
 import numpy as np
 import pandas as pd
-from azure.cosmos import CosmosClient
+from azure.cosmos import ContainerProxy, CosmosClient
 from dotenv import load_dotenv
+
+from model.model import Model
 
 
 class ModelSave:
@@ -24,7 +26,7 @@ class ModelSave:
 
     This is a generic implementation and should not be used  directly"""
 
-    def __init__(self, params, results_path, temp_path=None):
+    def __init__(self, params: dict, results_path: str, temp_path: str = None) -> None:
         self._dataset = params["input_data"]
         self._scenario = params["name"]
         self._create_datetime = params["create_datetime"]
@@ -58,11 +60,11 @@ class ModelSave:
             "end_year": params["end_year"],
         }
 
-    def set_model(self, model):
+    def set_model(self, model: Model) -> None:
         """Set the current model"""
         self._model = model
 
-    def run_model(self, model_run):
+    def run_model(self, model_run: int) -> None:
         """Run the model and save the results
 
         * model_run: the iteration of the model we want to run
@@ -74,7 +76,7 @@ class ModelSave:
         Uses a hive partition scheme so it is easy to load the data with pyarrow
         """
         model = self._model
-        activity_type = model._model_type  # pylint: disable=protected-access
+        activity_type = model.model_type
         # don't run the model if it's the baseline: just run the aggregate step
         if model_run == -1:
             results = model.data.copy()
@@ -126,7 +128,7 @@ class ModelSave:
         with open(f"{self._ar_path}/{activity_type}_{model_run}.dill", "wb") as arf:
             dill.dump(aggregated_results, arf)
 
-    def post_runs(self):
+    def post_runs(self) -> None:
         """Post running of all model runs"""
         # save params
         os.makedirs(pr_path := f"{self._base_results_path}/params", exist_ok=True)
@@ -139,7 +141,7 @@ class ModelSave:
         # clean up temporary files
         shutil.rmtree(self._temp_path)
 
-    def _combine_aggregated_results(self):
+    def _combine_aggregated_results(self) -> dict:
         aggregated_results = {}
         for dataset in ["aae", "ip", "op"]:
             aggregated_results[dataset] = list()
@@ -165,7 +167,7 @@ class ModelSave:
         }
 
     @staticmethod
-    def _flip_results(results):
+    def _flip_results(results: dict) -> dict:
         """Take array of model run results and flip
 
         Takes an array of aggregate type/aggregate: value, and flips so we have a dictionary
@@ -212,7 +214,7 @@ class ModelSave:
             }
         )
 
-    def _combine_change_factors(self):
+    def _combine_change_factors(self) -> pd.DataFrame:
         return pd.concat(
             [pd.read_csv(f"{self._cf_path}/{i}") for i in os.listdir(self._cf_path)]
         )
@@ -224,10 +226,10 @@ class LocalSave(ModelSave):
     Utilises ModelSave to store results locally
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args) -> None:
         super().__init__(*args)
 
-    def post_runs(self):
+    def post_runs(self) -> None:
         """Post running of all model runs"""
 
         # save aggregated results
@@ -254,7 +256,7 @@ class CosmosDBSave(ModelSave):
 
     Utilises ModelSave to store results to both the file paths and to Cosmos DB"""
 
-    def __init__(self, *args):
+    def __init__(self, *args) -> None:
         super().__init__(*args)
         #
         load_dotenv()
@@ -262,13 +264,13 @@ class CosmosDBSave(ModelSave):
         self._cosmos_endpoint = os.getenv("COSMOS_ENDPOINT")
         self._cosmos_key = os.getenv("COSMOS_KEY")
 
-    def post_runs(self):
+    def post_runs(self) -> None:
         """Post running of all model runs"""
         self._upload_results()
         self._upload_change_factors()
         super().post_runs()
 
-    def _upload_results(self):
+    def _upload_results(self) -> None:
         aggregated_results = self._combine_aggregated_results()
 
         item = {"id": self._run_id, **aggregated_results}
@@ -277,7 +279,7 @@ class CosmosDBSave(ModelSave):
             item, partition_key=self._run_id
         )
 
-    def _upload_change_factors(self):
+    def _upload_change_factors(self) -> None:
         def agg_fn(change_factor):
             acf = (
                 change_factor.drop(["activity_type", "measure"], axis="columns")
@@ -317,7 +319,7 @@ class CosmosDBSave(ModelSave):
             item, partition_key=self._run_id
         )
 
-    def _get_database_container(self, container):
+    def _get_database_container(self, container: str) -> ContainerProxy:
         client = CosmosClient(self._cosmos_endpoint, self._cosmos_key)
         database = client.get_database_client(self._database)
         return database.get_container_client(container)

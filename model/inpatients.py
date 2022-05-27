@@ -16,19 +16,19 @@ class InpatientsModel(Model):
     """
     Inpatients Model
 
-    * results_path: where the data is stored
+    * params: the parameters to run the model with
+    * data_path: the path to where the data files live
 
-    Implements the model for inpatient data. See `Model()` for documentation on the generic class.
+    Inherits from the Model class.
     """
 
-    def __init__(self, params: list, data_path: str):
+    def __init__(self, params: list, data_path: str) -> None:
         # call the parent init function
-        Model.__init__(
-            self,
+        super().__init__(
             "ip",
             params,
             data_path,
-            [
+            columns_to_load=[
                 "rn",
                 "speldur",
                 "age",
@@ -45,11 +45,13 @@ class InpatientsModel(Model):
             for x in ["admission_avoidance", "los_reduction"]
         }
 
-    def _los_reduction(self, run_params):
+    def _los_reduction(self, run_params: dict) -> pd.DataFrame:
         """
-        Create a dictionary of the los reduction factors to use for a run
+        Create a dictionary of the LOS reduction factors to use for a run
 
-        * rng: an instance of np.random.default_rng, created for each model iteration
+        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+
+        returns: a DataFrame containing the LOS reduction factors
         """
         params = self.params["strategy_params"]["los_reduction"]
         # convert the parameters dictionary to a dataframe: each item becomes a row (with the item
@@ -60,11 +62,13 @@ class InpatientsModel(Model):
         ]
         return losr
 
-    def _random_strategy(self, rng, strategy_type):
+    def _random_strategy(
+        self, rng: np.random.Generator, strategy_type: dict
+    ) -> pd.DataFrame:
         """
         Select one strategy per record
 
-        * rng: an instance of np.random.default_rng, created for each model iteration
+        * rng: an np.random.Generator, created for each model iteration
         * strategy_type: a string of which type of strategy to update, e.g. "admission_avoidance",
           "los_reduction"
 
@@ -90,11 +94,11 @@ class InpatientsModel(Model):
             .groupby(level=0).head(1)
         )
 
-    def _waiting_list_adjustment(self, data):
+    def _waiting_list_adjustment(self, data: pd.DataFrame) -> pd.Series:
         """
         Create a series of factors for waiting list adjustment.
 
-        * data: the pandas DataFrame that we are updating
+        * data: the DataFrame that we are updating
 
         returns: a series of floats indicating how often we want to sample that row
 
@@ -105,6 +109,8 @@ class InpatientsModel(Model):
         """
         # extract the waiting list adjustment parameters - we convert this to a default dictionary
         # that uses the "X01" specialty as the default value
+        # waiting list adjustment is static across all model runs, hence we use the model's
+        # run_params dictionary
         pwla = self.run_params["waiting_list_adjustment"].copy()
         default_specialty = pwla.pop("X01")
         pwla = defaultdict(lambda: default_specialty, pwla)
@@ -119,7 +125,14 @@ class InpatientsModel(Model):
         return wlav
 
     @staticmethod
-    def _non_demographic_adjustment(data, run_params):
+    def _non_demographic_adjustment(data, run_params: dict) -> pd.Series:
+        """
+        Create a series of factors for non-demographic adjustment.
+
+        * run_params: the parameters to use for this model run (see `Model._get_run_params()`
+
+        returns: a series of floats indicating how often we want to sample that row)
+        """
         ndp = (
             pd.DataFrame.from_dict(
                 run_params["non-demographic_adjustment"], orient="index"
@@ -142,7 +155,21 @@ class InpatientsModel(Model):
         )
 
     @staticmethod
-    def _admission_avoidance_step(rng, data, admission_avoidance, run_params):
+    def _admission_avoidance_step(
+        rng: np.random.Generator,
+        data: pd.DataFrame,
+        admission_avoidance: pd.Series,
+        run_params: dict,
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """Run the admission avoidance strategies
+
+        * rng: an np.random.Generator, created for each model iteration
+        * data: the DataFrame that we are updating
+        * admission_avoidance: the selected admission avoidance strategies for this model run
+        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+
+        returns: a tuple containing the updated data and the change factors for this step
+        """
         # choose admission avoidance factors
         ada = defaultdict(
             lambda: 1, run_params["strategy_params"]["admission_avoidance"]
@@ -188,15 +215,19 @@ class InpatientsModel(Model):
         )
 
     @staticmethod
-    def _losr_all(data, losr, rng, step_counts):
+    def _losr_all(
+        data: pd.DataFrame,
+        losr: pd.DataFrame,
+        rng: np.random.Generator,
+        step_counts: dict,
+    ) -> None:
         """
         Length of Stay Reduction: All
 
-        * data: the pandas DataFrame that we are updating
+        * data: the DataFrame that we are updating
         * losr: the Length of Stay rates table created from self._los_reduction()
-        * rng: an instance of np.random.default_rng, created for each model iteration
-
-        returns: a dataframe with an updated length of stay column
+        * rng: an np.random.Generator, created for each model iteration
+        * step_counts: a dictionary containing the changes to measures for this step
 
         Reduces all rows length of stay by sampling from a binomial distribution, using the current
         length of stay as the value for n, and the length of stay reduction factor for that strategy
@@ -216,15 +247,19 @@ class InpatientsModel(Model):
         }
 
     @staticmethod
-    def _losr_bads(data, losr, rng, step_counts):
+    def _losr_bads(
+        data: pd.DataFrame,
+        losr: pd.DataFrame,
+        rng: np.random.Generator,
+        step_counts: dict,
+    ) -> None:
         """
         Length of Stay Reduction: British Association of Day Surgery
 
-        * data: the pandas DataFrame that we are updating
+        * data: the DataFrame that we are updating
         * losr: the Length of Stay rates table created from self._los_reduction()
-        * rng: an instance of np.random.default_rng, created for each model iteration
-
-        returns: a dataframe with an updated patient classification and length of stay column's
+        * rng: an np.random.Generator, created for each model iteration
+        * step_counts: a dictionary containing the changes to measures for this step
 
         This will swap rows between elective admissions and daycases into either daycases or
         outpatients, based on the given parameter values. We have a baseline target rate, this is
@@ -289,16 +324,21 @@ class InpatientsModel(Model):
         }
 
     @staticmethod
-    def _losr_to_zero(data, losr, rng, losr_type, step_counts):
+    def _losr_to_zero(
+        data: pd.DataFrame,
+        losr: pd.DataFrame,
+        rng: np.random.Generator,
+        losr_type: str,
+        step_counts: dict,
+    ) -> None:
         """
         Length of Stay Reduction: To Zero Day LoS
 
-        * data: the pandas DataFrame that we are updating
+        * data: the DataFrame that we are updating
         * losr: the Length of Stay rates table created from self._los_reduction()
-        * rng: an instance of np.random.default_rng, created for each model iteration
+        * rng: an np.random.Generator, created for each model iteration
         * type: the type of row we are updating
-
-        returns: a dataframe with an updated length of stay column
+        * step_counts: a dictionary containing the changes to measures for this step
 
         Updates the length of stay to 0 for a given percentage of rows.
         """
@@ -321,8 +361,23 @@ class InpatientsModel(Model):
         }
 
     def _run(
-        self, rng, data, run_params, aav_f, hsa_f
-    ):  # pylint: disable=too-many-arguments
+        self,
+        rng: np.random.Generator,
+        data: pd.DataFrame,
+        run_params: dict,
+        aav_f: pd.Series,
+        hsa_f: pd.Series,
+    ) -> tuple[pd.DataFrame, dict]:
+        """Run the model
+
+        * rng: an np.random.Generator, created for each model iteration
+        * data: the DataFrame that we are updating
+        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+        * aav_f: the demographic adjustment factors
+        * hsa_f: the health status adjustment factors
+
+        returns: a tuple containing the change factors DataFrame and the mode results DataFrame
+        """
         # select strategies
         admission_avoidance = self._random_strategy(rng, "admission_avoidance")
         los_reduction = self._random_strategy(rng, "los_reduction")
@@ -387,9 +442,15 @@ class InpatientsModel(Model):
         change_factors["value"] = change_factors["value"].astype(int)
         return (change_factors, data.drop(["hsagrp"], axis="columns").set_index(["rn"]))
 
-    def aggregate(self, model_results):
+    def aggregate(self, model_results: pd.DataFrame) -> dict:
         """
         Aggregate the model results
+
+        * model_results: a DataFrame containing the results of a model iteration
+
+        returns: a dictionary containing the different aggregations of this data
+
+        Can also be used to aggregate the baseline data by passing in the raw data
         """
         # row's with a classpat of -1 are outpatients and need to be handled separately
         ip_op_row_ix = model_results["classpat"] == "-1"

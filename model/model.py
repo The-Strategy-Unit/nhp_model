@@ -16,29 +16,33 @@ import pyarrow.parquet as pq
 from model.helpers import age_groups, inrange, rnorm
 
 
-class Model:  # pylint: disable=too-many-instance-attributes
+class Model:
     """
-    Inpatients Model
+    Model
 
-    * results_path: where the data is stored
+    * model_type: the type of model, either "aae", "ip", or "op"
+    * params: the parameters to run the model with
+    * data_path: the path to where the data files live
+    * columns_to_load [optional]: a list of columns to load from the data
 
     This is a generic implementation of the model. Specific implementations of the model inherit
     from this class.
-
-    In order to run the model you need to pass the path to where the parameters json file is stored.
-    This path should be of the form: {dataset_name}/{results}/{model_name}/{model_run_datetime}
-
-    Once the object is constructed you can call either m.run() to run the model and return the data,
-    or m.save_run() to run the model and save the results.
-
-    You can also call m.multi_model_run() to run multiple iterations of the model in parallel,
-    saving the results to disk to use later.
     """
 
     def __init__(
-        self, model_type, params, data_path, columns_to_load=None
-    ):  # pylint: disable=too-many-arguments
-        self._model_type = model_type
+        self,
+        model_type: str,
+        params: dict,
+        data_path: str,
+        columns_to_load: list[str] = None,
+    ):
+        assert model_type in [
+            "aae",
+            "ip",
+            "op",
+        ], "Model type must be one of 'aae', 'ip', or 'op'"
+        self.model_type = model_type
+        #
         self.params = params
         # add model runtime if it doesn't exist
         if not "create_datetime" in self.params:
@@ -49,7 +53,7 @@ class Model:  # pylint: disable=too-many-instance-attributes
         with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
             self._hsa_gams = pickle.load(hsa_pkl)
         # load the data. we only need some of the columns for the model, so just load what we need
-        self.data = self._load_parquet(self._model_type, columns_to_load)
+        self.data = self._load_parquet(self.model_type, columns_to_load)
         self.data["age_group"] = age_groups(self.data["age"])
         # now data is loaded we can load the demographic factors
         self._load_demog_factors()
@@ -214,12 +218,16 @@ class Model:  # pylint: disable=too-many-instance-attributes
         }
 
     def _run(
-        self, rng, data, run_params, aav_f, hsa_f
-    ):  # pylint: disable=too-many-arguments
-        """
-        Model Run
+        self,
+        rng: np.random.Generator,
+        data: pd.DataFrame,
+        run_params: dict,
+        aav_f: pd.Series,
+        hsa_f: pd.Series,
+    ):
+        """Run the model
 
-        To be implemented by specific classes
+        to be implemented by the specific concrete classes
         """
 
     def run(self, model_run):

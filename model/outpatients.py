@@ -14,21 +14,38 @@ class OutpatientsModel(Model):
     """
     Outpatients Model
 
-    * results_path: where the data is stored
+    * params: the parameters to run the model with
+    * data_path: the path to where the data files live
 
-    Implements the model for outpatient data. See `Model()` for documentation on the generic class.
+    Inherits from the Model class.
     """
 
-    def __init__(self, params, data_path: str):
+    def __init__(self, params: list, data_path: str) -> None:
         # call the parent init function
-        Model.__init__(self, "op", params, data_path)
+        super().__init__("op", params, data_path)
 
-    def _followup_reduction(self, data, run_params):
+    def _followup_reduction(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
+        """Followup Appointment Reduction
+
+        * data: the DataFrame that we are updating
+        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+
+        returns: an array of factors, the length of data
+        """
         return self._factor_helper(
             data, run_params["followup_reduction"], {"has_procedures": 0, "is_first": 0}
         )
 
-    def _consultant_to_consultant_reduction(self, data, run_params):
+    def _consultant_to_consultant_reduction(
+        self, data: pd.DataFrame, run_params: dict
+    ) -> np.ndarray:
+        """Consultant to Consultant Referral Reduction
+
+        * data: the DataFrame that we are updating
+        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+
+        returns: an array of factors, the length of data
+        """
         return self._factor_helper(
             data,
             run_params["consultant_to_consultant_reduction"],
@@ -36,7 +53,14 @@ class OutpatientsModel(Model):
         )
 
     @staticmethod
-    def _convert_to_tele(data, run_params):
+    def _convert_to_tele(data: pd.DataFrame, run_params: dict) -> None:
+        """Convert attendances to tele-attendances
+
+        * data: the DataFrame that we are updating
+        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+
+        Updates data in place
+        """
         # temp disable chained assignment warnings
         options = pd.get_option("mode.chained_assignment")
         pd.set_option("mode.chained_assignment", None)
@@ -58,12 +82,22 @@ class OutpatientsModel(Model):
         pd.set_option("mode.chained_assignment", options)
 
     def _run(
-        self, rng, data, run_params, aav_f, hsa_f
-    ):  # pylint: disable=too-many-arguments
-        """
-        Run the model once
+        self,
+        rng: np.random.Generator,
+        data: pd.DataFrame,
+        run_params: dict,
+        aav_f: pd.Series,
+        hsa_f: pd.Series,
+    ) -> tuple[pd.DataFrame, dict]:
+        """Run the model
 
-        returns: a tuple of the selected varient and the updated DataFrame
+        * rng: an np.random.Generator, created for each model iteration
+        * data: the DataFrame that we are updating
+        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+        * aav_f: the demographic adjustment factors
+        * hsa_f: the health status adjustment factors
+
+        returns: a tuple containing the change factors DataFrame and the mode results DataFrame
         """
         params = run_params["outpatient_factors"]
         sc_a, sc_t = data[["attendances", "tele_attendances"]].sum()
@@ -127,9 +161,15 @@ class OutpatientsModel(Model):
         change_factors["value"] = change_factors["value"].astype(int)
         return (change_factors, data.drop(["hsagrp"], axis="columns"))
 
-    def aggregate(self, model_results):
+    def aggregate(self, model_results: pd.DataFrame) -> dict:
         """
         Aggregate the model results
+
+        * model_results: a DataFrame containing the results of a model iteration
+
+        returns: a dictionary containing the different aggregations of this data
+
+        Can also be used to aggregate the baseline data by passing in the raw data
         """
         model_results.loc[model_results["is_first"], "pod"] = "op_first"
         model_results.loc[~model_results["is_first"], "pod"] = "op_follow-up"

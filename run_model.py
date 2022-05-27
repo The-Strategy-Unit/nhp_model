@@ -18,17 +18,19 @@ import json
 import os
 import time
 from multiprocessing import Pool
+from typing import Any, Callable
 
 import pandas as pd
 from tqdm.auto import tqdm
 
 from model.aae import AaEModel
 from model.inpatients import InpatientsModel
-from model.model_save import CosmosDBSave, LocalSave
+from model.model import Model
+from model.model_save import CosmosDBSave, LocalSave, ModelSave
 from model.outpatients import OutpatientsModel
 
 
-def timeit(func, *args):
+def timeit(func: Callable, *args) -> Any:
     """
     Time how long it takes to evaluate function `f` with arguments `*args`.
     """
@@ -38,7 +40,7 @@ def timeit(func, *args):
     return results
 
 
-def debug_run(model, model_run):
+def debug_run(model: Model, model_run: int) -> None:
     """
     Runs a single model iteration for easier debugging in vscode
     """
@@ -62,7 +64,13 @@ def debug_run(model, model_run):
     )
 
 
-def run_model(save_model, run_start, model_runs, cpus=os.cpu_count(), batch_size=8):
+def run_model(
+    save_model: ModelSave,
+    run_start: int,
+    model_runs: int,
+    cpus: int = os.cpu_count(),
+    batch_size: int = 8,
+) -> Callable[[str], None]:
     """
     Run the model
 
@@ -102,7 +110,7 @@ def run_model(save_model, run_start, model_runs, cpus=os.cpu_count(), batch_size
     return run_model_fn
 
 
-def _run_model_argparser():
+def _run_model_argparser() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("params_file", help="Path to the params.json file")
     parser.add_argument("--data-path", help="Path to the data", default="data")
@@ -154,10 +162,10 @@ def _run_model_argparser():
         "--run-postruns", help="Run the ModelSave post_run method", action="store_true"
     )
     parser.add_argument("-d", "--debug", action="store_true")
-    return parser
+    return parser.parse_args()
 
 
-def main():
+def main() -> None:
     """
     Main method
 
@@ -165,7 +173,7 @@ def main():
     """
 
     # Grab the Arguments
-    args = _run_model_argparser().parse_args()
+    args = _run_model_argparser()
     # define the models to run
     models = {"aae": AaEModel, "ip": InpatientsModel, "op": OutpatientsModel}
     if args.type != "all":

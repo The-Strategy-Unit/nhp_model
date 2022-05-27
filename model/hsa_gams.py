@@ -7,6 +7,7 @@ This file is used to generate the GAMs for Health Status Adjustment.
 import os
 import pickle
 import sys
+from typing import Callable
 
 import pandas as pd
 import pyarrow.parquet as pq
@@ -14,9 +15,21 @@ from janitor import complete  # pylint: disable=unused-import
 from pygam import GAM
 
 
-def create_gams(path_fn, pop, file, ignored_hsagrps=None):
+def create_gams(
+    path_fn: Callable[[str], str],
+    pop: pd.DataFrame,
+    file: str,
+    ignored_hsagrps: list[str] = None,
+) -> dict:
     """
     Create GAMs
+
+    * path_fn: a function that generates a path to the data directory
+    * pop: a DataFrame of population metrics
+    * file: the name of the data file to load
+    * ignored_hsagrps: a list of HSA groups to ignore when generating gams
+
+    returns: a dictionary containing the GAMs
     """
     print(f"Creating gams: {file}")
     dfr = pq.read_pandas(path_fn(f"{file}.parquet")).to_pandas()
@@ -42,7 +55,7 @@ def create_gams(path_fn, pop, file, ignored_hsagrps=None):
     }
 
 
-def main():
+def main() -> None:
     """Main Method"""
     assert (
         len(sys.argv) == 3

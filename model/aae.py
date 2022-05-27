@@ -4,6 +4,7 @@ Accident and Emergency Module
 Implements the A&E model.
 """
 
+import numpy as np
 import pandas as pd
 
 from model.model import Model
@@ -13,40 +14,71 @@ class AaEModel(Model):
     """
     Accident and Emergency Model
 
-    * results_path: where the data is stored
+    * params: the parameters to run the model with
+    * data_path: the path to where the data files live
 
-    Implements the model for accident and emergency data. See `Model()` for documentation on the
-    generic class.
+    Inherits from the Model class.
     """
 
-    def __init__(self, params, data_path: str):
+    def __init__(self, params: list, data_path: str) -> None:
         # call the parent init function
-        Model.__init__(self, "aae", params, data_path)
+        super().__init__("aae", params, data_path)
 
-    def _low_cost_discharged(self, data, run_params):
+    def _low_cost_discharged(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
+        """Low Cost Discharge Reduction
+
+        * data: the DataFrame that we are updating
+        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+
+        returns: an array of factors, the length of data
+        """
         return self._factor_helper(
             data,
             run_params["low_cost_discharged"],
             {"is_low_cost_referred_or_discharged": 1},
         )
 
-    def _left_before_seen(self, data, run_params):
+    def _left_before_seen(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
+        """Left Before Seen Reduction
+
+        * data: the DataFrame that we are updating
+        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+
+        returns: an array of factors, the length of data
+        """
         return self._factor_helper(
             data, run_params["left_before_seen"], {"is_left_before_treatment": 1}
         )
 
-    def _frequent_attenders(self, data, run_params):
+    def _frequent_attenders(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
+        """Frequen Attenders Reduction
+
+        * data: the DataFrame that we are updating
+        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+
+        returns: an array of factors, the length of data
+        """
         return self._factor_helper(
             data, run_params["frequent_attenders"], {"is_frequent_attender": 1}
         )
 
     def _run(
-        self, rng, data, run_params, aav_f, hsa_f
-    ):  # pylint: disable=too-many-arguments
-        """
-        Run the model once
+        self,
+        rng: np.random.Generator,
+        data: pd.DataFrame,
+        run_params: dict,
+        aav_f: pd.Series,
+        hsa_f: pd.Series,
+    ) -> tuple[pd.DataFrame, dict]:
+        """Run the model
 
-        returns: a tuple of the selected varient and the updated DataFrame
+        * rng: an np.random.Generator, created for each model iteration
+        * data: the DataFrame that we are updating
+        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+        * aav_f: the demographic adjustment factors
+        * hsa_f: the health status adjustment factors
+
+        returns: a tuple containing the change factors DataFrame and the mode results DataFrame
         """
         params = run_params["aae_factors"]
 
@@ -105,9 +137,15 @@ class AaEModel(Model):
         change_factors["value"] = change_factors["value"].astype(int)
         return (change_factors, data.drop(["hsagrp"], axis="columns"))
 
-    def aggregate(self, model_results):
+    def aggregate(self, model_results: pd.DataFrame) -> dict:
         """
         Aggregate the model results
+
+        * model_results: a DataFrame containing the results of a model iteration
+
+        returns: a dictionary containing the different aggregations of this data
+
+        Can also be used to aggregate the baseline data by passing in the raw data
         """
         model_results["pod"] = "aae_type-" + model_results["aedepttype"]
         model_results["measure"] = "walk-in"
