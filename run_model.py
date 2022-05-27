@@ -62,57 +62,35 @@ def debug_run(model, model_run):
     )
 
 
-def multi_model_runs(save_model, run_start, model_runs, n_cpus=1, batch_size=16):
-    """
-    Run multiple model runs in parallel
-    """
-
-    run_end = run_start + model_runs
-
-    with Pool(n_cpus) as pool:
-        results = list(
-            tqdm(
-                pool.imap(
-                    save_model.run_model,
-                    range(run_start, run_end),
-                    chunksize=batch_size,
-                ),
-                f"Running {save_model._model.__class__.__name__[:-5].rjust(11)} model",  # pylint: disable=protected-access
-                total=model_runs,
-            )
-        )
-
-    assert len(results) == model_runs
-
-
-def run_model(
-    params,
-    data_path,
-    save_model,
-    run_start,
-    model_runs,
-    cpus,
-    batch_size,
-):  # pylint: disable=too-many-arguments
+def run_model(save_model, run_start, model_runs, cpus=os.cpu_count(), batch_size=8):
     """
     Run the model
 
-    * params: the parameters dictionary (loaded from json
-    * data_path: where the model data is stored
     * save_model: an instance of ModelSave class
     * run_start: the model run to start at
     * model_runs: how many runs to perform
     * cpus: how many cpu cores should we use
     * batch_size: how many runs should we perform each iteration
 
-    returns a function which accepts a model type, then runs that model type
+    returns a function which accepts a model instance
     """
 
-    def run_model_fn(model_type):
+    def run_model_fn(model):
         try:
-            model = model_type(params, data_path)
             save_model.set_model(model)
-            multi_model_runs(save_model, run_start, model_runs, cpus, batch_size)
+            with Pool(cpus) as pool:
+                results = list(
+                    tqdm(
+                        pool.imap(
+                            save_model.run_model,
+                            range(run_start, run_start + model_runs),
+                            chunksize=batch_size,
+                        ),
+                        f"Running {save_model._model.__class__.__name__[:-5].rjust(11)} model",  # pylint: disable=protected-access
+                        total=model_runs,
+                    )
+                )
+            assert len(results) == model_runs
         except FileNotFoundError as exc:
             # handle the dataset not existing: we simply skip
             if str(exc).endswith(".parquet"):
@@ -154,7 +132,7 @@ def _run_model_argparser():
     parser.add_argument(
         "-b",
         "--batch-size",
-        default=4,
+        default=8,
         help="Size of the batches to run the model in",
         type=int,
     )
@@ -210,15 +188,14 @@ def main():
         save_model = save_model_class(params, args.results_path, args.temp_results_path)
 
         runner = run_model(
-            params,
-            args.data_path,
             save_model,
             args.run_start,
             args.model_runs,
             args.cpus,
             args.batch_size,
         )
-        list(map(runner, models.values()))
+
+        list(map(runner, [m(params, args.data_path) for m in models.values()]))
 
         if args.run_postruns:
             print("Running         post-runs")
