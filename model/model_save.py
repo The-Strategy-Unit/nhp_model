@@ -257,11 +257,6 @@ class CosmosDBSave(ModelSave):
     def __init__(self, *args):
         super().__init__(*args)
         #
-        self._ar_path = os.path.join(self._temp_path, "aggregated_results")
-        os.makedirs(self._ar_path, exist_ok=True)
-        self._cf_path = os.path.join(self._temp_path, "change_factors_path")
-        os.makedirs(self._cf_path, exist_ok=True)
-        #
         load_dotenv()
         self._database = os.getenv("COSMOS_DB")
         self._cosmos_endpoint = os.getenv("COSMOS_ENDPOINT")
