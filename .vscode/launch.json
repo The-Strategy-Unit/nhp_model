@@ -47,6 +47,7 @@
       "program": "run_model.py",
       "args": [
         "sample_params.json",
+        "--temp-results-path=results/temp",
         "-b=1",
         "-c=1"
       ],
