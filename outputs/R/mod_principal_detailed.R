@@ -39,8 +39,10 @@ mod_principal_detailed_server <- function(id, selected_model_run, data_cache) {
       c(activity_type, pod, measure) %<-% selected_measure()
 
       a <- available_aggregations()[[activity_type]] |>
-        stringr::str_subset("^default$", negate = TRUE) |>
-        stringr::str_remove_all("^.*\\+")
+        # for this page, just keep the aggregations of the form "a+b"
+        stringr::str_subset("^\\w+\\+\\w+$") |>
+        # then remove the first word
+        stringr::str_remove_all("^\\w+\\+")
 
       an <- c("age_group" = "Age Group", "tretspef" = "Treatment Specialty")
 
@@ -55,8 +57,6 @@ mod_principal_detailed_server <- function(id, selected_model_run, data_cache) {
         "Age Group" = "age_group",
         "Treatment Specialty" = "tretspef"
       )
-
-      cat(paste("\"", c(id, pod, measure, input$aggregation, agg_col), "\"", sep = "", collapse = ", "), "\n")
 
       cosmos_get_aggregation(id, pod, measure, agg_col) |>
         dplyr::transmute(
