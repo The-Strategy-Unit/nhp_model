@@ -4,6 +4,7 @@ Inpatients Module
 Implements the inpatients model.
 """
 from collections import defaultdict
+from functools import partial
 
 import numpy as np
 import pandas as pd
@@ -489,8 +490,9 @@ class InpatientsModel(Model):
 
         model_results = pd.concat([op_rows, ip_rows])
 
+        agg = partial(self._create_agg, model_results)
         return {
-            **self._create_agg(model_results),
-            **self._create_agg(model_results, ["sex", "age_group"]),
-            **self._create_agg(model_results, ["sex", "tretspef"]),
+            **agg(),
+            **agg(["sex", "age_group"]),
+            **agg(["sex", "tretspef"]),
         }

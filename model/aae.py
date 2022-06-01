@@ -4,6 +4,8 @@ Accident and Emergency Module
 Implements the A&E model.
 """
 
+from functools import partial
+
 import numpy as np
 import pandas as pd
 
@@ -154,7 +156,5 @@ class AaEModel(Model):
         ] = "ambulance"
         model_results.rename(columns={"arrivals": "value"}, inplace=True)
 
-        return {
-            **self._create_agg(model_results),
-            **self._create_agg(model_results, ["sex", "age_group"]),
-        }
+        agg = partial(self._create_agg, model_results)
+        return {**agg(), **agg(["sex", "age_group"])}

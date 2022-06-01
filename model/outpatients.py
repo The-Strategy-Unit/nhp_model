@@ -4,6 +4,8 @@ Outpatients Module
 Implements the Outpatients model.
 """
 
+from functools import partial
+
 import numpy as np
 import pandas as pd
 
@@ -182,8 +184,9 @@ class OutpatientsModel(Model):
             ["attendances", "tele_attendances"], axis="columns"
         ).merge(measures, on="rn")
 
+        agg = partial(self._create_agg, model_results)
         return {
-            **self._create_agg(model_results),
-            **self._create_agg(model_results, ["sex", "age_group"]),
-            **self._create_agg(model_results, ["sex", "tretspef"]),
+            **agg(),
+            **agg(["sex", "age_group"]),
+            **agg(["sex", "tretspef"]),
         }
