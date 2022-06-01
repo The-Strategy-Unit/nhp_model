@@ -36,6 +36,7 @@ class InpatientsModel(Model):
                 "sex",
                 "admimeth",
                 "classpat",
+                "mainspef",
                 "tretspef",
                 "hsagrp",
             ],
@@ -482,17 +483,23 @@ class InpatientsModel(Model):
             ip_rows.assign(admissions=1)
             .reset_index()
             .melt(
-                ["rn", "age_group", "sex", "tretspef", "pod"],
+                ["rn", "age_group", "sex", "tretspef", "mainspef", "pod"],
                 ["admissions", "beddays"],
                 "measure",
             )
         )
 
-        model_results = pd.concat([op_rows, ip_rows])
+        cols = list(set(ip_rows.columns).intersection(set(op_rows.columns)))
+        model_results = pd.concat([op_rows[cols], ip_rows[cols]])
 
         agg = partial(self._create_agg, model_results)
         return {
             **agg(),
             **agg(["sex", "age_group"]),
             **agg(["sex", "tretspef"]),
+            **self._create_agg(
+                ip_rows.query("measure == 'beddays'"),
+                ["mainspef"],
+                include_measure=False,
+            ),
         }
