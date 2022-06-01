@@ -80,24 +80,36 @@ def run_model(
     * cpus: how many cpu cores should we use
     * batch_size: how many runs should we perform each iteration
 
-    returns a function which accepts a model instance
+    returns: a function which accepts a model instance
     """
 
     def run_model_fn(model):
         try:
             save_model.set_model(model)
-            with Pool(cpus) as pool:
+            if cpus == 1:
                 results = list(
                     tqdm(
-                        pool.imap(
+                        map(
                             save_model.run_model,
                             range(run_start, run_start + model_runs),
-                            chunksize=batch_size,
                         ),
                         f"Running {save_model._model.__class__.__name__[:-5].rjust(11)} model",  # pylint: disable=protected-access
                         total=model_runs,
                     )
                 )
+            else:
+                with Pool(cpus) as pool:
+                    results = list(
+                        tqdm(
+                            pool.imap(
+                                save_model.run_model,
+                                range(run_start, run_start + model_runs),
+                                chunksize=batch_size,
+                            ),
+                            f"Running {save_model._model.__class__.__name__[:-5].rjust(11)} model",  # pylint: disable=protected-access
+                            total=model_runs,
+                        )
+                    )
             assert len(results) == model_runs
         except FileNotFoundError as exc:
             # handle the dataset not existing: we simply skip
@@ -161,6 +173,9 @@ def _run_model_argparser() -> argparse.Namespace:
     parser.add_argument(
         "--run-postruns", help="Run the ModelSave post_run method", action="store_true"
     )
+    parser.add_argument(
+        "--save-results", help="Save the full model results", action="store_true"
+    )
     parser.add_argument("-d", "--debug", action="store_true")
     return parser.parse_args()
 
@@ -192,7 +207,9 @@ def main() -> None:
         elif args.save_type == "cosmos":
             save_model_class = CosmosDBSave
 
-        save_model = save_model_class(params, args.results_path, args.temp_results_path)
+        save_model = save_model_class(
+            params, args.results_path, args.temp_results_path, args.save_results
+        )
 
         runner = run_model(
             save_model,
