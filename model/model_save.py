@@ -26,7 +26,13 @@ class ModelSave:
 
     This is a generic implementation and should not be used  directly"""
 
-    def __init__(self, params: dict, results_path: str, temp_path: str = None) -> None:
+    def __init__(
+        self,
+        params: dict,
+        results_path: str,
+        temp_path: str = None,
+        save_results: bool = False,
+    ) -> None:
         self._dataset = params["input_data"]
         self._scenario = params["name"]
         self._create_datetime = params["create_datetime"]
@@ -59,6 +65,8 @@ class ModelSave:
             "start_year": params["start_year"],
             "end_year": params["end_year"],
         }
+        #
+        self._save_results = save_results
 
     def set_model(self, model: Model) -> None:
         """Set the current model"""
@@ -84,40 +92,43 @@ class ModelSave:
             # run the model
             change_factors, results = model.run(model_run)
             # save results
-            mr_path = os.path.join(
-                self._base_results_path,
-                "model_results",
-                f"activity_type={activity_type}",
-                self._results_path,
-                f"{model_run=}",
-            )
-            os.makedirs(mr_path, exist_ok=True)
-            # select just the columns we want to save from each activity type
-            if activity_type == "ip":
-                ip_op_row_ix = results["classpat"] == "-1"
-                # save the op converted rows
-                op_rows_path = os.path.join(
+            if self._save_results:
+                mr_path = os.path.join(
                     self._base_results_path,
                     "model_results",
-                    "activity_type=op_conversion",
+                    f"activity_type={activity_type}",
                     self._results_path,
                     f"{model_run=}",
                 )
-                os.makedirs(op_rows_path, exist_ok=True)
-                results[ip_op_row_ix].groupby(
-                    ["age", "sex", "tretspef"]
-                ).size().to_frame("attendances").assign(
-                    tele_attendances=0
-                ).reset_index().to_parquet(
-                    f"{op_rows_path}/0.parquet"
-                )
-                # remove the op converted rows
-                mr_data = results.loc[~ip_op_row_ix, ["speldur", "classpat"]]
-            elif activity_type == "aae":
-                mr_data = results.set_index(["rn"])[["arrivals"]]
-            elif activity_type == "op":
-                mr_data = results.set_index(["rn"])[["attendances", "tele_attendances"]]
-            mr_data.to_parquet(f"{mr_path}/0.parquet")
+                os.makedirs(mr_path, exist_ok=True)
+                # select just the columns we want to save from each activity type
+                if activity_type == "ip":
+                    ip_op_row_ix = results["classpat"] == "-1"
+                    # save the op converted rows
+                    op_rows_path = os.path.join(
+                        self._base_results_path,
+                        "model_results",
+                        "activity_type=op_conversion",
+                        self._results_path,
+                        f"{model_run=}",
+                    )
+                    os.makedirs(op_rows_path, exist_ok=True)
+                    results[ip_op_row_ix].groupby(
+                        ["age", "sex", "tretspef"]
+                    ).size().to_frame("attendances").assign(
+                        tele_attendances=0
+                    ).reset_index().to_parquet(
+                        f"{op_rows_path}/0.parquet"
+                    )
+                    # remove the op converted rows
+                    mr_data = results.loc[~ip_op_row_ix, ["speldur", "classpat"]]
+                elif activity_type == "aae":
+                    mr_data = results.set_index(["rn"])[["arrivals"]]
+                elif activity_type == "op":
+                    mr_data = results.set_index(["rn"])[
+                        ["attendances", "tele_attendances"]
+                    ]
+                mr_data.to_parquet(f"{mr_path}/0.parquet")
             # save change factors
             change_factors.assign(
                 activity_type=activity_type, model_run=model_run
@@ -203,7 +214,7 @@ class ModelSave:
                         "upr_ci": np.quantile(v2[2:], 0.95),
                         **(
                             {"model_runs": [int(vv) for vv in v2[2:]]}
-                            if k1 == "default"
+                            if k1 in ["default", "tretspef_ungrouped"]
                             else {}
                         ),
                     }
