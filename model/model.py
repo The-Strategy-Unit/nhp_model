@@ -255,10 +255,10 @@ class Model:
         """
 
     @staticmethod
-    def _create_agg(model_results, cols=None, name=None):
+    def _create_agg(model_results, cols=None, name=None, include_measure=True):
         if name is None:
             name = "+".join(cols) if cols else "default"
-        cols = ["pod", "measure"] + (cols if cols else [])
+        cols = ["pod"] + (["measure"] if include_measure else []) + (cols if cols else [])
         result = namedtuple("results", cols)
         agg = model_results.groupby(cols)["value"].sum()
         agg.index.names = agg.index.names[:-1] + ["measure"]
