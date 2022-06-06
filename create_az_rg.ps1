@@ -302,7 +302,7 @@ Function Add-NhpBatchPool {
     [string]$vnetname = "$($rgname)-vnet",
     [string]$saname = "$($rgname)sa",
     [string]$batchname = "$($rgname)batch",
-    [string]$vmsize = 'STANDARD_D16D_V5'
+    [string]$vmsize = 'STANDARD_D16D_V4'
   )
 
   $poolname = "$($rgname)-model"
