@@ -170,3 +170,22 @@ cosmos_get_principal_change_factors <- function(id, activity_type) {
     dplyr::as_tibble() |>
     dplyr::mutate(dplyr::across(.data$strategy, tidyr::replace_na, "-"))
 }
+
+cosmos_get_bed <- function(id) {
+  container <- cosmos_get_container("results")
+
+  qry <- glue::glue("
+    SELECT
+        r.mainspef,
+        r.baseline,
+        r.principal,
+        r.lwr_ci,
+        r.upr_ci,
+        r.model_runs
+    FROM c
+    JOIN r IN c.results[\"mainspef\"]
+  ")
+
+  AzureCosmosR::query_documents(container, qry, partition_key = id) |>
+    dplyr::as_tibble()
+}

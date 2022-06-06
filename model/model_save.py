@@ -214,7 +214,7 @@ class ModelSave:
                         "upr_ci": np.quantile(v2[2:], 0.95),
                         **(
                             {"model_runs": [int(vv) for vv in v2[2:]]}
-                            if k1 in ["default", "tretspef_ungrouped"]
+                            if k1 in ["default", "mainspef"]
                             else {}
                         ),
                     }
