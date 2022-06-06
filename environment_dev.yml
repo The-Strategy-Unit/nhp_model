@@ -16,4 +16,5 @@ dependencies:
   - nbformat=5.4.*
   - notebook=6.4.*
   - pyjanitor=0.22.*
+  - pylint=2.14.*
   - widgetsnbextension=3.6.*
