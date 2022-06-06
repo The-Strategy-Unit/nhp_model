@@ -3,7 +3,6 @@ channels:
   - conda-forge
 dependencies:
   - python=3.10.4
-  - pyjanitor=0.22.*
   - azure-batch=11.0.*
   - azure-cosmos=4.2.*
   - azure-storage-blob=12.9.*
