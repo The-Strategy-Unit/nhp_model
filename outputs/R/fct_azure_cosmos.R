@@ -92,9 +92,7 @@ cosmos_get_model_run_distribution <- function(id, pod, measure) {
     metadata = FALSE
   ) |>
     purrr::pluck(1, "data", "selected_variants") |>
-    {
-      \(.x) .x[-1]
-    }() |>
+    tail(-1) |>
     tibble::enframe("model_run", "variant")
 
   qry <- glue::glue("
