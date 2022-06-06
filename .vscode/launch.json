@@ -81,6 +81,14 @@
         "-b=16"
       ],
       "console": "integratedTerminal"
+    },
+    {
+      "name": "R: Run Outputs App",
+      "type": "R-Debugger",
+      "request": "launch",
+      "debugMode": "file",
+      "workingDirectory": "${workspaceFolder}/outputs",
+      "file": "dev/run_dev.R"
     }
   ]
 }
