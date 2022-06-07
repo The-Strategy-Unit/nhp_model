@@ -38,7 +38,7 @@ mod_principal_change_factor_effects_ui <- function(id) {
 #' principal_change_factor_effects Server Functions
 #'
 #' @noRd
-mod_principal_change_factor_effects_server <- function(id, selected_model_run, data_cache) {
+mod_principal_change_factor_effects_server <- function(id, selected_model_run_id, data_cache) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
@@ -57,7 +57,7 @@ mod_principal_change_factor_effects_server <- function(id, selected_model_run, d
     principal_change_factors <- reactive({
       at <- req(input$activity_type)
 
-      id <- selected_model_run()
+      id <- selected_model_run_id()
 
       cosmos_get_principal_change_factors(id, at) |>
         dplyr::mutate(
@@ -71,7 +71,7 @@ mod_principal_change_factor_effects_server <- function(id, selected_model_run, d
           )
         )
     }) |>
-      shiny::bindCache(selected_model_run(), input$activity_type, cache = data_cache)
+      shiny::bindCache(selected_model_run_id(), input$activity_type, cache = data_cache)
 
     observeEvent(principal_change_factors(), {
       at <- req(input$activity_type)

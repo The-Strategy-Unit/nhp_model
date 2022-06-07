@@ -66,7 +66,12 @@ mod_result_selection_server <- function(id) {
       sc <- shiny::req(input$scenario)
       cd <- shiny::req(input$create_datetime)
 
-      results_sets()[[ds]][[sc]][[cd]]
+      list(
+        ds = ds,
+        sc = sc,
+        cd = cd,
+        id = results_sets()[[ds]][[sc]][[cd]]
+      )
     })
 
     return(selected_model_run)

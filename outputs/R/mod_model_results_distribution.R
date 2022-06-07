@@ -24,17 +24,17 @@ mod_model_results_distribution_ui <- function(id) {
 #' model_results_distribution Server Functions
 #'
 #' @noRd
-mod_model_results_distribution_server <- function(id, selected_model_run, data_cache) {
+mod_model_results_distribution_server <- function(id, selected_model_run_id, data_cache) {
   moduleServer(id, function(input, output, session) {
     selected_measure <- mod_measure_selection_server("measure_selection")
 
     selected_data <- reactive({
-      id <- selected_model_run()
+      id <- selected_model_run_id()
       c(activity_type, pod, measure) %<-% selected_measure()
 
       cosmos_get_model_run_distribution(id, pod, measure)
     }) |>
-      shiny::bindCache(selected_model_run(), selected_measure(), cache = data_cache)
+      shiny::bindCache(selected_model_run_id(), selected_measure(), cache = data_cache)
 
     output$distribution <- plotly::renderPlotly({
       d <- req(selected_data())

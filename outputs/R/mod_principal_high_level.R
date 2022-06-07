@@ -49,7 +49,7 @@ mod_principal_high_level_ui <- function(id) {
 #' principal_high_level Server Functions
 #'
 #' @noRd
-mod_principal_high_level_server <- function(id, selected_model_run, data_cache) {
+mod_principal_high_level_server <- function(id, selected_model_run_id, data_cache) {
   shiny::moduleServer(id, function(input, output, session) {
     fyear_str <- function(y) glue::glue("{y}/{(y + 1) %% 100}")
 
@@ -60,7 +60,7 @@ mod_principal_high_level_server <- function(id, selected_model_run, data_cache) 
       dplyr::mutate(dplyr::across(.data$pod_name, forcats::fct_inorder))
 
     summary_data <- reactive({
-      id <- selected_model_run()
+      id <- selected_model_run_id()
 
       c(start_year, end_year) %<-% cosmos_get_model_run_years(id)
 
@@ -81,7 +81,7 @@ mod_principal_high_level_server <- function(id, selected_model_run, data_cache) 
         ) |>
         dplyr::ungroup()
     }) |>
-      shiny::bindCache(selected_model_run(), cache = data_cache)
+      shiny::bindCache(selected_model_run_id(), cache = data_cache)
 
     output$activity <- gt::render_gt({
       summary_data() |>
