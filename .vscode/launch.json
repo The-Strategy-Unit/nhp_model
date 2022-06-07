@@ -5,7 +5,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Inpatients (principal) Run Model",
+      "name": "Inpatients (principal) Run Model",
       "type": "python",
       "request": "launch",
       "program": "run_model.py",
@@ -17,7 +17,7 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "Python: Outpatients (principal) Run Model",
+      "name": "Outpatients (principal) Run Model",
       "type": "python",
       "request": "launch",
       "program": "run_model.py",
@@ -29,7 +29,7 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "Python: A&E (principal) Run Model",
+      "name": "A&E (principal) Run Model",
       "type": "python",
       "request": "launch",
       "program": "run_model.py",
@@ -41,7 +41,7 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "Python: Run All Principal Projections (local save)",
+      "name": "Run All Principal Projections (local save)",
       "type": "python",
       "request": "launch",
       "program": "run_model.py",
@@ -54,7 +54,7 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "Python: Run All Models (parallel/local save)",
+      "name": "Run All Models (parallel/local save)",
       "type": "python",
       "request": "launch",
       "program": "run_model.py",
@@ -68,7 +68,7 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "Python: Run All Models (parallel/cosmos save)",
+      "name": "Run All Models (parallel/cosmos save)",
       "type": "python",
       "request": "launch",
       "program": "run_model.py",
