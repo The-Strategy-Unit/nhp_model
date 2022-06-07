@@ -1,3 +1,6 @@
+^renv$
+^renv\.lock$
+^requirements\.txt$
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^data-raw$
