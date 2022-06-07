@@ -24,7 +24,6 @@ To run the model locally you will need to have installed miniconda, git, and VSC
   ``` py
   conda init
   conda env create -f environment.yml
-  conda env update -f environment_dev.yml
   ```
 9. Press `Ctrl+Shift+p`, then type `Select Interpreter`. Press the down key and select `Python 3.10.4 ('nhp')`.
 10. Get a copy of the `data.zip` archive, and extract the contents to the project's folder.
