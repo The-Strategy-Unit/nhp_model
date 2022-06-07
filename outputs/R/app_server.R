@@ -39,6 +39,7 @@ app_server <- function(input, output, session) {
   mod_principal_change_factor_effects_server("principal_change_factor_effects", selected_model_run_id, data_cache)
 
   mod_model_core_activity_server("model_core_activity", selected_model_run_id, data_cache)
+  mod_model_results_distribution_server("model_results_distribution", selected_model_run_id, data_cache)
 
   mod_capacity_beds_server("capacity_beds", selected_model_run, data_cache)
 }
