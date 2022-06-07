@@ -4,22 +4,25 @@
 #'     DO NOT REMOVE.
 #' @noRd
 app_server <- function(input, output, session) {
+  data_cache <- if (Sys.getenv("GOLEM_CONFIG_ACTIVE") == "dev") {
+    cachem::cache_mem()
+  } else {
+    # create a 200 MiB cache on disk
+    cachem::cache_disk(dir = ".cache/data_cache", max_size = 200 * 1024^2)
 
-  # create a 200 MiB cache on disk
-  data_cache <- cachem::cache_disk(dir = ".cache/data_cache", max_size = 200 * 1024^2)
+    # in case we need to invalidate the cache on rsconnect quickly, we can increment the "CACHE_VERSION" env var
+    cache_version <- ifelse(
+      file.exists(".cache/cache_version.txt"),
+      as.numeric(readLines(".cache/cache_version.txt")),
+      -1
+    )
 
-  # in case we need to invalidate the cache on rsconnect quickly, we can increment the "CACHE_VERSION" env var
-  cache_version <- ifelse(
-    file.exists(".cache/cache_version.txt"),
-    as.numeric(readLines(".cache/cache_version.txt")),
-    -1
-  )
-
-  if (Sys.getenv("CACHE_VERSION", 0) > cache_version) {
-    cat("Invalidating cache\n")
-    data_cache$reset()
-    cache_version <- Sys.getenv("CACHE_VERSION", 0)
-    writeLines(as.character(cache_version), ".cache/cache_version.txt")
+    if (Sys.getenv("CACHE_VERSION", 0) > cache_version) {
+      cat("Invalidating cache\n")
+      data_cache$reset()
+      cache_version <- Sys.getenv("CACHE_VERSION", 0)
+      writeLines(as.character(cache_version), ".cache/cache_version.txt")
+    }
   }
 
   # this module returns a reactive which contains the data path
