@@ -25,7 +25,7 @@ mod_model_core_activity_server <- function(id, selected_model_run_id, data_cache
     atpmo <- get_activity_type_pod_measure_options()
 
     summarised_data <- reactive({
-      id <- selected_model_run()
+      id <- selected_model_run_id()
       cosmos_get_model_core_activity(id) |>
         inner_join(atpmo, by = c("pod", "measure" = "measures"))
     }) |>
