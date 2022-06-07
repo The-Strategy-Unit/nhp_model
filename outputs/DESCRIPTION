@@ -25,7 +25,6 @@ Imports:
     pkgload,
     plotly,
     readxl,
-    reticulate,
     scales,
     shiny (>= 1.7.1),
     shinycssloaders,
