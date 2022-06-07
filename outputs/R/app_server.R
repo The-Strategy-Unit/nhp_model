@@ -40,4 +40,5 @@ app_server <- function(input, output, session) {
 
   mod_model_core_activity_server("model_core_activity", selected_model_run_id, data_cache)
 
+  mod_capacity_beds_server("capacity_beds", selected_model_run, data_cache)
 }

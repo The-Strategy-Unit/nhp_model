@@ -41,6 +41,11 @@ app_ui <- function(request) {
       bs4Dash::menuItem(
         text = "Results Distribution",
         tabName = "tab_md"
+      ),
+      bs4Dash::sidebarHeader("Capacity Conversion"),
+      bs4Dash::menuItem(
+        text = "Beds",
+        tabName = "tab_cb"
       )
     )
   )
@@ -74,6 +79,10 @@ app_ui <- function(request) {
       bs4Dash::tabItem(
         tabName = "tab_md",
         mod_model_results_distribution_ui("model_results_distribution")
+      ),
+      bs4Dash::tabItem(
+        tabName = "tab_cb",
+        mod_capacity_beds_ui("capacity_beds")
       )
     )
   )
