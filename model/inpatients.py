@@ -65,7 +65,7 @@ class InpatientsModel(Model):
         return losr
 
     def _random_strategy(
-        self, rng: np.random.Generator, strategy_type: dict
+        self, rng: np.random.Generator, strategy_type: str
     ) -> pd.DataFrame:
         """
         Select one strategy per record
