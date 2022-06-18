@@ -3,5 +3,10 @@
   "python.linting.pylintArgs": [
     "--max-args",
     "6"
-  ]
+  ],
+  "python.testing.pytestArgs": [
+    "tests"
+  ],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true
 }
