@@ -11,8 +11,11 @@
     "start_year": 2018,
     "end_year": 2038,
     "variant_probabilities": {
-      "principal": 0.75,
-      "high migration": 0.25
+      "principal_proj": 0.40,
+      "var_proj_10_year_migration": 0.15,
+      "var_proj_alt_internal_migration": 0.15,
+      "var_proj_high_intl_migration": 0.15,
+      "var_proj_low_intl_migration": 0.15
     }
   },
   "health_status_adjustment": [
