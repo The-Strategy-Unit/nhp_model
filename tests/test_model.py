@@ -1,4 +1,5 @@
 """test model"""
+# pylint: disable=protected-access,redefined-outer-name,no-member
 
 import re
 from unittest.mock import mock_open, patch
@@ -12,7 +13,6 @@ from model.model import Model
 @pytest.fixture
 def mock_model():
     """create a mock Model instance"""
-    # pylint: disable=protected-access
     with patch.object(Model, "__init__", lambda s, m, p, d, c: None):
         mdl = Model(None, None, None, None)
     mdl.model_type = "aae"
@@ -99,7 +99,6 @@ def test_model_init_sets_create_datetime(mocker):
 )
 def test_demog_factors_loads_correctly(mocker, mock_model, start_year, end_year):
     """test that the demographic factors are loaded correctly"""
-    # pylint: disable=protected-access,redefined-outer-name
     mocker.patch(
         "pandas.read_csv",
         return_value=pd.DataFrame(
