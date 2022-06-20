@@ -252,7 +252,7 @@ class LocalSave(ModelSave):
 
         # save change factors
         os.makedirs(
-            cf_path := f"{self._base_results_path}/changed_factors", exist_ok=True
+            cf_path := f"{self._base_results_path}/change_factors", exist_ok=True
         )
         self._combine_change_factors().to_csv(
             f"{cf_path}/{self._run_id}.csv", index=False
