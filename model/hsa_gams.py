@@ -15,44 +15,63 @@ from janitor import complete  # pylint: disable=unused-import
 from pygam import GAM
 
 
-def create_gams(
-    path_fn: Callable[[str], str],
-    pop: pd.DataFrame,
-    file: str,
-    ignored_hsagrps: list[str] = None,
-) -> dict:
-    """
-    Create GAMs
+def create_gams(dataset: str, base_year: str) -> None:
+    """Create GAMs for a dataset
 
-    * path_fn: a function that generates a path to the data directory
-    * pop: a DataFrame of population metrics
-    * file: the name of the data file to load
-    * ignored_hsagrps: a list of HSA groups to ignore when generating gams
-
-    returns: a dictionary containing the GAMs
+    * dataset: a string to the dataset we want to load
+    * base_year: the base year to produce the gams from
     """
-    print(f"Creating gams: {file}")
-    dfr = pq.read_pandas(path_fn(f"{file}.parquet")).to_pandas()
-    if ignored_hsagrps is not None:
-        dfr = dfr[~dfr["hsagrp"].isin(ignored_hsagrps)]
-    dfr = dfr[dfr["age"] >= 18]
-    dfr = dfr[dfr["age"] <= 90]
-    #
-    dfr = (
-        dfr.groupby(["age", "sex", "hsagrp"])
-        .size()
-        .reset_index(name="n")
-        .complete({"age": range(18, 91)}, "sex", "hsagrp")
-        .fillna(0)
-        .sort_values(["age", "sex", "hsagrp"])
-        .merge(pop, on=["age", "sex"])
+    # create a helper function for paths
+    def path_fn(filename):
+        return os.path.join("data", dataset, filename)
+
+    data = {}
+    gams = {}
+
+    # create a helper function for generating the gams for an activity type
+    def create_activity_type_gams(
+        activity_type: str,
+        ignored_hsagrps: list[str] = None,
+    ) -> dict:
+        dfr = pq.read_pandas(path_fn(f"{activity_type}.parquet")).to_pandas()
+        if ignored_hsagrps is not None:
+            dfr = dfr[~dfr["hsagrp"].isin(ignored_hsagrps)]
+        dfr = dfr[dfr["age"] >= 18]
+        dfr = dfr[dfr["age"] <= 90]
+
+        dfr = (
+            dfr.groupby(["age", "sex", "hsagrp"])
+            .size()
+            .reset_index(name="n")
+            .complete({"age": range(18, 91)}, "sex", "hsagrp")
+            .fillna(0)
+            .sort_values(["age", "sex", "hsagrp"])
+            .merge(pop, on=["age", "sex"])
+        )
+        dfr["activity_rate"] = dfr["n"] / dfr["base_year"]
+
+        data[activity_type] = dfr[["hsagrp", "age", "sex", "activity_rate"]]
+        for key, value in tuple(dfr.groupby(["hsagrp", "sex"])):
+            gams[key] = GAM().gridsearch(
+                value[["age"]].to_numpy(), value["activity_rate"].to_numpy()
+            )
+
+    # load the population data
+    pop = pd.read_csv(path_fn("demographic_factors.csv"))
+    pop["age"] = pop["age"].clip(upper=90)
+    pop = (
+        pop[pop["variant"] == "principal_proj"][["sex", "age", str(base_year)]]
+        .rename(columns={str(base_year): "base_year", "age": "age"})
+        .groupby(["sex", "age"])
+        .agg("sum")
+        .reset_index()
     )
-    dfr["activity_rate"] = dfr["n"] / dfr["base_year"]
-    #
-    return {
-        k: GAM().gridsearch(v[["age"]].to_numpy(), v["activity_rate"].to_numpy())
-        for k, v in tuple(dfr.groupby(["hsagrp", "sex"]))
-    }
+    # create the gams
+    create_activity_type_gams("ip", ["birth", "maternity", "paeds"])
+    create_activity_type_gams("op")
+    create_activity_type_gams("aae")
+
+    return (pd.concat(data), gams, path_fn)
 
 
 def main() -> None:
@@ -60,25 +79,8 @@ def main() -> None:
     assert (
         len(sys.argv) == 3
     ), "Must provide exactly 2 argument: the path to the data and the base year"
-    path, base_year = sys.argv[1:]  # pylint: disable=unbalanced-tuple-unpacking
-    # create a helper function for creating paths
-    path_fn = lambda f: os.path.join(path, f)
-    # load the population data
-    pop = pd.read_csv(path_fn("demographic_factors.csv"))
-    pop["age"] = pop["age"].clip(upper=90)
-    pop = (
-        pop[pop["variant"] == "principal"][["sex", "age", str(base_year)]]
-        .rename(columns={str(base_year): "base_year", "age": "age"})
-        .groupby(["sex", "age"])
-        .agg("sum")
-        .reset_index()
-    )
-    # create the gams
-    gams = {
-        **create_gams(path_fn, pop, "ip", ["birth", "maternity", "paeds"]),
-        **create_gams(path_fn, pop, "op"),
-        **create_gams(path_fn, pop, "aae"),
-    }
+
+    _, gams, path_fn = create_gams(sys.argv[1], sys.argv[2])
     # save the gams to disk
     with open(path_fn("hsa_gams.pkl"), "wb") as hsa_pkl:
         pickle.dump(gams, hsa_pkl)

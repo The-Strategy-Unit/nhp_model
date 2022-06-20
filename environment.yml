@@ -23,6 +23,7 @@ dependencies:
   - jupyter_core=4.9.*
   - jupyterlab_pygments=0.2.*
   - jupyterlab_widgets=1.1.*
+  - matplotlib=3.5.*
   - nbconvert=6.5.*
   - nbconvert-core=6.5.*
   - nbconvert-pandoc=6.5.*
