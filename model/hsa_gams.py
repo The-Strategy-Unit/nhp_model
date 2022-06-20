@@ -7,7 +7,6 @@ This file is used to generate the GAMs for Health Status Adjustment.
 import os
 import pickle
 import sys
-from typing import Callable
 
 import pandas as pd
 import pyarrow.parquet as pq
