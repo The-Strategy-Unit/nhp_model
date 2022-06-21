@@ -1,6 +1,7 @@
 """test model"""
 # pylint: disable=protected-access,redefined-outer-name,no-member
 
+
 import re
 from unittest.mock import mock_open, patch
 
@@ -27,12 +28,16 @@ def mock_model():
         "end_year": 2020,
     }
     mdl._data_path = "data/synthetic"
-    mdl._hsa_gams = "gams"
+    # create a mock object for the hsa gams
+    hsa_mock = type("mocked_hsa", (object,), {"predict": lambda x: x})
+    mdl._hsa_gams = {(i, j): hsa_mock for i in ["a", "b"] for j in [1, 2]}
+    # create a minimal data object for testing
     mdl.data = pd.DataFrame(
         {
             "rn": list(range(1, 21)),
             "age": list(range(1, 6)) * 4,
             "sex": ([1] * 5 + [2] * 5) * 2,
+            "hsagrp": [x for _ in range(1, 11) for x in ["a", "b"]],
         }
     )
     return mdl
@@ -139,3 +144,36 @@ def test_demog_factors_loads_correctly(mocker, mock_model, start_year, end_year)
 
     assert mdl._variants == ["a", "b"]
     assert mdl._probabilities == [0.6, 0.4]
+
+
+# _health_status_adjustment()
+
+
+@pytest.mark.health_status_adjustment
+def test_health_status_adjustment(mock_model):
+    """test that the health status adjustment factor is created correctly"""
+    mdl = mock_model
+    mdl.params["life_expectancy"] = {
+        "f": [1.1, 1.0, 0.9],
+        "m": [0.8, 0.7, 0.6],
+        "min_age": 50,
+        "max_age": 52,
+    }
+    mdl.data.age += 48
+    run_params = {"health_status_adjustment": 0.8}
+    expected = [
+        # sex = 1, age = [49,53)
+        1.0,
+        49.36 / 50.0,
+        50.44 / 51.0,
+        51.52 / 52.0,
+        1.0,
+        # sex = 2, age = [49,53)
+        1.0,
+        49.12 / 50.0,
+        50.20 / 51.0,
+        51.28 / 52.0,
+        1.0,
+    ] * 2
+    actual = mdl._health_status_adjustment(mdl.data, run_params)
+    assert list(actual) == expected
