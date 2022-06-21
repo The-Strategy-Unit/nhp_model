@@ -236,7 +236,7 @@ create_ip_synth_from_data <- function(data) {
 }
 
 save_ip_data <- function(data, strategies, name) {
-  path <- function(...) file.path("../../nhp_model/data/", name, ...)
+  path <- function(...) file.path("data", name, ...)
 
   if (!dir.exists(path())) {
     dir.create(path())

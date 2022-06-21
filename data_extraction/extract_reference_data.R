@@ -22,12 +22,14 @@ extract_reference_data <- function(path) {
     collect() |>
     write_csv(file.path(path, "icd10.csv"))
 
-  opcs4 <- tbl(con, in_schema("dbo", "DIM_tbProcedure")) |>
+  tbl(con, in_schema("dbo", "DIM_tbProcedure")) |>
     filter(ProcedureId > 0) |>
     select(
       opcs4 = ProcedureCode,
       procedure = ProcedureDescription
     ) |>
     collect() |>
-    write_csv(here::here("data", "opcs4.csv"))
+    write_csv(file.path(path, "opcs4.csv"))
+
+  invisible(NULL)
 }

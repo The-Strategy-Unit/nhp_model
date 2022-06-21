@@ -209,7 +209,7 @@ aggregate_op_data <- function(data, ...) {
 }
 
 save_op_data <- function(data, name, ...) {
-  path <- function(...) file.path("../../nhp_model/data/", name, ...)
+  path <- function(...) file.path("data", name, ...)
 
   if (!dir.exists(path())) {
     dir.create(path())
