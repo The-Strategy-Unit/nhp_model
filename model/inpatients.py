@@ -113,7 +113,7 @@ class InpatientsModel(Model):
         # that uses the "X01" specialty as the default value
         # waiting list adjustment is static across all model runs, hence we use the model's
         # run_params dictionary
-        pwla = self.run_params["waiting_list_adjustment"].copy()
+        pwla = self.params["waiting_list_adjustment"]["ip"].copy()
         default_specialty = pwla.pop("X01")
         pwla = defaultdict(lambda: default_specialty, pwla)
         # waiting list adjustment values

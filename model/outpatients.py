@@ -26,6 +26,26 @@ class OutpatientsModel(Model):
         # call the parent init function
         super().__init__("op", params, data_path)
 
+    def _waiting_list_adjustment(self, data: pd.DataFrame) -> pd.Series:
+        """
+        Create a series of factors for waiting list adjustment.
+
+        * data: the DataFrame that we are updating
+
+        returns: a series of floats indicating how often we want to sample that row
+
+        A value of 1 will indicate that we want to sample this row at the baseline rate. A value
+        less that 1 will indicate we want to sample that row less often that in the baseline, and
+        a value greater than 1 will indicate that we want to sample that row more often than in the
+        baseline
+        """
+        # extract the waiting list adjustment parameters - we convert this to a default dictionary
+        # that uses the "X01" specialty as the default value
+        # waiting list adjustment is static across all model runs, hence we use the model's
+        # run_params dictionary
+        pwla = self.run_params["waiting_list_adjustment"]["op"]
+        return pd.Series(pwla.values(), index=pwla.keys())[data.tretspef].to_numpy()
+
     def _followup_reduction(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
         """Followup Appointment Reduction
 
@@ -140,6 +160,8 @@ class OutpatientsModel(Model):
         run_step(hsa_f, "health_status_adjustment")
         # then, demographic modelling
         run_step(aav_f[data["rn"]], "population_factors")
+        # waiting list adjustments
+        run_step(self._waiting_list_adjustment(data), "waiting_list_adjustment")
         # now run strategies
         run_step(self._followup_reduction(data, params), "followup_reduction")
         run_step(
