@@ -39,12 +39,10 @@ class OutpatientsModel(Model):
         a value greater than 1 will indicate that we want to sample that row more often than in the
         baseline
         """
-        # extract the waiting list adjustment parameters - we convert this to a default dictionary
-        # that uses the "X01" specialty as the default value
-        # waiting list adjustment is static across all model runs, hence we use the model's
-        # run_params dictionary
-        pwla = self.run_params["waiting_list_adjustment"]["op"]
-        return pd.Series(pwla.values(), index=pwla.keys())[data.tretspef].to_numpy()
+        tretspef_n = data.groupby("tretspef").size()
+        wla_param = pd.Series(self.params["waiting_list_adjustment"]["op"])
+        wla = (wla_param / tretspef_n).fillna(0) + 1
+        return wla[data.tretspef].to_numpy()
 
     def _followup_reduction(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
         """Followup Appointment Reduction

@@ -109,20 +109,16 @@ class InpatientsModel(Model):
         a value greater than 1 will indicate that we want to sample that row more often than in the
         baseline
         """
-        # extract the waiting list adjustment parameters - we convert this to a default dictionary
-        # that uses the "X01" specialty as the default value
-        # waiting list adjustment is static across all model runs, hence we use the model's
-        # run_params dictionary
-        pwla = self.params["waiting_list_adjustment"]["ip"].copy()
-        default_specialty = pwla.pop("X01")
-        pwla = defaultdict(lambda: default_specialty, pwla)
+        tretspef_n = data.groupby("tretspef").size()
+        wla_param = pd.Series(self.params["waiting_list_adjustment"]["ip"])
+        wla = (wla_param / tretspef_n).fillna(0) + 1
         # waiting list adjustment values
         # create a series of 1's the length of our data: make sure these are floats, not ints
         wlav = np.ones_like(data.index).astype(float)
         # find the rows which are elective wait list admissions
         i = list(data.admimeth == "11")
         # update the series for these rows with the waiting list adjustments for that specialty
-        wlav[i] = [pwla[t] for t in data[i].tretspef]
+        wlav[i] = wla[data[i].tretspef]
         # return the waiting list adjustment factor series
         return wlav
 
