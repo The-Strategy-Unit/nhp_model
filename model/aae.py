@@ -139,11 +139,12 @@ class AaEModel(Model):
         change_factors["value"] = change_factors["value"].astype(int)
         return (change_factors, data.drop(["hsagrp"], axis="columns"))
 
-    def aggregate(self, model_results: pd.DataFrame) -> dict:
+    def aggregate(self, model_results: pd.DataFrame, model_run: int) -> dict:
         """
         Aggregate the model results
 
         * model_results: a DataFrame containing the results of a model iteration
+        * model_run: the current model run
 
         returns: a dictionary containing the different aggregations of this data
 

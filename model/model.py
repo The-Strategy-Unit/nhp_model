@@ -192,6 +192,14 @@ class Model:
                 }
                 for k0 in ["strategy_params", "outpatient_factors", "aae_factors"]
             },
+            "bed_occupancy": {
+                k0: {
+                    k1: [inrange(gen_value(m, v1)) for m in range(model_runs)]
+                    for k1, v1 in params["bed_occupancy"][k0].items()
+                }
+                for k0 in params["bed_occupancy"].keys()
+                if k0 != "specialty_mapping"
+            },
         }
 
     def _get_run_params(self, model_run):
@@ -213,6 +221,7 @@ class Model:
                     "strategy_params",
                     "outpatient_factors",
                     "aae_factors",
+                    "bed_occupancy",
                 ]
             },
         }
@@ -247,7 +256,7 @@ class Model:
         # choose which function to use
         return self._run(rng, data, run_params, aav_f, hsa_f)
 
-    def aggregate(self, model_results):
+    def aggregate(self, model_results, model_run):
         """
         Aggregate the model results
 

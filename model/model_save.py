@@ -135,7 +135,7 @@ class ModelSave:
             ).to_csv(f"{self._cf_path}/{activity_type}_{model_run}.csv", index=False)
 
         # save aggregated results
-        aggregated_results = model.aggregate(results)
+        aggregated_results = model.aggregate(results, model_run)
         with open(f"{self._ar_path}/{activity_type}_{model_run}.dill", "wb") as arf:
             dill.dump(aggregated_results, arf)
 

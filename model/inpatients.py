@@ -440,16 +440,65 @@ class InpatientsModel(Model):
         change_factors["value"] = change_factors["value"].astype(int)
         return (change_factors, data.drop(["hsagrp"], axis="columns").set_index(["rn"]))
 
-    def aggregate(self, model_results: pd.DataFrame) -> dict:
+    def _bed_occupancy(self, ip_rows: pd.DataFrame, bed_occupancy_params: dict):
+        # extract params
+        ga_ward_groups = pd.Series(
+            self.params["bed_occupancy"]["specialty_mapping"]["General and Acute"],
+            name="ward_group",
+        )
+        bed_occupancy_rates = pd.Series(bed_occupancy_params["day+night"])
+        # get the baseline data
+        baseline = (
+            self.data[self.data.classpat.isin(["1", "4"])]
+            .merge(ga_ward_groups, left_on="mainspef", right_index=True)
+            .groupby("ward_group")
+            .speldur.sum()
+        )
+        baseline.name = "baseline"
+        # get the model run data
+        dn_admissions = (
+            ip_rows[
+                (ip_rows["measure"] == "beddays")
+                & (ip_rows["pod"].str.endswith("admission"))
+            ]
+            .merge(ga_ward_groups, left_on="mainspef", right_index=True)
+            .groupby("ward_group")
+            .value.sum()
+        )
+        # load the kh03 data
+        kh03_data = (
+            pd.read_csv(
+                f"{self._data_path}/kh03.csv",
+                dtype={
+                    "specialty_code": np.character,
+                    "specialty_group": np.character,
+                    "available": np.float64,
+                    "occupied": np.float64,
+                },
+            )
+            .merge(ga_ward_groups, left_on="specialty_code", right_index=True)
+            .groupby(["ward_group"])
+            .occupied.sum()
+        )
+        return (
+            ((dn_admissions * kh03_data) / (baseline * bed_occupancy_rates))
+            .dropna()
+            .to_dict()
+        )
+
+    def aggregate(self, model_results: pd.DataFrame, model_run: int) -> dict:
         """
         Aggregate the model results
 
         * model_results: a DataFrame containing the results of a model iteration
+        * model_run: the current model run
 
         returns: a dictionary containing the different aggregations of this data
 
         Can also be used to aggregate the baseline data by passing in the raw data
         """
+        # get the run params: use principal run for baseline
+        run_params = self._get_run_params(max(0, model_run))
         # row's with a classpat of -1 are outpatients and need to be handled separately
         ip_op_row_ix = model_results["classpat"] == "-1"
         ip_rows = model_results[~ip_op_row_ix].copy()
@@ -493,9 +542,5 @@ class InpatientsModel(Model):
             **agg(),
             **agg(["sex", "age_group"]),
             **agg(["sex", "tretspef"]),
-            **self._create_agg(
-                ip_rows.query("measure == 'beddays'"),
-                ["mainspef"],
-                include_measure=False,
-            ),
+            "bed_occupancy": self._bed_occupancy(ip_rows, run_params["bed_occupancy"]),
         }
