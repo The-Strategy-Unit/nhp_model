@@ -3,7 +3,7 @@ Inpatients Module
 
 Implements the inpatients model.
 """
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from functools import partial
 
 import numpy as np
@@ -480,11 +480,17 @@ class InpatientsModel(Model):
             .groupby(["ward_group"])
             .occupied.sum()
         )
-        return (
-            ((dn_admissions * kh03_data) / (baseline * bed_occupancy_rates))
-            .dropna()
-            .to_dict()
-        )
+        # create the namedtuple type
+        result = namedtuple("results", ["type", "ward_group"])
+        # return the results
+        return {
+            result("overnight", k): v
+            for k, v in (
+                ((dn_admissions * kh03_data) / (baseline * bed_occupancy_rates))
+                .dropna()
+                .to_dict()
+            ).items()
+        }
 
     def aggregate(self, model_results: pd.DataFrame, model_run: int) -> dict:
         """
