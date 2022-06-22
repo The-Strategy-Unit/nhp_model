@@ -47,7 +47,7 @@ def debug_run(model: Model, model_run: int) -> None:
     print("running model... ", end="")
     change_factors, results = timeit(model.run, model_run)
     print("aggregating results... ", end="")
-    agg_results = timeit(model.aggregate, results)
+    agg_results = timeit(model.aggregate, results, model_run)
     #
     print()
     print("change factors:")
