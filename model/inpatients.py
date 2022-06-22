@@ -481,10 +481,10 @@ class InpatientsModel(Model):
             .occupied.sum()
         )
         # create the namedtuple type
-        result = namedtuple("results", ["type", "ward_group"])
+        result = namedtuple("results", ["pod", "measure", "ward_group"])
         # return the results
         return {
-            result("overnight", k): v
+            result("ip", "day+night", k): v
             for k, v in (
                 ((dn_admissions * kh03_data) / (baseline * bed_occupancy_rates))
                 .dropna()
