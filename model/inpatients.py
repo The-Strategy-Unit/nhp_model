@@ -438,7 +438,7 @@ class InpatientsModel(Model):
             "measure",
         )
         change_factors["value"] = change_factors["value"].astype(int)
-        return (change_factors, data.drop(["hsagrp"], axis="columns").set_index(["rn"]))
+        return (change_factors, data.drop(["hsagrp"], axis="columns").reset_index(drop = True))
 
     def _bed_occupancy(self, ip_rows: pd.DataFrame, bed_occupancy_params: dict):
         # extract params
