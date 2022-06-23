@@ -1,9 +1,9 @@
 """test model"""
-# pylint: disable=protected-access,redefined-outer-name,no-member
+# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
 
 
 import re
-from unittest.mock import mock_open, patch
+from unittest.mock import Mock, mock_open, patch
 
 import pandas as pd
 import pytest
@@ -177,3 +177,16 @@ def test_health_status_adjustment(mock_model):
     ] * 2
     actual = mdl._health_status_adjustment(mdl.data, run_params)
     assert list(actual) == expected
+
+# _load_parquet()
+
+@pytest.mark.load_parquet
+def test_load_parquet(mocker, mock_model):
+    """test that load parquet properly loads files"""
+    m = Mock()
+    m.to_pandas.return_value = "data"
+    mocker.patch("pyarrow.parquet.read_pandas", return_value = m)
+    mdl = mock_model
+    assert mdl._load_parquet("ip") == "data"
+    m.expect_called_with_args("data/ip.parquet")
+    m.to_pandas.assert_called_once()
