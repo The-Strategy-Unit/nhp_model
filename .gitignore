@@ -75,3 +75,4 @@ dist/
 
 # covergage db
 .coverage
+coverage.xml

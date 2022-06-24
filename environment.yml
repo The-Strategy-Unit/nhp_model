@@ -31,6 +31,7 @@ dependencies:
   - nbformat=5.4.*
   - notebook=6.4.*
   - pyjanitor=0.22.*
+  - pytest-cov=3.0.*
   - pytest=7.1.*
   - pytest-mock=3.7.*
   - pylint=2.14.*
