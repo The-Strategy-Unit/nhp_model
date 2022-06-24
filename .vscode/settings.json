@@ -2,7 +2,9 @@
   "python.linting.enabled": true,
   "python.linting.pylintArgs": [
     "--max-args",
-    "6"
+    "6",
+    "--max-instance-attributes",
+    "10"
   ],
   "python.testing.pytestArgs": [
     "tests"
