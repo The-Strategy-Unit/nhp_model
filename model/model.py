@@ -131,16 +131,25 @@ class Model:
         ).to_pandas()
 
     def _factor_helper(self, data, params, column_values):
-        hsagrps = data.merge(pd.DataFrame(column_values, index = [0])).hsagrp.unique().tolist()
-        factor = {h: v for k,v in params.items() for h in hsagrps if h.startswith(f"{self.model_type}_{k}")}
+        hsagrps = (
+            data.merge(pd.DataFrame(column_values, index=[0])).hsagrp.unique().tolist()
+        )
+        factor = {
+            h: v
+            for k, v in params.items()
+            for h in hsagrps
+            if h.startswith(f"{self.model_type}_{k}")
+        }
 
-        factor = pd.DataFrame({
-            "hsagrp": factor.keys(),
-            **column_values,
-            "f": factor.values()
-        })
+        factor = pd.DataFrame(
+            {"hsagrp": factor.keys(), **column_values, "f": factor.values()}
+        )
 
-        return data.merge(factor, how = "left", on = list(factor.columns[:-1])).f.fillna(1).to_numpy()
+        return (
+            data.merge(factor, how="left", on=list(factor.columns[:-1]))
+            .f.fillna(1)
+            .to_numpy()
+        )
 
     def _generate_run_params(self):
         params = self.params
