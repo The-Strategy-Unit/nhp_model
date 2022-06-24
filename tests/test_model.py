@@ -1,7 +1,6 @@
 """test model"""
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
 
-
 import re
 from unittest.mock import Mock, mock_open, patch
 
@@ -37,14 +36,12 @@ def mock_model():
             "rn": list(range(1, 21)),
             "age": list(range(1, 6)) * 4,
             "sex": ([1] * 5 + [2] * 5) * 2,
-            "hsagrp": [x for _ in range(1, 11) for x in ["a", "b"]],
+            "hsagrp": [x for _ in range(1, 11) for x in ["aae_a_a", "aae_b_b"]],
         }
     )
     return mdl
 
-
 # __init__()
-
 
 @pytest.mark.init
 @pytest.mark.parametrize("model_type", ["aae", "ip", "op"])
@@ -70,13 +67,11 @@ def test_model_init_sets_values(mocker, model_type):
         mdl._load_demog_factors.assert_called_once()
         mdl._generate_run_params.assert_called_once()
 
-
 @pytest.mark.init
 def test_model_init_validates_model_type():
     """it raises an exception if an invalid model_type is passed"""
     with pytest.raises(AssertionError):
         Model("", None, None)
-
 
 @pytest.mark.init
 def test_model_init_sets_create_datetime(mocker):
@@ -94,9 +89,7 @@ def test_model_init_sets_create_datetime(mocker):
         mdl = Model("aae", params, "data")
         assert re.match("^\\d{8}_\\d{6}$", mdl.params["create_datetime"])
 
-
 # _load_demog_factors()
-
 
 @pytest.mark.load_demog_factors
 @pytest.mark.parametrize(
@@ -145,9 +138,7 @@ def test_demog_factors_loads_correctly(mocker, mock_model, start_year, end_year)
     assert mdl._variants == ["a", "b"]
     assert mdl._probabilities == [0.6, 0.4]
 
-
 # _health_status_adjustment()
-
 
 @pytest.mark.health_status_adjustment
 def test_health_status_adjustment(mock_model):
@@ -190,3 +181,13 @@ def test_load_parquet(mocker, mock_model):
     assert mdl._load_parquet("ip") == "data"
     m.expect_called_with_args("data/ip.parquet")
     m.to_pandas.assert_called_once()
+
+# _factor_helper()
+
+@pytest.mark.factor_helper
+def test_factor_helper(mock_model):
+    """test that _factor_helper returns the correct values"""
+    mdl = mock_model
+    actual = mdl._factor_helper(mdl.data, {"a": 0.9}, {"sex": 1}).tolist()
+    expected = ([0.9, 1.0, 0.9, 1.0, 0.9] + [1.0] * 5) * 2
+    assert actual == expected
