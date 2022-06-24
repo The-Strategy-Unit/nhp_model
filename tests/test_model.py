@@ -74,6 +74,7 @@ def mock_model():
 
 @pytest.fixture
 def mock_run_params():
+    """generate the expected run params"""
     return {
         "variant": ["a", "a", "b", "a"],
         "seeds": [1, 2, 3, 4],
