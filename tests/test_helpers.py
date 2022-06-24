@@ -1,10 +1,11 @@
 """test helper methods"""
 
-from unittest.mock import Mock
+import json
+from unittest.mock import Mock, mock_open, patch
 
 import numpy as np
 import pytest
-from model.helpers import age_groups, inrange, rnorm
+from model.helpers import age_groups, inrange, load_params, rnorm
 
 
 @pytest.mark.parametrize(
@@ -32,7 +33,7 @@ def test_rnorm():
 
 
 def test_age_groups():
-    "test that the age_groups function returns expected values"
+    """test that the age_groups function returns expected values"""
     ages = list(range(0, 90))
     expected = list(
         np.concatenate(
@@ -48,3 +49,10 @@ def test_age_groups():
         ).flat
     )
     assert np.array_equal(age_groups(ages), expected)
+
+
+def test_load_params():
+    """test that load_params opens the params file"""
+    with patch("builtins.open", mock_open(read_data='{"params": 0}')) as mock_file:
+        assert load_params("filename.json") == {"params": 0}
+        mock_file.assert_called_with("filename.json", "r", encoding="UTF-8")
