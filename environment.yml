@@ -16,6 +16,7 @@ dependencies:
   - tqdm=4.63.*
   # dev dependencies
   - black=22.3.*
+  - coverage=6.4.*
   - ipykernel=6.13.*
   - ipython=8.2.*
   - ipywidgets=7.7.*
