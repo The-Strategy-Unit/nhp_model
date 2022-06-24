@@ -52,8 +52,8 @@ def mock_model():
             "b": {"b_a": {"interval": [0.4, 0.6]}, "b_b": {"interval": [0.4, 0.6]}},
         },
         "bed_occupancy": {
-            "a": {"a": [0.4, 0.6], "b": [0.4, 0.6]},
-            "b": {"a": [0.4, 0.6], "b": [0.4, 0.6]},
+            "a": {"a": [0.4, 0.6], "b": 0.7},
+            "b": {"a": [0.4, 0.6], "b": 0.8},
         },
     }
     mdl._data_path = "data/synthetic"
@@ -96,8 +96,8 @@ def mock_run_params():
             "b": {"b_a": [0.5, 46, 47, 48], "b_b": [0.5, 49, 50, 51]},
         },
         "bed_occupancy": {
-            "a": {"a": [0.5, 52, 53, 54], "b": [0.5, 55, 56, 57]},
-            "b": {"a": [0.5, 58, 59, 60], "b": [0.5, 61, 62, 63]},
+            "a": {"a": [0.5, 52, 53, 54], "b": [0.7, 0.7, 0.7, 0.7]},
+            "b": {"a": [0.5, 55, 56, 57], "b": [0.8, 0.8, 0.8, 0.8]},
         },
     }
 
@@ -105,7 +105,6 @@ def mock_run_params():
 # __init__()
 
 
-@pytest.mark.init
 @pytest.mark.parametrize("model_type", ["aae", "ip", "op"])
 def test_model_init_sets_values(mocker, model_type):
     """test model constructor works as expected"""
@@ -130,14 +129,12 @@ def test_model_init_sets_values(mocker, model_type):
         mdl._generate_run_params.assert_called_once()
 
 
-@pytest.mark.init
 def test_model_init_validates_model_type():
     """it raises an exception if an invalid model_type is passed"""
     with pytest.raises(AssertionError):
         Model("", None, None)
 
 
-@pytest.mark.init
 def test_model_init_sets_create_datetime(mocker):
     """it sets the create_datetime item in params if not already set"""
     params = {"input_data": "synthetic"}
@@ -157,7 +154,6 @@ def test_model_init_sets_create_datetime(mocker):
 # _load_demog_factors()
 
 
-@pytest.mark.load_demog_factors
 @pytest.mark.parametrize(
     "start_year, end_year", [("2018", "2019"), ("2018", "2020"), ("2019", "2020")]
 )
@@ -208,7 +204,6 @@ def test_demog_factors_loads_correctly(mocker, mock_model, start_year, end_year)
 # _health_status_adjustment()
 
 
-@pytest.mark.health_status_adjustment
 def test_health_status_adjustment(mock_model):
     """test that the health status adjustment factor is created correctly"""
     mdl = mock_model
@@ -241,7 +236,6 @@ def test_health_status_adjustment(mock_model):
 # _load_parquet()
 
 
-@pytest.mark.load_parquet
 def test_load_parquet(mocker, mock_model):
     """test that load parquet properly loads files"""
     m = Mock()
@@ -256,7 +250,6 @@ def test_load_parquet(mocker, mock_model):
 # _factor_helper()
 
 
-@pytest.mark.factor_helper
 def test_factor_helper(mock_model):
     """test that _factor_helper returns the correct values"""
     mdl = mock_model
@@ -268,7 +261,6 @@ def test_factor_helper(mock_model):
 # _generate_run_params()
 
 
-@pytest.mark.generate_run_params
 def test_generate_run_params(mocker, mock_model, mock_run_params):
     """test that _generate_run_params returns the run parameters"""
     n = 0
@@ -299,7 +291,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
 # _get_run_params()
 
 
-@pytest.mark.model__get_run_params
 @pytest.mark.parametrize(
     "model_run, expected_run_params",
     [
@@ -326,8 +317,8 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                     "b": {"b_a": 0.5, "b_b": 0.5},
                 },
                 "bed_occupancy": {
-                    "a": {"a": 0.5, "b": 0.5},
-                    "b": {"a": 0.5, "b": 0.5},
+                    "a": {"a": 0.5, "b": 0.7},
+                    "b": {"a": 0.5, "b": 0.8},
                 },
             },
         ),
@@ -354,8 +345,8 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                     "b": {"b_a": 47, "b_b": 50},
                 },
                 "bed_occupancy": {
-                    "a": {"a": 53, "b": 56},
-                    "b": {"a": 59, "b": 62},
+                    "a": {"a": 53, "b": 0.7},
+                    "b": {"a": 56, "b": 0.8},
                 },
             },
         ),
