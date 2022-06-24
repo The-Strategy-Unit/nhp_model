@@ -4,6 +4,7 @@
 import re
 from unittest.mock import Mock, mock_open, patch
 
+import numpy as np
 import pandas as pd
 import pytest
 from model.model import Model
@@ -19,17 +20,46 @@ def mock_model():
     mdl.params = {
         "input_data": "synthetic",
         "model_runs": 3,
+        "seed": 1,
         "demographic_factors": {
             "file": "demographics_file.csv",
             "variant_probabilities": {"a": 0.6, "b": 0.4},
         },
         "start_year": 2018,
         "end_year": 2020,
+        "health_status_adjustment": [0.8, 1.0],
+        "waiting_list_adjustment": "waiting_list_adjustment",
+        "non-demographic_adjustment": {
+            "a": {"a_a": [1, 1.2], "a_b": [1, 1.2]},
+            "b": {"b_a": [1, 1.2], "b_b": [1, 1.2]},
+        },
+        "strategy_params": {
+            "admission_avoidance": {
+                "a_a": {"interval": [0.4, 0.6]},
+                "a_b": {"interval": [0.4, 0.6]},
+            },
+            "los_reduction": {
+                "b_a": {"interval": [0.4, 0.6]},
+                "b_b": {"interval": [0.4, 0.6]},
+            },
+        },
+        "outpatient_factors": {
+            "a": {"a_a": {"interval": [0.4, 0.6]}, "a_b": {"interval": [0.4, 0.6]}},
+            "b": {"b_a": {"interval": [0.4, 0.6]}, "b_b": {"interval": [0.4, 0.6]}},
+        },
+        "aae_factors": {
+            "a": {"a_a": {"interval": [0.4, 0.6]}, "a_b": {"interval": [0.4, 0.6]}},
+            "b": {"b_a": {"interval": [0.4, 0.6]}, "b_b": {"interval": [0.4, 0.6]}},
+        },
+        "bed_occupancy": {
+            "a": {"a": [0.4, 0.6], "b": [0.4, 0.6]},
+            "b": {"a": [0.4, 0.6], "b": [0.4, 0.6]},
+        },
     }
     mdl._data_path = "data/synthetic"
     # create a mock object for the hsa gams
     hsa_mock = type("mocked_hsa", (object,), {"predict": lambda x: x})
-    mdl._hsa_gams = {(i, j): hsa_mock for i in ["a", "b"] for j in [1, 2]}
+    mdl._hsa_gams = {(i, j): hsa_mock for i in ["aae_a_a", "aae_b_b"] for j in [1, 2]}
     # create a minimal data object for testing
     mdl.data = pd.DataFrame(
         {
@@ -41,7 +71,39 @@ def mock_model():
     )
     return mdl
 
+
+@pytest.fixture
+def mock_run_params():
+    return {
+        "variant": ["a", "a", "b", "a"],
+        "seeds": [1, 2, 3, 4],
+        "health_status_adjustment": [0.9, 1, 2, 3],
+        "waiting_list_adjustment": "waiting_list_adjustment",
+        "non-demographic_adjustment": {
+            "a": {"a_a": [1.1, 4, 5, 6], "a_b": [1.1, 7, 8, 9]},
+            "b": {"b_a": [1.1, 10, 11, 12], "b_b": [1.1, 13, 14, 15]},
+        },
+        "strategy_params": {
+            "admission_avoidance": {"a_a": [0.5, 16, 17, 18], "a_b": [0.5, 19, 20, 21]},
+            "los_reduction": {"b_a": [0.5, 22, 23, 24], "b_b": [0.5, 25, 26, 27]},
+        },
+        "outpatient_factors": {
+            "a": {"a_a": [0.5, 28, 29, 30], "a_b": [0.5, 31, 32, 33]},
+            "b": {"b_a": [0.5, 34, 35, 36], "b_b": [0.5, 37, 38, 39]},
+        },
+        "aae_factors": {
+            "a": {"a_a": [0.5, 40, 41, 42], "a_b": [0.5, 43, 44, 45]},
+            "b": {"b_a": [0.5, 46, 47, 48], "b_b": [0.5, 49, 50, 51]},
+        },
+        "bed_occupancy": {
+            "a": {"a": [0.5, 52, 53, 54], "b": [0.5, 55, 56, 57]},
+            "b": {"a": [0.5, 58, 59, 60], "b": [0.5, 61, 62, 63]},
+        },
+    }
+
+
 # __init__()
+
 
 @pytest.mark.init
 @pytest.mark.parametrize("model_type", ["aae", "ip", "op"])
@@ -67,11 +129,13 @@ def test_model_init_sets_values(mocker, model_type):
         mdl._load_demog_factors.assert_called_once()
         mdl._generate_run_params.assert_called_once()
 
+
 @pytest.mark.init
 def test_model_init_validates_model_type():
     """it raises an exception if an invalid model_type is passed"""
     with pytest.raises(AssertionError):
         Model("", None, None)
+
 
 @pytest.mark.init
 def test_model_init_sets_create_datetime(mocker):
@@ -89,7 +153,9 @@ def test_model_init_sets_create_datetime(mocker):
         mdl = Model("aae", params, "data")
         assert re.match("^\\d{8}_\\d{6}$", mdl.params["create_datetime"])
 
+
 # _load_demog_factors()
+
 
 @pytest.mark.load_demog_factors
 @pytest.mark.parametrize(
@@ -138,7 +204,9 @@ def test_demog_factors_loads_correctly(mocker, mock_model, start_year, end_year)
     assert mdl._variants == ["a", "b"]
     assert mdl._probabilities == [0.6, 0.4]
 
+
 # _health_status_adjustment()
+
 
 @pytest.mark.health_status_adjustment
 def test_health_status_adjustment(mock_model):
@@ -169,20 +237,24 @@ def test_health_status_adjustment(mock_model):
     actual = mdl._health_status_adjustment(mdl.data, run_params)
     assert list(actual) == expected
 
+
 # _load_parquet()
+
 
 @pytest.mark.load_parquet
 def test_load_parquet(mocker, mock_model):
     """test that load parquet properly loads files"""
     m = Mock()
     m.to_pandas.return_value = "data"
-    mocker.patch("pyarrow.parquet.read_pandas", return_value = m)
+    mocker.patch("pyarrow.parquet.read_pandas", return_value=m)
     mdl = mock_model
     assert mdl._load_parquet("ip") == "data"
     m.expect_called_with_args("data/ip.parquet")
     m.to_pandas.assert_called_once()
 
+
 # _factor_helper()
+
 
 @pytest.mark.factor_helper
 def test_factor_helper(mock_model):
@@ -191,3 +263,34 @@ def test_factor_helper(mock_model):
     actual = mdl._factor_helper(mdl.data, {"a": 0.9}, {"sex": 1}).tolist()
     expected = ([0.9, 1.0, 0.9, 1.0, 0.9] + [1.0] * 5) * 2
     assert actual == expected
+
+
+# _generate_run_params()
+
+
+@pytest.mark.generate_run_params
+def test_generate_run_params(mocker, mock_model, mock_run_params):
+    """test that _generate_run_params returns the run parameters"""
+    n = 0
+
+    def get_next_n(*args):  # pylint: disable=unused-argument
+        nonlocal n
+        n += 1
+        return n
+
+    rng = Mock()
+    rng.choice.return_value = np.array(["a", "b", "a"])
+    rng.integers.return_value = np.array([1, 2, 3, 4])
+    rng.normal = Mock(wraps=get_next_n)
+    mocker.patch("numpy.random.default_rng", return_value=rng)
+
+    mocker.patch("model.model.inrange", wraps=lambda x, *args: x)
+    # arrange
+    mdl = mock_model
+    mdl._variants = ["a", "b"]
+    mdl._probabilities = [0.6, 0.4]
+
+    # act
+    mdl._generate_run_params()
+    # assert
+    assert mdl.run_params == mock_run_params
