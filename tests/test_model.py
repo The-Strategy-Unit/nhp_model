@@ -358,3 +358,26 @@ def test_get_run_params(mock_model, mock_run_params, model_run, expected_run_par
     mdl = mock_model
     mdl.run_params = mock_run_params
     assert mdl._get_run_params(model_run) == expected_run_params
+
+
+# run()
+
+
+def test_run(mocker, mock_model):
+    """test run calls the _run method correctly"""
+    run_params = {"seed": 1, "variant": "a"}
+    mdl = mock_model
+    mdl.data = Mock()
+    mdl.data.copy.return_value = "data"
+    mdl._demog_factors = {"a": "demog_factors"}
+    mocker.patch("numpy.random.default_rng", return_value="rng")
+    mocker.patch("model.model.Model._get_run_params", return_value=run_params)
+    mocker.patch(
+        "model.model.Model._health_status_adjustment", return_value="hsa_factors"
+    )
+    mocker.patch("model.model.Model._run", return_value="model run results")
+    assert mdl.run(0) == "model run results"
+    mdl._health_status_adjustment.assert_called_once_with("data", run_params)
+    mdl._run.assert_called_once_with(
+        "rng", "data", run_params, "demog_factors", "hsa_factors"
+    )
