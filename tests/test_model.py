@@ -294,3 +294,75 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
     mdl._generate_run_params()
     # assert
     assert mdl.run_params == mock_run_params
+
+
+# _get_run_params()
+
+
+@pytest.mark.model__get_run_params
+@pytest.mark.parametrize(
+    "model_run, expected_run_params",
+    [
+        (
+            0,
+            {
+                "variant": "a",
+                "health_status_adjustment": 0.9,
+                "seed": 1,
+                "non-demographic_adjustment": {
+                    "a": {"a_a": 1.1, "a_b": 1.1},
+                    "b": {"b_a": 1.1, "b_b": 1.1},
+                },
+                "strategy_params": {
+                    "admission_avoidance": {"a_a": 0.5, "a_b": 0.5},
+                    "los_reduction": {"b_a": 0.5, "b_b": 0.5},
+                },
+                "outpatient_factors": {
+                    "a": {"a_a": 0.5, "a_b": 0.5},
+                    "b": {"b_a": 0.5, "b_b": 0.5},
+                },
+                "aae_factors": {
+                    "a": {"a_a": 0.5, "a_b": 0.5},
+                    "b": {"b_a": 0.5, "b_b": 0.5},
+                },
+                "bed_occupancy": {
+                    "a": {"a": 0.5, "b": 0.5},
+                    "b": {"a": 0.5, "b": 0.5},
+                },
+            },
+        ),
+        (
+            2,
+            {
+                "variant": "b",
+                "seed": 3,
+                "health_status_adjustment": 2,
+                "non-demographic_adjustment": {
+                    "a": {"a_a": 5, "a_b": 8},
+                    "b": {"b_a": 11, "b_b": 14},
+                },
+                "strategy_params": {
+                    "admission_avoidance": {"a_a": 17, "a_b": 20},
+                    "los_reduction": {"b_a": 23, "b_b": 26},
+                },
+                "outpatient_factors": {
+                    "a": {"a_a": 29, "a_b": 32},
+                    "b": {"b_a": 35, "b_b": 38},
+                },
+                "aae_factors": {
+                    "a": {"a_a": 41, "a_b": 44},
+                    "b": {"b_a": 47, "b_b": 50},
+                },
+                "bed_occupancy": {
+                    "a": {"a": 53, "b": 56},
+                    "b": {"a": 59, "b": 62},
+                },
+            },
+        ),
+    ],
+)
+def test_get_run_params(mock_model, mock_run_params, model_run, expected_run_params):
+    """tests _get_run_params gets the right params for a model run"""
+    mdl = mock_model
+    mdl.run_params = mock_run_params
+    assert mdl._get_run_params(model_run) == expected_run_params
