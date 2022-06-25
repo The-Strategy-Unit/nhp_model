@@ -2,6 +2,7 @@
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
 
 import re
+from collections import namedtuple
 from unittest.mock import Mock, mock_open, patch
 
 import numpy as np
@@ -101,6 +102,19 @@ def mock_run_params():
             "b": {"a": [0.5, 55, 56, 57], "b": [0.8, 0.8, 0.8, 0.8]},
         },
     }
+
+
+@pytest.fixture
+def mock_model_results():
+    return pd.DataFrame(
+        {
+            "pod": [i for i in range(3) for _ in range(4)],
+            "measure": [0, 1] * 6,
+            "col1": [0, 0, 1, 1] * 3,
+            "col2": [0, 0, 0, 1] * 3,
+            "value": list(range(1, 13)),
+        }
+    )
 
 
 # __init__()
@@ -381,3 +395,89 @@ def test_run(mocker, mock_model):
     mdl._run.assert_called_once_with(
         "rng", "data", run_params, "demog_factors", "hsa_factors"
     )
+
+
+# _create_agg()
+
+
+@pytest.mark.parametrize(
+    "cols, name, include_measure, expected",
+    [
+        (
+            None,
+            None,
+            True,
+            lambda r: {
+                "default": {
+                    r(0, 0): 4,
+                    r(0, 1): 6,
+                    r(1, 0): 12,
+                    r(1, 1): 14,
+                    r(2, 0): 20,
+                    r(2, 1): 22,
+                }
+            },
+        ),
+        (
+            None,
+            "thing",
+            True,
+            lambda r: {
+                "thing": {
+                    r(0, 0): 4,
+                    r(0, 1): 6,
+                    r(1, 0): 12,
+                    r(1, 1): 14,
+                    r(2, 0): 20,
+                    r(2, 1): 22,
+                }
+            },
+        ),
+        (
+            ["col1"],
+            None,
+            True,
+            lambda r: {
+                "col1": {
+                    r(0, 0, 0): 1,
+                    r(0, 0, 1): 3,
+                    r(0, 1, 0): 2,
+                    r(0, 1, 1): 4,
+                    r(1, 0, 0): 5,
+                    r(1, 0, 1): 7,
+                    r(1, 1, 0): 6,
+                    r(1, 1, 1): 8,
+                    r(2, 0, 0): 9,
+                    r(2, 0, 1): 11,
+                    r(2, 1, 0): 10,
+                    r(2, 1, 1): 12,
+                }
+            },
+        ),
+        (
+            ["col1", "col2"],
+            None,
+            False,
+            lambda r: {
+                "col1+col2": {
+                    r(0, 0, 0): 3,
+                    r(0, 1, 0): 3,
+                    r(0, 1, 1): 4,
+                    r(1, 0, 0): 11,
+                    r(1, 1, 0): 7,
+                    r(1, 1, 1): 8,
+                    r(2, 0, 0): 19,
+                    r(2, 1, 0): 11,
+                    r(2, 1, 1): 12,
+                }
+            },
+        ),
+    ],
+)
+def test_create_agg(
+    mock_model, mock_model_results, cols, name, include_measure, expected
+):
+    """test that it aggregates the data correctly"""
+    actual = mock_model._create_agg(mock_model_results, cols, name, include_measure)
+    cols = ["pod"] + (["measure"] if include_measure else []) + (cols or [])
+    assert actual == expected(namedtuple("results", cols))
