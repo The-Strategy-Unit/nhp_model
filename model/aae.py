@@ -64,6 +64,24 @@ class AaEModel(Model):
             data, run_params["frequent_attenders"], {"is_frequent_attender": 1}
         )
 
+    @staticmethod
+    def _run_poisson_step(rng, data, name, factor, step_counts):
+        # perform the step
+        data["arrivals"] = rng.poisson(data["arrivals"].to_numpy() * factor)
+        # remove rows where the overall number of attendances was 0
+        data.drop(data[data["arrivals"] == 0].index, inplace=True)
+        # update the step counts
+        step_counts[name] = sum(data["arrivals"]) - sum(step_counts.values())
+
+    @staticmethod
+    def _run_binomial_step(rng, data, name, factor, step_counts):
+        # perform the step
+        data["arrivals"] = rng.binomial(data["arrivals"].to_numpy(), factor)
+        # remove rows where the overall number of attendances was 0
+        data.drop(data[data["arrivals"] == 0].index, inplace=True)
+        # update the step counts
+        step_counts[name] = sum(data["arrivals"]) - sum(step_counts.values())
+
     def _run(
         self,
         rng: np.random.Generator,
@@ -84,57 +102,51 @@ class AaEModel(Model):
         """
         params = run_params["aae_factors"]
 
-        sc_a = sum(data["arrivals"])
-        step_counts = {
-            "baseline": pd.DataFrame({"measure": ["arrivals"], "value": [sc_a]}, ["-"])
-        }
-
-        def update_step_counts(name):
-            nonlocal data, step_counts, sc_a
-            sc_ap = sum(data["arrivals"])
-            step_counts[name] = pd.DataFrame(
-                {"measure": ["arrivals"], "value": [sc_ap - sc_a]}, ["-"]
-            )
-            # replace the values
-            sc_a = sc_ap
-
-        def run_poisson_step(factor, name):
-            nonlocal data
-            # perform the step
-            data["arrivals"] = rng.poisson(data["arrivals"].to_numpy() * factor)
-            # remove rows where the overall number of attendances was 0
-            data = data[data["arrivals"] > 0]
-            # update the step count values
-            update_step_counts(name)
-
-        def run_binomial_step(factor, name):
-            nonlocal data
-            # perform the step
-            data["arrivals"] = rng.binomial(data["arrivals"].to_numpy(), factor)
-            # remove rows where the overall number of attendances was 0
-            data = data[data["arrivals"] > 0]
-            # update the step count values
-            update_step_counts(name)
+        step_counts = {"baseline": sum(data["arrivals"])}
 
         # captue current pandas options, and set chainged assignment off
         pd_options = pd.set_option("mode.chained_assignment", None)
         # first, run hsa as we have the factor already created
-        run_poisson_step(hsa_f, "health_status_adjustment")
-        # then, demographic modelling
-        run_poisson_step(aav_f[data["rn"]], "population_factors")
-        # now run strategies
-        run_binomial_step(
-            self._low_cost_discharged(data, params), "low_cost_discharged"
+        self._run_poisson_step(
+            rng, data, "health_status_adjustment", hsa_f, step_counts
         )
-        run_binomial_step(self._left_before_seen(data, params), "left_before_seen")
-        run_binomial_step(self._frequent_attenders(data, params), "frequent_attenders")
+        # then, demographic modelling
+        self._run_poisson_step(
+            rng, data, "population_factors", aav_f[data["rn"]], step_counts
+        )
+        # now run strategies
+        self._run_binomial_step(
+            rng,
+            data,
+            "low_cost_dischaged",
+            self._low_cost_discharged(data, params),
+            step_counts,
+        )
+        self._run_binomial_step(
+            rng,
+            data,
+            "left_before_seen",
+            self._left_before_seen(data, params),
+            step_counts,
+        )
+        self._run_binomial_step(
+            rng,
+            data,
+            "frequent_attenders",
+            self._frequent_attenders(data, params),
+            step_counts,
+        )
         # now run_step's are finished, restore pandas options
         pd.set_option("mode.chained_assignment", pd_options)
         # return the data
         change_factors = (
-            pd.concat(step_counts)
-            .rename_axis(["change_factor", "strategy"])
+            pd.Series(step_counts)
+            .to_frame("value")
             .reset_index()
+            .rename(columns={"index": "change_factor"})
+            .assign(strategy="-", measure="arrivals")[
+                ["change_factor", "strategy", "measure", "value"]
+            ]
         )
         change_factors["value"] = change_factors["value"].astype(int)
         return (change_factors, data.drop(["hsagrp"], axis="columns"))
