@@ -119,6 +119,21 @@ class OutpatientsModel(Model):
         # update the step count values
         self._update_step_counts(data, name, step_counts)
 
+    def _run_binomial_step(self, rng, data, name, factor, step_counts):
+        data.loc[:, "attendances"] = rng.binomial(
+            data["attendances"].to_numpy(), factor
+        )
+        data.loc[:, "tele_attendances"] = rng.binomial(
+            data["tele_attendances"].to_numpy(), factor
+        )
+        # remove rows where the overall number of attendances was 0
+        data.drop(
+            data[data["attendances"] + data["tele_attendances"] == 0].index,
+            inplace=True,
+        )
+        # update the step count values
+        self._update_step_counts(data, name, step_counts)
+
     @staticmethod
     def _update_step_counts(data, name, step_counts):
         step_counts[name] = {
@@ -168,14 +183,14 @@ class OutpatientsModel(Model):
             step_counts,
         )
         # now run strategies
-        self._run_poisson_step(
+        self._run_binomial_step(
             rng,
             data,
             "followup_reduction",
             self._followup_reduction(data, params),
             step_counts,
         )
-        self._run_poisson_step(
+        self._run_binomial_step(
             rng,
             data,
             "consultant_to_consultant_referrals",
