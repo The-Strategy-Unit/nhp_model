@@ -178,6 +178,8 @@ def test_run(mock_model):
 
 
 def test_aggregate(mock_model):
+    """test that it aggregates the results correctly"""
+
     def create_agg_stub(model_results, cols=None):
         name = "+".join(cols) if cols else "default"
         return {name: 1}
