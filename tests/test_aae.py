@@ -82,7 +82,7 @@ def test_init_calls_super_init(mocker):
 
 
 def test_low_cost_discharged(mock_model):
-    """test that is calls factor helper"""
+    """test that it calls factor helper"""
     mdl = mock_model
     mdl._factor_helper = Mock(return_value="low cost discharged")
     assert (
@@ -95,7 +95,7 @@ def test_low_cost_discharged(mock_model):
 
 
 def test_left_before_seen(mock_model):
-    """test that is calls factor helper"""
+    """test that it calls factor helper"""
     mdl = mock_model
     mdl._factor_helper = Mock(return_value="left before seen")
     assert (
