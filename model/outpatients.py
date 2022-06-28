@@ -73,9 +73,12 @@ class OutpatientsModel(Model):
         )
 
     @staticmethod
-    def _convert_to_tele(data: pd.DataFrame, run_params: dict) -> None:
+    def _convert_to_tele(
+        rng: np.random.Generator, data: pd.DataFrame, run_params: dict
+    ) -> None:
         """Convert attendances to tele-attendances
 
+        * rng: an np.random.Generator, created for each model iteration
         * data: the DataFrame that we are updating
         * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
 
@@ -91,7 +94,7 @@ class OutpatientsModel(Model):
         # create a value for converting attendances into tele attendances for each row
         # the value will be a random binomial value, i.e. we will convert between 0 and attendances
         # into tele attendances
-        tele_conversion = np.random.binomial(
+        tele_conversion = rng.binomial(
             data.loc[npix, "attendances"], [params[t] for t in data.loc[npix, "type"]]
         )
         # update the columns, subtracting tc from one, adding tc to the other (we maintain the
@@ -169,7 +172,7 @@ class OutpatientsModel(Model):
         # now run_step's are finished, restore pandas options
         pd.set_option("mode.chained_assignment", pd_options)
         # convert attendances to tele attendances
-        self._convert_to_tele(data, params)
+        self._convert_to_tele(rng, data, params)
         update_stepcounts("tele_conversion")
         # return the data
         change_factors = pd.melt(
