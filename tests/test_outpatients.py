@@ -15,7 +15,7 @@ def mock_model():
     """create a mock Model instance"""
     with patch.object(OutpatientsModel, "__init__", lambda s, p, d: None):
         mdl = OutpatientsModel(None, None)
-    mdl.model_type = "outpatients"
+    mdl.model_type = "op"
     mdl.params = {
         "input_data": "synthetic",
         "model_runs": 3,
@@ -81,7 +81,7 @@ def test_init_calls_super_init(mocker):
     # no asserts to perform, so long as this method doesn't fail
 
 
-def test_waiting_list_adjutment(mocker, mock_model):
+def test_waiting_list_adjutment(mock_model):
     """test that it returns the wla numpy array"""
     data = pd.DataFrame({"tretspef": [1] * 2 + [2] * 8 + [3] * 4 + [4] * 1})
     mdl = mock_model
