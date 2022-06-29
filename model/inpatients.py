@@ -178,16 +178,13 @@ class InpatientsModel(Model):
             admission_avoidance, left_on="rn", right_index=True
         ).groupby("admission_avoidance_strategy")
         sc_n_aa = data_aa["rn"].agg(len)
-        sc_b_aa = (
-            # add rows to convert los to beddays
-            data_aa["speldur"].agg(sum)
-            + sc_n_aa
-        )
+        # add rows to convert los to beddays
+        sc_b_aa = data_aa["speldur"].agg(sum) + sc_n_aa
         # then, work out the admission avoidance factors for each row
         aaf = [ada[k] for k in admission_avoidance[data["rn"]]]
         # decide whether to select this row or not
         select_row = rng.binomial(n=1, p=aaf).astype(bool)
-        # select each row as many times as it was sampeld
+        # select each row as many times as it was sampled
         data = data[select_row].reset_index(drop=True)
         # update our number of rows and update step_counts
         data_aa = data.merge(
