@@ -138,6 +138,7 @@ class InpatientsModel(Model):
             .reset_index()
             .rename(columns={"index": "admigroup"})
             .melt(["admigroup"], var_name="age_group")
+            .set_index(["age_group", "admigroup"])["value"]
         )
         admigroup = np.where(
             data["admimeth"].str.startswith("1"),
@@ -148,7 +149,7 @@ class InpatientsModel(Model):
         return (
             data[["age_group"]]
             .assign(admigroup=admigroup)
-            .merge(ndp, on=["age_group", "admigroup"])["value"]
+            .join(ndp, on=["age_group", "admigroup"])["value"]
             .to_numpy()
         )
 
