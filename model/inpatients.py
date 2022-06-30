@@ -302,7 +302,7 @@ class InpatientsModel(Model):
         i = i[i.isin(data.index)]
         data.loc[i, "classpat"] = bads_df["classpat"]
         # set the speldur to 0 if we aren't inpatients
-        data.loc[i, "speldur"] *= data.loc[i, "classpat"] == 1
+        data.loc[i, "speldur"] *= data.loc[i, "classpat"] == "1"
 
         step_counts["los_reduction"]["admissions"] = {
             **step_counts["los_reduction"]["admissions"],
