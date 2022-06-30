@@ -159,6 +159,7 @@ class InpatientsModel(Model):
         data: pd.DataFrame,
         admission_avoidance: pd.Series,
         run_params: dict,
+        step_counts: dict,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """Run the admission avoidance strategies
 
@@ -198,17 +199,12 @@ class InpatientsModel(Model):
         # returning NaN values for these strategies
         sc_n_aa_post = defaultdict(lambda: 0, sc_n_aa_post.to_dict())
         sc_b_aa_post = defaultdict(lambda: 0, sc_b_aa_post.to_dict())
-        return (
-            data,
-            pd.DataFrame(
-                {
-                    "admissions": {
-                        k: sc_n_aa_post[k] - sc_n_aa[k] for k in sc_n_aa.index
-                    },
-                    "beddays": {k: sc_b_aa_post[k] - sc_b_aa[k] for k in sc_b_aa.index},
-                }
-            ),
-        )
+        for k in sc_n_aa.index:
+            step_counts[("admission_avoidance", k)] = {
+                "admissions": sc_n_aa_post[k] - sc_n_aa[k],
+                "beddays": sc_b_aa_post[k] - sc_b_aa[k],
+            }
+        return data
 
     @staticmethod
     def _losr_all(
@@ -236,11 +232,13 @@ class InpatientsModel(Model):
         )
         change_los = (
             (data.loc[i, "speldur"] - pre_los).groupby(level=0).sum().astype(int)
-        )
-        step_counts["los_reduction"] = {
-            "admissions": (change_los * 0).to_dict(),
-            "beddays": change_los.to_dict(),
-        }
+        ).to_dict()
+
+        for k in change_los.keys():
+            step_counts[("los_reduction", k)] = {
+                "admissions": 0,
+                "beddays": change_los[k],
+            }
 
     @staticmethod
     def _losr_bads(
@@ -304,20 +302,24 @@ class InpatientsModel(Model):
         # set the speldur to 0 if we aren't inpatients
         data.loc[i, "speldur"] *= data.loc[i, "classpat"] == "1"
 
-        step_counts["los_reduction"]["admissions"] = {
-            **step_counts["los_reduction"]["admissions"],
-            **((data.loc[i, "classpat"] == "-1").groupby(level=0).sum() * -1)
+        step_counts_admissions = (
+            ((data.loc[i, "classpat"] == "-1").groupby(level=0).sum() * -1)
             .astype(int)
-            .to_dict(),
-        }
-        step_counts["los_reduction"]["beddays"] = {
-            **step_counts["los_reduction"]["beddays"],
-            **(data.loc[i, "speldur"] - bads_df["speldur"])
+            .to_dict()
+        )
+        step_counts_beddays = (
+            (data.loc[i, "speldur"] - bads_df["speldur"])
             .groupby(level=0)
             .sum()
             .astype(int)
-            .to_dict(),
-        }
+            .to_dict()
+        )
+
+        for k in step_counts_admissions.keys():
+            step_counts[("los_reduction", k)] = {
+                "admissions": step_counts_admissions[k],
+                "beddays": step_counts_beddays[k],
+            }
 
     @staticmethod
     def _losr_to_zero(
@@ -346,15 +348,26 @@ class InpatientsModel(Model):
         )
         change_los = (
             (data.loc[i, "speldur"] - pre_los).groupby(level=0).sum().astype(int)
-        )
-        step_counts["los_reduction"]["admissions"] = {
-            **step_counts["los_reduction"]["admissions"],
-            **(change_los * 0).to_dict(),
-        }
-        step_counts["los_reduction"]["beddays"] = {
-            **step_counts["los_reduction"]["beddays"],
-            **change_los.to_dict(),
-        }
+        ).to_dict()
+
+        for k in change_los.keys():
+            step_counts[("los_reduction", k)] = {
+                "admissions": 0,
+                "beddays": change_los[k],
+            }
+
+    @staticmethod
+    def _run_poisson_step(rng, data, name, factor, step_counts):
+        select_row_n_times = rng.poisson(factor)
+        sc_n = len(data.index)
+        sc_b = int(sum(data["speldur"] + 1))
+        # perform the step
+        data = data.loc[data.index.repeat(select_row_n_times)].reset_index(drop=True)
+        # update the step count values
+        sc_np = int(sum(select_row_n_times))
+        sc_bp = int(sum(data["speldur"] + 1))
+        step_counts[(name, "-")] = {"admissions": sc_np - sc_n, "beddays": sc_bp - sc_b}
+        return data
 
     def _run(
         self,
@@ -380,41 +393,40 @@ class InpatientsModel(Model):
         # choose length of stay reduction factors
         losr = self._los_reduction(run_params)
 
-        sc_n, sc_b = len(data.index), sum(data["speldur"] + 1)
         step_counts = {
-            "baseline": pd.DataFrame({"admissions": [sc_n], "beddays": [sc_b]}, ["-"])
+            ("baseline", "-"): {
+                "admissions": len(data.index),
+                "beddays": int(sum(data["speldur"] + 1)),
+            }
         }
 
-        def run_step(thing, name):
-            nonlocal data, step_counts, sc_n, sc_b
-            select_row_n_times = rng.poisson(thing)
-            # perform the step
-            data = data.loc[data.index.repeat(select_row_n_times)].reset_index(
-                drop=True
-            )
-            # update the step count values
-            sc_np = int(sum(select_row_n_times))
-            sc_bp = int(sum(data["speldur"] + 1))
-            step_counts[name] = pd.DataFrame(
-                {"admissions": [sc_np - sc_n], "beddays": [sc_bp - sc_b]}, ["-"]
-            )
-            # replace the values
-            sc_n, sc_b = sc_np, sc_bp
-
         # first, run hsa as we have the factor already created
-        run_step(hsa_f, "health_status_adjustment")
+        data = self._run_poisson_step(
+            rng, data, "health_status_adjustment", hsa_f, step_counts
+        )
         # then, demographic modelling
-        run_step(aav_f[data["rn"]], "population_factors")
+        data = self._run_poisson_step(
+            rng, data, "population_factors", aav_f[data["rn"]], step_counts
+        )
         # waiting list adjustments
-        run_step(self._waiting_list_adjustment(data), "waiting_list_adjustment")
+        data = self._run_poisson_step(
+            rng,
+            data,
+            "waiting_list_adjustment",
+            self._waiting_list_adjustment(data),
+            step_counts,
+        )
         # non-demographic adjustment
-        run_step(
-            self._non_demographic_adjustment(data, run_params),
+        data = self._run_poisson_step(
+            rng,
+            data,
             "non-demographic_adjustment",
+            self._non_demographic_adjustment(data, run_params),
+            step_counts,
         )
         # Admission Avoidance ----------------------------------------------------------------------
-        data, step_counts["admission_avoidance"] = self._admission_avoidance_step(
-            rng, data, admission_avoidance, run_params
+        data = self._admission_avoidance_step(
+            rng, data, admission_avoidance, run_params, step_counts
         )
         # done with row count adjustment
         # LoS Reduction ----------------------------------------------------------------------------
@@ -425,10 +437,9 @@ class InpatientsModel(Model):
         self._losr_to_zero(data, losr, rng, "aec", step_counts)
         self._losr_to_zero(data, losr, rng, "preop", step_counts)
         self._losr_bads(data, losr, rng, step_counts)
-        step_counts["los_reduction"] = pd.DataFrame(step_counts["los_reduction"])
         # return the data (select just the columns we have updated in modelling)
         change_factors = pd.melt(
-            pd.concat(step_counts)
+            pd.DataFrame.from_dict(step_counts, "index")
             .rename_axis(["change_factor", "strategy"])
             .reset_index(),
             ["change_factor", "strategy"],
