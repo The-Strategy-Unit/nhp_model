@@ -165,7 +165,7 @@ def test_run(mock_model):
                 "change_factor": ["baseline"],
                 "strategy": ["-"],
                 "measure": ["arrivals"],
-                "value": [11],
+                "value": np.array([11]),
             }
         )
     )

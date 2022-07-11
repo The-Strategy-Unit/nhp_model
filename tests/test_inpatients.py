@@ -322,7 +322,7 @@ def test_run(mock_model):
                 "change_factor": ["baseline"] * 2,
                 "strategy": ["-"] * 2,
                 "measure": ["admissions", "beddays"],
-                "value": [2, 3],
+                "value": np.array([2, 3]),
             }
         )
     )
