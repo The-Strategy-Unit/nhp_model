@@ -107,5 +107,9 @@ def main() -> None:
         pickle.dump(gams, hsa_pkl)
 
 
-if __name__ == "__main__":
-    main()
+def init():
+    if __name__ == "__main__":
+        main()
+
+
+init()
