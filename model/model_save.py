@@ -93,42 +93,19 @@ class ModelSave:
             change_factors, results = model.run(model_run)
             # save results
             if self._save_results:
-                mr_path = os.path.join(
-                    self._base_results_path,
-                    "model_results",
-                    f"activity_type={activity_type}",
-                    self._results_path,
-                    f"{model_run=}",
-                )
-                os.makedirs(mr_path, exist_ok=True)
-                # select just the columns we want to save from each activity type
-                if activity_type == "ip":
-                    ip_op_row_ix = results["classpat"] == "-1"
-                    # save the op converted rows
-                    op_rows_path = os.path.join(
+
+                def path_fn(activity_type):
+                    p = os.path.join(
                         self._base_results_path,
                         "model_results",
-                        "activity_type=op_conversion",
+                        f"{activity_type=}",
                         self._results_path,
                         f"{model_run=}",
                     )
-                    os.makedirs(op_rows_path, exist_ok=True)
-                    results[ip_op_row_ix].groupby(
-                        ["age", "sex", "tretspef"]
-                    ).size().to_frame("attendances").assign(
-                        tele_attendances=0
-                    ).reset_index().to_parquet(
-                        f"{op_rows_path}/0.parquet"
-                    )
-                    # remove the op converted rows
-                    mr_data = results.loc[~ip_op_row_ix, ["speldur", "classpat"]]
-                elif activity_type == "aae":
-                    mr_data = results.set_index(["rn"])[["arrivals"]]
-                elif activity_type == "op":
-                    mr_data = results.set_index(["rn"])[
-                        ["attendances", "tele_attendances"]
-                    ]
-                mr_data.to_parquet(f"{mr_path}/0.parquet")
+                    os.makedirs(p, exist_ok=True)
+                    return p
+
+                model.save_results(results, path_fn)
             # save change factors
             change_factors.assign(
                 activity_type=activity_type, model_run=model_run

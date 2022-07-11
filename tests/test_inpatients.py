@@ -1,7 +1,7 @@
 """test inpatients model"""
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
 
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import Mock, call, mock_open, patch
 
 import numpy as np
 import pandas as pd
@@ -462,3 +462,24 @@ def test_aggregate(mock_model):
     for k in mr_call.keys():
         assert mdl._bed_occupancy.call_args_list[0][0][0][k].to_list() == mr_call[k][2:]
     assert mdl._bed_occupancy.call_args_list[0][0][1] == "run_params"
+
+
+def test_save_results(mocker, mock_model):
+    """test that it correctly saves the results"""
+    path_fn = lambda x: x
+
+    to_parquet_mock = mocker.patch("pandas.DataFrame.to_parquet")
+    results = pd.DataFrame(
+        {
+            "rn": [0],
+            "classpat": [1],
+            "age": [2],
+            "sex": [3],
+            "tretspef": [4],
+            "speldur": [5],
+        }
+    )
+    mock_model.save_results(results, path_fn)
+    assert to_parquet_mock.call_count == 2
+    assert to_parquet_mock.call_args_list[0] == call("op_conversion/0.parquet")
+    assert to_parquet_mock.call_args_list[1] == call("ip/0.parquet")

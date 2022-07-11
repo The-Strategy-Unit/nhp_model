@@ -4,6 +4,7 @@ Accident and Emergency Module
 Implements the A&E model.
 """
 
+import os
 from functools import partial
 
 import numpy as np
@@ -171,3 +172,7 @@ class AaEModel(Model):
 
         agg = partial(self._create_agg, model_results)
         return {**agg(), **agg(["sex", "age_group"])}
+
+    def save_results(self, results, path_fn):
+        """Save the results of running the model"""
+        results.set_index(["rn"])[["arrivals"]].to_parquet(f"{path_fn('aae')}/0.parquet")

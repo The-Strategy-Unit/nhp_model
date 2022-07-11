@@ -3,6 +3,7 @@ Inpatients Module
 
 Implements the inpatients model.
 """
+import os
 from collections import defaultdict, namedtuple
 from functools import partial
 
@@ -562,3 +563,17 @@ class InpatientsModel(Model):
             **agg(["sex", "tretspef"]),
             "bed_occupancy": self._bed_occupancy(ip_rows, run_params["bed_occupancy"]),
         }
+
+    def save_results(self, results, path_fn):
+        """Save the results of running the model"""
+        ip_op_row_ix = results["classpat"] == "-1"
+        # save the op converted rows
+        results[ip_op_row_ix].groupby(["age", "sex", "tretspef"]).size().to_frame(
+            "attendances"
+        ).assign(tele_attendances=0).reset_index().to_parquet(
+            f"{path_fn('op_conversion')}/0.parquet"
+        )
+        # remove the op converted rows
+        results.loc[~ip_op_row_ix, ["speldur", "classpat"]].to_parquet(
+            f"{path_fn('ip')}/0.parquet"
+        )

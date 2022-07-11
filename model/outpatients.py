@@ -4,6 +4,7 @@ Outpatients Module
 Implements the Outpatients model.
 """
 
+import os
 from functools import partial
 
 import numpy as np
@@ -245,3 +246,9 @@ class OutpatientsModel(Model):
             **agg(["sex", "age_group"]),
             **agg(["sex", "tretspef"]),
         }
+
+    def save_results(self, results, path_fn):
+        """Save the results of running the model"""
+        results.set_index(["rn"])[["attendances", "tele_attendances"]].to_parquet(
+            f"{path_fn('op')}/0.parquet"
+        )

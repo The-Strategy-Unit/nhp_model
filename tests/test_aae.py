@@ -208,3 +208,13 @@ def test_aggregate(mock_model):
     )
     assert mdl._create_agg.call_args_list[0][0][0].equals(mr_call)
     assert mdl._create_agg.call_args_list[1][0][0].equals(mr_call)
+
+
+def test_save_results(mocker, mock_model):
+    """test that it correctly saves the results"""
+    path_fn = lambda x: x
+
+    to_parquet_mock = mocker.patch("pandas.DataFrame.to_parquet")
+    results = pd.DataFrame({"rn": [0], "arrivals": [1]})
+    mock_model.save_results(results, path_fn)
+    to_parquet_mock.assert_called_once_with("aae/0.parquet")
