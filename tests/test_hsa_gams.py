@@ -111,6 +111,7 @@ def test_main_valid_args(mocker):
 
 
 def test_init(mocker):
+    """it should run the main method if __name__ is __main__"""
     import model.hsa_gams as h
 
     main_mock = mocker.patch("model.hsa_gams.main")
