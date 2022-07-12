@@ -93,42 +93,19 @@ class ModelSave:
             change_factors, results = model.run(model_run)
             # save results
             if self._save_results:
-                mr_path = os.path.join(
-                    self._base_results_path,
-                    "model_results",
-                    f"activity_type={activity_type}",
-                    self._results_path,
-                    f"{model_run=}",
-                )
-                os.makedirs(mr_path, exist_ok=True)
-                # select just the columns we want to save from each activity type
-                if activity_type == "ip":
-                    ip_op_row_ix = results["classpat"] == "-1"
-                    # save the op converted rows
-                    op_rows_path = os.path.join(
+
+                def path_fn(activity_type):
+                    p = os.path.join(
                         self._base_results_path,
                         "model_results",
-                        "activity_type=op_conversion",
+                        f"{activity_type=}",
                         self._results_path,
                         f"{model_run=}",
                     )
-                    os.makedirs(op_rows_path, exist_ok=True)
-                    results[ip_op_row_ix].groupby(
-                        ["age", "sex", "tretspef"]
-                    ).size().to_frame("attendances").assign(
-                        tele_attendances=0
-                    ).reset_index().to_parquet(
-                        f"{op_rows_path}/0.parquet"
-                    )
-                    # remove the op converted rows
-                    mr_data = results.loc[~ip_op_row_ix, ["speldur", "classpat"]]
-                elif activity_type == "aae":
-                    mr_data = results.set_index(["rn"])[["arrivals"]]
-                elif activity_type == "op":
-                    mr_data = results.set_index(["rn"])[
-                        ["attendances", "tele_attendances"]
-                    ]
-                mr_data.to_parquet(f"{mr_path}/0.parquet")
+                    os.makedirs(p, exist_ok=True)
+                    return p
+
+                model.save_results(results, path_fn)
             # save change factors
             change_factors.assign(
                 activity_type=activity_type, model_run=model_run
@@ -154,11 +131,13 @@ class ModelSave:
 
     def _combine_aggregated_results(self) -> dict:
         aggregated_results = {}
-        for dataset in ["aae", "ip", "op"]:
-            aggregated_results[dataset] = list()
+        for activity_type in ["aae", "ip", "op"]:
+            aggregated_results[activity_type] = list()
             for model_run in range(-1, self._model_runs + 1):
-                with open(f"{self._ar_path}/{dataset}_{model_run}.dill", "rb") as arf:
-                    aggregated_results[dataset].append(dill.load(arf))
+                with open(
+                    f"{self._ar_path}/{activity_type}_{model_run}.dill", "rb"
+                ) as arf:
+                    aggregated_results[activity_type].append(dill.load(arf))
 
         flipped_results = self._flip_results(aggregated_results)
 
@@ -171,7 +150,7 @@ class ModelSave:
         return {
             **self._item_base,
             "available_aggregations": {
-                k: list(v) for k, v in available_aggregations.items()
+                k: sorted(list(v)) for k, v in available_aggregations.items()
             },
             "selected_variants": self._model.run_params["variant"],
             "results": flipped_results,
@@ -290,36 +269,37 @@ class CosmosDBSave(ModelSave):
             item, partition_key=self._run_id
         )
 
-    def _upload_change_factors(self) -> None:
-        def agg_fn(change_factor):
-            acf = (
-                change_factor.drop(["activity_type", "measure"], axis="columns")
-                .set_index(["change_factor", "strategy", "model_run"])
-                .unstack(fill_value=0)
-                .stack()
-                .reset_index()
-                .groupby(["change_factor", "strategy"], as_index=False)
-                .agg({"value": list})
-                .to_dict("records")
-            )
-            for i in acf:
-                if i["strategy"] == "-":
-                    i.pop("strategy")
-                if i["change_factor"] == "baseline":
-                    i["baseline"] = i["value"].pop()
-                else:
-                    i["principal"] = i["value"].pop()
-                    i["model_runs"] = i["value"]
-                i.pop("value")
-                return acf
+    @staticmethod
+    def _change_factor_to_dict(change_factor):
+        acf = (
+            change_factor.drop(["activity_type", "measure"], axis="columns")
+            .set_index(["change_factor", "strategy", "model_run"])
+            .unstack(fill_value=0)
+            .stack()
+            .reset_index()
+            .groupby(["change_factor", "strategy"], as_index=False)
+            .agg({"value": list})
+            .to_dict("records")
+        )
+        for i in acf:
+            if i["strategy"] == "-":
+                i.pop("strategy")
+            if i["change_factor"] == "baseline":
+                i["baseline"] = i["value"].pop(0)
+            else:
+                i["principal"] = i["value"].pop(0)
+                i["model_runs"] = i["value"]
+            i.pop("value")
+        return acf
 
+    def _upload_change_factors(self) -> None:
         change_factors = self._combine_change_factors()
 
         item = {
             **self._item_base,
             **{
                 d: [
-                    {"measure": m, "change_factors": agg_fn(v2)}
+                    {"measure": m, "change_factors": self._change_factor_to_dict(v2)}
                     for m, v2 in tuple(v1.groupby(["measure"]))
                 ]
                 for d, v1 in tuple(change_factors.groupby(["activity_type"]))

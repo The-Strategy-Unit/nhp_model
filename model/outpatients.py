@@ -4,6 +4,7 @@ Outpatients Module
 Implements the Outpatients model.
 """
 
+import os
 from functools import partial
 
 import numpy as np
@@ -104,6 +105,43 @@ class OutpatientsModel(Model):
         # restore chained assignment warnings
         pd.set_option("mode.chained_assignment", options)
 
+    def _run_poisson_step(self, rng, data, name, factor, step_counts):
+        data.loc[:, "attendances"] = rng.poisson(
+            data["attendances"].to_numpy() * factor
+        )
+        data.loc[:, "tele_attendances"] = rng.poisson(
+            data["tele_attendances"].to_numpy() * factor
+        )
+        # remove rows where the overall number of attendances was 0
+        data.drop(
+            data[data["attendances"] + data["tele_attendances"] == 0].index,
+            inplace=True,
+        )
+        # update the step count values
+        self._update_step_counts(data, name, step_counts)
+
+    def _run_binomial_step(self, rng, data, name, factor, step_counts):
+        data.loc[:, "attendances"] = rng.binomial(
+            data["attendances"].to_numpy(), factor
+        )
+        data.loc[:, "tele_attendances"] = rng.binomial(
+            data["tele_attendances"].to_numpy(), factor
+        )
+        # remove rows where the overall number of attendances was 0
+        data.drop(
+            data[data["attendances"] + data["tele_attendances"] == 0].index,
+            inplace=True,
+        )
+        # update the step count values
+        self._update_step_counts(data, name, step_counts)
+
+    @staticmethod
+    def _update_step_counts(data, name, step_counts):
+        step_counts[name] = {
+            k: sum(data[k]) - sum(v[k] for v in step_counts.values())
+            for k in ["attendances", "tele_attendances"]
+        }
+
     def _run(
         self,
         rng: np.random.Generator,
@@ -123,65 +161,59 @@ class OutpatientsModel(Model):
         returns: a tuple containing the change factors DataFrame and the mode results DataFrame
         """
         params = run_params["outpatient_factors"]
-        sc_a, sc_t = data[["attendances", "tele_attendances"]].sum()
         step_counts = {
-            "baseline": pd.DataFrame(
-                {"attendances": [sc_a], "tele_attendances": [sc_t]}, ["-"]
-            )
+            "baseline": {k: data[k].sum() for k in ["attendances", "tele_attendances"]}
         }
-
-        def update_stepcounts(name):
-            nonlocal data, step_counts, sc_a, sc_t
-            # update the step count values
-            sc_ap = sum(data["attendances"])
-            sc_tp = sum(data["tele_attendances"])
-            step_counts[name] = pd.DataFrame(
-                {"attendances": [sc_ap - sc_a], "tele_attendances": [sc_tp - sc_t]},
-                ["-"],
-            )
-            # replace the values
-            sc_a, sc_t = sc_ap, sc_tp
-
-        def run_step(factor, name):
-            nonlocal data
-            # perform the step
-            data.loc[:, "attendances"] = rng.poisson(
-                data["attendances"].to_numpy() * factor
-            )
-            data.loc[:, "tele_attendances"] = rng.poisson(
-                data["tele_attendances"].to_numpy() * factor
-            )
-            # remove rows where the overall number of attendances was 0
-            data = data[data["attendances"] + data["tele_attendances"] > 0]
-            update_stepcounts(name)
 
         # captue current pandas options, and set chainged assignment off
         pd_options = pd.set_option("mode.chained_assignment", None)
         # first, run hsa as we have the factor already created
-        run_step(hsa_f, "health_status_adjustment")
+        self._run_poisson_step(
+            rng, data, "health_status_adjustment", hsa_f, step_counts
+        )
         # then, demographic modelling
-        run_step(aav_f[data["rn"]], "population_factors")
+        self._run_poisson_step(
+            rng, data, "population_factors", aav_f[data["rn"]], step_counts
+        )
         # waiting list adjustments
-        run_step(self._waiting_list_adjustment(data), "waiting_list_adjustment")
+        self._run_poisson_step(
+            rng,
+            data,
+            "waiting_list_adjustment",
+            self._waiting_list_adjustment(data),
+            step_counts,
+        )
         # now run strategies
-        run_step(self._followup_reduction(data, params), "followup_reduction")
-        run_step(
-            self._consultant_to_consultant_reduction(data, params),
+        self._run_binomial_step(
+            rng,
+            data,
+            "followup_reduction",
+            self._followup_reduction(data, params),
+            step_counts,
+        )
+        self._run_binomial_step(
+            rng,
+            data,
             "consultant_to_consultant_referrals",
+            self._consultant_to_consultant_reduction(data, params),
+            step_counts,
         )
         # now run_step's are finished, restore pandas options
         pd.set_option("mode.chained_assignment", pd_options)
         # convert attendances to tele attendances
         self._convert_to_tele(rng, data, params)
-        update_stepcounts("tele_conversion")
+        self._update_step_counts(data, "tele_conversion", step_counts)
         # return the data
-        change_factors = pd.melt(
-            pd.concat(step_counts)
-            .rename_axis(["change_factor", "strategy"])
-            .reset_index(),
-            ["change_factor", "strategy"],
-            ["attendances", "tele_attendances"],
-            "measure",
+        change_factors = (
+            pd.DataFrame.from_dict(step_counts, orient="index")
+            .rename_axis("change_factor")
+            .reset_index()
+            .assign(strategy="-")
+            .melt(
+                ["change_factor", "strategy"],
+                ["attendances", "tele_attendances"],
+                "measure",
+            )
         )
         change_factors["value"] = change_factors["value"].astype(int)
         return (change_factors, data.drop(["hsagrp"], axis="columns"))
@@ -214,3 +246,9 @@ class OutpatientsModel(Model):
             **agg(["sex", "age_group"]),
             **agg(["sex", "tretspef"]),
         }
+
+    def save_results(self, results, path_fn):
+        """Save the results of running the model"""
+        results.set_index(["rn"])[["attendances", "tele_attendances"]].to_parquet(
+            f"{path_fn('op')}/0.parquet"
+        )

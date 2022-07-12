@@ -1,5 +1,7 @@
 # New Hospitals Demand Model
 
+[![codecov](https://codecov.io/gh/The-Strategy-Unit/nhp_model/branch/main/graph/badge.svg?token=uGmRhc1n9C)](https://codecov.io/gh/The-Strategy-Unit/nhp_model)
+
 ## Environment setup
 
 To run the model locally you will need to have installed miniconda, git, and VSCode. This is assuming that you are running on Windows, steps will need to be adjusted for other platforms.

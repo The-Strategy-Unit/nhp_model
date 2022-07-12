@@ -24,17 +24,6 @@ def rnorm(rng, low, high):
     return rng.normal(mean, stdev)
 
 
-def np_encoder(obj):
-    """
-    handle encoding of numpy values
-
-    (source: https://stackoverflow.com/a/65151218/4636789)
-    """
-    if isinstance(obj, np.generic):
-        return obj.item()
-    return obj
-
-
 def age_groups(age):
     """
     cut age into groups

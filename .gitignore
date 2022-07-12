@@ -72,3 +72,7 @@ outputs/.cache
 # pyinstaller folders
 build/
 dist/
+
+# covergage db
+.coverage
+coverage.xml
