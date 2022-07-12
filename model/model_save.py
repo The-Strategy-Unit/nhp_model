@@ -131,11 +131,13 @@ class ModelSave:
 
     def _combine_aggregated_results(self) -> dict:
         aggregated_results = {}
-        for dataset in ["aae", "ip", "op"]:
-            aggregated_results[dataset] = list()
+        for activity_type in ["aae", "ip", "op"]:
+            aggregated_results[activity_type] = list()
             for model_run in range(-1, self._model_runs + 1):
-                with open(f"{self._ar_path}/{dataset}_{model_run}.dill", "rb") as arf:
-                    aggregated_results[dataset].append(dill.load(arf))
+                with open(
+                    f"{self._ar_path}/{activity_type}_{model_run}.dill", "rb"
+                ) as arf:
+                    aggregated_results[activity_type].append(dill.load(arf))
 
         flipped_results = self._flip_results(aggregated_results)
 
@@ -148,7 +150,7 @@ class ModelSave:
         return {
             **self._item_base,
             "available_aggregations": {
-                k: list(v) for k, v in available_aggregations.items()
+                k: sorted(list(v)) for k, v in available_aggregations.items()
             },
             "selected_variants": self._model.run_params["variant"],
             "results": flipped_results,
@@ -267,36 +269,37 @@ class CosmosDBSave(ModelSave):
             item, partition_key=self._run_id
         )
 
-    def _upload_change_factors(self) -> None:
-        def agg_fn(change_factor):
-            acf = (
-                change_factor.drop(["activity_type", "measure"], axis="columns")
-                .set_index(["change_factor", "strategy", "model_run"])
-                .unstack(fill_value=0)
-                .stack()
-                .reset_index()
-                .groupby(["change_factor", "strategy"], as_index=False)
-                .agg({"value": list})
-                .to_dict("records")
-            )
-            for i in acf:
-                if i["strategy"] == "-":
-                    i.pop("strategy")
-                if i["change_factor"] == "baseline":
-                    i["baseline"] = i["value"].pop()
-                else:
-                    i["principal"] = i["value"].pop()
-                    i["model_runs"] = i["value"]
-                i.pop("value")
-                return acf
+    @staticmethod
+    def _change_factor_to_dict(change_factor):
+        acf = (
+            change_factor.drop(["activity_type", "measure"], axis="columns")
+            .set_index(["change_factor", "strategy", "model_run"])
+            .unstack(fill_value=0)
+            .stack()
+            .reset_index()
+            .groupby(["change_factor", "strategy"], as_index=False)
+            .agg({"value": list})
+            .to_dict("records")
+        )
+        for i in acf:
+            if i["strategy"] == "-":
+                i.pop("strategy")
+            if i["change_factor"] == "baseline":
+                i["baseline"] = i["value"].pop(0)
+            else:
+                i["principal"] = i["value"].pop(0)
+                i["model_runs"] = i["value"]
+            i.pop("value")
+        return acf
 
+    def _upload_change_factors(self) -> None:
         change_factors = self._combine_change_factors()
 
         item = {
             **self._item_base,
             **{
                 d: [
-                    {"measure": m, "change_factors": agg_fn(v2)}
+                    {"measure": m, "change_factors": self._change_factor_to_dict(v2)}
                     for m, v2 in tuple(v1.groupby(["measure"]))
                 ]
                 for d, v1 in tuple(change_factors.groupby(["activity_type"]))
