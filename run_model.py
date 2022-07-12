@@ -122,7 +122,7 @@ def run_model(
     return run_model_fn
 
 
-def _run_model_argparser() -> argparse.Namespace:
+def _run_model_argparser() -> argparse.Namespace:  # pragma: no cover
     parser = argparse.ArgumentParser()
     parser.add_argument("params_file", help="Path to the params.json file")
     parser.add_argument("--data-path", help="Path to the data", default="data")
