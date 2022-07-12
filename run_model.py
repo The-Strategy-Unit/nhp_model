@@ -225,6 +225,8 @@ def main() -> None:
             print("Running         post-runs")
             save_model.post_runs()
 
+def init():
+    if __name__ == "__main__":
+        main()
 
-if __name__ == "__main__":
-    main()
+init()
