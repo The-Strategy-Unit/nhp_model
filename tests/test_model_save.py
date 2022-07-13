@@ -174,6 +174,7 @@ def test_run_model_dont_save_results(mocker, mock_model_save, mock_change_factor
 def test_run_model_save_results(mocker, mock_model_save, mock_change_factors):
     """it should run the model and aggregate the results, saving the full results"""  # arrange
     mocker.patch("os.path.join", wraps=lambda *args: "/".join(args))
+    mocker.patch("os.makedirs")
     model = Mock()
     model.model_type = "ip"
     model.run.return_value = (mock_change_factors, "results")
@@ -190,6 +191,10 @@ def test_run_model_save_results(mocker, mock_model_save, mock_change_factors):
         assert (
             model.save_results.call_args_list[0][0][1]("ip")
             == "base_results_path/model_results/activity_type='ip'/results_path/model_run=0"
+        )
+        os.makedirs.assert_called_once_with(
+            "base_results_path/model_results/activity_type='ip'/results_path/model_run=0",
+            exist_ok=True,
         )
         to_csv_mock.assert_called_once()
         to_csv_mock.call_args_list[0][0][0] == "temp_path/change_factors/ip_0.csv"
