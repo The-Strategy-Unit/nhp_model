@@ -4,7 +4,6 @@
 import os
 import sys
 from collections import namedtuple
-from re import A
 from unittest.mock import Mock, call, mock_open, patch
 
 import numpy as np
