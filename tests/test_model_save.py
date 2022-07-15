@@ -483,11 +483,11 @@ def test_cosmos_change_factor_to_dict(mock_cosmos_model_save):
         }
     )
     expected = [
-        {"change_factor": "a", "principal": 1, "model_runs": [5, 9]},
-        {"change_factor": "b", "principal": 2, "model_runs": [6, 10]},
+        {"change_factor": "a", "principal": 1, "value": [5, 9]},
+        {"change_factor": "b", "principal": 2, "value": [6, 10]},
         {"change_factor": "baseline", "baseline": 0},
-        {"change_factor": "c", "strategy": "d", "principal": 3, "model_runs": [7, 11]},
-        {"change_factor": "c", "strategy": "e", "principal": 4, "model_runs": [8, 12]},
+        {"change_factor": "c", "strategy": "d", "principal": 3, "value": [7, 11]},
+        {"change_factor": "c", "strategy": "e", "principal": 4, "value": [8, 12]},
     ]
     # act
     actual = mock_cosmos_model_save._change_factor_to_dict(change_factor)

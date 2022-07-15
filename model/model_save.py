@@ -286,10 +286,9 @@ class CosmosDBSave(ModelSave):
                 i.pop("strategy")
             if i["change_factor"] == "baseline":
                 i["baseline"] = i["value"].pop(0)
+                i.pop("value")
             else:
                 i["principal"] = i["value"].pop(0)
-                i["model_runs"] = i["value"]
-            i.pop("value")
         return acf
 
     def _upload_change_factors(self) -> None:
