@@ -181,7 +181,7 @@ class Model:
             "waiting_list_adjustment": params["waiting_list_adjustment"],
             "non-demographic_adjustment": {
                 k1: {
-                    k2: [gen_value(m, v2) for m in range(model_runs)]
+                    k2: [inrange(gen_value(m, v2), 0, 1e6) for m in range(model_runs)]
                     for k2, v2 in v1.items()
                 }
                 for k1, v1 in params["non-demographic_adjustment"].items()
