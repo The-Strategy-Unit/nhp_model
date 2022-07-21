@@ -381,8 +381,8 @@ def test_bed_occupancy(mocker, mock_model):
     )
     # assert
     assert {tuple(k): v for k, v in actual.items()} == {
-        ("ip", "day+night", "a"): 60.0,
-        ("ip", "day+night", "b"): 86.85714285714286,
+        ("ip", "day+night", "a"): (9 * 5) / (2 * 0.75),
+        ("ip", "day+night", "b"): (19 * 40) / (13 * 0.875),
     }
     read_csv.assert_called_once_with(
         "data/synthetic/kh03.csv",

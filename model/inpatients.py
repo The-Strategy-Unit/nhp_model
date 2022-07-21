@@ -459,13 +459,13 @@ class InpatientsModel(Model):
             self.params["bed_occupancy"]["specialty_mapping"]["General and Acute"],
             name="ward_group",
         )
-        bed_occupancy_rates = pd.Series(bed_occupancy_params["day+night"])
+        target_bed_occupancy_rates = pd.Series(bed_occupancy_params["day+night"])
         # get the baseline data
         baseline = (
             self.data[self.data.classpat.isin(["1", "4"])]
             .merge(ga_ward_groups, left_on="mainspef", right_index=True)
             .groupby("ward_group")
-            .speldur.sum()
+            .speldur.agg(lambda x: sum(x + 1))  # convert los to bed days
         )
         baseline.name = "baseline"
         # get the model run data
@@ -479,7 +479,7 @@ class InpatientsModel(Model):
             .value.sum()
         )
         # load the kh03 data
-        kh03_data = (
+        kh03_occupied_data = (
             pd.read_csv(
                 f"{self._data_path}/kh03.csv",
                 dtype={
@@ -499,7 +499,10 @@ class InpatientsModel(Model):
         return {
             result("ip", "day+night", k): v
             for k, v in (
-                ((dn_admissions * kh03_data) / (baseline * bed_occupancy_rates))
+                (
+                    (dn_admissions * kh03_occupied_data)
+                    / (baseline * target_bed_occupancy_rates)
+                )
                 .dropna()
                 .to_dict()
             ).items()
