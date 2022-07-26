@@ -56,6 +56,10 @@ def mock_model():
             "a": {"a": [0.4, 0.6], "b": 0.7},
             "b": {"a": [0.4, 0.6], "b": 0.8},
         },
+        "theatres": {
+            "change_utilisation": {"a": [1.01, 1.03], "b": [1.02, 1.04]},
+            "change_availability": [1.03, 1.05],
+        },
     }
     mdl._data_path = "data/synthetic"
     # create a mock object for the hsa gams
@@ -100,6 +104,10 @@ def mock_run_params():
         "bed_occupancy": {
             "a": {"a": [0.5, 52, 53, 54], "b": [0.7, 0.7, 0.7, 0.7]},
             "b": {"a": [0.5, 55, 56, 57], "b": [0.8, 0.8, 0.8, 0.8]},
+        },
+        "theatres": {
+            "change_utilisation": {"a": [1.02, 58, 59, 60], "b": [1.03, 61, 62, 63]},
+            "change_availability": [1.04, 64, 65, 66],
         },
     }
 
@@ -335,6 +343,10 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                     "a": {"a": 0.5, "b": 0.7},
                     "b": {"a": 0.5, "b": 0.8},
                 },
+                "theatres": {
+                    "change_utilisation": {"a": 1.02, "b": 1.03},
+                    "change_availability": 1.04,
+                },
             },
         ),
         (
@@ -362,6 +374,10 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "bed_occupancy": {
                     "a": {"a": 53, "b": 0.7},
                     "b": {"a": 56, "b": 0.8},
+                },
+                "theatres": {
+                    "change_utilisation": {"a": 59, "b": 62},
+                    "change_availability": 65,
                 },
             },
         ),

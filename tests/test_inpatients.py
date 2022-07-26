@@ -54,6 +54,10 @@ def mock_model():
             "a": {"a": [0.4, 0.6], "b": 0.7},
             "b": {"a": [0.4, 0.6], "b": 0.8},
         },
+        "theatres": {
+            "change_utilisation": {"a": [1.01, 1.03], "b": [1.02, 1.04]},
+            "change_availability": [1.03, 1.05],
+        },
     }
     mdl._data_path = "data/synthetic"
     # create a mock object for the hsa gams
@@ -93,6 +97,7 @@ def test_init_calls_super_init(mocker):
     mocker.patch(
         "model.inpatients.InpatientsModel._load_parquet", wraps=lambda _: Mock()
     )
+    mocker.patch("model.inpatients.InpatientsModel._load_theatres_data")
     mdl = InpatientsModel("params", "data_path")
     # no asserts to perform, so long as this method doesn't fail
     assert mdl._load_parquet.call_count == 2
@@ -100,6 +105,28 @@ def test_init_calls_super_init(mocker):
         mdl._load_parquet.call_args_list[0][0][0] == "ip_admission_avoidance_strategies"
     )
     assert mdl._load_parquet.call_args_list[1][0][0] == "ip_los_reduction_strategies"
+    mdl._load_theatres_data.assert_called_once()
+
+
+def test_load_theatres_data(mocker, mock_model):
+    """test that it loads the json file correctly"""
+    json_mock = mocker.patch(
+        "json.load",
+        return_value={
+            "theatres": 10,
+            "four_hour_sessions": {"100": 1, "200": 2, "Other": 3},
+        },
+    )
+    with patch("builtins.open", mock_open()) as mock_file:
+        mock_model._load_theatres_data()
+        json_mock.assert_called_once()
+        mock_file.assert_called_with(
+            "data/synthetic/theatres.json", "r", encoding="UTF-8"
+        )
+        assert mock_model._theatres_data["theatres"] == 10
+        assert mock_model._theatres_data["four_hour_sessions"].equals(
+            pd.Series({"100": 1, "200": 2, "Other": 3}, name="four_hour_sessions")
+        )
 
 
 def test_los_reduction(mock_model):
@@ -395,6 +422,41 @@ def test_bed_occupancy(mocker, mock_model):
     )
 
 
+def test_theatres_available(mock_model):
+    """test that it aggregates the theatres data"""
+    # arrange
+    mock_model.data = pd.DataFrame(
+        [
+            {"tretspef": t, "admimeth": a, "has_procedure": p}
+            for t in ["100", "110", "200", "Other"]
+            for a in ["11", "21"]
+            for p in [1, 0]
+        ]
+    )
+    mock_model._theatres_data = {
+        "theatres": 10,
+        "four_hour_sessions": pd.Series(
+            {"100": 100, "110": 200, "Other": 300}, name="four_hour_sessions"
+        ),
+    }
+    model_results = pd.concat([mock_model.data] * 3)
+    # act
+    theatres_available = mock_model._theatres_available(
+        model_results,
+        {
+            "change_utilisation": {"100": 2, "110": 2.5, "Other": 3},
+            "change_availability": 5,
+        },
+    )
+    # assert
+    assert {tuple(k): v for k, v in theatres_available.items()} == {
+        ("ip_theatres", "four_hour_sessions", "100"): 150.0,
+        ("ip_theatres", "four_hour_sessions", "110"): 240.0,
+        ("ip_theatres", "four_hour_sessions", "Other"): 300.0,
+        ("ip_theatres", "theatres"): 2.3,
+    }
+
+
 def test_aggregate(mock_model):
     """test that it aggregates the results correctly"""
 
@@ -404,8 +466,11 @@ def test_aggregate(mock_model):
 
     mdl = mock_model
     mdl._create_agg = Mock(wraps=create_agg_stub)
-    mdl._get_run_params = Mock(return_value={"bed_occupancy": "run_params"})
-    mdl._bed_occupancy = Mock(return_value=1)
+    mdl._get_run_params = Mock(
+        return_value={"bed_occupancy": "run_params", "theatres": "theatres"}
+    )
+    mdl._bed_occupancy = Mock(return_value=2)
+    mdl._theatres_available = Mock(return_value=3)
     xs = list(range(6)) * 2
     model_results = pd.DataFrame(
         {
@@ -425,7 +490,8 @@ def test_aggregate(mock_model):
         "default": 1,
         "sex+age_group": 1,
         "sex+tretspef": 1,
-        "bed_occupancy": 1,
+        "bed_occupancy": 2,
+        "theatres_available": 3,
     }
     #
     mr_call = {
@@ -459,6 +525,7 @@ def test_aggregate(mock_model):
 
     mdl._get_run_params.assert_called_once_with(1)
     mdl._bed_occupancy.assert_called_once()
+    mdl._theatres_available.assert_called_once()
     for k in mr_call.keys():
         assert mdl._bed_occupancy.call_args_list[0][0][0][k].to_list() == mr_call[k][2:]
     assert mdl._bed_occupancy.call_args_list[0][0][1] == "run_params"

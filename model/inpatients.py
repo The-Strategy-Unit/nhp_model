@@ -3,6 +3,7 @@ Inpatients Module
 
 Implements the inpatients model.
 """
+import json
 import os
 from collections import defaultdict, namedtuple
 from functools import partial
@@ -40,6 +41,7 @@ class InpatientsModel(Model):
                 "mainspef",
                 "tretspef",
                 "hsagrp",
+                "has_procedure",
             ],
         )
         # load the strategies, store each strategy file as a separate entry in a dictionary
@@ -47,6 +49,19 @@ class InpatientsModel(Model):
             x: self._load_parquet(f"ip_{x}_strategies").set_index(["rn"])
             for x in ["admission_avoidance", "los_reduction"]
         }
+        # load the theatres data
+        self._load_theatres_data()
+
+    def _load_theatres_data(self):
+        """
+        Load the Theatres data
+
+        """
+        with open(f"{self._data_path}/theatres.json", "r", encoding="UTF-8") as tdf:
+            self._theatres_data = json.load(tdf)
+        self._theatres_data["four_hour_sessions"] = pd.Series(
+            self._theatres_data["four_hour_sessions"], name="four_hour_sessions"
+        )
 
     def _los_reduction(self, run_params: dict) -> pd.DataFrame:
         """
@@ -508,6 +523,73 @@ class InpatientsModel(Model):
             ).items()
         }
 
+    def _theatres_available(self, model_results: pd.DataFrame, theatres_params: dict):
+        fhs = self._theatres_data["four_hour_sessions"]
+        theatres = self._theatres_data["theatres"]
+        change_availability = theatres_params["change_availability"]
+        change_utilisation = pd.Series(
+            theatres_params["change_utilisation"], name="change_utilisation"
+        )
+
+        tretspefs = pd.DataFrame({"tretspef": model_results.tretspef.unique()})
+        tretspefs["new_tretspef"] = tretspefs["tretspef"]
+
+        tretspefs.loc[
+            ~tretspefs.tretspef.isin(fhs.index),
+            "new_tretspef",
+        ] = "Other"
+
+        activity = pd.concat(
+            {
+                k: (
+                    v.query("has_procedure==1")
+                    .merge(tretspefs, on="tretspef")
+                    .drop("tretspef", axis="columns")
+                    .rename(columns={"new_tretspef": "tretspef"})
+                    .assign(is_elective=lambda x: x.admimeth.str.startswith("1"), n=1)
+                    .groupby("tretspef")[["is_elective", "n"]]
+                    .agg("sum")
+                )
+                for k, v in [
+                    ("baseline", self.data),
+                    ("future", model_results),
+                ]
+            }
+        )
+
+        activity["four_hour_sessions"] = pd.concat(
+            {
+                "baseline": fhs,
+                "future": activity.loc["future", "is_elective"]
+                / activity.loc["baseline", "is_elective"]
+                * fhs
+                / change_utilisation,
+            }
+        )
+
+        fhs_with_non_el = (
+            (activity["n"] / activity["is_elective"] * activity["four_hour_sessions"])
+            .groupby(level=0)
+            .sum()
+        )
+        fhs_with_non_el_change = fhs_with_non_el["future"] / fhs_with_non_el["baseline"]
+
+        new_theatres = fhs_with_non_el_change * theatres / change_availability
+
+        # create the namedtuple types
+        result_u = namedtuple("results", ["pod", "measure", "tretspef"])
+        result_a = namedtuple("results", ["pod", "measure"])
+
+        return {
+            **{
+                result_u("ip_theatres", "four_hour_sessions", k): v
+                for k, v in activity.loc["future", "four_hour_sessions"]
+                .to_dict()
+                .items()
+            },
+            **{result_a("ip_theatres", "theatres"): new_theatres},
+        }
+
     def aggregate(self, model_results: pd.DataFrame, model_run: int) -> dict:
         """
         Aggregate the model results
@@ -521,10 +603,13 @@ class InpatientsModel(Model):
         """
         # get the run params: use principal run for baseline
         run_params = self._get_run_params(max(0, model_run))
+
         # row's with a classpat of -1 are outpatients and need to be handled separately
         ip_op_row_ix = model_results["classpat"] == "-1"
         ip_rows = model_results[~ip_op_row_ix].copy()
         op_rows = model_results[ip_op_row_ix].copy()
+        # run the theatres utilisation on the model results before we alter ip_rows
+        theatres_available = self._theatres_available(ip_rows, run_params["theatres"])
         # handle OP rows
         op_rows["pod"] = "op_procedure"
         op_rows["measure"] = "attendances"
@@ -565,6 +650,7 @@ class InpatientsModel(Model):
             **agg(["sex", "age_group"]),
             **agg(["sex", "tretspef"]),
             "bed_occupancy": self._bed_occupancy(ip_rows, run_params["bed_occupancy"]),
+            "theatres_available": theatres_available,
         }
 
     def save_results(self, results, path_fn):

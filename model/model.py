@@ -209,6 +209,16 @@ class Model:
                 for k0 in params["bed_occupancy"].keys()
                 if k0 != "specialty_mapping"
             },
+            "theatres": {
+                "change_utilisation": {
+                    k: [gen_value(m, v) for m in range(model_runs)]
+                    for k, v in params["theatres"]["change_utilisation"].items()
+                },
+                "change_availability": [
+                    gen_value(m, params["theatres"]["change_availability"])
+                    for m in range(model_runs)
+                ],
+            },
         }
 
     def _get_run_params(self, model_run):
@@ -232,6 +242,15 @@ class Model:
                     "aae_factors",
                     "bed_occupancy",
                 ]
+            },
+            "theatres": {
+                "change_utilisation": {
+                    k: v[model_run]
+                    for k, v in params["theatres"]["change_utilisation"].items()
+                },
+                "change_availability": params["theatres"]["change_availability"][
+                    model_run
+                ],
             },
         }
 
