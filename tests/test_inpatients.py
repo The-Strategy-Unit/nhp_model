@@ -404,7 +404,7 @@ def test_bed_occupancy(mocker, mock_model):
     )
     # act
     actual = mock_model._bed_occupancy(
-        model_results, {"day+night": {"a": 0.75, "b": 0.875}}
+        model_results, {"day+night": {"a": 0.75, "b": 0.875}}, 0
     )
     # assert
     assert {tuple(k): v for k, v in actual.items()} == {
@@ -420,6 +420,52 @@ def test_bed_occupancy(mocker, mock_model):
             "occupied": np.float64,
         },
     )
+
+
+def test_bed_occupancy_baseline(mocker, mock_model):
+    """test that it just uses the kh03 available data"""
+    # arrange
+    mock_model.params["bed_occupancy"] = {
+        "specialty_mapping": {
+            "General and Acute": {"100": "a", "200": "b", "300": "b", "500": "c"}
+        }
+    }
+    read_csv = mocker.patch(
+        "pandas.read_csv",
+        return_value=pd.DataFrame(
+            {
+                "specialty_code": ["100", "200", "300", "400"],
+                "specialty_group": ["General and Acute"] * 4,
+                "available": [10, 20, 30, 40],
+                "occupied": [5, 15, 25, 35],
+            }
+        ),
+    )
+    mock_model.data = pd.DataFrame(
+        {
+            "classpat": ["1", "1", "1", "2", "4"],
+            "mainspef": ["100", "200", "300", "100", "200"],
+            "speldur": [1, 2, 3, 4, 5],
+        }
+    )
+    model_results = pd.DataFrame(
+        {
+            "classpat": ["1", "1", "1", "1", "1", "2", "4"] * 2,
+            "mainspef": ["100", "100", "200", "200", "300", "100", "200"] * 2,
+            "pod": [x for x in ["ip_admission", "ip_daycase"] for _ in range(7)],
+            "measure": ["beddays"] * 14,
+            "value": [1, 2, 3, 4, 5, 6, 7] * 2,
+        }
+    )
+    # act
+    actual = mock_model._bed_occupancy(
+        model_results, {"day+night": {"a": 0.75, "b": 0.875}}, -1
+    )
+    # assert
+    assert {tuple(k): v for k, v in actual.items()} == {
+        ("ip", "day+night", "a"): 10,
+        ("ip", "day+night", "b"): 50,
+    }
 
 
 def test_theatres_available(mock_model):
@@ -447,6 +493,7 @@ def test_theatres_available(mock_model):
             "change_utilisation": {"100": 2, "110": 2.5, "Other": 3},
             "change_availability": 5,
         },
+        0,
     )
     # assert
     assert {tuple(k): v for k, v in theatres_available.items()} == {
@@ -454,6 +501,42 @@ def test_theatres_available(mock_model):
         ("ip_theatres", "four_hour_sessions", "110"): 240.0,
         ("ip_theatres", "four_hour_sessions", "Other"): 300.0,
         ("ip_theatres", "theatres"): 2.3,
+    }
+
+
+def test_theatres_available_baseline(mock_model):
+    """test that it returns the baseline theatres data"""
+    # arrange
+    mock_model.data = pd.DataFrame(
+        [
+            {"tretspef": t, "admimeth": a, "has_procedure": p}
+            for t in ["100", "110", "200", "Other"]
+            for a in ["11", "21"]
+            for p in [1, 0]
+        ]
+    )
+    mock_model._theatres_data = {
+        "theatres": 10,
+        "four_hour_sessions": pd.Series(
+            {"100": 100, "110": 200, "Other": 300}, name="four_hour_sessions"
+        ),
+    }
+    model_results = pd.concat([mock_model.data] * 3)
+    # act
+    theatres_available = mock_model._theatres_available(
+        model_results,
+        {
+            "change_utilisation": {"100": 2, "110": 2.5, "Other": 3},
+            "change_availability": 5,
+        },
+        -1,
+    )
+    # assert
+    assert {tuple(k): v for k, v in theatres_available.items()} == {
+        ("ip_theatres", "four_hour_sessions", "100"): 100,
+        ("ip_theatres", "four_hour_sessions", "110"): 200,
+        ("ip_theatres", "four_hour_sessions", "Other"): 300,
+        ("ip_theatres", "theatres"): 10,
     }
 
 

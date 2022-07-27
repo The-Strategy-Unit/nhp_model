@@ -468,12 +468,37 @@ class InpatientsModel(Model):
             data.drop(["hsagrp"], axis="columns").reset_index(drop=True),
         )
 
-    def _bed_occupancy(self, ip_rows: pd.DataFrame, bed_occupancy_params: dict):
+    def _bed_occupancy(
+        self, ip_rows: pd.DataFrame, bed_occupancy_params: dict, model_run: int
+    ):
+        # create the namedtuple type
+        result = namedtuple("results", ["pod", "measure", "ward_group"])
         # extract params
         ga_ward_groups = pd.Series(
             self.params["bed_occupancy"]["specialty_mapping"]["General and Acute"],
             name="ward_group",
         )
+        # load the kh03 data
+        kh03_data = (
+            pd.read_csv(
+                f"{self._data_path}/kh03.csv",
+                dtype={
+                    "specialty_code": np.character,
+                    "specialty_group": np.character,
+                    "available": np.float64,
+                    "occupied": np.float64,
+                },
+            )
+            .merge(ga_ward_groups, left_on="specialty_code", right_index=True)
+            .groupby(["ward_group"])
+            .agg("sum")
+        )
+        if model_run == -1:
+            return {
+                result("ip", "day+night", k): v
+                for k, v in kh03_data["available"].iteritems()
+            }
+
         target_bed_occupancy_rates = pd.Series(bed_occupancy_params["day+night"])
         # get the baseline data
         baseline = (
@@ -493,29 +518,12 @@ class InpatientsModel(Model):
             .groupby("ward_group")
             .value.sum()
         )
-        # load the kh03 data
-        kh03_occupied_data = (
-            pd.read_csv(
-                f"{self._data_path}/kh03.csv",
-                dtype={
-                    "specialty_code": np.character,
-                    "specialty_group": np.character,
-                    "available": np.float64,
-                    "occupied": np.float64,
-                },
-            )
-            .merge(ga_ward_groups, left_on="specialty_code", right_index=True)
-            .groupby(["ward_group"])
-            .occupied.sum()
-        )
-        # create the namedtuple type
-        result = namedtuple("results", ["pod", "measure", "ward_group"])
         # return the results
         return {
             result("ip", "day+night", k): v
             for k, v in (
                 (
-                    (dn_admissions * kh03_occupied_data)
+                    (dn_admissions * kh03_data["occupied"])
                     / (baseline * target_bed_occupancy_rates)
                 )
                 .dropna()
@@ -523,9 +531,25 @@ class InpatientsModel(Model):
             ).items()
         }
 
-    def _theatres_available(self, model_results: pd.DataFrame, theatres_params: dict):
+    def _theatres_available(
+        self, model_results: pd.DataFrame, theatres_params: dict, model_run
+    ):
+        # create the namedtuple types
+        result_u = namedtuple("results", ["pod", "measure", "tretspef"])
+        result_a = namedtuple("results", ["pod", "measure"])
+
         fhs = self._theatres_data["four_hour_sessions"]
         theatres = self._theatres_data["theatres"]
+
+        if model_run == -1:
+            return {
+                **{
+                    result_u("ip_theatres", "four_hour_sessions", k): v
+                    for k, v in fhs.iteritems()
+                },
+                result_a("ip_theatres", "theatres"): theatres,
+            }
+
         change_availability = theatres_params["change_availability"]
         change_utilisation = pd.Series(
             theatres_params["change_utilisation"], name="change_utilisation"
@@ -576,18 +600,12 @@ class InpatientsModel(Model):
 
         new_theatres = fhs_with_non_el_change * theatres / change_availability
 
-        # create the namedtuple types
-        result_u = namedtuple("results", ["pod", "measure", "tretspef"])
-        result_a = namedtuple("results", ["pod", "measure"])
-
         return {
             **{
                 result_u("ip_theatres", "four_hour_sessions", k): v
-                for k, v in activity.loc["future", "four_hour_sessions"]
-                .to_dict()
-                .items()
+                for k, v in activity.loc["future", "four_hour_sessions"].iteritems()
             },
-            **{result_a("ip_theatres", "theatres"): new_theatres},
+            result_a("ip_theatres", "theatres"): new_theatres,
         }
 
     def aggregate(self, model_results: pd.DataFrame, model_run: int) -> dict:
@@ -609,7 +627,9 @@ class InpatientsModel(Model):
         ip_rows = model_results[~ip_op_row_ix].copy()
         op_rows = model_results[ip_op_row_ix].copy()
         # run the theatres utilisation on the model results before we alter ip_rows
-        theatres_available = self._theatres_available(ip_rows, run_params["theatres"])
+        theatres_available = self._theatres_available(
+            ip_rows, run_params["theatres"], model_run
+        )
         # handle OP rows
         op_rows["pod"] = "op_procedure"
         op_rows["measure"] = "attendances"
@@ -649,7 +669,9 @@ class InpatientsModel(Model):
             **agg(),
             **agg(["sex", "age_group"]),
             **agg(["sex", "tretspef"]),
-            "bed_occupancy": self._bed_occupancy(ip_rows, run_params["bed_occupancy"]),
+            "bed_occupancy": self._bed_occupancy(
+                ip_rows, run_params["bed_occupancy"], model_run
+            ),
             "theatres_available": theatres_available,
         }
 
