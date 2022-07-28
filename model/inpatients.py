@@ -7,6 +7,7 @@ import json
 import os
 from collections import defaultdict, namedtuple
 from functools import partial
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -470,7 +471,17 @@ class InpatientsModel(Model):
 
     def _bed_occupancy(
         self, ip_rows: pd.DataFrame, bed_occupancy_params: dict, model_run: int
-    ):
+    ) -> dict[namedtuple, int]:
+        """
+        Calculate bed occupancy
+
+        * ip_rows: the Inpatient rows from model results
+        * bed_occupancy_params: the bed occupancy parameters from run_params
+        * model_run: the current model run
+
+        returns: a dictionary of a named tuple to an integer. The named tuple contains the pod,
+        measure, and the ward group. The value is the number of beds available
+        """
         # create the namedtuple type
         result = namedtuple("results", ["pod", "measure", "ward_group"])
         # extract params
@@ -532,8 +543,18 @@ class InpatientsModel(Model):
         }
 
     def _theatres_available(
-        self, model_results: pd.DataFrame, theatres_params: dict, model_run
-    ):
+        self, model_results: pd.DataFrame, theatres_params: dict, model_run: int
+    ) -> dict[namedtuple, int]:
+        """
+        Calculate the theatres available
+
+        * model_results: a DataFrame containing the results of a model iteration
+        * theatres_params: the theatres params from run_params
+        * model_run: the current model run
+
+        returns: a dictionary of a named tuple to an integer. There are two set's of results that
+        are returned: the number of theatres available, and the number of four hour sessions.
+        """
         # create the namedtuple types
         result_u = namedtuple("results", ["pod", "measure", "tretspef"])
         result_a = namedtuple("results", ["pod", "measure"])
@@ -675,16 +696,21 @@ class InpatientsModel(Model):
             "theatres_available": theatres_available,
         }
 
-    def save_results(self, results, path_fn):
-        """Save the results of running the model"""
-        ip_op_row_ix = results["classpat"] == "-1"
+    def save_results(self, model_results: pd.DataFrame, path_fn: Callable[[str], str]):
+        """
+        Save the results of running the model
+
+        * model_results: a DataFrame containing the results of a model iteration
+        * path_fn: a function that takes the activity type and generates a path where to save the file
+        """
+        ip_op_row_ix = model_results["classpat"] == "-1"
         # save the op converted rows
-        results[ip_op_row_ix].groupby(["age", "sex", "tretspef"]).size().to_frame(
+        model_results[ip_op_row_ix].groupby(["age", "sex", "tretspef"]).size().to_frame(
             "attendances"
         ).assign(tele_attendances=0).reset_index().to_parquet(
             f"{path_fn('op_conversion')}/0.parquet"
         )
         # remove the op converted rows
-        results.loc[~ip_op_row_ix, ["speldur", "classpat"]].to_parquet(
+        model_results.loc[~ip_op_row_ix, ["speldur", "classpat"]].to_parquet(
             f"{path_fn('ip')}/0.parquet"
         )
