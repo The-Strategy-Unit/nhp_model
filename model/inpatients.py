@@ -4,7 +4,6 @@ Inpatients Module
 Implements the inpatients model.
 """
 import json
-import os
 from collections import defaultdict, namedtuple
 from functools import partial
 from typing import Callable
