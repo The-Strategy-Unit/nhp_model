@@ -35,4 +35,6 @@ dependencies:
   - pytest=7.1.*
   - pytest-mock=3.7.*
   - pylint=2.14.*
+  - sphinx=5.1.*
+  - sphinx_rtd_theme=0.5.*
   - widgetsnbextension=3.6.*
