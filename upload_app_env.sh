@@ -9,12 +9,6 @@ function cleanup {
 }
 trap cleanup EXIT
 
-export saname=nhpsa
-
-# upload the app code to blob storage
-az storage blob upload-batch --account-name $saname --source model --destination app --destination-path model --auth-mode login
-az storage blob upload --account-name $saname -c app -f run_model.py --auth-mode login
-
 # create the conda environment file from the main environment.yml, stripping out anything after the "dev dependencies" comment
 awk 'NR==1,/# dev dependencies/' environment.yml |
   sed -E 's/^(name: nhp)$/\1_prod/; s/\s*#.*//g' > environment_prod.yml
