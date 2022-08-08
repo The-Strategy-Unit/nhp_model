@@ -6,6 +6,7 @@ Implements the A&E model.
 
 import os
 from functools import partial
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -14,13 +15,12 @@ from model.model import Model
 
 
 class AaEModel(Model):
-    """
-    Accident and Emergency Model
+    """Accident and Emergency Model
 
-    * params: the parameters to run the model with
-    * data_path: the path to where the data files live
+    Implementation of the Model for Accident and Emergency attendances.
 
-    Inherits from the Model class.
+    :param params: the parameters to run the model with
+    :param data_path: the path to where the data files live
     """
 
     def __init__(self, params: list, data_path: str) -> None:
@@ -30,10 +30,15 @@ class AaEModel(Model):
     def _low_cost_discharged(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
         """Low Cost Discharge Reduction
 
-        * data: the DataFrame that we are updating
-        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+        Returns the factor values for the Low Cost Discharge Reduction strategy
 
-        returns: an array of factors, the length of data
+        :param data: the DataFrame that we are updating
+        :type data: pandas.DataFrame
+        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+        :type run_params: dict
+
+        :returns: an array of factors, the length of data
+        :rtype: numpy.ndarray
         """
         return self._factor_helper(
             data,
@@ -44,29 +49,67 @@ class AaEModel(Model):
     def _left_before_seen(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
         """Left Before Seen Reduction
 
-        * data: the DataFrame that we are updating
-        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+        Returns the factor values for the Left Before Seen Reduction strategy
 
-        returns: an array of factors, the length of data
+        :param data: the DataFrame that we are updating
+        :type data: pandas.DataFrame
+        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+        :type run_params: dict
+
+        :returns: an array of factors, the length of data
+        :rtype: numpy.ndarray
         """
         return self._factor_helper(
             data, run_params["left_before_seen"], {"is_left_before_treatment": 1}
         )
 
     def _frequent_attenders(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
-        """Frequen Attenders Reduction
+        """Frequent Attenders Reduction
 
-        * data: the DataFrame that we are updating
-        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+        Returns the factor values for the Frequent Attenders Reduction strategy
 
-        returns: an array of factors, the length of data
+        :param data: the DataFrame that we are updating
+        :type data: pandas.DataFrame
+        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+        :type run_params: dict
+
+        :returns: an array of factors, the length of data
+        :rtype: numpy.ndarray
         """
         return self._factor_helper(
             data, run_params["frequent_attenders"], {"is_frequent_attender": 1}
         )
 
     @staticmethod
-    def _run_poisson_step(rng, data, name, factor, step_counts):
+    def _run_poisson_step(
+        rng: np.random.BitGenerator,
+        data: pd.DataFrame,
+        name: str,
+        factor: np.ndarray,
+        step_counts: dict,
+    ) -> None:
+        """Run a poisson step
+
+        Resample the rows of `data` using a randomly generated poisson value for each row from
+        `factor`.
+
+        Updates the `step_counts` dictionary as a side effect.
+
+        :param rng: a random number generator created for each model iteration
+        :type rng: numpy.random.Generator
+        :param data: the DataFrame that we are updating
+        :type data: pandas.DataFrame
+        :param name: the name of the step (inserted into step_counts)
+        :type name: str
+        :param factor: a series with as many values as rows in `data` which will be used as the lambda
+            value for the poisson distribution
+        :type factor: pandas.Series
+        :param step_counts: a dictionary containing the changes to measures for this step
+        :type step_counts: dict
+
+        :returns: the updated DataFrame
+        :rtype: pandas.DataFrame
+        """
         # perform the step
         data["arrivals"] = rng.poisson(data["arrivals"].to_numpy() * factor)
         # remove rows where the overall number of attendances was 0
@@ -75,7 +118,35 @@ class AaEModel(Model):
         step_counts[name] = sum(data["arrivals"]) - sum(step_counts.values())
 
     @staticmethod
-    def _run_binomial_step(rng, data, name, factor, step_counts):
+    def _run_binomial_step(
+        rng: np.random.BitGenerator,
+        data: pd.DataFrame,
+        name: str,
+        factor: np.ndarray,
+        step_counts: dict,
+    ) -> None:
+        """Run a binomial step
+
+        Resample the rows of `data` using a randomly generated binomial value for each row from
+        `factor`.
+
+        Updates the `step_counts` dictionary as a side effect.
+
+        :param rng: a random number generator created for each model iteration
+        :type rng: numpy.random.Generator
+        :param data: the DataFrame that we are updating
+        :type data: pandas.DataFrame
+        :param name: the name of the step (inserted into step_counts)
+        :type name: str
+        :param factor: a series with as many values as rows in `data` which will be used as the
+            parameter of the distribution
+        :type factor: pandas.Series
+        :param step_counts: a dictionary containing the changes to measures for this step
+        :type step_counts: dict
+
+        :returns: the updated DataFrame
+        :rtype: pandas.DataFrame
+        """
         # perform the step
         data["arrivals"] = rng.binomial(data["arrivals"].to_numpy(), factor)
         # remove rows where the overall number of attendances was 0
@@ -88,18 +159,24 @@ class AaEModel(Model):
         rng: np.random.Generator,
         data: pd.DataFrame,
         run_params: dict,
-        aav_f: pd.Series,
+        demo_f: pd.Series,
         hsa_f: pd.Series,
-    ) -> tuple[pd.DataFrame, dict]:
+    ) -> tuple[dict, pd.DataFrame]:
         """Run the model
 
-        * rng: an np.random.Generator, created for each model iteration
-        * data: the DataFrame that we are updating
-        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        * aav_f: the demographic adjustment factors
-        * hsa_f: the health status adjustment factors
+        :param rng: a random number generator created for each model iteration
+        :type rng: numpy.random.Generator
+        :param data: the DataFrame that we are updating
+        :type data: pandas.DataFrame
+        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+        :type run_params: dict
+        :param demo_f: the demographic adjustment factors
+        :type demo_f: pandas.Series
+        :param hsa_f: the health status adjustment factors
+        :type hsa_f: pandas.Series
 
-        returns: a tuple containing the change factors DataFrame and the mode results DataFrame
+        :returns: a tuple containing the change factors DataFrame and the mode results DataFrame
+        :rtype: (dict, pandas.DataFrame)
         """
         params = run_params["aae_factors"]
 
@@ -113,7 +190,7 @@ class AaEModel(Model):
         )
         # then, demographic modelling
         self._run_poisson_step(
-            rng, data, "population_factors", aav_f[data["rn"]], step_counts
+            rng, data, "population_factors", demo_f[data["rn"]], step_counts
         )
         # now run strategies
         self._run_binomial_step(
@@ -153,15 +230,17 @@ class AaEModel(Model):
         return (change_factors, data.drop(["hsagrp"], axis="columns"))
 
     def aggregate(self, model_results: pd.DataFrame, model_run: int) -> dict:
-        """
-        Aggregate the model results
-
-        * model_results: a DataFrame containing the results of a model iteration
-        * model_run: the current model run
-
-        returns: a dictionary containing the different aggregations of this data
+        """Aggregate the model results
 
         Can also be used to aggregate the baseline data by passing in the raw data
+
+        :param model_results: a DataFrame containing the results of a model iteration
+        :type model_results: pandas.DataFrame
+        :param model_run: the current model run
+        :type model_run: int
+
+        :returns: a dictionary containing the different aggregations of this data
+        :rtype: dict
         """
         model_results["pod"] = "aae_type-" + model_results["aedepttype"]
         model_results["measure"] = "walk-in"
@@ -173,6 +252,18 @@ class AaEModel(Model):
         agg = partial(self._create_agg, model_results)
         return {**agg(), **agg(["sex", "age_group"])}
 
-    def save_results(self, results, path_fn):
-        """Save the results of running the model"""
-        results.set_index(["rn"])[["arrivals"]].to_parquet(f"{path_fn('aae')}/0.parquet")
+    def save_results(
+        self, model_results: pd.DataFrame, path_fn: Callable[[str], str]
+    ) -> None:
+        """Save the results of running the model
+
+        This method is used for saving the results of the model run to disk as a parquet file.
+        It saves just the `rn` (row number) column and the `arrivals`, with the intention that
+        you rejoin to the original data.
+
+        :param model_results: a DataFrame containing the results of a model iteration
+        :param path_fn: a function which takes the activity type and returns a path
+        """
+        model_results.set_index(["rn"])[["arrivals"]].to_parquet(
+            f"{path_fn('aae')}/0.parquet"
+        )

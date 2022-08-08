@@ -40,9 +40,6 @@ vignettes/*.pdf
 .Renviron
 .env
 
-# pkgdown site
-docs/
-
 # translation temp files
 po/*~
 
@@ -76,3 +73,5 @@ dist/
 # covergage db
 .coverage
 coverage.xml
+
+docs/_build

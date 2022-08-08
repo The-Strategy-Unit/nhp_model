@@ -25,14 +25,18 @@ def _create_activity_type_gams(
 ) -> dict:
     """helper function for generating gams
 
-    * pop: a pandas dataframe containing the population by age/sex
-    * path_fn: a fuction that takes a filename and returns a path to that file (for loading datafiles)
-    * data: a dictionary that will store the loaded data
-    * gams: a dictionary that will store the created gams
-    * activity_type: either "ip", "op", or "aae"
-    * ignored_hsagrps: an array containing any hsa groups that need to be ignored
-
-    returns: None (updates data and gams dict's)
+    :param pop: a DataFrame containing the population by age/sex
+    :type pop: pandas.DataFrame
+    :param path_fn: a fuction that takes a filename and returns a path to that file (for loading datafiles)
+    :type path_fn: Callable
+    :param data: a dictionary that will store the loaded data
+    :type data: dict
+    :param gams: a dictionary that will store the created gams
+    :type gams: dict
+    :param activity_type: either "ip", "op", or "aae"
+    :type activity_type: str
+    :param ignored_hsagrps: an array containing any hsa groups that need to be ignored
+    :type ignored_hsagrps: [str]
     """
     dfr = pq.read_pandas(path_fn(f"{activity_type}.parquet")).to_pandas()
     if ignored_hsagrps is not None:
@@ -61,8 +65,10 @@ def _create_activity_type_gams(
 def create_gams(dataset: str, base_year: str) -> None:
     """Create GAMs for a dataset
 
-    * dataset: a string to the dataset we want to load
-    * base_year: the base year to produce the gams from
+    :param dataset: a string to the dataset we want to load
+    :type dataset: str
+    :param base_year: the base year to produce the gams from
+    :type base_year: str
     """
     # create a helper function for paths
     def path_fn(filename):

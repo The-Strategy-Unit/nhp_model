@@ -1,0 +1,48 @@
+---
+title: NHP Results
+---
+
+```{r setup}
+library(tidyverse)
+library(jsonlite)
+```
+
+Load a results file
+
+```{r}
+path <- here::here("notebooks", "sythetic__test__20220729_112937.json")
+
+all_results <- jsonlite::read_json(path, simplifyVector = TRUE)
+
+selected_variants <- all_results$results$selected_variants
+results <- all_results$results$results |>
+  map(as_tibble)
+change_factors <- all_results$change_factors
+```
+
+# Results
+
+There are a number of different aggregations available
+
+```{r}
+all_results$results$available_aggregations |>
+  map_dfr(~ tibble(aggregation = .x), .id = "activity_type") |>
+  mutate(available = TRUE) |>
+  pivot_wider(values_from = available, names_from = activity_type) |>
+  mutate(across(where(is.logical), replace_na, FALSE))
+```
+
+We can then view results
+
+```{r}
+results$default
+```
+
+Note, some aggregations contain the individual model run values. These can be viewed like so:
+
+```{r}
+results$default |>
+  select(-median, -lwr_ci, -upr_ci) |>
+  mutate(across(model_runs, map, enframe, "model_run")) |>
+  unnest(model_runs)
+```
