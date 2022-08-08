@@ -292,7 +292,7 @@ class Model:
                     }
                     for k1, v1 in params[k0].items()
                 }
-                for k0 in ["strategy_params", "outpatient_factors", "aae_factors"]
+                for k0 in ["inpatient_factors", "outpatient_factors", "aae_factors"]
             },
             "bed_occupancy": {
                 k0: {
@@ -337,7 +337,7 @@ class Model:
                 }
                 for k0 in [
                     "non-demographic_adjustment",
-                    "strategy_params",
+                    "inpatient_factors",
                     "outpatient_factors",
                     "aae_factors",
                     "bed_occupancy",

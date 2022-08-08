@@ -34,7 +34,7 @@ def mock_model():
             "a": {"a_a": [1, 1.2], "a_b": [1, 1.2]},
             "b": {"b_a": [1, 1.2], "b_b": [1, 1.2]},
         },
-        "strategy_params": {
+        "inpatient_factors": {
             "admission_avoidance": {
                 "a_a": {"interval": [0.4, 0.6]},
                 "a_b": {"interval": [0.4, 0.6]},
@@ -89,7 +89,7 @@ def mock_run_params():
             "a": {"a_a": [1.1, 4, 5, 6], "a_b": [1.1, 7, 8, 9]},
             "b": {"b_a": [1.1, 10, 11, 12], "b_b": [1.1, 13, 14, 15]},
         },
-        "strategy_params": {
+        "inpatient_factors": {
             "admission_avoidance": {"a_a": [0.5, 16, 17, 18], "a_b": [0.5, 19, 20, 21]},
             "los_reduction": {"b_a": [0.5, 22, 23, 24], "b_b": [0.5, 25, 26, 27]},
         },
@@ -327,7 +327,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                     "a": {"a_a": 1.1, "a_b": 1.1},
                     "b": {"b_a": 1.1, "b_b": 1.1},
                 },
-                "strategy_params": {
+                "inpatient_factors": {
                     "admission_avoidance": {"a_a": 0.5, "a_b": 0.5},
                     "los_reduction": {"b_a": 0.5, "b_b": 0.5},
                 },
@@ -359,7 +359,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                     "a": {"a_a": 5, "a_b": 8},
                     "b": {"b_a": 11, "b_b": 14},
                 },
-                "strategy_params": {
+                "inpatient_factors": {
                     "admission_avoidance": {"a_a": 17, "a_b": 20},
                     "los_reduction": {"b_a": 23, "b_b": 26},
                 },

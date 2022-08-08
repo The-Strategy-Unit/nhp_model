@@ -72,12 +72,12 @@ class InpatientsModel(Model):
         :returns: a DataFrame containing the LOS reduction factors
         :rtype: pandas.DataFrame
         """
-        params = self.params["strategy_params"]["los_reduction"]
+        params = self.params["inpatient_factors"]["los_reduction"]
         # convert the parameters dictionary to a dataframe: each item becomes a row (with the item
         # being the name of the row in the index), and then each sub-item becoming a column
         losr = pd.DataFrame.from_dict(params, orient="index")
         losr["losr_f"] = [
-            run_params["strategy_params"]["los_reduction"][i] for i in losr.index
+            run_params["inpatient_factors"]["los_reduction"][i] for i in losr.index
         ]
         return losr
 
@@ -103,7 +103,7 @@ class InpatientsModel(Model):
         ].iloc[:, 0]
         # filter the strategies to only include those listed in the params file
         valid_strategies = list(
-            self.params["strategy_params"][strategy_type].keys()
+            self.params["inpatient_factors"][strategy_type].keys()
         ) + ["NULL"]
         strategies = strategies[strategies.isin(valid_strategies)]
         return (
@@ -200,7 +200,7 @@ class InpatientsModel(Model):
         """
         # choose admission avoidance factors
         ada = defaultdict(
-            lambda: 1, run_params["strategy_params"]["admission_avoidance"]
+            lambda: 1, run_params["inpatient_factors"]["admission_avoidance"]
         )
         # work out the number of rows/sum of los before admission avoidance
         data_aa = data.merge(

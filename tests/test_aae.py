@@ -32,7 +32,7 @@ def mock_model():
             "a": {"a_a": [1, 1.2], "a_b": [1, 1.2]},
             "b": {"b_a": [1, 1.2], "b_b": [1, 1.2]},
         },
-        "strategy_params": {
+        "inpatient_factors": {
             "admission_avoidance": {
                 "a_a": {"interval": [0.4, 0.6]},
                 "a_b": {"interval": [0.4, 0.6]},

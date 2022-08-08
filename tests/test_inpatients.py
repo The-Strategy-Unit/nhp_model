@@ -32,7 +32,7 @@ def mock_model():
             "a": {"a_a": [1, 1.2], "a_b": [1, 1.2]},
             "b": {"b_a": [1, 1.2], "b_b": [1, 1.2]},
         },
-        "strategy_params": {
+        "inpatient_factors": {
             "admission_avoidance": {
                 "a_a": {"interval": [0.4, 0.6]},
                 "a_b": {"interval": [0.4, 0.6]},
@@ -133,7 +133,7 @@ def test_los_reduction(mock_model):
     """test that the method returns a dataframe"""
     mdl = mock_model
     actual = mdl._los_reduction(
-        {"strategy_params": {"los_reduction": {"b_a": 0.45, "b_b": 0.55}}}
+        {"inpatient_factors": {"los_reduction": {"b_a": 0.45, "b_b": 0.55}}}
     )
     assert actual.equals(
         pd.DataFrame(
@@ -160,7 +160,7 @@ def test_random_strategy(mocker, mock_model):
             index=[1, 1, 1, 1, 2, 2, 2, 2],
         )
     }
-    mdl.params = {"strategy_params": {"a": {"a": 1, "b": 2, "c": 3}}}
+    mdl.params = {"inpatient_factors": {"a": {"a": 1, "b": 2, "c": 3}}}
     # act
     actual = mdl._random_strategy(rng, "a")
     # assert
@@ -222,7 +222,7 @@ def test_admission_avoidance_step(mock_model):
     )
     data = pd.DataFrame({"rn": x, "speldur": x})
     run_params = {
-        "strategy_params": {"admission_avoidance": {"a_a": 0.25, "a_b": 0.75}}
+        "inpatient_factors": {"admission_avoidance": {"a_a": 0.25, "a_b": 0.75}}
     }
     step_counts = {}
     # act

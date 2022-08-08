@@ -1,6 +1,6 @@
 {
-  "name": "test",
-  "input_data": "synthetic",
+  "scenario": "test",
+  "dataset": "synthetic",
   "seed": 84308,
   "model_runs": 256,
   "start_year": 2018,
@@ -242,7 +242,7 @@
       ]
     }
   },
-  "strategy_params": {
+  "inpatient_factors": {
     "admission_avoidance": {
       "alcohol_partial_acute": {
         "interval": [
