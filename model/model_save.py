@@ -24,7 +24,19 @@ from model.model import Model
 class ModelSave:
     """Run the model and save the results
 
-    This is a generic implementation and should not be used  directly"""
+    This is a generic implementation and should not be used  directly, instead use one of either
+    `CosmosDBSave` or `LocalSave`.
+
+    :param params: the parameters we will use to run the model
+    :type params: dict
+    :param results_path: the path where we will save the results to
+    :type results_path: str
+    :param temp_path: the path where we will store store results temporarily. If left as `None`,
+        we will choose a temporary path using `os.mkdtemp()`
+    :type temp_path: str, optional
+    :param save_results: whether to save the full model results, or not (defaults to `False`)
+    :type save_results: bool, optional
+    """
 
     def __init__(
         self,
@@ -69,19 +81,26 @@ class ModelSave:
         self._save_results = save_results
 
     def set_model(self, model: Model) -> None:
-        """Set the current model"""
+        """Set the current model
+
+        Updates the current model which we will run using `run_model()`.
+
+        :param model: an instance of `Model`
+        :type model: Model
+        """
         self._model = model
 
     def run_model(self, model_run: int) -> None:
         """Run the model and save the results
-
-        * model_run: the iteration of the model we want to run
 
         Saves the results and change factors of a model run to the path:
             `{results|change_factors}/dataset=.../scenario=.../create_datetime=.../`
         as 0.parquet (for results) and 0.csv (for change_factors).
 
         Uses a hive partition scheme so it is easy to load the data with pyarrow
+
+        :param model_run: the iteration of the model we want to run
+        :type model_run: int
         """
         model = self._model
         activity_type = model.model_type
@@ -117,7 +136,13 @@ class ModelSave:
             dill.dump(aggregated_results, arf)
 
     def post_runs(self) -> None:
-        """Post running of all model runs"""
+        """Post running of all model runs
+
+        Anything that has to happen after all of the model runs have completed running occures here.
+
+        We save out the parameters file that was used, along with the run parameters, before
+        removing the temporary path contents.
+        """
         # save params
         os.makedirs(pr_path := f"{self._base_results_path}/params", exist_ok=True)
         with open(f"{pr_path}/{self._run_id}.json", "w", encoding="UTF-8") as prf:
@@ -130,6 +155,14 @@ class ModelSave:
         shutil.rmtree(self._temp_path)
 
     def _combine_aggregated_results(self) -> dict:
+        """Combine aggregate results
+
+        Takes the individual files of the aggregated model results and combines into a single
+        dictionary of results
+
+        :returns: a single dictionary of the aggregated model results
+        :rtype: dict
+        """
         aggregated_results = {}
         for activity_type in ["aae", "ip", "op"]:
             aggregated_results[activity_type] = list()
@@ -165,6 +198,12 @@ class ModelSave:
 
         We split out the baseline and principal values, as well as calculating summary statistics
         on the model run values
+
+        :param results: a dictionary containining entries for the activity types and arrays of the
+            aggregated results
+
+        :returns: a dictionary that has been inverted
+        :rtype: dict
         """
         # create a nested defaultdict which contains an array of 0's the lenght of the results:
         # that gives us a value even if a model run did not output a row for a given aggregate
@@ -205,6 +244,11 @@ class ModelSave:
         )
 
     def _combine_change_factors(self) -> pd.DataFrame:
+        """Combine Change Factors
+
+        :returns: a single DataFrame of all of the Change Factors
+        :rtype: pandas.DataFrame
+        """
         return pd.concat(
             [pd.read_csv(f"{self._cf_path}/{i}") for i in os.listdir(self._cf_path)]
         )
@@ -213,14 +257,18 @@ class ModelSave:
 class LocalSave(ModelSave):
     """Save the model results locally
 
-    Utilises ModelSave to store results locally
+    Utilises ModelSave to store results to local storage.
     """
 
     def __init__(self, *args) -> None:
         super().__init__(*args)
 
     def post_runs(self) -> None:
-        """Post running of all model runs"""
+        """Post running of all model runs
+
+        Performs the same actions as `ModelSave.post_runs`, but also saves the aggregated results
+        and the change factors to the `results_path` the object was initialised with.
+        """
 
         # save aggregated results
         os.makedirs(
@@ -244,7 +292,14 @@ class LocalSave(ModelSave):
 class CosmosDBSave(ModelSave):
     """Save the model results to Cosmos DB
 
-    Utilises ModelSave to store results to both the file paths and to Cosmos DB"""
+    Utilises ModelSave to store results to both the file paths and to Cosmos DB.
+
+    Environment variables are used to configure the various secrets to connect to CosmosDB:
+
+    * `COSMOS_ENDPOINT`: should be something like https://my_cosmos_account.documents.azure.com:443/
+    * `COSMOS_KEY`: the key used to connect to your CosmosDB account
+    * `COSMOS_DB`: the name of the database that you are storing the results in
+    """
 
     def __init__(self, *args) -> None:
         super().__init__(*args)
@@ -255,12 +310,20 @@ class CosmosDBSave(ModelSave):
         self._cosmos_key = os.getenv("COSMOS_KEY")
 
     def post_runs(self) -> None:
-        """Post running of all model runs"""
+        """Post running of all model runs
+
+        Performs the same actions as `ModelSave.post_runs`, but uploads the results and change
+        factors to CosmosDB.
+        """
         self._upload_results()
         self._upload_change_factors()
         super().post_runs()
 
     def _upload_results(self) -> None:
+        """Upload the results to CosmosDB
+
+        Takes the results and stores them in the "results" container
+        """
         aggregated_results = self._combine_aggregated_results()
 
         item = {"id": self._run_id, **aggregated_results}
@@ -270,7 +333,15 @@ class CosmosDBSave(ModelSave):
         )
 
     @staticmethod
-    def _change_factor_to_dict(change_factor):
+    def _change_factor_to_dict(change_factor: pd.DataFrame) -> dict:
+        """Converts the change factors DataFrame to a dictionary
+
+        :param change_factor: the change factors DataFrame
+        :type change_factor: pandas.DataFrame
+
+        :returns: the change factors as a dictionary ready to upload to CosmosDB
+        :type: dict
+        """
         acf = (
             change_factor.drop(["activity_type", "measure"], axis="columns")
             .set_index(["change_factor", "strategy", "model_run"])
@@ -292,6 +363,10 @@ class CosmosDBSave(ModelSave):
         return acf
 
     def _upload_change_factors(self) -> None:
+        """Upload the change factors to CosmosDB
+
+        Takes the changes factors and stores them in the "change_factors" container
+        """
         change_factors = self._combine_change_factors()
 
         item = {
@@ -310,6 +385,16 @@ class CosmosDBSave(ModelSave):
         )
 
     def _get_database_container(self, container: str) -> ContainerProxy:
+        """Get a database container
+
+        Helper method to get a CosmosDB container
+
+        :param container: The name of the container
+        :type container: str
+
+        :returns: the CosmosDB contianer
+        :rtype: azure.cosmos.ContainerProxy
+        """
         client = CosmosClient(self._cosmos_endpoint, self._cosmos_key)
         database = client.get_database_client(self._database)
         return database.get_container_client(container)

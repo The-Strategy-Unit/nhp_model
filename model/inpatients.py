@@ -16,11 +16,12 @@ from model.model import Model
 
 
 class InpatientsModel(Model):
-    """
-    Inpatients Model
+    """Inpatients Model
 
-    * params: the parameters to run the model with
-    * data_path: the path to where the data files live
+    :param params: the parameters to run the model with
+    :type params: dict
+    :param data_path: the path to where the data files live
+    :type data_path: str
 
     Inherits from the Model class.
     """
@@ -52,10 +53,10 @@ class InpatientsModel(Model):
         # load the theatres data
         self._load_theatres_data()
 
-    def _load_theatres_data(self):
-        """
-        Load the Theatres data
+    def _load_theatres_data(self) -> None:
+        """Load the Theatres data
 
+        Loads the theatres data and stores in the private variable `self._theatres_data`
         """
         with open(f"{self._data_path}/theatres.json", "r", encoding="UTF-8") as tdf:
             self._theatres_data = json.load(tdf)
@@ -64,12 +65,12 @@ class InpatientsModel(Model):
         )
 
     def _los_reduction(self, run_params: dict) -> pd.DataFrame:
-        """
-        Create a dictionary of the LOS reduction factors to use for a run
+        """Create a dictionary of the LOS reduction factors to use for a run
 
-        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-
-        returns: a DataFrame containing the LOS reduction factors
+        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+        :type run_params: dict
+        :returns: a DataFrame containing the LOS reduction factors
+        :rtype: pandas.DataFrame
         """
         params = self.params["strategy_params"]["los_reduction"]
         # convert the parameters dictionary to a dataframe: each item becomes a row (with the item
@@ -83,14 +84,16 @@ class InpatientsModel(Model):
     def _random_strategy(
         self, rng: np.random.Generator, strategy_type: str
     ) -> pd.DataFrame:
-        """
-        Select one strategy per record
+        """Select one strategy per record
 
-        * rng: an np.random.Generator, created for each model iteration
-        * strategy_type: a string of which type of strategy to update, e.g. "admission_avoidance",
-          "los_reduction"
+        :param rng: a random number generator created for each model iteration
+        :type rng: numpy.random.Generator
+        :param strategy_type: the type of strategy to update, e.g. "admission_avoidance",
+            "los_reduction"
+        :type strategy_type: str
 
-        returns: an updated DataFrame with a new column for the selected strategy
+        :returns: an updated DataFrame with a new column for the selected strategy
+        :rtype: pandas.DataFrame
         """
         strategies = self._strategies[strategy_type]
         # sample from the strategies based on the sample_rate column, then select just the strategy
@@ -113,17 +116,18 @@ class InpatientsModel(Model):
         )
 
     def _waiting_list_adjustment(self, data: pd.DataFrame) -> pd.Series:
-        """
-        Create a series of factors for waiting list adjustment.
-
-        * data: the DataFrame that we are updating
-
-        returns: a series of floats indicating how often we want to sample that row
+        """Create a series of factors for waiting list adjustment.
 
         A value of 1 will indicate that we want to sample this row at the baseline rate. A value
         less that 1 will indicate we want to sample that row less often that in the baseline, and
         a value greater than 1 will indicate that we want to sample that row more often than in the
         baseline
+
+        :param data: the DataFrame that we are updating
+        :type data: pandas.DataFrame
+
+        :returns: a series of floats indicating how often we want to sample that row
+        :rtype: pandas.Series
         """
         tretspef_n = data.groupby("tretspef").size()
         wla_param = pd.Series(self.params["waiting_list_adjustment"]["ip"])
@@ -140,12 +144,13 @@ class InpatientsModel(Model):
 
     @staticmethod
     def _non_demographic_adjustment(data, run_params: dict) -> pd.Series:
-        """
-        Create a series of factors for non-demographic adjustment.
+        """Create a series of factors for non-demographic adjustment.
 
-        * run_params: the parameters to use for this model run (see `Model._get_run_params()`
+        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+        :type run_params: dict
 
-        returns: a series of floats indicating how often we want to sample that row)
+        :returns: a series of floats indicating how often we want to sample that row)
+        :rtype: pandas.Series
         """
         ndp = (
             pd.DataFrame.from_dict(
@@ -176,15 +181,22 @@ class InpatientsModel(Model):
         admission_avoidance: pd.Series,
         run_params: dict,
         step_counts: dict,
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    ) -> pd.DataFrame:
         """Run the admission avoidance strategies
 
-        * rng: an np.random.Generator, created for each model iteration
-        * data: the DataFrame that we are updating
-        * admission_avoidance: the selected admission avoidance strategies for this model run
-        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+        Runs the admission avoidance step and updates the `step_counts` dictionary
 
-        returns: a tuple containing the updated data and the change factors for this step
+        :param rng: a random number generator created for each model iteration
+        :type rng: numpy.random.Generator
+        :param data: the DataFrame that we are updating
+        :type data: pandas.DataFrame
+        :param admission_avoidance: the selected admission avoidance strategies for this model run
+        :type admission_avoidance: pandas.Series
+        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+        :type run_params: dict
+
+        :returns: the updated data
+        :rtype: pandas.DataFrame
         """
         # choose admission avoidance factors
         ada = defaultdict(
@@ -229,17 +241,20 @@ class InpatientsModel(Model):
         rng: np.random.Generator,
         step_counts: dict,
     ) -> None:
-        """
-        Length of Stay Reduction: All
-
-        * data: the DataFrame that we are updating
-        * losr: the Length of Stay rates table created from self._los_reduction()
-        * rng: an np.random.Generator, created for each model iteration
-        * step_counts: a dictionary containing the changes to measures for this step
+        """Length of Stay Reduction: All
 
         Reduces all rows length of stay by sampling from a binomial distribution, using the current
         length of stay as the value for n, and the length of stay reduction factor for that strategy
         as the value for p. This will update the los to be a value between 0 and the original los.
+
+        :param data: the DataFrame that we are updating
+        :type data: pandas.DataFrame
+        :param losr: the Length of Stay rates table created from self._los_reduction()
+        :type losr: pandas.DataFrame
+        :param rng: a random number generator created for each model iteration
+        :type rng: numpy.random.Generator
+        :param step_counts: a dictionary containing the changes to measures for this step
+        :type step_counts: dict
         """
         i = losr.index[(losr.type == "all") & (losr.index.isin(data.index))]
         pre_los = data.loc[i, "speldur"]
@@ -266,11 +281,6 @@ class InpatientsModel(Model):
         """
         Length of Stay Reduction: British Association of Day Surgery
 
-        * data: the DataFrame that we are updating
-        * losr: the Length of Stay rates table created from self._los_reduction()
-        * rng: an np.random.Generator, created for each model iteration
-        * step_counts: a dictionary containing the changes to measures for this step
-
         This will swap rows between elective admissions and daycases into either daycases or
         outpatients, based on the given parameter values. We have a baseline target rate, this is
         the rate in the baseline that rows are of the given target type (i.e. either daycase,
@@ -282,6 +292,15 @@ class InpatientsModel(Model):
         out of the inpatients results and added to the outpatients results).
 
         Rows that are modelled away from elective care have the length of stay fixed to 0 days.
+
+        :param data: the DataFrame that we are updating
+        :type data: pandas.DataFrame
+        :param losr: the Length of Stay rates table created from self._los_reduction()
+        :type losr: pandas.DataFrame
+        :param rng: a random number generator created for each model iteration
+        :type rng: numpy.random.Generator
+        :param step_counts: a dictionary containing the changes to measures for this step
+        :type step_counts: dict
         """
         i = losr.type == "bads"
         # create a copy of our data, and join to the losr data
@@ -348,13 +367,16 @@ class InpatientsModel(Model):
         """
         Length of Stay Reduction: To Zero Day LoS
 
-        * data: the DataFrame that we are updating
-        * losr: the Length of Stay rates table created from self._los_reduction()
-        * rng: an np.random.Generator, created for each model iteration
-        * type: the type of row we are updating
-        * step_counts: a dictionary containing the changes to measures for this step
-
         Updates the length of stay to 0 for a given percentage of rows.
+
+        :param data: the DataFrame that we are updating
+        :type data: pandas.DataFrame
+        :param losr: the Length of Stay rates table created from self._los_reduction()
+        :type losr: pandas.DataFrame
+        :param rng: a random number generator created for each model iteration
+        :type rng: numpy.random.Generator
+        :param step_counts: a dictionary containing the changes to measures for this step
+        :type step_counts: dict
         """
         i = losr.index[(losr.type == losr_type) & (losr.index.isin(data.index))]
         pre_los = data.loc[i, "speldur"]
@@ -373,7 +395,33 @@ class InpatientsModel(Model):
             }
 
     @staticmethod
-    def _run_poisson_step(rng, data, name, factor, step_counts):
+    def _run_poisson_step(
+        rng: np.random.BitGenerator,
+        data: pd.DataFrame,
+        name: str,
+        factor: np.ndarray,
+        step_counts: dict,
+    ) -> None:
+        """Run a poisson step
+
+        Resample the rows of `data` using a randomly generated poisson value for each row from
+        `factor`.
+
+        Updates the `step_counts` dictionary as a side effect.
+
+        :param rng: a random number generator created for each model iteration
+        :type rng: numpy.random.Generator
+        :param data: the DataFrame that we are updating
+        :type data: pandas.DataFrame
+        :param factor: a series with as many values as rows in `data` which will be used as the lambda
+            value for the poisson distribution
+        :type factor: pandas.Series
+        :param step_counts: a dictionary containing the changes to measures for this step
+        :type step_counts: dict
+
+        :returns: the updated DataFrame
+        :rtype: pandas.DataFrame
+        """
         select_row_n_times = rng.poisson(factor)
         sc_n = len(data.index)
         sc_b = int(sum(data["speldur"] + 1))
@@ -390,18 +438,24 @@ class InpatientsModel(Model):
         rng: np.random.Generator,
         data: pd.DataFrame,
         run_params: dict,
-        aav_f: pd.Series,
+        demo_f: pd.Series,
         hsa_f: pd.Series,
-    ) -> tuple[pd.DataFrame, dict]:
+    ) -> tuple[dict, pd.DataFrame]:
         """Run the model
 
-        * rng: an np.random.Generator, created for each model iteration
-        * data: the DataFrame that we are updating
-        * run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        * aav_f: the demographic adjustment factors
-        * hsa_f: the health status adjustment factors
+        :param rng: a random number generator created for each model iteration
+        :type rng: numpy.random.Generator
+        :param data: the DataFrame that we are updating
+        :type data: pandas.DataFrame
+        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+        :type run_params: dict
+        :param demo_f: the demographic adjustment factors
+        :type demo_f: pandas.Series
+        :param hsa_f: the health status adjustment factors
+        :type hsa_f: pandas.Series
 
-        returns: a tuple containing the change factors DataFrame and the mode results DataFrame
+        :returns: a tuple containing the change factors DataFrame and the mode results DataFrame
+        :rtype: (dict, pandas.DataFrame)
         """
         # select strategies
         admission_avoidance = self._random_strategy(rng, "admission_avoidance")
@@ -422,7 +476,7 @@ class InpatientsModel(Model):
         )
         # then, demographic modelling
         data = self._run_poisson_step(
-            rng, data, "population_factors", aav_f[data["rn"]], step_counts
+            rng, data, "population_factors", demo_f[data["rn"]], step_counts
         )
         # waiting list adjustments
         data = self._run_poisson_step(
@@ -471,15 +525,18 @@ class InpatientsModel(Model):
     def _bed_occupancy(
         self, ip_rows: pd.DataFrame, bed_occupancy_params: dict, model_run: int
     ) -> dict[namedtuple, int]:
-        """
-        Calculate bed occupancy
+        """Calculate bed occupancy
 
-        * ip_rows: the Inpatient rows from model results
-        * bed_occupancy_params: the bed occupancy parameters from run_params
-        * model_run: the current model run
+        :param ip_rows: the Inpatient rows from model results
+        :type ip_rows: pandas.DataFrame
+        :param bed_occupancy_params: the bed occupancy parameters from run_params
+        :type bed_occupancy_params: dict
+        :param model_run: the current model run
+        :type model_run: int
 
-        returns: a dictionary of a named tuple to an integer. The named tuple contains the pod,
-        measure, and the ward group. The value is the number of beds available
+        :returns: a dictionary of a named tuple to an integer. The named tuple contains the pod,
+            measure, and the ward group. The value is the number of beds available
+        :rtype: dict
         """
         # create the namedtuple type
         result = namedtuple("results", ["pod", "measure", "ward_group"])
@@ -544,15 +601,18 @@ class InpatientsModel(Model):
     def _theatres_available(
         self, model_results: pd.DataFrame, theatres_params: dict, model_run: int
     ) -> dict[namedtuple, int]:
-        """
-        Calculate the theatres available
+        """Calculate the theatres available
 
-        * model_results: a DataFrame containing the results of a model iteration
-        * theatres_params: the theatres params from run_params
-        * model_run: the current model run
+        :param model_results: a DataFrame containing the results of a model iteration
+        :type model_results: pandas.DataFrame
+        :param theatres_params: the theatres params from run_params
+        :type theatres_params: dict
+        :param model_run: the current model run
+        :type model_run: int
 
-        returns: a dictionary of a named tuple to an integer. There are two set's of results that
-        are returned: the number of theatres available, and the number of four hour sessions.
+        :returns: a dictionary of a named tuple to an integer. There are two set's of results that
+            are returned: the number of theatres available, and the number of four hour sessions.
+        :rtype: dict
         """
         # create the namedtuple types
         result_u = namedtuple("results", ["pod", "measure", "tretspef"])
@@ -629,15 +689,17 @@ class InpatientsModel(Model):
         }
 
     def aggregate(self, model_results: pd.DataFrame, model_run: int) -> dict:
-        """
-        Aggregate the model results
-
-        * model_results: a DataFrame containing the results of a model iteration
-        * model_run: the current model run
-
-        returns: a dictionary containing the different aggregations of this data
+        """Aggregate the model results
 
         Can also be used to aggregate the baseline data by passing in the raw data
+
+        :param model_results: a DataFrame containing the results of a model iteration
+        :type model_results: pandas.DataFrame
+        :param model_run: the current model run
+        :type model_run: int
+
+        :returns: a dictionary containing the different aggregations of this data
+        :rtype: dict
         """
         # get the run params: use principal run for baseline
         run_params = self._get_run_params(max(0, model_run))
@@ -695,12 +757,15 @@ class InpatientsModel(Model):
             "theatres_available": theatres_available,
         }
 
-    def save_results(self, model_results: pd.DataFrame, path_fn: Callable[[str], str]):
-        """
-        Save the results of running the model
+    def save_results(
+        self, model_results: pd.DataFrame, path_fn: Callable[[str], str]
+    ) -> None:
+        """Save the results of running the model
 
-        * model_results: a DataFrame containing the results of a model iteration
-        * path_fn: a function that takes the activity type and generates a path where to save the file
+        :param model_results: a DataFrame containing the results of a model iteration
+        :type model_results: pandas.DataFrame
+        :param path_fn: a function that takes the activity type and generates a path where to save the file
+        :type path_fn: Callable[[str], str]
         """
         ip_op_row_ix = model_results["classpat"] == "-1"
         # save the op converted rows

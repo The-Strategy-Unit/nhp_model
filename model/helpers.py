@@ -8,25 +8,50 @@ import numpy as np
 import pandas as pd
 
 
-def inrange(value, low=0, high=1):
-    """
-    Force a value to be in the interval [lo, hi]
+def inrange(value: float, low: float = 0, high: float = 1) -> float:
+    """Force a value to be in the interval [lo, hi]
+
+    :param value: the value we want to contrain to the interval
+    :type value: float
+    :param low: the minimum that `value` can be
+    :type low: float, optional
+    :param high: the maximum that `value` can be
+    :type high: float, optional
+
+    :returns: `value` contrained to the interval
+    :rtype: float
     """
     return max(low, min(high, value))
 
 
-def rnorm(rng, low, high):
-    """
-    Create a single random normal value from a 90% confidence interval
+def rnorm(rng: np.random.BitGenerator, low: float, high: float) -> float:
+    """Create a single random normal value from a 90% confidence interval
+
+    :param rng: a random number generator
+    :type rng: numpy.random.Generator
+    :param low: the low estimate of our 90% confidence interval
+    :type low: float
+    :param high: the high estimate of our 90% confidence interval
+    :type high: float
+
+    :returns: a random normal value
+    :rtype: float
     """
     mean = (high + low) / 2
     stdev = (high - low) / 3.289707  # magic number: 2 * qnorm(0.95)
     return rng.normal(mean, stdev)
 
 
-def age_groups(age):
-    """
-    cut age into groups
+def age_groups(age: pd.Series) -> pd.Series:
+    """Cut age into groups
+
+    Takes a pandas Series of age's and cut's into discrete intervals
+
+    :param age: a Series of ages
+    :type age: pandas.Series
+
+    :returns: a Series of age groups
+    :rtype: pandas.Series
     """
     return pd.cut(
         age,
@@ -39,9 +64,11 @@ def age_groups(age):
 def load_params(filename: str) -> dict:
     """Load a params file
 
-    * filename: the full name of the file that we wish to load
+    :param filename: the full name of the file that we wish to load
+    :type filename: str
 
-    returns: a dictionary of the model parameters
+    :returns: the model parameters
+    :rtype: dict
     """
 
     with open(filename, "r", encoding="UTF-8") as prf:
