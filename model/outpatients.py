@@ -339,7 +339,9 @@ class OutpatientsModel(Model):
             **agg(["sex", "tretspef"]),
         }
 
-    def save_results(self, model_results: pd.DataFrame, path_fn: Callable[[str], str]) -> None:
+    def save_results(
+        self, model_results: pd.DataFrame, path_fn: Callable[[str], str]
+    ) -> None:
         """Save the results of running the model
 
         This method is used for saving the results of the model run to disk as a parquet file.
@@ -349,6 +351,6 @@ class OutpatientsModel(Model):
         :param model_results: a DataFrame containing the results of a model iteration
         :param path_fn: a function which takes the activity type and returns a path
         """
-        results.set_index(["rn"])[["attendances", "tele_attendances"]].to_parquet(
+        model_results.set_index(["rn"])[["attendances", "tele_attendances"]].to_parquet(
             f"{path_fn('op')}/0.parquet"
         )
