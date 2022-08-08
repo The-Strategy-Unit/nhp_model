@@ -17,7 +17,7 @@ def mock_model():
         mdl = AaEModel(None, None)
     mdl.model_type = "aae"
     mdl.params = {
-        "input_data": "synthetic",
+        "dataset": "synthetic",
         "model_runs": 3,
         "seed": 1,
         "demographic_factors": {

@@ -45,8 +45,8 @@ class ModelSave:
         temp_path: str = None,
         save_results: bool = False,
     ) -> None:
-        self._dataset = params["input_data"]
-        self._scenario = params["name"]
+        self._dataset = params["dataset"]
+        self._scenario = params["scenario"]
         self._create_datetime = params["create_datetime"]
         #
         self._run_id = f"{self._dataset}__{self._scenario}__{self._create_datetime}"

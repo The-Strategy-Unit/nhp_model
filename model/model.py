@@ -68,7 +68,7 @@ class Model:
         if not "create_datetime" in self.params:
             self.params["create_datetime"] = f"{datetime.now():%Y%m%d_%H%M%S}"
         # store the path where the data is stored and the results are stored
-        self._data_path = os.path.join(data_path, self.params["input_data"])
+        self._data_path = os.path.join(data_path, self.params["dataset"])
         # load the data that's shared across different model types
         with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
             self._hsa_gams = pickle.load(hsa_pkl)

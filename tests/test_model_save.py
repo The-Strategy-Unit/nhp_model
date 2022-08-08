@@ -16,8 +16,8 @@ from model.model_save import CosmosDBSave, LocalSave, ModelSave
 def mock_params():
     """create a mock params dictionary"""
     return {
-        "input_data": "dataset",
-        "name": "scenario",
+        "dataset": "dataset",
+        "scenario": "scenario",
         "create_datetime": "20220101_012345",
         "model_runs": 1024,
         "submitted_by": "username",

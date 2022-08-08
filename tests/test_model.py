@@ -131,7 +131,7 @@ def mock_model_results():
 @pytest.mark.parametrize("model_type", ["aae", "ip", "op"])
 def test_model_init_sets_values(mocker, model_type):
     """test model constructor works as expected"""
-    params = {"input_data": "synthetic", "create_datetime": "20220101_012345"}
+    params = {"dataset": "synthetic", "create_datetime": "20220101_012345"}
 
     mocker.patch("model.model.Model._load_parquet", return_value={"age": 1})
     mocker.patch("model.model.Model._load_demog_factors", return_value=None)
@@ -160,7 +160,7 @@ def test_model_init_validates_model_type():
 
 def test_model_init_sets_create_datetime(mocker):
     """it sets the create_datetime item in params if not already set"""
-    params = {"input_data": "synthetic"}
+    params = {"dataset": "synthetic"}
 
     mocker.patch("model.model.Model._load_parquet", return_value={"age": 1})
     mocker.patch("model.model.Model._load_demog_factors", return_value=None)

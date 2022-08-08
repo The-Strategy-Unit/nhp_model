@@ -17,7 +17,7 @@ def mock_model():
         mdl = InpatientsModel(None, None)
     mdl.model_type = "ip"
     mdl.params = {
-        "input_data": "synthetic",
+        "dataset": "synthetic",
         "model_runs": 3,
         "seed": 1,
         "demographic_factors": {
