@@ -183,12 +183,12 @@ class Model:
 
         Helper method for loading a parquet file into a pandas DataFrame.
 
-        You can selectively load columns by passing an array of column names to \*args.
+        You can selectively load columns by passing an array of column names to `args`.
 
         :param file: the name of the file to load (without the .parquet file extension)
         :type file: str
-        :param \*args: the list of columns to load. If left blank, it loads all available columns
-        :type \*args: [str]
+        :param args: the list of columns to load. If left blank, it loads all available columns
+        :type args: [str]
 
         :returns: the contents of the file
         :rtype: pandas.DataFrame
