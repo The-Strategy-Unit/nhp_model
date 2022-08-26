@@ -52,6 +52,13 @@ class InpatientsModel(Model):
         }
         # load the theatres data
         self._load_theatres_data()
+        self.data["admigroup"] = np.where(
+            self.data["admimeth"].str.startswith("1"),
+            "elective",
+            np.where(
+                self.data["admimeth"].str.startswith("3"), "maternity", "non-elective"
+            ),
+        )
 
     def _load_theatres_data(self) -> None:
         """Load the Theatres data
@@ -161,15 +168,9 @@ class InpatientsModel(Model):
             .melt(["admigroup"], var_name="age_group")
             .set_index(["age_group", "admigroup"])["value"]
         )
-        admigroup = np.where(
-            data["admimeth"].str.startswith("1"),
-            "elective",
-            np.where(data["admimeth"].str.startswith("3"), "maternity", "non-elective"),
-        )
 
         return (
-            data[["age_group"]]
-            .assign(admigroup=admigroup)
+            data[["age_group", "admigroup"]]
             .join(ndp, on=["age_group", "admigroup"])["value"]
             .to_numpy()
         )
