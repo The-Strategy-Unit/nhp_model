@@ -553,7 +553,7 @@ class InpatientsModel(Model):
         dn_admissions = (
             ip_rows[
                 (ip_rows["measure"] == "beddays")
-                & (ip_rows["pod"].str.endswith("admission"))
+                & (ip_rows["pod"].isin(["ip_non-elective_admission", "ip_elective_admission"]))
             ]
             .merge(ga_ward_groups, left_on="mainspef", right_index=True)
             .groupby("ward_group")
