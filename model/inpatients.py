@@ -719,7 +719,16 @@ class InpatientsModel(Model):
         )
 
         cols = list(set(ip_rows.columns).intersection(set(op_rows.columns)))
-        model_results = pd.concat([op_rows[cols], ip_rows[cols]])
+        model_results = (
+            pd.concat([op_rows[cols], ip_rows[cols]])
+            # summarise the results to make the create_agg steps quicker
+            .groupby(
+                # note: any columns used in the calls to _create_agg, including pod and measure
+                # must be included below
+                ["pod", "measure", "sex", "age_group", "tretspef"],
+                as_index=False,
+            ).sum()
+        )
 
         agg = partial(self._create_agg, model_results)
         return {
