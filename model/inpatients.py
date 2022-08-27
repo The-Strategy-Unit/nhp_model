@@ -109,6 +109,33 @@ class InpatientsModel(Model):
                 self.data["admimeth"].str.startswith("3"), "maternity", "non-elective"
             ),
         )
+        # load the kh03 data
+        self._ga_ward_groups = pd.Series(
+            self.params["bed_occupancy"]["specialty_mapping"]["General and Acute"],
+            name="ward_group",
+        )
+        self._kh03_data = (
+            pd.read_csv(
+                f"{self._data_path}/kh03.csv",
+                dtype={
+                    "specialty_code": np.character,
+                    "specialty_group": np.character,
+                    "available": np.float64,
+                    "occupied": np.float64,
+                },
+            )
+            .merge(self._ga_ward_groups, left_on="specialty_code", right_index=True)
+            .groupby(["ward_group"])
+            .agg("sum")
+        )
+        # get the baseline data
+        self._beds_baseline = (
+            self.data[self.data.classpat.isin(["1", "4"])]
+            .merge(self._ga_ward_groups, left_on="mainspef", right_index=True)
+            .groupby("ward_group")
+            .speldur.agg(lambda x: sum(x + 1))  # convert los to bed days
+        )
+        self._beds_baseline.name = "baseline"
 
     def _load_theatres_data(self) -> None:
         """Load the Theatres data
@@ -514,41 +541,13 @@ class InpatientsModel(Model):
         """
         # create the namedtuple type
         result = namedtuple("results", ["pod", "measure", "ward_group"])
-        # extract params
-        ga_ward_groups = pd.Series(
-            self.params["bed_occupancy"]["specialty_mapping"]["General and Acute"],
-            name="ward_group",
-        )
-        # load the kh03 data
-        kh03_data = (
-            pd.read_csv(
-                f"{self._data_path}/kh03.csv",
-                dtype={
-                    "specialty_code": np.character,
-                    "specialty_group": np.character,
-                    "available": np.float64,
-                    "occupied": np.float64,
-                },
-            )
-            .merge(ga_ward_groups, left_on="specialty_code", right_index=True)
-            .groupby(["ward_group"])
-            .agg("sum")
-        )
         if model_run == -1:
             return {
                 result("ip", "day+night", k): v
-                for k, v in kh03_data["available"].iteritems()
+                for k, v in self._kh03_data["available"].iteritems()
             }
 
         target_bed_occupancy_rates = pd.Series(bed_occupancy_params["day+night"])
-        # get the baseline data
-        baseline = (
-            self.data[self.data.classpat.isin(["1", "4"])]
-            .merge(ga_ward_groups, left_on="mainspef", right_index=True)
-            .groupby("ward_group")
-            .speldur.agg(lambda x: sum(x + 1))  # convert los to bed days
-        )
-        baseline.name = "baseline"
         # get the model run data
         dn_admissions = (
             ip_rows[
@@ -559,7 +558,7 @@ class InpatientsModel(Model):
                     )
                 )
             ]
-            .merge(ga_ward_groups, left_on="mainspef", right_index=True)
+            .merge(self._ga_ward_groups, left_on="mainspef", right_index=True)
             .groupby("ward_group")
             .value.sum()
         )
@@ -568,8 +567,8 @@ class InpatientsModel(Model):
             result("ip", "day+night", k): v
             for k, v in (
                 (
-                    (dn_admissions * kh03_data["occupied"])
-                    / (baseline * target_bed_occupancy_rates)
+                    (dn_admissions * self._kh03_data["occupied"])
+                    / (self._beds_baseline * target_bed_occupancy_rates)
                 )
                 .dropna()
                 .to_dict()
