@@ -249,6 +249,14 @@ class AaEModel(Model):
         ] = "ambulance"
         model_results.rename(columns={"arrivals": "value"}, inplace=True)
 
+        # summarise the results to make the create_agg steps quicker
+        model_results = model_results.groupby(
+            # note: any columns used in the calls to _create_agg, including pod and measure
+            # must be included below
+            ["pod", "measure", "sex", "age_group"],
+            as_index=False,
+        )[["value"]].sum()
+
         agg = partial(self._create_agg, model_results)
         return {**agg(), **agg(["sex", "age_group"])}
 

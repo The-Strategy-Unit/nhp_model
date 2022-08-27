@@ -328,9 +328,18 @@ class OutpatientsModel(Model):
         measures = model_results.melt(
             ["rn"], ["attendances", "tele_attendances"], "measure"
         )
-        model_results = model_results.drop(
-            ["attendances", "tele_attendances"], axis="columns"
-        ).merge(measures, on="rn")
+        model_results = (
+            model_results.drop(["attendances", "tele_attendances"], axis="columns")
+            .merge(measures, on="rn")
+            # summarise the results to make the create_agg steps quicker
+            .groupby(
+                # note: any columns used in the calls to _create_agg, including pod and measure
+                # must be included below
+                ["pod", "measure", "sex", "age_group", "tretspef"],
+                as_index=False,
+            )[["value"]]
+            .sum()
+        )
 
         agg = partial(self._create_agg, model_results)
         return {
