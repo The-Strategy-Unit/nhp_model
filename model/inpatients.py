@@ -553,7 +553,11 @@ class InpatientsModel(Model):
         dn_admissions = (
             ip_rows[
                 (ip_rows["measure"] == "beddays")
-                & (ip_rows["pod"].isin(["ip_non-elective_admission", "ip_elective_admission"]))
+                & (
+                    ip_rows["pod"].isin(
+                        ["ip_non-elective_admission", "ip_elective_admission"]
+                    )
+                )
             ]
             .merge(ga_ward_groups, left_on="mainspef", right_index=True)
             .groupby("ward_group")
@@ -609,24 +613,21 @@ class InpatientsModel(Model):
             theatres_params["change_utilisation"], name="change_utilisation"
         )
 
-        tretspefs = pd.DataFrame({"tretspef": model_results.tretspef.unique()})
-        tretspefs["new_tretspef"] = tretspefs["tretspef"]
-
-        tretspefs.loc[
-            ~tretspefs.tretspef.isin(fhs.index),
-            "new_tretspef",
-        ] = "Other"
-
         activity = pd.concat(
             {
                 k: (
-                    v.query("has_procedure==1")
-                    .merge(tretspefs, on="tretspef")
-                    .drop("tretspef", axis="columns")
-                    .rename(columns={"new_tretspef": "tretspef"})
-                    .assign(is_elective=lambda x: x.admimeth.str.startswith("1"), n=1)
-                    .groupby("tretspef")[["is_elective", "n"]]
-                    .agg("sum")
+                    v[v.has_procedure == 1]
+                    .assign(is_elective=lambda x: x.admigroup == "elective", n=1)
+                    .groupby("tretspef", as_index=False)[["is_elective", "n"]]
+                    .sum()
+                    # keep just the specialties in the fhs object
+                    .assign(
+                        tretspef=lambda x: np.where(
+                            x.tretspef.isin(fhs.index.to_list()), x.tretspef, "Other"
+                        )
+                    )
+                    .groupby("tretspef")
+                    .sum()
                 )
                 for k, v in [
                     ("baseline", self.data),
