@@ -179,10 +179,11 @@ class InpatientsModel(Model):
     def _admission_avoidance_step(
         rng: np.random.Generator,
         data: pd.DataFrame,
+        admissions: np.ndarray,
         admission_avoidance: pd.Series,
         run_params: dict,
         step_counts: dict,
-    ) -> pd.DataFrame:
+    ) -> np.ndarray:
         """Run the admission avoidance strategies
 
         Runs the admission avoidance step and updates the `step_counts` dictionary
@@ -191,49 +192,37 @@ class InpatientsModel(Model):
         :type rng: numpy.random.Generator
         :param data: the DataFrame that we are updating
         :type data: pandas.DataFrame
+        :param admissions: the count of how many times each row has been sampled
+        :type admissions: numpy.ndarray
         :param admission_avoidance: the selected admission avoidance strategies for this model run
         :type admission_avoidance: pandas.Series
         :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
         :type run_params: dict
 
-        :returns: the updated data
-        :rtype: pandas.DataFrame
+        :returns: the updated admissions array
+        :rtype: numpy.ndarray
         """
         # choose admission avoidance factors
         ada = defaultdict(
             lambda: 1, run_params["inpatient_factors"]["admission_avoidance"]
         )
-        # work out the number of rows/sum of los before admission avoidance
-        data_aa = data.merge(
-            admission_avoidance, left_on="rn", right_index=True
-        ).groupby("admission_avoidance_strategy")
-        sc_n_aa = data_aa["rn"].agg(len)
-        # add rows to convert los to beddays
-        sc_b_aa = data_aa["speldur"].agg(sum) + sc_n_aa
+        # reorder admission_avoidance rows correctly
+        admission_avoidance = admission_avoidance[data["rn"]]
         # then, work out the admission avoidance factors for each row
-        aaf = [ada[k] for k in admission_avoidance[data["rn"]]]
+        aaf = [ada[k] for k in admission_avoidance]
         # decide whether to select this row or not
-        select_row = rng.binomial(n=1, p=aaf).astype(bool)
-        # select each row as many times as it was sampled
-        data = data[select_row].reset_index(drop=True)
-        # update our number of rows and update step_counts
-        data_aa = data.merge(
-            admission_avoidance, left_on="rn", right_index=True
-        ).groupby("admission_avoidance_strategy")
-        # handle the case of a strategy eliminating all rows
-        sc_n_aa_post = data_aa["rn"].agg(len)
-        # as above, convert los to beddays
-        sc_b_aa_post = data_aa["speldur"].agg(sum) + sc_n_aa_post
-        # convert to default dict's: if a strategy eliminates all rows the final step will fail
-        # returning NaN values for these strategies
-        sc_n_aa_post = defaultdict(lambda: 0, sc_n_aa_post.to_dict())
-        sc_b_aa_post = defaultdict(lambda: 0, sc_b_aa_post.to_dict())
-        for k in sc_n_aa.index:
-            step_counts[("admission_avoidance", k)] = {
-                "admissions": sc_n_aa_post[k] - sc_n_aa[k],
-                "beddays": sc_b_aa_post[k] - sc_b_aa[k],
-            }
-        return data
+        new_admissions = rng.binomial(n=admissions, p=aaf)
+        # update step_counts
+        diff = new_admissions - admissions
+        post_aa = (
+            pd.DataFrame({"admissions": diff, "beddays": diff * (data["speldur"] + 1)})
+            .groupby(admission_avoidance.tolist())
+            .sum()
+            .to_dict(orient="index")
+        )
+        # update the step counts
+        step_counts.update({("admission_avoidance", k): v for k, v in post_aa.items()})
+        return new_admissions
 
     @staticmethod
     def _losr_all(
@@ -399,10 +388,11 @@ class InpatientsModel(Model):
     def _run_poisson_step(
         rng: np.random.BitGenerator,
         data: pd.DataFrame,
+        admissions: np.ndarray,
         name: str,
         factor: np.ndarray,
         step_counts: dict,
-    ) -> None:
+    ) -> np.ndarray:
         """Run a poisson step
 
         Resample the rows of `data` using a randomly generated poisson value for each row from
@@ -414,25 +404,26 @@ class InpatientsModel(Model):
         :type rng: numpy.random.Generator
         :param data: the DataFrame that we are updating
         :type data: pandas.DataFrame
+        :param admissions: the count of how many times each row has been sampled
+        :type admissions: numpy.ndarray
         :param factor: a series with as many values as rows in `data` which will be used as the lambda
             value for the poisson distribution
         :type factor: pandas.Series
         :param step_counts: a dictionary containing the changes to measures for this step
         :type step_counts: dict
 
-        :returns: the updated DataFrame
-        :rtype: pandas.DataFrame
+        :returns: the updated admissions array
+        :rtype: numpy.ndarray
         """
-        select_row_n_times = rng.poisson(factor)
-        sc_n = len(data.index)
-        sc_b = int(sum(data["speldur"] + 1))
         # perform the step
-        data = data.loc[data.index.repeat(select_row_n_times)].reset_index(drop=True)
-        # update the step count values
-        sc_np = int(sum(select_row_n_times))
-        sc_bp = int(sum(data["speldur"] + 1))
-        step_counts[(name, "-")] = {"admissions": sc_np - sc_n, "beddays": sc_bp - sc_b}
-        return data
+        new_admissions = rng.poisson(factor * admissions)
+        # row difference
+        diff = new_admissions - admissions
+        step_counts[(name, "-")] = {
+            "admissions": sum(diff),
+            "beddays": sum(diff * (data["speldur"] + 1)),
+        }
+        return new_admissions
 
     def _run(
         self,
@@ -471,35 +462,41 @@ class InpatientsModel(Model):
             }
         }
 
+        # create an array that keeps track of the number of times we have sampled each row
+        admissions = np.ones_like(data.index)
+
         # first, run hsa as we have the factor already created
-        data = self._run_poisson_step(
-            rng, data, "health_status_adjustment", hsa_f, step_counts
+        admissions = self._run_poisson_step(
+            rng, data, admissions, "health_status_adjustment", hsa_f, step_counts
         )
         # then, demographic modelling
-        data = self._run_poisson_step(
-            rng, data, "population_factors", demo_f[data["rn"]], step_counts
+        admissions = self._run_poisson_step(
+            rng, data, admissions, "population_factors", demo_f[data["rn"]], step_counts
         )
         # waiting list adjustments
-        data = self._run_poisson_step(
+        admissions = self._run_poisson_step(
             rng,
             data,
+            admissions,
             "waiting_list_adjustment",
             self._waiting_list_adjustment(data),
             step_counts,
         )
         # non-demographic adjustment
-        data = self._run_poisson_step(
+        admissions = self._run_poisson_step(
             rng,
             data,
+            admissions,
             "non-demographic_adjustment",
             self._non_demographic_adjustment(data, run_params),
             step_counts,
         )
         # Admission Avoidance ----------------------------------------------------------------------
-        data = self._admission_avoidance_step(
-            rng, data, admission_avoidance, run_params, step_counts
+        admissions = self._admission_avoidance_step(
+            rng, data, admissions, admission_avoidance, run_params, step_counts
         )
-        # done with row count adjustment
+        # done with row count adjustment, resample rows
+        data = data.loc[data.index.repeat(admissions)].reset_index(drop=True)
         # LoS Reduction ----------------------------------------------------------------------------
         # set the index for easier querying
         data.set_index(los_reduction[data["rn"]], inplace=True)
