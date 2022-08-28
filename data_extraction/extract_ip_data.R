@@ -196,7 +196,12 @@ create_ip_data <- function(inpatients, specialties) {
         "Less deprived 10-20%",
         "Least deprived 10%"
       ),
-      across(c(age, sex), as.integer)
+      across(c(age, sex), as.integer),
+      admigroup = case_when(
+        str_starts(admimeth, "1") ~ "elective",
+        str_starts(admimeth, "3") ~ "maternity",
+        TRUE ~ "non-elective"
+      )
     ) |>
     filter(sex %in% c(1, 2)) |>
     drop_na(hsagrp, speldur)

@@ -102,13 +102,10 @@ class InpatientsModel(Model):
         }
         # load the theatres data
         self._load_theatres_data()
-        self.data["admigroup"] = np.where(
-            self.data["admimeth"].str.startswith("1"),
-            "elective",
-            np.where(
-                self.data["admimeth"].str.startswith("3"), "maternity", "non-elective"
-            ),
-        )
+        # load the kh03 data
+        self._load_kh03_data()
+
+    def _load_kh03_data(self):
         # load the kh03 data
         self._ga_ward_groups = pd.Series(
             self.params["bed_occupancy"]["specialty_mapping"]["General and Acute"],
