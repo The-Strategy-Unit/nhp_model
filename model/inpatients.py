@@ -250,29 +250,20 @@ class InpatientsModel(Model):
         )
 
     @staticmethod
-    def _admission_avoidance_step(
+    def _admission_avoidance(
         admission_avoidance: pd.Series,
         run_params: dict,
     ) -> np.ndarray:
-        """Run the admission avoidance strategies
+        """Calculate the admission avoidance change factors
 
-        Runs the admission avoidance step and updates the `step_counts` dictionary
-
-        :param rng: a random number generator created for each model iteration
-        :type rng: numpy.random.Generator
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param admissions: the count of how many times each row has been sampled
-        :type admissions: numpy.ndarray
         :param admission_avoidance: the selected admission avoidance strategies for this model run
         :type admission_avoidance: pandas.Series
         :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
         :type run_params: dict
 
-        :returns: the updated admissions array
+        :returns: the admission avoidance factors
         :rtype: numpy.ndarray
         """
-        # choose admission avoidance factors
         ada = defaultdict(
             lambda: 1, run_params["inpatient_factors"]["admission_avoidance"]
         )
@@ -469,13 +460,6 @@ class InpatientsModel(Model):
         # choose length of stay reduction factors
         losr = self._los_reduction(run_params)
 
-        step_counts = {
-            ("baseline", "-"): {
-                "admissions": len(data.index),
-                "beddays": int(sum(data["speldur"] + 1)),
-            }
-        }
-
         # create an array that keeps track of the number of times we have sampled each row
         admissions = (
             InpatientsAdmissionsCounter(data, rng)
@@ -489,7 +473,7 @@ class InpatientsModel(Model):
                 "non-demographic_adjustment",
             )
             .binomial_step(
-                self._admission_avoidance_step(admission_avoidance, run_params),
+                self._admission_avoidance(admission_avoidance, run_params),
                 "admission_avoidance",
                 admission_avoidance.tolist(),
             )
