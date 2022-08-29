@@ -239,9 +239,12 @@ def test_aggregate(mock_model):
         {
             "is_first": [True, True, False, False],
             "has_procedures": [False, True, False, True],
+            "tretspef": [1, 1, 1, 1],
             "rn": [1, 2, 3, 4],
             "attendances": [5, 6, 7, 8],
             "tele_attendances": [9, 10, 11, 12],
+            "age_group": [1, 1, 1, 1],
+            "sex": [1, 1, 1, 1],
         }
     )
     results = mdl.aggregate(model_results, 1)
@@ -250,16 +253,14 @@ def test_aggregate(mock_model):
     #
     mr_call = pd.DataFrame(
         {
-            "is_first": [True] * 4 + [False] * 4,
-            "has_procedures": [False, False, True, True] * 2,
-            "rn": [i for i in [1, 2, 3, 4] for _ in [0, 1]],
             "pod": [
-                k
-                for k in ["op_first", "op_procedure", "op_follow-up", "op_procedure"]
-                for _ in [0, 1]
+                k for k in ["op_first", "op_follow-up", "op_procedure"] for _ in [0, 1]
             ],
-            "measure": ["attendances", "tele_attendances"] * 4,
-            "value": [5, 9, 6, 10, 7, 11, 8, 12],
+            "measure": ["attendances", "tele_attendances"] * 3,
+            "sex": [1] * 6,
+            "age_group": [1] * 6,
+            "tretspef": [1] * 6,
+            "value": [5, 9, 7, 11, 14, 22],
         }
     )
     assert mdl._create_agg.call_args_list[0][0][0].equals(mr_call)

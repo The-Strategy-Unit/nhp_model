@@ -188,6 +188,8 @@ def test_aggregate(mock_model):
     mdl._create_agg = Mock(wraps=create_agg_stub)
     model_results = pd.DataFrame(
         {
+            "age_group": [1, 1, 1, 1],
+            "sex": [1, 1, 1, 1],
             "aedepttype": ["01", "01", "02", "02"],
             "aearrivalmode": ["1", "2", "1", "2"],
             "value": [1, 2, 3, 4],
@@ -199,11 +201,11 @@ def test_aggregate(mock_model):
     #
     mr_call = pd.DataFrame(
         {
-            "aedepttype": ["01", "01", "02", "02"],
-            "aearrivalmode": ["1", "2", "1", "2"],
-            "value": [1, 2, 3, 4],
             "pod": ["aae_type-01", "aae_type-01", "aae_type-02", "aae_type-02"],
             "measure": ["ambulance", "walk-in"] * 2,
+            "sex": [1, 1, 1, 1],
+            "age_group": [1, 1, 1, 1],
+            "value": [1, 2, 3, 4],
         }
     )
     assert mdl._create_agg.call_args_list[0][0][0].equals(mr_call)

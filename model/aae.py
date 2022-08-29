@@ -255,7 +255,7 @@ class AaEModel(Model):
             # must be included below
             ["pod", "measure", "sex", "age_group"],
             as_index=False,
-        )[["value"]].sum()
+        ).agg({"value": "sum"})
 
         agg = partial(self._create_agg, model_results)
         return {**agg(), **agg(["sex", "age_group"])}
