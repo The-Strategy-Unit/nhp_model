@@ -143,6 +143,7 @@ class InpatientsModel(Model):
                 "age",
                 "sex",
                 "admimeth",
+                "admigroup",
                 "classpat",
                 "mainspef",
                 "tretspef",
@@ -762,7 +763,7 @@ class InpatientsModel(Model):
                 # must be included below
                 ["pod", "measure", "sex", "age_group", "tretspef"],
                 as_index=False,
-            )[["value"]].sum()
+            ).agg({"value": "sum"})
         )
 
         agg = partial(self._create_agg, model_results)
