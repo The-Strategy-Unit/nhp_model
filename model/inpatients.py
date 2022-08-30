@@ -200,6 +200,12 @@ class InpatientsModel(Model):
         self._theatres_data["four_hour_sessions"] = pd.Series(
             self._theatres_data["four_hour_sessions"], name="four_hour_sessions"
         )
+        self._theatres_baseline = (
+            self.data[self.data.has_procedure == 1]
+            .assign(is_elective=lambda x: x.admigroup == "elective", n=1)
+            .groupby("tretspef", as_index=False)[["is_elective", "n"]]
+            .sum()
+        )
 
     def _los_reduction(self, run_params: dict) -> pd.DataFrame:
         """Create a dictionary of the LOS reduction factors to use for a run
@@ -652,12 +658,8 @@ class InpatientsModel(Model):
         activity = pd.concat(
             {
                 k: (
-                    v[v.has_procedure == 1]
-                    .assign(is_elective=lambda x: x.admigroup == "elective", n=1)
-                    .groupby("tretspef", as_index=False)[["is_elective", "n"]]
-                    .sum()
-                    # keep just the specialties in the fhs object
-                    .assign(
+                    v.assign(
+                        # keep just the specialties in the fhs object
                         tretspef=lambda x: np.where(
                             x.tretspef.isin(fhs.index.to_list()), x.tretspef, "Other"
                         )
@@ -665,10 +667,15 @@ class InpatientsModel(Model):
                     .groupby("tretspef")
                     .sum()
                 )
-                for k, v in [
-                    ("baseline", self.data),
-                    ("future", model_results),
-                ]
+                for k, v in {
+                    "baseline": self._theatres_baseline,
+                    "future": (
+                        model_results[model_results.measure == "procedures"]
+                        .assign(is_elective=lambda x: x.admigroup == "elective", n=1)
+                        .groupby("tretspef", as_index=False)[["is_elective", "n"]]
+                        .sum()
+                    ),
+                }.items()
             }
         )
 
@@ -715,56 +722,53 @@ class InpatientsModel(Model):
         # get the run params: use principal run for baseline
         run_params = self._get_run_params(max(0, model_run))
 
-        # row's with a classpat of -1 are outpatients and need to be handled separately
-        ip_op_row_ix = model_results["classpat"] == "-1"
-        ip_rows = model_results[~ip_op_row_ix].copy()
-        op_rows = model_results[ip_op_row_ix].copy()
-        # run the theatres utilisation on the model results before we alter ip_rows
-        theatres_available = self._theatres_available(
-            ip_rows, run_params["theatres"], model_run
-        )
-        # handle OP rows
-        op_rows["pod"] = "op_procedure"
-        op_rows["measure"] = "attendances"
-        op_rows["value"] = 1
-        # handle IP rows
-        # create an admission group column
-        ip_rows["admission_group"] = "ip_non-elective"
-        ip_rows.loc[
-            ip_rows["admimeth"].str.startswith("1"), "admission_group"
-        ] = "ip_elective"
-        # quick dq fix: convert any "non-elective" daycases to "elective"
-        ip_rows.loc[
-            ip_rows["classpat"].isin(["2", "3"]), "admission_group"
-        ] = "ip_elective"
-        # create a "pod" column, starting with the admission group
-        ip_rows["pod"] = ip_rows["admission_group"]
-        ip_rows.loc[ip_rows["classpat"].isin(["1", "4"]), "pod"] += "_admission"
-        ip_rows.loc[ip_rows["classpat"].isin(["2", "3"]), "pod"] += "_daycase"
-        ip_rows.loc[ip_rows["classpat"] == "5", "pod"] += "_birth-episode"
-
-        ip_rows["beddays"] = ip_rows["speldur"] + 1
-        ip_rows = (
-            ip_rows.assign(admissions=1)
-            .reset_index()
-            .melt(
-                ["rn", "age_group", "sex", "tretspef", "mainspef", "pod"],
-                ["admissions", "beddays"],
-                "measure",
-            )
-        )
-
-        cols = list(set(ip_rows.columns).intersection(set(op_rows.columns)))
         model_results = (
-            pd.concat([op_rows[cols], ip_rows[cols]])
-            # summarise the results to make the create_agg steps quicker
-            .groupby(
-                # note: any columns used in the calls to _create_agg, including pod and measure
-                # must be included below
-                ["pod", "measure", "sex", "age_group", "tretspef"],
-                as_index=False,
-            ).agg({"value": "sum"})
+            model_results.groupby(
+                [
+                    "age_group",
+                    "sex",
+                    "admimeth",
+                    "admigroup",
+                    "classpat",
+                    "mainspef",
+                    "tretspef",
+                ],
+                # as_index = False
+            )
+            .agg({"rn": len, "has_procedure": sum, "speldur": sum})
+            .assign(speldur=lambda x: x.speldur + x.rn)
+            .rename(
+                columns={
+                    "rn": "admissions",
+                    "has_procedure": "procedures",
+                    "speldur": "beddays",
+                }
+            )
+            .melt(ignore_index=False, var_name="measure")
+            .reset_index()
         )
+
+        model_results.loc[
+            model_results["admigroup"] == "maternity", "admigroup"
+        ] = "non-elective"
+        model_results["pod"] = "ip_" + model_results["admigroup"] + "_admission"
+        # quick dq fix: convert any "non-elective" daycases to "elective"
+        model_results.loc[
+            model_results["classpat"].isin(["2", "3"]), "pod"
+        ] = "ip_elective_daycase"
+        model_results.loc[
+            model_results["classpat"] == "5", "pod"
+        ] += "ip_non-elective_birth-episode"
+
+        # handle the outpatients rows
+        op_rows = model_results.classpat == "-1"
+        # filter out op_rows we don't care for
+        model_results = model_results[
+            ~op_rows | (model_results.measure == "admissions")
+        ]
+        # update the columns
+        model_results.loc[op_rows, "measure"] = "attendances"
+        model_results.loc[op_rows, "pod"] = "op_procedure"
 
         agg = partial(self._create_agg, model_results)
         return {
@@ -772,9 +776,11 @@ class InpatientsModel(Model):
             **agg(["sex", "age_group"]),
             **agg(["sex", "tretspef"]),
             "bed_occupancy": self._bed_occupancy(
-                ip_rows, run_params["bed_occupancy"], model_run
+                model_results.loc[~op_rows], run_params["bed_occupancy"], model_run
             ),
-            "theatres_available": theatres_available,
+            "theatres_available": self._theatres_available(
+                model_results.loc[~op_rows], run_params["theatres"], model_run
+            ),
         }
 
     def save_results(

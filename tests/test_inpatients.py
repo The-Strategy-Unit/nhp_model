@@ -156,6 +156,8 @@ def test_load_theatres_data(mocker, mock_model):
             "four_hour_sessions": {"100": 1, "200": 2, "Other": 3},
         },
     )
+    mock_model.data["has_procedure"] = [i for i in [0, 1] for _j in range(10)]
+    mock_model.data["tretspef"] = ["100", "200"] * 10
     with patch("builtins.open", mock_open()) as mock_file:
         mock_model._load_theatres_data()
         json_mock.assert_called_once()
@@ -165,6 +167,11 @@ def test_load_theatres_data(mocker, mock_model):
         assert mock_model._theatres_data["theatres"] == 10
         assert mock_model._theatres_data["four_hour_sessions"].equals(
             pd.Series({"100": 1, "200": 2, "Other": 3}, name="four_hour_sessions")
+        )
+        assert mock_model._theatres_baseline.equals(
+            pd.DataFrame(
+                {"tretspef": ["100", "200"], "is_elective": [5, 0], "n": [5, 5]}
+            )
         )
 
 
