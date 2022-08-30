@@ -508,21 +508,28 @@ def test_bed_occupancy_baseline(mock_model):
 def test_theatres_available(mock_model):
     """test that it aggregates the theatres data"""
     # arrange
-    mock_model.data = pd.DataFrame(
+    model_results = pd.DataFrame(
         [
-            {"tretspef": t, "admigroup": a, "has_procedure": p}
+            {"tretspef": t, "admigroup": a, "measure": p}
             for t in ["100", "110", "200", "Other"]
             for a in ["elective", "non-elective"]
-            for p in [1, 0]
+            for p in ["x", "procedures"]
         ]
     )
+    model_results["value"] = list(range(len(model_results)))
     mock_model._theatres_data = {
         "theatres": 10,
         "four_hour_sessions": pd.Series(
             {"100": 100, "110": 200, "Other": 300}, name="four_hour_sessions"
         ),
     }
-    model_results = pd.concat([mock_model.data] * 3)
+    mock_model._theatres_baseline = pd.DataFrame(
+        {
+            "tretspef": ["100", "110", "200", "Other"],
+            "is_elective": [1, 2, 3, 4],
+            "n": [2, 4, 6, 8],
+        },
+    )
     # act
     theatres_available = mock_model._theatres_available(
         model_results,
@@ -534,10 +541,10 @@ def test_theatres_available(mock_model):
     )
     # assert
     assert {tuple(k): v for k, v in theatres_available.items()} == {
-        ("ip_theatres", "four_hour_sessions", "100"): 150.0,
-        ("ip_theatres", "four_hour_sessions", "110"): 240.0,
-        ("ip_theatres", "four_hour_sessions", "Other"): 300.0,
-        ("ip_theatres", "theatres"): 2.3,
+        ("ip_theatres", "four_hour_sessions", "100"): 1 / 1 * 100 / 2.0,
+        ("ip_theatres", "four_hour_sessions", "110"): 1 / 2 * 200 / 2.5,
+        ("ip_theatres", "four_hour_sessions", "Other"): 2 / 7 * 300 / 3.0,
+        ("ip_theatres", "theatres"): 2.276190476190476,
     }
 
 
@@ -594,14 +601,16 @@ def test_aggregate(mock_model):
     xs = list(range(6)) * 2
     model_results = pd.DataFrame(
         {
-            "classpat": ["1", "2", "3", "4", "5", "-1"] * 2,
-            "admimeth": [x for x in ["1", "2"] for _ in range(6)],
-            "speldur": xs,
-            "rn": xs,
             "age_group": xs,
             "sex": xs,
-            "tretspef": xs,
+            "admimeth": xs,
+            "admigroup": ["elective", "non-elective", "maternity"] * 4,
+            "classpat": ["1", "2", "3", "4", "5", "-1"] * 2,
             "mainspef": xs,
+            "tretspef": xs,
+            "rn": [1] * 12,
+            "has_procedure": [0, 1] * 6,
+            "speldur": list(range(12)),
         }
     )
     results = mdl.aggregate(model_results, 1)
