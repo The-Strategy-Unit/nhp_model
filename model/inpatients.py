@@ -759,7 +759,7 @@ class InpatientsModel(Model):
         ] = "ip_elective_daycase"
         model_results.loc[
             model_results["classpat"] == "5", "pod"
-        ] += "ip_non-elective_birth-episode"
+        ] = "ip_non-elective_birth-episode"
 
         # handle the outpatients rows
         op_rows = model_results.classpat == "-1"
