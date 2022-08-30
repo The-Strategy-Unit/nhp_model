@@ -541,9 +541,9 @@ def test_theatres_available(mock_model):
     )
     # assert
     assert {tuple(k): v for k, v in theatres_available.items()} == {
-        ("ip_theatres", "four_hour_sessions", "100"): 1 / 1 * 100 / 2.0,
-        ("ip_theatres", "four_hour_sessions", "110"): 1 / 2 * 200 / 2.5,
-        ("ip_theatres", "four_hour_sessions", "Other"): 2 / 7 * 300 / 3.0,
+        ("ip_theatres", "four_hour_sessions", "100"): 50,
+        ("ip_theatres", "four_hour_sessions", "110"): 200,
+        ("ip_theatres", "four_hour_sessions", "Other"): 314.2857142857143,
         ("ip_theatres", "theatres"): 2.276190476190476,
     }
 

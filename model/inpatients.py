@@ -671,7 +671,9 @@ class InpatientsModel(Model):
                     "baseline": self._theatres_baseline,
                     "future": (
                         model_results[model_results.measure == "procedures"]
-                        .assign(is_elective=lambda x: x.admigroup == "elective")
+                        .assign(
+                            is_elective=lambda x: (x.admigroup == "elective") * x.value
+                        )
                         .groupby("tretspef", as_index=False)[["is_elective", "value"]]
                         .sum()
                         .rename(columns={"value": "n"})
