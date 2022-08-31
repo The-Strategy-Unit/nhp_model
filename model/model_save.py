@@ -15,6 +15,7 @@ from tempfile import mkdtemp
 import dill
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 from azure.cosmos import ContainerProxy, CosmosClient
 from dotenv import load_dotenv
 
@@ -128,7 +129,9 @@ class ModelSave:
             # save change factors
             change_factors.assign(
                 activity_type=activity_type, model_run=model_run
-            ).to_csv(f"{self._cf_path}/{activity_type}_{model_run}.csv", index=False)
+            ).to_parquet(
+                f"{self._cf_path}/{activity_type}_{model_run}.parquet", index=False
+            )
 
         # save aggregated results
         aggregated_results = model.aggregate(results, model_run)
@@ -249,8 +252,10 @@ class ModelSave:
         :returns: a single DataFrame of all of the Change Factors
         :rtype: pandas.DataFrame
         """
-        return pd.concat(
-            [pd.read_csv(f"{self._cf_path}/{i}") for i in os.listdir(self._cf_path)]
+        return (
+            pq.ParquetDataset(self._cf_path, use_legacy_dataset=False)
+            .read_pandas()
+            .to_pandas()
         )
 
 

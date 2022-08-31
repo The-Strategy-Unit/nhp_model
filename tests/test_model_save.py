@@ -157,14 +157,16 @@ def test_run_model_dont_save_results(mocker, mock_model_save, mock_change_factor
     model.aggregate.return_value = "aggregated_results"
     mock_model_save._model = model
     mock_model_save._save_results = False
-    to_csv_mock = mocker.patch("pandas.DataFrame.to_csv")
+    to_parquet_mock = mocker.patch("pandas.DataFrame.to_parquet")
     dill_mock = mocker.patch("dill.dump")
 
     with patch("builtins.open", mock_open()) as mock_file:
         mock_model_save.run_model(0)
         model.save_results.assert_not_called()
-        to_csv_mock.assert_called_once()
-        to_csv_mock.call_args_list[0][0][0] == "temp_path/change_factors/ip_0.csv"
+        to_parquet_mock.assert_called_once()
+        to_parquet_mock.call_args_list[0][0][
+            0
+        ] == "temp_path/change_factors/ip_0.parquet"
         mock_file.assert_called_with("temp_path/aggregated_results/ip_0.dill", "wb")
         dill_mock.assert_called_once()
         assert dill_mock.call_args_list[0][0][0] == "aggregated_results"
@@ -180,7 +182,7 @@ def test_run_model_save_results(mocker, mock_model_save, mock_change_factors):
     model.aggregate.return_value = "aggregated_results"
     mock_model_save._model = model
     mock_model_save._save_results = True
-    to_csv_mock = mocker.patch("pandas.DataFrame.to_csv")
+    to_parquet_mock = mocker.patch("pandas.DataFrame.to_parquet")
     dill_mock = mocker.patch("dill.dump")
 
     with patch("builtins.open", mock_open()) as mock_file:
@@ -195,8 +197,10 @@ def test_run_model_save_results(mocker, mock_model_save, mock_change_factors):
             "base_results_path/model_results/activity_type='ip'/results_path/model_run=0",
             exist_ok=True,
         )
-        to_csv_mock.assert_called_once()
-        to_csv_mock.call_args_list[0][0][0] == "temp_path/change_factors/ip_0.csv"
+        to_parquet_mock.assert_called_once()
+        to_parquet_mock.call_args_list[0][0][
+            0
+        ] == "temp_path/change_factors/ip_0.parquet"
         mock_file.assert_called_with("temp_path/aggregated_results/ip_0.dill", "wb")
         dill_mock.assert_called_once()
         assert dill_mock.call_args_list[0][0][0] == "aggregated_results"
@@ -363,18 +367,15 @@ def test_flip_result():
 
 def test_combine_change_factors(mocker, mock_model_save):
     """test that it finds all of the files, reads them all, then combines them"""
-    fake_files = ["a", "b", "c"]
-    id = lambda x: x
-    mocker.patch("os.listdir", return_value=fake_files)
-    pd_concat_mock = mocker.patch("pandas.concat", wraps=id)
-    pd_read_csv_mock = mocker.patch("pandas.read_csv", wraps=id)
+    # arrange
+    m = Mock()
+    pq_mock = mocker.patch("pyarrow.parquet.ParquetDataset", return_value=m)
+    m.read_pandas().to_pandas.return_value = "change factors"
+    # act
     results = mock_model_save._combine_change_factors()
-
-    expected = [f"temp_path/change_factors/{i}" for i in fake_files]
-
-    assert results == expected
-    assert pd_read_csv_mock.call_count == 3
-    pd_concat_mock.assert_called_once_with(expected)
+    # assert
+    pq_mock.assert_called_once_with(mock_model_save._cf_path, use_legacy_dataset=False)
+    assert results == "change factors"
 
 
 def test_local_init(mocker):
