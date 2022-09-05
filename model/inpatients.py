@@ -163,9 +163,14 @@ class InpatientsModel(Model):
 
     def _load_kh03_data(self):
         # load the kh03 data
-        self._ga_ward_groups = pd.Series(
-            self.params["bed_occupancy"]["specialty_mapping"]["General and Acute"],
-            name="ward_group",
+        self._ward_groups = pd.concat(
+            [
+                pd.DataFrame(
+                    {"ward_type": k, "ward_group": list(v.values())},
+                    index=list(v.keys()),
+                )
+                for k, v in self.params["bed_occupancy"]["specialty_mapping"].items()
+            ]
         )
         self._kh03_data = (
             pd.read_csv(
@@ -177,15 +182,15 @@ class InpatientsModel(Model):
                     "occupied": np.float64,
                 },
             )
-            .merge(self._ga_ward_groups, left_on="specialty_code", right_index=True)
+            .merge(self._ward_groups, left_on="specialty_code", right_index=True)
             .groupby(["ward_group"])
             .agg("sum")
         )
         # get the baseline data
         self._beds_baseline = (
-            self.data[self.data.classpat.isin(["1", "4"])]
-            .merge(self._ga_ward_groups, left_on="mainspef", right_index=True)
-            .groupby("ward_group")
+            self.data[self.data.classpat.isin(["1", "4", "5"])]
+            .merge(self._ward_groups, left_on="mainspef", right_index=True)
+            .groupby(["ward_group"])
             .speldur.agg(lambda x: sum(x + 1))  # convert los to bed days
         )
         self._beds_baseline.name = "baseline"
@@ -591,18 +596,23 @@ class InpatientsModel(Model):
             }
 
         target_bed_occupancy_rates = pd.Series(bed_occupancy_params["day+night"])
+
         # get the model run data
         dn_admissions = (
             ip_rows[
                 (ip_rows["measure"] == "beddays")
                 & (
                     ip_rows["pod"].isin(
-                        ["ip_non-elective_admission", "ip_elective_admission"]
+                        [
+                            "ip_non-elective_admission",
+                            "ip_elective_admission",
+                            "ip_non-elective_birth-episode",
+                        ]
                     )
                 )
             ]
-            .merge(self._ga_ward_groups, left_on="mainspef", right_index=True)
-            .groupby("ward_group")
+            .merge(self._ward_groups, left_on="mainspef", right_index=True)
+            .groupby(["ward_group"])
             .value.sum()
         )
         # return the results

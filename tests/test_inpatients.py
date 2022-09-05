@@ -117,34 +117,39 @@ def test_load_kh03_data(mocker, mock_model):
     mdl = mock_model
     mdl.params["bed_occupancy"] = {
         "specialty_mapping": {
-            "General and Acute": {"100": "a", "200": "b", "300": "b", "500": "c"}
+            "General and Acute": {"100": "a", "200": "b", "300": "b", "500": "_"},
+            "Maternity": {"501": "c"},
         }
     }
     mocker.patch(
         "pandas.read_csv",
         return_value=pd.DataFrame(
             {
-                "specialty_code": ["100", "200", "300"],
-                "available": [1, 2, 3],
-                "occupied": [4, 5, 6],
+                "specialty_code": ["100", "200", "300", "501"],
+                "available": [1, 2, 3, 4],
+                "occupied": [4, 5, 6, 7],
             }
         ),
     )
     mdl.data = pd.DataFrame(
         {
-            "classpat": ["1", "1", "1", "2", "4"],
-            "mainspef": ["100", "200", "300", "100", "200"],
-            "speldur": [1, 2, 3, 4, 5],
+            "classpat": ["1", "1", "1", "2", "4", "1", "5"],
+            "mainspef": ["100", "200", "300", "100", "200", "501", "501"],
+            "speldur": [1, 2, 3, 4, 5, 6, 7],
         }
     )
     # act
     mdl._load_kh03_data()
     # assert
-    mdl._ga_ward_groups.equals(pd.Series(["a", "b", "b"], index=["100", "200", "300"]))
-    mdl._kh03_data.equals(
-        pd.DataFrame({"available": [1, 5], "occupied": [4, 11]}, index=["a", "b"])
+    mdl._ward_groups.equals(
+        pd.Series(["a", "b", "b", "c"], index=["100", "200", "300", "501"])
     )
-    mdl._beds_baseline.equals(pd.Series([2, 13], index=["a", "b"]))
+    mdl._kh03_data.equals(
+        pd.DataFrame(
+            {"available": [1, 5, 4], "occupied": [4, 11, 7]}, index=["a", "b", "c"]
+        )
+    )
+    mdl._beds_baseline.equals(pd.Series([2, 13, 13], index=["a", "b", "c"]))
 
 
 def test_load_theatres_data(mocker, mock_model):
@@ -399,32 +404,39 @@ def test_bed_occupancy(mock_model):
     mdl = mock_model
     mdl.params["bed_occupancy"] = {
         "specialty_mapping": {
-            "General and Acute": {"100": "a", "200": "b", "300": "b", "500": "c"}
+            "General and Acute": {"100": "a", "200": "b", "300": "b", "500": "_"},
+            "Maternity": {"501": "c"},
         }
     }
-    mdl._ga_ward_groups = pd.Series(
-        mdl.params["bed_occupancy"]["specialty_mapping"]["General and Acute"],
-        name="ward_group",
+    mdl._ward_groups = pd.concat(
+        [
+            pd.DataFrame(
+                {"ward_type": k, "ward_group": list(v.values())},
+                index=list(v.keys()),
+            )
+            for k, v in mdl.params["bed_occupancy"]["specialty_mapping"].items()
+        ]
     )
     mdl._kh03_data = pd.DataFrame(
         {
-            "available": [10, 50],
-            "occupied": [5, 40],
+            "available": [10, 50, 5],
+            "occupied": [5, 40, 2],
         },
-        index=["a", "b"],
+        index=["a", "b", "c"],
     )
-    mdl._beds_baseline = pd.Series([5, 10], index=["a", "b"], name="baseline")
+    mdl._beds_baseline = pd.Series([5, 10, 1], index=["a", "b", "c"], name="baseline")
     mdl.data = pd.DataFrame(
         {
-            "classpat": ["1", "1", "1", "2", "4"],
-            "mainspef": ["100", "200", "300", "100", "200"],
-            "speldur": [1, 2, 3, 4, 5],
+            "classpat": ["1", "1", "1", "2", "4", "1", "5"],
+            "mainspef": ["100", "200", "300", "100", "200", "501", "501"],
+            "speldur": [1, 2, 3, 4, 5, 6, 7],
         }
     )
     model_results = pd.DataFrame(
         {
-            "classpat": ["1", "1", "1", "1", "1", "2", "4"] * 3,
-            "mainspef": ["100", "100", "200", "200", "300", "100", "200"] * 3,
+            "classpat": ["1", "1", "1", "1", "1", "2", "4"] * 3 + ["1", "5"],
+            "mainspef": ["100", "100", "200", "200", "300", "100", "200"] * 3
+            + ["501"] * 2,
             "pod": [
                 x
                 for x in [
@@ -433,19 +445,21 @@ def test_bed_occupancy(mock_model):
                     "ip_daycase",
                 ]
                 for _ in range(7)
-            ],
-            "measure": ["beddays"] * 21,
-            "value": [1, 2, 3, 4, 5, 6, 7] * 3,
+            ]
+            + ["ip_non-elective_admission", "ip_non-elective_birth-episode"],
+            "measure": ["beddays"] * 23,
+            "value": [1, 2, 3, 4, 5, 6, 7] * 3 + [8, 9],
         }
     )
     # act
     actual = mdl._bed_occupancy(
-        model_results, {"day+night": {"a": 0.75, "b": 0.875}}, 0
+        model_results, {"day+night": {"a": 0.75, "b": 0.875, "c": 0.5}}, 0
     )
     # assert
     assert {tuple(k): v for k, v in actual.items()} == {
         ("ip", "day+night", "a"): (18 * 5) / (5 * 0.75),
         ("ip", "day+night", "b"): (38 * 40) / (10 * 0.875),
+        ("ip", "day+night", "c"): (17 * 2) / (1 * 0.5),
     }
 
 
@@ -455,32 +469,39 @@ def test_bed_occupancy_baseline(mock_model):
     mdl = mock_model
     mdl.params["bed_occupancy"] = {
         "specialty_mapping": {
-            "General and Acute": {"100": "a", "200": "b", "300": "b", "500": "c"}
+            "General and Acute": {"100": "a", "200": "b", "300": "b", "500": "_"},
+            "Maternity": {"501": "c"},
         }
     }
-    mdl._ga_ward_groups = pd.Series(
-        mdl.params["bed_occupancy"]["specialty_mapping"]["General and Acute"],
-        name="ward_group",
+    mdl._ward_groups = pd.concat(
+        [
+            pd.DataFrame(
+                {"ward_type": k, "ward_group": list(v.values())},
+                index=list(v.keys()),
+            )
+            for k, v in mdl.params["bed_occupancy"]["specialty_mapping"].items()
+        ]
     )
     mdl._kh03_data = pd.DataFrame(
         {
-            "available": [10, 50],
-            "occupied": [5, 40],
+            "available": [10, 50, 5],
+            "occupied": [5, 40, 2],
         },
-        index=["a", "b"],
+        index=["a", "b", "c"],
     )
-    mdl._beds_baseline = pd.Series([5, 10], index=["a", "b"], name="baseline")
+    mdl._beds_baseline = pd.Series([5, 10, 1], index=["a", "b", "c"], name="baseline")
     mdl.data = pd.DataFrame(
         {
-            "classpat": ["1", "1", "1", "2", "4"],
-            "mainspef": ["100", "200", "300", "100", "200"],
-            "speldur": [1, 2, 3, 4, 5],
+            "classpat": ["1", "1", "1", "2", "4", "1", "5"],
+            "mainspef": ["100", "200", "300", "100", "200", "501", "501"],
+            "speldur": [1, 2, 3, 4, 5, 6, 7],
         }
     )
     model_results = pd.DataFrame(
         {
-            "classpat": ["1", "1", "1", "1", "1", "2", "4"] * 3,
-            "mainspef": ["100", "100", "200", "200", "300", "100", "200"] * 3,
+            "classpat": ["1", "1", "1", "1", "1", "2", "4"] * 3 + ["1", "5"],
+            "mainspef": ["100", "100", "200", "200", "300", "100", "200"] * 3
+            + ["501"] * 2,
             "pod": [
                 x
                 for x in [
@@ -489,19 +510,21 @@ def test_bed_occupancy_baseline(mock_model):
                     "ip_daycase",
                 ]
                 for _ in range(7)
-            ],
-            "measure": ["beddays"] * 21,
-            "value": [1, 2, 3, 4, 5, 6, 7] * 3,
+            ]
+            + ["ip_non-elective_admission", "ip_non-elective_birth-episode"],
+            "measure": ["beddays"] * 23,
+            "value": [1, 2, 3, 4, 5, 6, 7] * 3 + [8, 9],
         }
     )
     # act
     actual = mock_model._bed_occupancy(
-        model_results, {"day+night": {"a": 0.75, "b": 0.875}}, -1
+        model_results, {"day+night": {"a": 0.75, "b": 0.875, "c": 0.5}}, -1
     )
     # assert
     assert {tuple(k): v for k, v in actual.items()} == {
         ("ip", "day+night", "a"): 10,
         ("ip", "day+night", "b"): 50,
+        ("ip", "day+night", "c"): 5,
     }
 
 
