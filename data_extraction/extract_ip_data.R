@@ -163,7 +163,7 @@ create_ip_data <- function(inpatients, specialties) {
 
   inpatients |>
     arrange(rn) |>
-    select(-epikey, -hesid, -procode5, -sushrg) |>
+    select(-epikey, -hesid, -sushrg) |>
     rename(age = admiage) |>
     mutate(
       across(ends_with("date"), lubridate::ymd),
