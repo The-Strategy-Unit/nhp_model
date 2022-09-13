@@ -45,11 +45,12 @@ class InpatientsModel(Model):
                 "tretspef",
                 "hsagrp",
                 "has_procedure",
+                "is_provider",
             ],
         )
         # load the strategies, store each strategy file as a separate entry in a dictionary
         self._strategies = {
-            x: self._load_parquet(f"ip_{x}_strategies").set_index(["rn"])
+            x: self._load_parquet(f"ip_{x}_strategies")
             for x in ["admission_avoidance", "los_reduction"]
         }
         # load the theatres data
@@ -126,7 +127,7 @@ class InpatientsModel(Model):
         return losr
 
     def _random_strategy(
-        self, rng: np.random.Generator, strategy_type: str
+        self, rng: np.random.Generator, strategy_type: str, rn: list[str]
     ) -> pd.DataFrame:
         """Select one strategy per record
 
@@ -139,12 +140,13 @@ class InpatientsModel(Model):
         :returns: an updated DataFrame with a new column for the selected strategy
         :rtype: pandas.DataFrame
         """
-        strategies = self._strategies[strategy_type]
+        strategies = self._strategies[strategy_type].loc[rn]
         # sample from the strategies based on the sample_rate column, then select just the strategy
         # column
-        strategies = strategies[
-            rng.binomial(1, strategies["sample_rate"]).astype(bool)
-        ].iloc[:, 0]
+        strategies = strategies.loc[
+            rng.binomial(1, strategies["sample_rate"]).astype(bool),
+            f"{strategy_type}_strategy"
+        ]
         # filter the strategies to only include those listed in the params file
         valid_strategies = list(
             self.params["inpatient_factors"][strategy_type].keys()
@@ -158,6 +160,78 @@ class InpatientsModel(Model):
             # for each rn, select a single row, i.e. select 1 strategy per rn
             .groupby(level=0).head(1)
         )
+
+    def _expat_repat(
+        self, rng: np.random.BitGenerator, data: pd.DataFrame, run_params: dict
+    ) -> pd.DataFrame:
+        # TODO: the run_params aren't correct?
+        return data.iloc[
+            np.concatenate(
+                [
+                    self._expat(
+                        rng,
+                        self._expat_repat_params_transform(
+                            data, True, "left", run_params["expat"]["ip"]
+                        ),
+                    ),
+                    self._repat_local(
+                        rng,
+                        self._expat_repat_params_transform(
+                            data, False, "inner", run_params["repat_local"]["ip"]
+                        ),
+                    ),
+                    self._repat_nonlocal(
+                        rng,
+                        self._expat_repat_params_transform(
+                            data, True, "inner", run_params["repat_nonlocal"]["ip"]
+                        ),
+                    ),
+                ]
+            )
+        ]
+
+    @staticmethod
+    def _expat_repat_params_transform(
+        data: pd.DataFrame, is_provider: bool, join_type: str, params: dict
+    ) -> pd.DataFrame:
+        params = pd.DataFrame(
+            [
+                {"admigroup": k1, "tretspef": k2, "value": v2}
+                for k1, v1 in params.items()
+                for k2, v2 in v1.items()
+            ]
+        ).set_index(["admigroup", "tretspef"])
+        return (
+            data.loc[data.is_provider == is_provider, ["rn", "admigroup", "tretspef"]]
+            .merge(
+                params,
+                how=join_type,
+                left_on=["admigroup", "tretspef"],
+                right_index=True,
+            )
+            .value
+        )
+
+    @staticmethod
+    def _expat(rng: np.random.BitGenerator, expat_data: pd.Series) -> np.ndarray:
+        expat_select = np.ones_like(expat_data)
+        expat_select[~np.isnan(expat_data)] = rng.binomial(
+            1, expat_data[~np.isnan(expat_data)]
+        )
+        return expat_data.index[expat_select.astype(bool)]
+
+    @staticmethod
+    def _repat_local(
+        rng: np.random.BitGenerator, repat_data: pd.DataFrame
+    ) -> np.ndarray:
+        repat_select = rng.binomial(1, repat_data)
+        return repat_data.index[repat_select.astype(bool)]
+
+    @staticmethod
+    def _repat_nonlocal(
+        rng: np.random.BitGenerator, repat_nl_data: pd.DataFrame
+    ) -> np.ndarray:
+        return repat_nl_data.index.repeat(rng.poisson(repat_nl_data))
 
     def _waiting_list_adjustment(self, data: pd.DataFrame) -> pd.Series:
         """Create a series of factors for waiting list adjustment.
@@ -416,17 +490,22 @@ class InpatientsModel(Model):
         :returns: a tuple containing the change factors DataFrame and the mode results DataFrame
         :rtype: (dict, pandas.DataFrame)
         """
+        # TODO: this is a kludge
+        hsa_f = pd.Series(hsa_f, data["rn"])
+        # perform expat/repat
+        data = self._expat_repat(rng, data, run_params)
         # select strategies
-        admission_avoidance = self._random_strategy(rng, "admission_avoidance")
-        admission_avoidance = admission_avoidance[data["rn"]]
-        los_reduction = self._random_strategy(rng, "los_reduction")
+        admission_avoidance = self._random_strategy(
+            rng, "admission_avoidance", data["rn"]
+        ).loc[data["rn"]]
+        los_reduction = self._random_strategy(rng, "los_reduction", data["rn"])
         # choose length of stay reduction factors
         losr = self._los_reduction(run_params)
 
         # create an array that keeps track of the number of times we have sampled each row
         admissions = (
             InpatientsAdmissionsCounter(data, rng)
-            .poisson_step(hsa_f, "health_status_adjustment")
+            .poisson_step(hsa_f[data["rn"]], "health_status_adjustment")
             .poisson_step(demo_f[data["rn"]], "population_factors")
             .poisson_step(
                 self._waiting_list_adjustment(data), "waiting_list_adjustment"
@@ -446,7 +525,7 @@ class InpatientsModel(Model):
         step_counts = admissions.step_counts
         # LoS Reduction ----------------------------------------------------------------------------
         # set the index for easier querying
-        data.set_index(los_reduction[data["rn"]], inplace=True)
+        data.set_index(los_reduction.loc[data["rn"]], inplace=True)
         # run each of the length of stay reduction strategies
         self._losr_all(data, losr, rng, step_counts)
         self._losr_to_zero(data, losr, rng, "aec", step_counts)

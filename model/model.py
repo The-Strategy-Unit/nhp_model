@@ -271,6 +271,22 @@ class Model:
                 gen_value(m, params["health_status_adjustment"])
                 for m in range(model_runs)
             ],
+            **{
+                k0: {
+                    k1: {
+                        k2: {
+                            k3: [
+                                inrange(gen_value(m, v2), 0, 1)
+                                for m in range(model_runs)
+                            ]
+                            for k3, v2 in v2.items()
+                        }
+                        for k2, v2 in v1.items()
+                    }
+                    for k1, v1 in params[k0].items()
+                }
+                for k0 in ["expat", "repat_local", "repat_nonlocal"]
+            },
             "waiting_list_adjustment": params["waiting_list_adjustment"],
             "non-demographic_adjustment": {
                 k1: {
@@ -292,7 +308,11 @@ class Model:
                     }
                     for k1, v1 in params[k0].items()
                 }
-                for k0 in ["inpatient_factors", "outpatient_factors", "aae_factors"]
+                for k0 in [
+                    "inpatient_factors",
+                    "outpatient_factors",
+                    "aae_factors",
+                ]
             },
             "bed_occupancy": {
                 k0: {
@@ -330,6 +350,16 @@ class Model:
             "variant": params["variant"][model_run],
             "health_status_adjustment": params["health_status_adjustment"][model_run],
             "seed": params["seeds"][model_run],
+            **{
+                k0: {
+                    k1: {
+                        k2: {k3: v3[model_run] for k3, v3 in v2.items()}
+                        for k2, v2 in v1.items()
+                    }
+                    for k1, v1 in params[k0].items()
+                }
+                for k0 in ["expat", "repat_local", "repat_nonlocal"]
+            },
             **{
                 k0: {
                     k1: {k2: v2[model_run] for k2, v2 in v1.items()}
