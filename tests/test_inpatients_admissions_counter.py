@@ -6,7 +6,7 @@ from unittest.mock import Mock, call, patch
 import numpy as np
 import pandas as pd
 import pytest
-from model.inpatients import InpatientsAdmissionsCounter
+from model.inpatients_admissions_counter import InpatientsAdmissionsCounter
 
 
 @pytest.fixture
