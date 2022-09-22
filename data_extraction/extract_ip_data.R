@@ -208,9 +208,14 @@ create_ip_data <- function(inpatients, providers, specialties) {
         str_starts(admimeth, "3") ~ "maternity",
         TRUE ~ "non-elective"
       ),
+      # handle case of maternity: make tretspef always Other (Medical)
+      across(
+        tretspef,
+        ~ case_when(admigroup == "maternity", "Other (Medical)", .x)
+      ),
       is_provider = procode3 %in% providers
     ) |>
-    select(-procode3, -icb22cdh) |>
+    select(-procode3, -fyear, -icb22cdh) |>
     filter(sex %in% c(1, 2)) |>
     drop_na(hsagrp, speldur)
 }
@@ -232,7 +237,6 @@ create_ip_synth_from_data <- function(data) {
       )
     ) |>
     ungroup() |>
-    select(-fyear) |>
     # randomly shuffle the specialty: ignore paeds/maternity/birth, and handle
     # each classpat separately
     (\(.data) {
@@ -257,7 +261,7 @@ save_ip_data <- function(data, strategies, name) {
 
   data |>
     arrange(
-      tretspef, mainspef, hsagrp, sex, ethnos, age, imd04_decile, admidate
+      is_provider, tretspef, mainspef, hsagrp, sex, ethnos, age, imd04_decile, admidate
     ) |>
     write_parquet(path("ip.parquet"))
 
