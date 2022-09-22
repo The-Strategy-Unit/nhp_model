@@ -493,20 +493,20 @@
       "100": 63,
       "101": 55,
       "110": 16,
-      "120": 22,
+      "120": 21,
       "130": 68,
-      "140": -3,
-      "150": 27,
-      "160": 8,
-      "170": 4,
-      "300": 36,
+      "140": 0,
+      "150": 0,
+      "160": 0,
+      "170": 0,
+      "300": 0,
       "301": 154,
       "320": 13,
       "330": 3,
-      "340": 7,
+      "330.1": 6,
       "400": 14,
-      "410": 13,
-      "430": 2,
+      "410": 9,
+      "430": 0,
       "502": 32,
       "Other (Medical)": 38,
       "Other (Surgical)": 38,
@@ -516,20 +516,20 @@
       "100": 82,
       "101": 103,
       "110": 60,
-      "120": 146,
+      "120": 140,
       "130": 213,
-      "140": -9,
-      "150": 78,
-      "160": 15,
-      "170": 10,
-      "300": 49,
+      "140": 0,
+      "150": 0,
+      "160": 0,
+      "170": 0,
+      "300": 0,
       "301": 95,
       "320": 81,
       "330": 25,
-      "340": 39,
+      "330.1": 32,
       "400": 78,
-      "410": 46,
-      "430": 15,
+      "410": 30,
+      "430": 0,
       "502": 154,
       "Other (Medical)": 95,
       "Other (Surgical)": 95,
@@ -1162,114 +1162,12 @@
     }
   },
   "bed_occupancy": {
-    "day only": {
-      "Adult Mental Illness": [
-        0.85,
-        0.9
-      ],
-      "Cardiology": [
-        0.85,
-        0.9
-      ],
-      "Child and Adolescent Psychiatry": [
-        0.85,
-        0.9
-      ],
-      "Critical Care": [
-        0.85,
-        0.9
-      ],
-      "ENT": [
-        0.85,
-        0.9
-      ],
-      "Forensic Psychiatry": [
-        0.85,
-        0.9
-      ],
-      "General Medicine": [
-        0.85,
-        0.9
-      ],
-      "General Surgery": [
-        0.85,
-        0.9
-      ],
-      "Gynaecology": [
-        0.85,
-        0.9
-      ],
-      "Haematology": [
-        0.85,
-        0.9
-      ],
-      "Infectious Diseases": [
-        0.85,
-        0.9
-      ],
-      "Learning Disability": [
-        0.85,
-        0.9
-      ],
-      "Medical Psychotherapy": [
-        0.85,
-        0.9
-      ],
-      "Neurology": [
-        0.85,
-        0.9
-      ],
-      "Obstetrics": [
-        0.85,
-        0.9
-      ],
-      "Old Age Psychiatry": [
-        0.85,
-        0.9
-      ],
-      "Oncology": [
-        0.85,
-        0.9
-      ],
-      "Ophtalmology": [
-        0.85,
-        0.9
-      ],
-      "Paediatrics": [
-        0.85,
-        0.9
-      ],
-      "Rehab/Community": [
-        0.85,
-        0.9
-      ],
-      "Renal": [
-        0.85,
-        0.9
-      ],
-      "Respiratory": [
-        0.85,
-        0.9
-      ],
-      "Trauma and Orthopaedics": [
-        0.85,
-        0.9
-      ]
-    },
     "day+night": {
-      "Adult Mental Illness": [
+      "General Surgery": [
         0.85,
         0.9
       ],
-      "Cardiology": [
-        0.85,
-        0.9
-      ],
-      "Child and Adolescent Psychiatry": [
-        0.85,
-        0.9
-      ],
-      "Critical Care": [
+      "Trauma and Orthopaedics": [
         0.85,
         0.9
       ],
@@ -1277,55 +1175,7 @@
         0.85,
         0.9
       ],
-      "Forensic Psychiatry": [
-        0.85,
-        0.9
-      ],
-      "General Medicine": [
-        0.85,
-        0.9
-      ],
-      "General Surgery": [
-        0.85,
-        0.9
-      ],
-      "Gynaecology": [
-        0.85,
-        0.9
-      ],
-      "Haematology": [
-        0.85,
-        0.9
-      ],
-      "Infectious Diseases": [
-        0.85,
-        0.9
-      ],
-      "Learning Disability": [
-        0.85,
-        0.9
-      ],
-      "Medical Psychotherapy": [
-        0.85,
-        0.9
-      ],
-      "Neurology": [
-        0.85,
-        0.9
-      ],
-      "Obstetrics": [
-        0.85,
-        0.9
-      ],
-      "Old Age Psychiatry": [
-        0.85,
-        0.9
-      ],
-      "Oncology": [
-        0.85,
-        0.9
-      ],
-      "Ophtalmology": [
+      "Ophthalmology": [
         0.85,
         0.9
       ],
@@ -1333,11 +1183,27 @@
         0.85,
         0.9
       ],
-      "Rehab/Community": [
+      "Neurology": [
         0.85,
         0.9
       ],
-      "Renal": [
+      "Cardiology": [
+        0.85,
+        0.9
+      ],
+      "Critical Care": [
+        0.85,
+        0.9
+      ],
+      "General Medicine": [
+        0.85,
+        0.9
+      ],
+      "Haematology": [
+        0.85,
+        0.9
+      ],
+      "Rehab/Community": [
         0.85,
         0.9
       ],
@@ -1345,7 +1211,47 @@
         0.85,
         0.9
       ],
-      "Trauma and Orthopaedics": [
+      "Infectious Diseases": [
+        0.85,
+        0.9
+      ],
+      "Renal": [
+        0.85,
+        0.9
+      ],
+      "Oncology": [
+        0.85,
+        0.9
+      ],
+      "Gynaecology": [
+        0.85,
+        0.9
+      ],
+      "Obstetrics": [
+        0.85,
+        0.9
+      ],
+      "Adult Mental Illness": [
+        0.85,
+        0.9
+      ],
+      "Child and Adolescent Psychiatry": [
+        0.85,
+        0.9
+      ],
+      "Forensic Psychiatry": [
+        0.85,
+        0.9
+      ],
+      "Medical Psychotherapy": [
+        0.85,
+        0.9
+      ],
+      "Old Age Psychiatry": [
+        0.85,
+        0.9
+      ],
+      "Learning Disability": [
         0.85,
         0.9
       ]
@@ -1356,7 +1262,7 @@
         "101": "General Surgery",
         "110": "Trauma and Orthopaedics",
         "120": "ENT",
-        "130": "Ophtalmology",
+        "130": "Ophthalmology",
         "140": "ENT",
         "142": "Paediatrics",
         "145": "ENT",
@@ -1391,7 +1297,7 @@
         "420": "Paediatrics",
         "421": "Paediatrics",
         "430": "General Medicine",
-        "460": "Ophtalmology",
+        "460": "Ophthalmology",
         "502": "Gynaecology",
         "800": "Oncology",
         "810": "Oncology",
@@ -1416,6 +1322,10 @@
     }
   },
   "theatres": {
+    "change_availability": [
+      1.04,
+      1.06
+    ],
     "change_utilisation": {
       "100": [
         1.05,
@@ -1438,7 +1348,7 @@
         1.09
       ],
       "140": [
-        1.00,
+        1,
         1.02
       ],
       "160": [
@@ -1446,17 +1356,13 @@
         1.03
       ],
       "502": [
-        1.00,
+        1,
         1.02
       ],
       "Other": [
         1.07,
         1.09
       ]
-    },
-    "change_availability": [
-      1.04,
-      1.06
-    ]
+    }
   }
 }
