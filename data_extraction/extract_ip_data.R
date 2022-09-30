@@ -12,19 +12,11 @@ extract_ip_data <- function(providers) {
   )
   withr::defer(DBI::dbDisconnect(con))
 
-  main_icb <- tbl(con, in_schema("nhp_modelling", "provider_main_icb")) |>
-    filter(procode %in% providers) %>%
-    collect() %>%
-    pull(icb22cdh) %>%
-    unique()
-
-  stopifnot("more than one main icb" = length(main_icb) == 1)
-
   tb_inpatients <- tbl(con, in_schema("nhp_modelling", "inpatients")) %>%
     filter(
       FYEAR == 201819,
       ADMIAGE <= 120,
-      (PROCODE3 %in% providers) | (icb22cdh == main_icb)
+      PROCODE3 %in% providers
     )
 
   inpatients <- tb_inpatients %>%
@@ -85,21 +77,18 @@ extract_ip_sample_data <- function() {
     pull(is_main_icb)
   cat(main_icb_rate, "\n")
 
-  # we normally filter to include the ICB, handle this by oversampling rows
-  oversample_rate <- 5
-
   cat("* getting inpatients data: ")
   # HAVE TO USE %>% rather than |>
   inpatients <- tbl_inpatients %>%
     arrange(x = NEWID()) %>%
-    head(n_rows * 5) %>%
+    head(n_rows) %>%
     collect() %>%
     clean_names() %>%
     mutate(
       # create a pseudo provider field
-      procode3 = rbinom(n(), 1, 1 / oversample_rate) == 1,
+      procode3 = "RXX",
       # make 3 sites
-      sitetret = sample(1:3, n(), TRUE),
+      sitetret = paste0("RXX0", sample(1:3, n(), TRUE)),
       is_main_icb = rbinom(n(), 1, main_icb_rate)
     ) |>
     mutate(rn = row_number(), .before = everything())
@@ -133,7 +122,7 @@ extract_ip_sample_data <- function() {
 
 # -------------------------------------------------------------------------------
 
-create_ip_data <- function(inpatients, providers, specialties) {
+create_ip_data <- function(inpatients, specialties) {
   specialty_fn <- if (is.null(specialties)) {
     identity
   } else {
@@ -211,9 +200,8 @@ create_ip_data <- function(inpatients, providers, specialties) {
       # handle case of maternity: make tretspef always Other (Medical)
       across(
         tretspef,
-        ~ case_when(admigroup == "maternity", "Other (Medical)", .x)
-      ),
-      is_provider = procode3 %in% providers
+        ~ ifelse(admigroup == "maternity", "Other (Medical)", .x)
+      )
     ) |>
     select(-procode3, -fyear, -icb22cdh) |>
     filter(sex %in% c(1, 2)) |>
@@ -261,7 +249,7 @@ save_ip_data <- function(data, strategies, name) {
 
   data |>
     arrange(
-      is_provider, tretspef, mainspef, hsagrp, sex, ethnos, age, imd04_decile, admidate
+      tretspef, mainspef, hsagrp, sex, ethnos, age, imd04_decile, admidate
     ) |>
     write_parquet(path("ip.parquet"))
 
@@ -306,7 +294,7 @@ create_synthetic_ip_extract <- function(...,
   c(inpatients, strategies) %<-% extract_ip_sample_data()
 
   inpatients |>
-    create_ip_data(TRUE, specialties) |>
+    create_ip_data(specialties) |>
     create_ip_synth_from_data() |>
     save_ip_data(strategies, "synthetic")
 }
@@ -320,7 +308,7 @@ create_provider_ip_extract <- function(providers,
   c(inpatients, strategies) %<-% extract_ip_data(providers)
 
   inpatients |>
-    create_ip_data(providers, specialties) |>
+    create_ip_data(specialties) |>
     save_ip_data(strategies, name)
 }
 
@@ -330,7 +318,7 @@ rtt_specs <- c(
   "410", "430", "502"
 )
 
-# create_synthetic_ip_extract(specialties = rtt_specs)
+create_synthetic_ip_extract(specialties = rtt_specs)
 
 purrr::walk(
   list(

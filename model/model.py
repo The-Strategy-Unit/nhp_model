@@ -276,7 +276,7 @@ class Model:
                     k1: {
                         k2: {
                             k3: [
-                                inrange(gen_value(m, v2), 0, 1)
+                                inrange(gen_value(m, v2), 0, r)
                                 for m in range(model_runs)
                             ]
                             for k3, v2 in v2.items()
@@ -285,7 +285,7 @@ class Model:
                     }
                     for k1, v1 in params[k0].items()
                 }
-                for k0 in ["expat", "repat_local", "repat_nonlocal"]
+                for (k0, r) in [("expat", 1), ("repat_local", 5), ("repat_nonlocal", 5)]
             },
             "waiting_list_adjustment": params["waiting_list_adjustment"],
             "non-demographic_adjustment": {
