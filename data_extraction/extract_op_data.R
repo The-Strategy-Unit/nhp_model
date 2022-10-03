@@ -158,7 +158,7 @@ create_op_synth_from_data <- function(data) {
 
 aggregate_op_data <- function(data, ...) {
   data |>
-    select(age, sex, tretspef, is_main_icb, ..., matches("^(ha|i)s_")) |>
+    select(age, sex, tretspef, sitetret, is_main_icb, ..., matches("^(ha|i)s_")) |>
     mutate(
       type = paste(
         sep = "_",
