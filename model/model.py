@@ -12,6 +12,7 @@ import os
 import pickle
 from collections import namedtuple
 from datetime import datetime
+from functools import partial
 
 import numpy as np
 import pandas as pd
@@ -251,6 +252,11 @@ class Model:
         rng = np.random.default_rng(params["seed"])
         model_runs = params["model_runs"] + 1  # add 1 for the principal
 
+        # partially apply inrange to give us the different type of ranges we use
+        inrange_0_1 = partial(inrange, low=0, high=1)
+        inrange_0_5 = partial(inrange, low=0, high=5)
+
+        # function to generate a value for a model run
         def gen_value(model_run, i):
             # we haven't received an interval, just a single value
             if not isinstance(i, list):
@@ -260,78 +266,49 @@ class Model:
                 return sum(i) / 2
             return rnorm(rng, *i)  # otherwise
 
+        # function to traverse a dictionary until we find the values to generate from
+        def generate_param_values(p, valid_range):
+            if isinstance(p, dict):
+                if "interval" not in p:
+                    return {
+                        k: generate_param_values(v, valid_range) for k, v in p.items()
+                    }
+                p = p["interval"]
+            return [valid_range(gen_value(mr, p)) for mr in range(model_runs)]
+
         self.run_params = {
-            # for the principal run, select the most probable variant
             "variant": [self._variants[np.argmax(self._probabilities)]]
             + rng.choice(
                 self._variants, model_runs - 1, p=self._probabilities
             ).tolist(),
             "seeds": rng.integers(0, 65535, model_runs).tolist(),
-            "health_status_adjustment": [
-                gen_value(m, params["health_status_adjustment"])
-                for m in range(model_runs)
-            ],
-            **{
-                k0: {
-                    k1: {
-                        k2: {
-                            k3: [
-                                inrange(gen_value(m, v2), 0, r)
-                                for m in range(model_runs)
-                            ]
-                            for k3, v2 in v2.items()
-                        }
-                        for k2, v2 in v1.items()
-                    }
-                    for k1, v1 in params[k0].items()
-                }
-                for (k0, r) in [("expat", 1), ("repat_local", 5), ("repat_nonlocal", 5)]
-            },
             "waiting_list_adjustment": params["waiting_list_adjustment"],
-            "non-demographic_adjustment": {
-                k1: {
-                    k2: [inrange(gen_value(m, v2), 0, 1e6) for m in range(model_runs)]
-                    for k2, v2 in v1.items()
-                }
-                for k1, v1 in params["non-demographic_adjustment"].items()
-            },
+            # generate param values for the different items in params: this will traverse the dicts
+            # until a value is reached that isn't a dict. Then it will generate the required amount
+            # of values for that parameter
             **{
-                k0: {
-                    k1: {
-                        k2: [
-                            inrange(
-                                gen_value(m, v2["interval"]), *v2.get("range", [0, 1])
-                            )
-                            for m in range(model_runs)
-                        ]
-                        for k2, v2 in v1.items()
-                    }
-                    for k1, v1 in params[k0].items()
-                }
-                for k0 in [
-                    "inpatient_factors",
-                    "outpatient_factors",
-                    "aae_factors",
+                k: generate_param_values(params[k], v)
+                for k, v in [
+                    ("health_status_adjustment", inrange_0_5),
+                    ("expat", inrange_0_1),
+                    ("repat_local", inrange_0_5),
+                    ("repat_nonlocal", inrange_0_5),
+                    ("non-demographic_adjustment", inrange_0_5),
+                    ("inpatient_factors", inrange_0_1),
+                    ("outpatient_factors", inrange_0_1),
+                    ("aae_factors", inrange_0_1),
+                    ("theatres", inrange_0_5),
                 ]
             },
-            "bed_occupancy": {
-                k0: {
-                    k1: [inrange(gen_value(m, v1)) for m in range(model_runs)]
-                    for k1, v1 in params["bed_occupancy"][k0].items()
-                }
-                for k0 in params["bed_occupancy"].keys()
-                if k0 != "specialty_mapping"
-            },
-            "theatres": {
-                "change_utilisation": {
-                    k: [gen_value(m, v) for m in range(model_runs)]
-                    for k, v in params["theatres"]["change_utilisation"].items()
+            # handle this case separately as we need to filter the params list
+            "bed_occupancy": generate_param_values(
+                {
+                    k: v
+                    for k, v in params["bed_occupancy"].items()
+                    if k != "specialty_mapping"
                 },
-                "change_availability": [
-                    gen_value(m, params["theatres"]["change_availability"])
-                    for m in range(model_runs)
-                ],
-            },
+                inrange_0_1,
+            ),
         }
 
     def _get_run_params(self, model_run: int) -> dict:
