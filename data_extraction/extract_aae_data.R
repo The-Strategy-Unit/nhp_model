@@ -109,13 +109,14 @@ create_aae_synth_from_data <- function(data) {
 
 aggregate_aae_data <- function(data, ...) {
   data |>
-    select(age, sex, sitetret, is_main_icb, aedepttype, aearrivalmode, ..., matches("^(ha|i)s_")) |>
+    mutate(is_ambulance = aearrivalmode == "1") |>
+    select(age, sex, sitetret, is_main_icb, aedepttype, ..., matches("^(ha|i)s_")) |>
     mutate(
       hsagrp = paste(
         sep = "_",
         "aae",
         ifelse(age >= 18, "adult", "child"),
-        ifelse(aearrivalmode == 1, "ambulance", "walk-in")
+        ifelse(is_ambulance, "ambulance", "walk-in")
       )
     ) |>
     count(across(everything()), name = "arrivals") |>
@@ -136,7 +137,7 @@ save_aae_data <- function(data, name, ...) {
   }
 
   data |>
-    arrange(age, sex, aedepttype, aearrivalmode, ...) |>
+    arrange(age, sex, aedepttype, is_ambulance, ...) |>
     write_parquet(path("aae.parquet"))
 
   cat(file.size(path("aae.parquet")) / 1024^2, "\n")
