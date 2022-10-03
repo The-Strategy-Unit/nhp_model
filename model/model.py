@@ -323,41 +323,29 @@ class Model:
         :rtype: dict
         """
         params = self.run_params
+
+        def get_param_value(p):
+            if isinstance(p, dict):
+                return {k: get_param_value(v) for k, v in p.items()}
+            return p[model_run]
+
         return {
             "variant": params["variant"][model_run],
             "health_status_adjustment": params["health_status_adjustment"][model_run],
             "seed": params["seeds"][model_run],
             **{
-                k0: {
-                    k1: {
-                        k2: {k3: v3[model_run] for k3, v3 in v2.items()}
-                        for k2, v2 in v1.items()
-                    }
-                    for k1, v1 in params[k0].items()
-                }
-                for k0 in ["expat", "repat_local", "repat_nonlocal"]
-            },
-            **{
-                k0: {
-                    k1: {k2: v2[model_run] for k2, v2 in v1.items()}
-                    for k1, v1 in params[k0].items()
-                }
-                for k0 in [
+                k: get_param_value(params[k])
+                for k in [
+                    "expat",
+                    "repat_local",
+                    "repat_nonlocal",
                     "non-demographic_adjustment",
                     "inpatient_factors",
                     "outpatient_factors",
                     "aae_factors",
                     "bed_occupancy",
+                    "theatres",
                 ]
-            },
-            "theatres": {
-                "change_utilisation": {
-                    k: v[model_run]
-                    for k, v in params["theatres"]["change_utilisation"].items()
-                },
-                "change_availability": params["theatres"]["change_availability"][
-                    model_run
-                ],
             },
         }
 
