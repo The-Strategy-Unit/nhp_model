@@ -255,6 +255,7 @@ class Model:
         # partially apply inrange to give us the different type of ranges we use
         inrange_0_1 = partial(inrange, low=0, high=1)
         inrange_0_5 = partial(inrange, low=0, high=5)
+        inrange_1_5 = partial(inrange, low=1, high=5)
 
         # function to generate a value for a model run
         def gen_value(model_run, i):
@@ -291,8 +292,8 @@ class Model:
                 for k, v in [
                     ("health_status_adjustment", inrange_0_5),
                     ("expat", inrange_0_1),
-                    ("repat_local", inrange_0_5),
-                    ("repat_nonlocal", inrange_0_5),
+                    ("repat_local", inrange_1_5),
+                    ("repat_nonlocal", inrange_1_5),
                     ("non-demographic_adjustment", inrange_0_5),
                     ("inpatient_factors", inrange_0_1),
                     ("outpatient_factors", inrange_0_1),
