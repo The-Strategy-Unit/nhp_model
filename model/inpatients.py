@@ -177,7 +177,7 @@ class InpatientsModel(Model):
 
     @staticmethod
     def _repat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
-        repat_local_params = (run_params["repat_local"]["ip"],)
+        repat_local_params = run_params["repat_local"]["ip"]
         repat_nonlocal_params = run_params["repat_nonlocal"]["ip"]
         join_cols = ["admigroup", "tretspef", "is_main_icb"]
         return data.merge(

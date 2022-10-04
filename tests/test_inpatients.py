@@ -351,6 +351,73 @@ def test_losr_zero(mock_model, mock_losr):
     assert rng.uniform.call_args_list[0][1] == {"size": 6}
 
 
+def test_expat_adjustment():
+    """ "test that it returns the right parameters"""
+    # arrange
+    data = pd.DataFrame(
+        {
+            "tretspef": ["100", "120", "Other"] * 2,
+            "admigroup": [i for i in ["elective", "non-elective"] for _ in range(3)],
+        }
+    )
+    run_params = {
+        "expat": {
+            "ip": {
+                "elective": {"100": 0.6, "120": 0.7},
+                "non-elective": {"100": 0.8, "120": 0.9},
+            }
+        }
+    }
+    # act
+    actual = InpatientsModel._expat_adjustment(data, run_params)
+    # assert
+    assert actual.tolist() == [0.6, 0.7, 1.0, 0.8, 0.9, 1.0]
+
+
+def test_repat_adjustment():
+    """test that it returns the right parameters"""
+    # arrange
+    data = pd.DataFrame(
+        {
+            "tretspef": ["100", "120", "Other"] * 4,
+            "admigroup": [i for i in ["elective", "non-elective"] for _ in range(3)]
+            * 2,
+            "is_main_icb": [i for i in [True, False] for _ in range(6)],
+        }
+    )
+    run_params = {
+        "repat_local": {
+            "ip": {
+                "elective": {"100": 1.1, "120": 1.2},
+                "non-elective": {"100": 1.3, "120": 1.4},
+            }
+        },
+        "repat_nonlocal": {
+            "ip": {
+                "elective": {"100": 1.5, "120": 1.6},
+                "non-elective": {"100": 1.7, "120": 1.8},
+            }
+        },
+    }
+    # act
+    actual = InpatientsModel._repat_adjustment(data, run_params)
+    # assert
+    assert actual.tolist() == [
+        1.1,
+        1.2,
+        1.0,
+        1.3,
+        1.4,
+        1.0,
+        1.5,
+        1.6,
+        1.0,
+        1.7,
+        1.8,
+        1.0,
+    ]
+
+
 def test_run(mocker, mock_model):
     """test that it runs the model steps"""
     # arrange

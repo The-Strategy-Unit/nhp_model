@@ -148,6 +148,36 @@ def test_run_binomial_step(mock_model):
     rng.binomial.assert_called_once()
 
 
+def test_expat_adjustment():
+    """ "test that it returns the right parameters"""
+    # arrange
+    data = pd.DataFrame({"is_ambulance": [True, False]})
+    run_params = {"expat": {"aae": {"ambulance": 0.8}}}
+    # act
+    actual = AaEModel._expat_adjustment(data, run_params)
+    # assert
+    assert actual.tolist() == [0.8, 1.0]
+
+
+def test_repat_adjustment():
+    """test that it returns the right parameters"""
+    # arrange
+    data = pd.DataFrame(
+        {
+            "is_ambulance": [True, False] * 2,
+            "is_main_icb": [i for i in [True, False] for _ in range(2)],
+        }
+    )
+    run_params = {
+        "repat_local": {"aae": {"ambulance": 1.1}},
+        "repat_nonlocal": {"aae": {"ambulance": 1.3}},
+    }
+    # act
+    actual = AaEModel._repat_adjustment(data, run_params)
+    # assert
+    assert actual.tolist() == [1.1, 1.0, 1.3, 1.0]
+
+
 def test_run(mock_model):
     """test that it runs the model steps"""
     # arrange

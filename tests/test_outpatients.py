@@ -184,6 +184,36 @@ def test_update_step_counts(mock_model):
     assert step_counts["test"] == {"attendances": 3, "tele_attendances": 6}
 
 
+def test_expat_adjustment():
+    """ "test that it returns the right parameters"""
+    # arrange
+    data = pd.DataFrame({"tretspef": ["100", "120", "Other"]})
+    run_params = {"expat": {"op": {"100": 0.8, "120": 0.9}}}
+    # act
+    actual = OutpatientsModel._expat_adjustment(data, run_params)
+    # assert
+    assert actual.tolist() == [0.8, 0.9, 1.0]
+
+
+def test_repat_adjustment():
+    """test that it returns the right parameters"""
+    # arrange
+    data = pd.DataFrame(
+        {
+            "tretspef": ["100", "120", "Other"] * 2,
+            "is_main_icb": [i for i in [True, False] for _ in range(3)],
+        }
+    )
+    run_params = {
+        "repat_local": {"op": {"100": 1.1, "120": 1.2}},
+        "repat_nonlocal": {"op": {"100": 1.3, "120": 1.4}},
+    }
+    # act
+    actual = OutpatientsModel._repat_adjustment(data, run_params)
+    # assert
+    assert actual.tolist() == [1.1, 1.2, 1.0, 1.3, 1.4, 1.0]
+
+
 def test_run(mock_model):
     """test that it runs the model steps"""
     # arrange
