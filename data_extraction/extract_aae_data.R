@@ -16,6 +16,7 @@ extract_aae_data <- function(providers) {
     arrange(aekey) %>%
     collect() %>%
     clean_names() %>%
+    mutate(sitetret = procode3) |>
     mutate(rn = row_number(), .before = everything())
 }
 
@@ -26,63 +27,44 @@ extract_aae_sample_data <- function() {
   )
   withr::defer(DBI::dbDisconnect(con))
 
-  # only select organisations that had on average at least 50 people attendances
-  # per day
-  providers_of_interest <- tbl(con, sql("
-    SELECT
-      t.procode3
-    FROM (
-      SELECT DISTINCT
-        a.procode3,
-        AVG(COUNT(*)) OVER(PARTITION BY a.procode3) attendances
-      FROM
-        nhp_modelling.aae a
-      WHERE
-        a.fyear = 201819
-      AND
-        a.procode3 LIKE 'R%'
-      GROUP BY
-        a.procode3,
-        a.arrivaldate
-      HAVING
-      -- make sure the mean age is over 18, should exclude Children's hospitals
-        AVG(activage) > 18
-    ) t
-    WHERE
-      t.attendances > 200
-  "))
-  tbl_providers_of_interest <- copy_to(
-    con, providers_of_interest, "providers_of_interest"
-  )
-
-  # in case we need to view which providers are selected
-  # ods <- tbl(con, sql("SELECT [Organisation_Code], [Organisation_Name]
-  #                      FROM   [UK_Health_Dimensions].[ODS].[NHS_Trusts_SCD]
-  #                      WHERE  [Is_Latest] = 1")) %>%
-  #   collect()
-  #
-  # collect(tbl_providers_of_interest) %>%
-  #   left_join(ods, by = c("PROCODE3" = "Organisation_Code")) %>%
-  #   arrange(Organisation_Name) %>%
-  #   View()
+  tbl_providers_of_interest <- tbl(con, in_schema("nhp_modelling_reference", "org_code_type")) |>
+    filter(org_type == "Acute", org_subtype %in% c("Small", "Medium", "Large")) |>
+    select(org_code)
 
   tbl_aae <- tbl(con, in_schema("nhp_modelling", "aae")) %>%
     filter(fyear == 201819, activage <= 120) %>%
-    semi_join(tbl_providers_of_interest, by = "procode3")
+    semi_join(tbl_providers_of_interest, by = c("procode3" = "org_code"))
 
+  cat("* getting n_rows: ")
   n_rows <- tbl_aae %>%
     count(procode3) %>%
     collect() %>%
     pull(n) %>%
     median() %>%
     round()
+  cat(n_rows, "\n")
 
+  cat("* getting main_icb_rate: ")
+  main_icb_rate <- tbl_aae %>%
+    summarise(across(is_main_icb, ~ mean(.x * 1.0, na.rm = TRUE))) %>%
+    collect() %>%
+    pull(is_main_icb)
+  cat(main_icb_rate, "\n")
+
+  cat("* getting aae data: ")
   # HAVE TO USE %>% rather than |>
   tbl_aae %>%
     arrange(x = NEWID()) %>%
     head(n_rows) %>%
     collect() %>%
     clean_names() %>%
+    mutate(
+      # create a pseudo provider field
+      procode3 = "RXX",
+      # make 3 sites
+      sitetret = paste0("RXX0", sample(1:3, n(), TRUE)),
+      is_main_icb = rbinom(n(), 1, main_icb_rate)
+    ) |>
     mutate(rn = row_number(), .before = everything())
 }
 
@@ -91,7 +73,7 @@ extract_aae_sample_data <- function() {
 create_aae_data <- function(aae) {
   aae |>
     arrange(rn) |>
-    select(-aekey, -hesid, -procode5, -sushrg) |>
+    select(-aekey, -hesid, -sushrg) |>
     rename(age = activage) |>
     mutate(
       across(ends_with("date"), lubridate::ymd),
@@ -127,13 +109,14 @@ create_aae_synth_from_data <- function(data) {
 
 aggregate_aae_data <- function(data, ...) {
   data |>
-    select(age, sex, aedepttype, aearrivalmode, ..., matches("^(ha|i)s_")) |>
+    mutate(is_ambulance = aearrivalmode == "1") |>
+    select(age, sex, sitetret, is_main_icb, aedepttype, ..., matches("^(ha|i)s_")) |>
     mutate(
       hsagrp = paste(
         sep = "_",
         "aae",
         ifelse(age >= 18, "adult", "child"),
-        ifelse(aearrivalmode == 1, "ambulance", "walk-in")
+        ifelse(is_ambulance, "ambulance", "walk-in")
       )
     ) |>
     count(across(everything()), name = "arrivals") |>
@@ -154,7 +137,7 @@ save_aae_data <- function(data, name, ...) {
   }
 
   data |>
-    arrange(age, sex, aedepttype, aearrivalmode, ...) |>
+    arrange(age, sex, aedepttype, is_ambulance, ...) |>
     write_parquet(path("aae.parquet"))
 
   cat(file.size(path("aae.parquet")) / 1024^2, "\n")
@@ -184,7 +167,7 @@ create_aae_extract <- function(providers, ...,
 
 # ------------------------------------------------------------------------------
 # create_synthetic_aae_extract(ethnos, imd04_decile)
-# create_synthetattendkey  ic_aae_extract()
+create_synthetic_aae_extract()
 
 purrr::walk(
   list(

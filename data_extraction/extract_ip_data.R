@@ -13,7 +13,11 @@ extract_ip_data <- function(providers) {
   withr::defer(DBI::dbDisconnect(con))
 
   tb_inpatients <- tbl(con, in_schema("nhp_modelling", "inpatients")) %>%
-    filter(FYEAR == 201819, ADMIAGE <= 120, PROCODE3 %in% providers)
+    filter(
+      FYEAR == 201819,
+      ADMIAGE <= 120,
+      PROCODE3 %in% providers
+    )
 
   inpatients <- tb_inpatients %>%
     arrange(EPIKEY) %>%
@@ -40,6 +44,7 @@ extract_ip_data <- function(providers) {
 }
 
 extract_ip_sample_data <- function() {
+  cat("extracting ip synthetic data\n")
   con <- dbConnect(
     odbc::odbc(),
     .connection_string = Sys.getenv("CONSTR"), timeout = 10
@@ -48,67 +53,57 @@ extract_ip_sample_data <- function() {
 
   # only select organisations that had on average at least 50 people admitted
   # per day and also had day cases
-  providers_of_interest <- tbl(con, sql("
-  SELECT
-    i.PROCODE3
-  FROM
-    nhp_modelling.inpatients i
-  WHERE
-    i.FYEAR = 201819
-  AND
-    i.ADMIAGE <= 120
-  AND
-    i.PROCODE3 LIKE 'R%'
-  GROUP BY
-    i.PROCODE3
-  HAVING
-    SUM(CASE CLASSPAT WHEN '1' THEN 1 ELSE 0 END) > 100 * 365
-  AND
-    SUM(CASE CLASSPAT WHEN '2' THEN 1 ELSE 0 END) > 0
-  AND
-  -- make sure the average age is over 18, should exclude Children's hospitals
-    AVG(ADMIAGE) > 18
-  "))
-  tbl_providers_of_interest <- copy_to(
-    con, providers_of_interest, "providers_of_interest"
-  )
-
-  # in case we need to view which providers are selected
-  # ods <- tbl(con, sql("SELECT [Organisation_Code], [Organisation_Name]
-  #                      FROM   [UK_Health_Dimensions].[ODS].[NHS_Trusts_SCD]
-  #                      WHERE  [Is_Latest] = 1")) %>%
-  #   collect()
-  #
-  # collect(tbl_providers_of_interest) %>%
-  #   left_join(ods, by = c("PROCODE3" = "Organisation_Code")) %>%
-  #   arrange(Organisation_Name) %>%
-  #   View()
+  tbl_providers_of_interest <- tbl(con, in_schema("nhp_modelling_reference", "org_code_type")) |>
+    filter(org_type == "Acute", org_subtype %in% c("Small", "Medium", "Large")) |>
+    select(org_code)
 
   tbl_inpatients <- tbl(con, in_schema("nhp_modelling", "inpatients")) %>%
     filter(FYEAR == 201819, ADMIAGE <= 120) %>%
-    semi_join(tbl_providers_of_interest, by = "PROCODE3")
+    semi_join(tbl_providers_of_interest, by = c("PROCODE3" = "org_code"))
 
+  cat("* getting n_rows: ")
   n_rows <- tbl_inpatients %>%
     count(PROCODE3) %>%
     collect() %>%
     pull(n) %>%
     median() %>%
     round()
+  cat(n_rows, "\n")
 
+  cat("* getting main_icb_rate: ")
+  main_icb_rate <- tbl_inpatients %>%
+    summarise(across(is_main_icb, ~ mean(.x * 1.0, na.rm = TRUE))) %>%
+    collect() %>%
+    pull(is_main_icb)
+  cat(main_icb_rate, "\n")
+
+  cat("* getting inpatients data: ")
   # HAVE TO USE %>% rather than |>
   inpatients <- tbl_inpatients %>%
     arrange(x = NEWID()) %>%
     head(n_rows) %>%
     collect() %>%
     clean_names() %>%
+    mutate(
+      # create a pseudo provider field
+      procode3 = "RXX",
+      # make 3 sites
+      sitetret = paste0("RXX0", sample(1:3, n(), TRUE)),
+      is_main_icb = rbinom(n(), 1, main_icb_rate)
+    ) |>
     mutate(rn = row_number(), .before = everything())
 
+  cat("done\n")
+
+  cat("* copying data:")
   ip_sample <- copy_to(
     con, select(inpatients, epikey), "inpatients_random_sample"
   )
+  cat("done\n")
 
   strategy_lookups <- tbl(con, in_schema("nhp_modelling", "strategy_lookups"))
 
+  cat("* getting strategies\n")
   strategies <- tbl(con, in_schema("nhp_modelling", "strategies")) %>%
     semi_join(ip_sample, by = c("EPIKEY" = "epikey")) %>%
     inner_join(strategy_lookups, by = c("strategy" = "full_strategy")) %>%
@@ -118,7 +113,7 @@ extract_ip_sample_data <- function() {
     inner_join(select(inpatients, epikey, rn), by = "epikey") %>%
     relocate(rn, .before = everything()) %>%
     select(-epikey)
-
+  cat("done\n")
   list(
     data = inpatients,
     strategies = strategies
@@ -163,7 +158,7 @@ create_ip_data <- function(inpatients, specialties) {
 
   inpatients |>
     arrange(rn) |>
-    select(-epikey, -hesid, -sushrg) |>
+    select(-epikey, -hesid, -lsoa11, -sushrg) |>
     rename(age = admiage) |>
     mutate(
       across(ends_with("date"), lubridate::ymd),
@@ -201,8 +196,14 @@ create_ip_data <- function(inpatients, specialties) {
         str_starts(admimeth, "1") ~ "elective",
         str_starts(admimeth, "3") ~ "maternity",
         TRUE ~ "non-elective"
+      ),
+      # handle case of maternity: make tretspef always Other (Medical)
+      across(
+        tretspef,
+        ~ ifelse(admigroup == "maternity", "Other (Medical)", .x)
       )
     ) |>
+    select(-procode3, -fyear, -icb22cdh) |>
     filter(sex %in% c(1, 2)) |>
     drop_na(hsagrp, speldur)
 }
@@ -224,7 +225,6 @@ create_ip_synth_from_data <- function(data) {
       )
     ) |>
     ungroup() |>
-    select(-procode3, -fyear) |>
     # randomly shuffle the specialty: ignore paeds/maternity/birth, and handle
     # each classpat separately
     (\(.data) {
@@ -318,7 +318,7 @@ rtt_specs <- c(
   "410", "430", "502"
 )
 
-# create_synthetic_ip_extract(specialties = rtt_specs)
+create_synthetic_ip_extract(specialties = rtt_specs)
 
 purrr::walk(
   list(
@@ -328,13 +328,13 @@ purrr::walk(
     "RGP",
     "RNQ",
     "RD8",
-    "RBZ",
+    "RH8", # was "RBZ",
     "RX1",
     "RHW",
     "RA9",
     "RGR",
     c("RXN", "RTX"),
-    c("RH5", "RBA")
+    "RH5" # RBA" is merged in with this activity
   ),
   create_provider_ip_extract,
   specialties = rtt_specs

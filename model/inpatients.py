@@ -45,6 +45,7 @@ class InpatientsModel(Model):
                 "tretspef",
                 "hsagrp",
                 "has_procedure",
+                "is_main_icb",
             ],
         )
         # load the strategies, store each strategy file as a separate entry in a dictionary
@@ -129,13 +130,11 @@ class InpatientsModel(Model):
         self, rng: np.random.Generator, strategy_type: str
     ) -> pd.DataFrame:
         """Select one strategy per record
-
         :param rng: a random number generator created for each model iteration
         :type rng: numpy.random.Generator
         :param strategy_type: the type of strategy to update, e.g. "admission_avoidance",
             "los_reduction"
         :type strategy_type: str
-
         :returns: an updated DataFrame with a new column for the selected strategy
         :rtype: pandas.DataFrame
         """
@@ -158,6 +157,45 @@ class InpatientsModel(Model):
             # for each rn, select a single row, i.e. select 1 strategy per rn
             .groupby(level=0).head(1)
         )
+
+    @staticmethod
+    def _expat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
+        expat_params = run_params["expat"]["ip"]
+        join_cols = ["admigroup", "tretspef"]
+        return data.merge(
+            pd.DataFrame(
+                [
+                    {"admigroup": k1, "tretspef": k2, "value": v2}
+                    for k1, v1 in expat_params.items()
+                    for k2, v2 in v1.items()
+                ]
+            ).set_index(join_cols),
+            how="left",
+            left_on=join_cols,
+            right_index=True,
+        )["value"].fillna(1)
+
+    @staticmethod
+    def _repat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
+        repat_local_params = run_params["repat_local"]["ip"]
+        repat_nonlocal_params = run_params["repat_nonlocal"]["ip"]
+        join_cols = ["admigroup", "tretspef", "is_main_icb"]
+        return data.merge(
+            pd.DataFrame(
+                [
+                    {"admigroup": k1, "tretspef": k2, "is_main_icb": icb, "value": v2}
+                    for (k0, icb) in [
+                        (repat_local_params, True),
+                        (repat_nonlocal_params, False),
+                    ]
+                    for k1, v1 in k0.items()
+                    for k2, v2 in v1.items()
+                ]
+            ).set_index(join_cols),
+            how="left",
+            left_on=join_cols,
+            right_index=True,
+        )["value"].fillna(1)
 
     def _waiting_list_adjustment(self, data: pd.DataFrame) -> pd.Series:
         """Create a series of factors for waiting list adjustment.
@@ -331,7 +369,7 @@ class InpatientsModel(Model):
         i = losr.index[i]
         # make sure we only keep values in losr that exist in data
         i = i[i.isin(data.index)]
-        data.loc[i, "classpat"] = bads_df["classpat"]
+        data.loc[i, "classpat"] = bads_df["classpat"].tolist()
         # set the speldur to 0 if we aren't inpatients
         data.loc[i, "speldur"] *= data.loc[i, "classpat"] == "1"
 
@@ -417,8 +455,9 @@ class InpatientsModel(Model):
         :rtype: (dict, pandas.DataFrame)
         """
         # select strategies
-        admission_avoidance = self._random_strategy(rng, "admission_avoidance")
-        admission_avoidance = admission_avoidance[data["rn"]]
+        admission_avoidance = self._random_strategy(rng, "admission_avoidance")[
+            data["rn"]
+        ]
         los_reduction = self._random_strategy(rng, "los_reduction")
         # choose length of stay reduction factors
         losr = self._los_reduction(run_params)
@@ -428,6 +467,11 @@ class InpatientsModel(Model):
             InpatientsAdmissionsCounter(data, rng)
             .poisson_step(hsa_f, "health_status_adjustment")
             .poisson_step(demo_f[data["rn"]], "population_factors")
+            .poisson_step(self._expat_adjustment(data, run_params), "expatriation")
+            .poisson_step(
+                self._repat_adjustment(data, run_params),
+                "repatriation",
+            )
             .poisson_step(
                 self._waiting_list_adjustment(data), "waiting_list_adjustment"
             )
@@ -446,7 +490,7 @@ class InpatientsModel(Model):
         step_counts = admissions.step_counts
         # LoS Reduction ----------------------------------------------------------------------------
         # set the index for easier querying
-        data.set_index(los_reduction[data["rn"]], inplace=True)
+        data.set_index(los_reduction.loc[data["rn"]], inplace=True)
         # run each of the length of stay reduction strategies
         self._losr_all(data, losr, rng, step_counts)
         self._losr_to_zero(data, losr, rng, "aec", step_counts)

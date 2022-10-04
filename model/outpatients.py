@@ -226,6 +226,40 @@ class OutpatientsModel(Model):
             for k in ["attendances", "tele_attendances"]
         }
 
+    @staticmethod
+    def _expat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
+        expat_params = run_params["expat"]["op"]
+        join_cols = ["tretspef"]
+        return data.merge(
+            pd.DataFrame(
+                [{"tretspef": k, "value": v} for k, v in expat_params.items()]
+            ).set_index(join_cols),
+            how="left",
+            left_on=join_cols,
+            right_index=True,
+        )["value"].fillna(1)
+
+    @staticmethod
+    def _repat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
+        repat_local_params = run_params["repat_local"]["op"]
+        repat_nonlocal_params = run_params["repat_nonlocal"]["op"]
+        join_cols = ["tretspef", "is_main_icb"]
+        return data.merge(
+            pd.DataFrame(
+                [
+                    {"tretspef": k1, "is_main_icb": icb, "value": v1}
+                    for (k0, icb) in [
+                        (repat_local_params, True),
+                        (repat_nonlocal_params, False),
+                    ]
+                    for k1, v1 in k0.items()
+                ]
+            ).set_index(join_cols),
+            how="left",
+            left_on=join_cols,
+            right_index=True,
+        )["value"].fillna(1)
+
     def _run(
         self,
         rng: np.random.Generator,
@@ -264,6 +298,21 @@ class OutpatientsModel(Model):
         # then, demographic modelling
         self._run_poisson_step(
             rng, data, "population_factors", demo_f[data["rn"]], step_counts
+        )
+        # expat/repat
+        self._run_binomial_step(
+            rng,
+            data,
+            "expatriation",
+            self._expat_adjustment(data, run_params),
+            step_counts,
+        )
+        self._run_poisson_step(
+            rng,
+            data,
+            "repatriation",
+            self._repat_adjustment(data, run_params),
+            step_counts,
         )
         # waiting list adjustments
         self._run_poisson_step(

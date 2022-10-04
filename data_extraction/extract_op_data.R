@@ -26,64 +26,47 @@ extract_op_sample_data <- function() {
   )
   withr::defer(DBI::dbDisconnect(con))
 
-  # only select organisations that had on average at least 50 people admitted
-  # per day and also had day cases
-  providers_of_interest <- tbl(con, sql("
-  SELECT
-    i.PROCODE3
-  FROM
-    nhp_modelling.inpatients i
-  WHERE
-    i.FYEAR = 201819
-  AND
-    i.ADMIAGE <= 120
-  AND
-    i.PROCODE3 LIKE 'R%'
-  GROUP BY
-    i.PROCODE3
-  HAVING
-    SUM(CASE CLASSPAT WHEN '1' THEN 1 ELSE 0 END) > 100 * 365
-  AND
-    SUM(CASE CLASSPAT WHEN '2' THEN 1 ELSE 0 END) > 0
-  AND
-  -- make sure the average age is over 18, should exclude Children's hospitals
-    AVG(ADMIAGE) > 18
-  "))
-  tbl_providers_of_interest <- copy_to(
-    con, providers_of_interest, "providers_of_interest"
-  )
-
-  # in case we need to view which providers are selected
-  # ods <- tbl(
-  #   con,
-  #   sql("SELECT [Organisation_Code], [Organisation_Name]
-  #        FROM   [UK_Health_Dimensions].[ODS].[NHS_Trusts_SCD]
-  #        WHERE  [Is_Latest] = 1")) %>%
-  #   collect()
-  #
-  # collect(tbl_providers_of_interest) %>%
-  #   left_join(ods, by = c("PROCODE3" = "Organisation_Code")) %>%
-  #   arrange(Organisation_Name) %>%
-  #   View()
+  tbl_providers_of_interest <- tbl(con, in_schema("nhp_modelling_reference", "org_code_type")) |>
+    filter(org_type == "Acute", org_subtype %in% c("Small", "Medium", "Large")) |>
+    select(org_code)
 
   tbl_outpatients <- tbl(con, in_schema("nhp_modelling", "outpatients")) %>%
     filter(fyear == 201819, apptage <= 120) %>%
-    semi_join(tbl_providers_of_interest, by = c("procode3" = "PROCODE3"))
+    semi_join(tbl_providers_of_interest, by = c("procode3" = "org_code"))
 
+  cat("* getting n_rows: ")
   n_rows <- tbl_outpatients %>%
     count(procode3) %>%
     collect() %>%
     pull(n) %>%
     median() %>%
     round()
+  cat(n_rows, "\n")
 
-  # HAVE TO USE %>% rather than |>
+  cat("* getting main_icb_rate: ")
+  main_icb_rate <- tbl_outpatients %>%
+    summarise(across(is_main_icb, ~ mean(.x * 1.0, na.rm = TRUE))) %>%
+    collect() %>%
+    pull(is_main_icb)
+  cat(main_icb_rate, "\n")
+
+  cat("* getting outpatients data: ")
   outpatients <- tbl_outpatients %>%
     arrange(x = NEWID()) %>%
     head(n_rows) %>%
     collect() %>%
     clean_names() %>%
+    mutate(
+      # create a pseudo provider field
+      procode3 = "RXX",
+      # make 3 sites
+      sitetret = paste0("RXX0", sample(1:3, n(), TRUE)),
+      is_main_icb = rbinom(n(), 1, main_icb_rate)
+    ) |>
     mutate(rn = row_number(), .before = everything())
+  cat("done\n")
+
+  outpatients
 }
 
 # ------------------------------------------------------------------------------
@@ -106,7 +89,7 @@ create_op_data <- function(outpatients, specialties = NULL) {
 
   outpatients |>
     arrange(rn) |>
-    select(-fyear, -attendkey, -encrypted_hesid, -procode5, -firstatt) |>
+    select(-fyear, -attendkey, -encrypted_hesid, -firstatt) |>
     rename(age = apptage) |>
     mutate(
       across(ends_with("date"), lubridate::ymd),
@@ -175,7 +158,7 @@ create_op_synth_from_data <- function(data) {
 
 aggregate_op_data <- function(data, ...) {
   data |>
-    select(age, sex, tretspef, ..., matches("^(ha|i)s_")) |>
+    select(age, sex, tretspef, sitetret, is_main_icb, ..., matches("^(ha|i)s_")) |>
     mutate(
       type = paste(
         sep = "_",
@@ -216,7 +199,7 @@ save_op_data <- function(data, name, ...) {
   }
 
   data |>
-    arrange(age, sex, tretspef, ...) |>
+    arrange(age, sex, tretspef, is_main_icb, ...) |>
     write_parquet(path("op.parquet"))
 
   cat(file.size(path("op.parquet")) / 1024^2, "\n")
@@ -255,7 +238,7 @@ rtt_specs <- c(
 )
 
 # create_synthetic_op_extract(ethnos, imd04_decile, specialties = rtt_specs)
-# create_synthetic_op_extract(specialties = rtt_specs)
+create_synthetic_op_extract(specialties = rtt_specs)
 
 purrr::walk(
   list(
