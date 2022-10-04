@@ -227,7 +227,8 @@ class OutpatientsModel(Model):
         }
 
     @staticmethod
-    def _expat_adjustment(data: pd.DataFrame, expat_params: dict) -> pd.Series:
+    def _expat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
+        expat_params = run_params["expat"]["op"]
         join_cols = ["tretspef"]
         return data.merge(
             pd.DataFrame(
@@ -239,9 +240,9 @@ class OutpatientsModel(Model):
         )["value"].fillna(1)
 
     @staticmethod
-    def _repat_adjustment(
-        data: pd.DataFrame, repat_local_params: dict, repat_nonlocal_params: dict
-    ) -> pd.Series:
+    def _repat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
+        repat_local_params = run_params["repat_local"]["op"]
+        repat_nonlocal_params = run_params["repat_nonlocal"]["op"]
         join_cols = ["tretspef", "is_main_icb"]
         return data.merge(
             pd.DataFrame(
@@ -303,18 +304,14 @@ class OutpatientsModel(Model):
             rng,
             data,
             "expatriation",
-            self._expat_adjustment(data, run_params["expat"]["op"]),
+            self._expat_adjustment(data, run_params),
             step_counts,
         )
         self._run_poisson_step(
             rng,
             data,
             "repatriation",
-            self._repat_adjustment(
-                data,
-                run_params["repat_local"]["op"],
-                run_params["repat_nonlocal"]["op"],
-            ),
+            self._repat_adjustment(data, run_params),
             step_counts,
         )
         # waiting list adjustments
