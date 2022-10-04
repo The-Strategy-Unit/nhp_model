@@ -200,7 +200,7 @@ def test_aggregate(mock_model):
             "age_group": [1, 1, 1, 1],
             "sex": [1, 1, 1, 1],
             "aedepttype": ["01", "01", "02", "02"],
-            "aearrivalmode": ["1", "2", "1", "2"],
+            "is_ambulance": [True, False, True, False],
             "value": [1, 2, 3, 4],
         }
     )
