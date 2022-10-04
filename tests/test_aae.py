@@ -28,6 +28,11 @@ def mock_model():
         "end_year": 2020,
         "health_status_adjustment": [0.8, 1.0],
         "waiting_list_adjustment": "waiting_list_adjustment",
+        "expat": {
+            "aae": {"ambulance": [0.7, 0.9]},
+            "repat_local": {"aae": {"ambulance": [1.0, 1.2]}},
+            "repat_nonlocal": {"aae": {"ambulance": [1.3, 1.5]}},
+        },
         "non-demographic_adjustment": {
             "a": {"a_a": [1, 1.2], "a_b": [1, 1.2]},
             "b": {"b_a": [1, 1.2], "b_b": [1, 1.2]},
@@ -143,6 +148,36 @@ def test_run_binomial_step(mock_model):
     rng.binomial.assert_called_once()
 
 
+def test_expat_adjustment():
+    """ "test that it returns the right parameters"""
+    # arrange
+    data = pd.DataFrame({"is_ambulance": [True, False]})
+    run_params = {"expat": {"aae": {"ambulance": 0.8}}}
+    # act
+    actual = AaEModel._expat_adjustment(data, run_params)
+    # assert
+    assert actual.tolist() == [0.8, 1.0]
+
+
+def test_repat_adjustment():
+    """test that it returns the right parameters"""
+    # arrange
+    data = pd.DataFrame(
+        {
+            "is_ambulance": [True, False] * 2,
+            "is_main_icb": [i for i in [True, False] for _ in range(2)],
+        }
+    )
+    run_params = {
+        "repat_local": {"aae": {"ambulance": 1.1}},
+        "repat_nonlocal": {"aae": {"ambulance": 1.3}},
+    }
+    # act
+    actual = AaEModel._repat_adjustment(data, run_params)
+    # assert
+    assert actual.tolist() == [1.1, 1.0, 1.3, 1.0]
+
+
 def test_run(mock_model):
     """test that it runs the model steps"""
     # arrange
@@ -152,6 +187,8 @@ def test_run(mock_model):
     mdl._low_cost_discharged = Mock()
     mdl._left_before_seen = Mock()
     mdl._frequent_attenders = Mock()
+    mdl._expat_adjustment = Mock()
+    mdl._repat_adjustment = Mock()
     data = pd.DataFrame({"rn": [1, 2], "hsagrp": [3, 4], "arrivals": [5, 6]})
     run_params = {"aae_factors": "aae_factors"}
     # act
@@ -170,11 +207,13 @@ def test_run(mock_model):
         )
     )
     assert model_results.equals(data.drop("hsagrp", axis="columns"))
-    assert mdl._run_poisson_step.call_count == 2
-    assert mdl._run_binomial_step.call_count == 3
+    assert mdl._run_poisson_step.call_count == 3
+    assert mdl._run_binomial_step.call_count == 4
     mdl._low_cost_discharged.assert_called_once()
     mdl._left_before_seen.assert_called_once()
     mdl._frequent_attenders.assert_called_once()
+    mdl._expat_adjustment.assert_called_once()
+    mdl._repat_adjustment.assert_called_once()
 
 
 def test_aggregate(mock_model):
@@ -188,8 +227,10 @@ def test_aggregate(mock_model):
     mdl._create_agg = Mock(wraps=create_agg_stub)
     model_results = pd.DataFrame(
         {
+            "age_group": [1, 1, 1, 1],
+            "sex": [1, 1, 1, 1],
             "aedepttype": ["01", "01", "02", "02"],
-            "aearrivalmode": ["1", "2", "1", "2"],
+            "is_ambulance": [True, False, True, False],
             "value": [1, 2, 3, 4],
         }
     )
@@ -199,11 +240,11 @@ def test_aggregate(mock_model):
     #
     mr_call = pd.DataFrame(
         {
-            "aedepttype": ["01", "01", "02", "02"],
-            "aearrivalmode": ["1", "2", "1", "2"],
-            "value": [1, 2, 3, 4],
             "pod": ["aae_type-01", "aae_type-01", "aae_type-02", "aae_type-02"],
             "measure": ["ambulance", "walk-in"] * 2,
+            "sex": [1, 1, 1, 1],
+            "age_group": [1, 1, 1, 1],
+            "value": [1, 2, 3, 4],
         }
     )
     assert mdl._create_agg.call_args_list[0][0][0].equals(mr_call)

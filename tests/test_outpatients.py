@@ -28,6 +28,9 @@ def mock_model():
         "end_year": 2020,
         "health_status_adjustment": [0.8, 1.0],
         "waiting_list_adjustment": "waiting_list_adjustment",
+        "expat": {"op": {"Other": [0.7, 0.9]}},
+        "repat_local": {"op": {"Other": [1.0, 1.2]}},
+        "repat_nonlocal": {"op": {"Other": [1.3, 1.5]}},
         "non-demographic_adjustment": {
             "a": {"a_a": [1, 1.2], "a_b": [1, 1.2]},
             "b": {"b_a": [1, 1.2], "b_b": [1, 1.2]},
@@ -181,6 +184,36 @@ def test_update_step_counts(mock_model):
     assert step_counts["test"] == {"attendances": 3, "tele_attendances": 6}
 
 
+def test_expat_adjustment():
+    """ "test that it returns the right parameters"""
+    # arrange
+    data = pd.DataFrame({"tretspef": ["100", "120", "Other"]})
+    run_params = {"expat": {"op": {"100": 0.8, "120": 0.9}}}
+    # act
+    actual = OutpatientsModel._expat_adjustment(data, run_params)
+    # assert
+    assert actual.tolist() == [0.8, 0.9, 1.0]
+
+
+def test_repat_adjustment():
+    """test that it returns the right parameters"""
+    # arrange
+    data = pd.DataFrame(
+        {
+            "tretspef": ["100", "120", "Other"] * 2,
+            "is_main_icb": [i for i in [True, False] for _ in range(3)],
+        }
+    )
+    run_params = {
+        "repat_local": {"op": {"100": 1.1, "120": 1.2}},
+        "repat_nonlocal": {"op": {"100": 1.3, "120": 1.4}},
+    }
+    # act
+    actual = OutpatientsModel._repat_adjustment(data, run_params)
+    # assert
+    assert actual.tolist() == [1.1, 1.2, 1.0, 1.3, 1.4, 1.0]
+
+
 def test_run(mock_model):
     """test that it runs the model steps"""
     # arrange
@@ -192,6 +225,8 @@ def test_run(mock_model):
     mdl._consultant_to_consultant_reduction = Mock()
     mdl._convert_to_tele = Mock()
     mdl._update_step_counts = Mock()
+    mdl._expat_adjustment = Mock()
+    mdl._repat_adjustment = Mock()
     data = pd.DataFrame(
         {
             "rn": [1, 2],
@@ -217,13 +252,15 @@ def test_run(mock_model):
         )
     )
     assert model_results.equals(data.drop("hsagrp", axis="columns"))
-    assert mdl._run_poisson_step.call_count == 3
-    assert mdl._run_binomial_step.call_count == 2
+    assert mdl._run_poisson_step.call_count == 4
+    assert mdl._run_binomial_step.call_count == 3
     mdl._waiting_list_adjustment.assert_called_once()
     mdl._followup_reduction.assert_called_once()
     mdl._consultant_to_consultant_reduction.assert_called_once()
     mdl._convert_to_tele.assert_called_once()
     mdl._update_step_counts.assert_called_once()
+    mdl._expat_adjustment.assert_called_once()
+    mdl._repat_adjustment.assert_called_once()
 
 
 def test_aggregate(mock_model):
@@ -239,9 +276,12 @@ def test_aggregate(mock_model):
         {
             "is_first": [True, True, False, False],
             "has_procedures": [False, True, False, True],
+            "tretspef": [1, 1, 1, 1],
             "rn": [1, 2, 3, 4],
             "attendances": [5, 6, 7, 8],
             "tele_attendances": [9, 10, 11, 12],
+            "age_group": [1, 1, 1, 1],
+            "sex": [1, 1, 1, 1],
         }
     )
     results = mdl.aggregate(model_results, 1)
@@ -250,16 +290,14 @@ def test_aggregate(mock_model):
     #
     mr_call = pd.DataFrame(
         {
-            "is_first": [True] * 4 + [False] * 4,
-            "has_procedures": [False, False, True, True] * 2,
-            "rn": [i for i in [1, 2, 3, 4] for _ in [0, 1]],
             "pod": [
-                k
-                for k in ["op_first", "op_procedure", "op_follow-up", "op_procedure"]
-                for _ in [0, 1]
+                k for k in ["op_first", "op_follow-up", "op_procedure"] for _ in [0, 1]
             ],
-            "measure": ["attendances", "tele_attendances"] * 4,
-            "value": [5, 9, 6, 10, 7, 11, 8, 12],
+            "measure": ["attendances", "tele_attendances"] * 3,
+            "sex": [1] * 6,
+            "age_group": [1] * 6,
+            "tretspef": [1] * 6,
+            "value": [5, 9, 7, 11, 14, 22],
         }
     )
     assert mdl._create_agg.call_args_list[0][0][0].equals(mr_call)

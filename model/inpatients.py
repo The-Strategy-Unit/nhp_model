@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 
 from model.helpers import inrange
+from model.inpatients_admissions_counter import InpatientsAdmissionsCounter
 from model.model import Model
 
 
@@ -38,11 +39,13 @@ class InpatientsModel(Model):
                 "age",
                 "sex",
                 "admimeth",
+                "admigroup",
                 "classpat",
                 "mainspef",
                 "tretspef",
                 "hsagrp",
                 "has_procedure",
+                "is_main_icb",
             ],
         )
         # load the strategies, store each strategy file as a separate entry in a dictionary
@@ -52,6 +55,42 @@ class InpatientsModel(Model):
         }
         # load the theatres data
         self._load_theatres_data()
+        # load the kh03 data
+        self._load_kh03_data()
+
+    def _load_kh03_data(self):
+        # load the kh03 data
+        self._ward_groups = pd.concat(
+            [
+                pd.DataFrame(
+                    {"ward_type": k, "ward_group": list(v.values())},
+                    index=list(v.keys()),
+                )
+                for k, v in self.params["bed_occupancy"]["specialty_mapping"].items()
+            ]
+        )
+        self._kh03_data = (
+            pd.read_csv(
+                f"{self._data_path}/kh03.csv",
+                dtype={
+                    "specialty_code": np.character,
+                    "specialty_group": np.character,
+                    "available": np.float64,
+                    "occupied": np.float64,
+                },
+            )
+            .merge(self._ward_groups, left_on="specialty_code", right_index=True)
+            .groupby(["ward_group"])
+            .agg("sum")
+        )
+        # get the baseline data
+        self._beds_baseline = (
+            self.data[self.data.classpat.isin(["1", "4", "5"])]
+            .merge(self._ward_groups, left_on="mainspef", right_index=True)
+            .groupby(["ward_group"])
+            .speldur.agg(lambda x: sum(x + 1))  # convert los to bed days
+        )
+        self._beds_baseline.name = "baseline"
 
     def _load_theatres_data(self) -> None:
         """Load the Theatres data
@@ -62,6 +101,12 @@ class InpatientsModel(Model):
             self._theatres_data = json.load(tdf)
         self._theatres_data["four_hour_sessions"] = pd.Series(
             self._theatres_data["four_hour_sessions"], name="four_hour_sessions"
+        )
+        self._theatres_baseline = (
+            self.data[self.data.has_procedure == 1]
+            .assign(is_elective=lambda x: x.admigroup == "elective", n=1)
+            .groupby("tretspef", as_index=False)[["is_elective", "n"]]
+            .sum()
         )
 
     def _los_reduction(self, run_params: dict) -> pd.DataFrame:
@@ -85,13 +130,11 @@ class InpatientsModel(Model):
         self, rng: np.random.Generator, strategy_type: str
     ) -> pd.DataFrame:
         """Select one strategy per record
-
         :param rng: a random number generator created for each model iteration
         :type rng: numpy.random.Generator
         :param strategy_type: the type of strategy to update, e.g. "admission_avoidance",
             "los_reduction"
         :type strategy_type: str
-
         :returns: an updated DataFrame with a new column for the selected strategy
         :rtype: pandas.DataFrame
         """
@@ -114,6 +157,45 @@ class InpatientsModel(Model):
             # for each rn, select a single row, i.e. select 1 strategy per rn
             .groupby(level=0).head(1)
         )
+
+    @staticmethod
+    def _expat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
+        expat_params = run_params["expat"]["ip"]
+        join_cols = ["admigroup", "tretspef"]
+        return data.merge(
+            pd.DataFrame(
+                [
+                    {"admigroup": k1, "tretspef": k2, "value": v2}
+                    for k1, v1 in expat_params.items()
+                    for k2, v2 in v1.items()
+                ]
+            ).set_index(join_cols),
+            how="left",
+            left_on=join_cols,
+            right_index=True,
+        )["value"].fillna(1)
+
+    @staticmethod
+    def _repat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
+        repat_local_params = run_params["repat_local"]["ip"]
+        repat_nonlocal_params = run_params["repat_nonlocal"]["ip"]
+        join_cols = ["admigroup", "tretspef", "is_main_icb"]
+        return data.merge(
+            pd.DataFrame(
+                [
+                    {"admigroup": k1, "tretspef": k2, "is_main_icb": icb, "value": v2}
+                    for (k0, icb) in [
+                        (repat_local_params, True),
+                        (repat_nonlocal_params, False),
+                    ]
+                    for k1, v1 in k0.items()
+                    for k2, v2 in v1.items()
+                ]
+            ).set_index(join_cols),
+            how="left",
+            left_on=join_cols,
+            right_index=True,
+        )["value"].fillna(1)
 
     def _waiting_list_adjustment(self, data: pd.DataFrame) -> pd.Series:
         """Create a series of factors for waiting list adjustment.
@@ -161,78 +243,32 @@ class InpatientsModel(Model):
             .melt(["admigroup"], var_name="age_group")
             .set_index(["age_group", "admigroup"])["value"]
         )
-        admigroup = np.where(
-            data["admimeth"].str.startswith("1"),
-            "elective",
-            np.where(data["admimeth"].str.startswith("3"), "maternity", "non-elective"),
-        )
 
         return (
-            data[["age_group"]]
-            .assign(admigroup=admigroup)
+            data[["age_group", "admigroup"]]
             .join(ndp, on=["age_group", "admigroup"])["value"]
             .to_numpy()
         )
 
     @staticmethod
-    def _admission_avoidance_step(
-        rng: np.random.Generator,
-        data: pd.DataFrame,
+    def _admission_avoidance(
         admission_avoidance: pd.Series,
         run_params: dict,
-        step_counts: dict,
-    ) -> pd.DataFrame:
-        """Run the admission avoidance strategies
+    ) -> np.ndarray:
+        """Calculate the admission avoidance change factors
 
-        Runs the admission avoidance step and updates the `step_counts` dictionary
-
-        :param rng: a random number generator created for each model iteration
-        :type rng: numpy.random.Generator
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
         :param admission_avoidance: the selected admission avoidance strategies for this model run
         :type admission_avoidance: pandas.Series
         :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
         :type run_params: dict
 
-        :returns: the updated data
-        :rtype: pandas.DataFrame
+        :returns: the admission avoidance factors
+        :rtype: numpy.ndarray
         """
-        # choose admission avoidance factors
         ada = defaultdict(
             lambda: 1, run_params["inpatient_factors"]["admission_avoidance"]
         )
-        # work out the number of rows/sum of los before admission avoidance
-        data_aa = data.merge(
-            admission_avoidance, left_on="rn", right_index=True
-        ).groupby("admission_avoidance_strategy")
-        sc_n_aa = data_aa["rn"].agg(len)
-        # add rows to convert los to beddays
-        sc_b_aa = data_aa["speldur"].agg(sum) + sc_n_aa
-        # then, work out the admission avoidance factors for each row
-        aaf = [ada[k] for k in admission_avoidance[data["rn"]]]
-        # decide whether to select this row or not
-        select_row = rng.binomial(n=1, p=aaf).astype(bool)
-        # select each row as many times as it was sampled
-        data = data[select_row].reset_index(drop=True)
-        # update our number of rows and update step_counts
-        data_aa = data.merge(
-            admission_avoidance, left_on="rn", right_index=True
-        ).groupby("admission_avoidance_strategy")
-        # handle the case of a strategy eliminating all rows
-        sc_n_aa_post = data_aa["rn"].agg(len)
-        # as above, convert los to beddays
-        sc_b_aa_post = data_aa["speldur"].agg(sum) + sc_n_aa_post
-        # convert to default dict's: if a strategy eliminates all rows the final step will fail
-        # returning NaN values for these strategies
-        sc_n_aa_post = defaultdict(lambda: 0, sc_n_aa_post.to_dict())
-        sc_b_aa_post = defaultdict(lambda: 0, sc_b_aa_post.to_dict())
-        for k in sc_n_aa.index:
-            step_counts[("admission_avoidance", k)] = {
-                "admissions": sc_n_aa_post[k] - sc_n_aa[k],
-                "beddays": sc_b_aa_post[k] - sc_b_aa[k],
-            }
-        return data
+        return [ada[k] for k in admission_avoidance]
 
     @staticmethod
     def _losr_all(
@@ -333,7 +369,7 @@ class InpatientsModel(Model):
         i = losr.index[i]
         # make sure we only keep values in losr that exist in data
         i = i[i.isin(data.index)]
-        data.loc[i, "classpat"] = bads_df["classpat"]
+        data.loc[i, "classpat"] = bads_df["classpat"].tolist()
         # set the speldur to 0 if we aren't inpatients
         data.loc[i, "speldur"] *= data.loc[i, "classpat"] == "1"
 
@@ -394,45 +430,6 @@ class InpatientsModel(Model):
                 "beddays": change_los[k],
             }
 
-    @staticmethod
-    def _run_poisson_step(
-        rng: np.random.BitGenerator,
-        data: pd.DataFrame,
-        name: str,
-        factor: np.ndarray,
-        step_counts: dict,
-    ) -> None:
-        """Run a poisson step
-
-        Resample the rows of `data` using a randomly generated poisson value for each row from
-        `factor`.
-
-        Updates the `step_counts` dictionary as a side effect.
-
-        :param rng: a random number generator created for each model iteration
-        :type rng: numpy.random.Generator
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param factor: a series with as many values as rows in `data` which will be used as the lambda
-            value for the poisson distribution
-        :type factor: pandas.Series
-        :param step_counts: a dictionary containing the changes to measures for this step
-        :type step_counts: dict
-
-        :returns: the updated DataFrame
-        :rtype: pandas.DataFrame
-        """
-        select_row_n_times = rng.poisson(factor)
-        sc_n = len(data.index)
-        sc_b = int(sum(data["speldur"] + 1))
-        # perform the step
-        data = data.loc[data.index.repeat(select_row_n_times)].reset_index(drop=True)
-        # update the step count values
-        sc_np = int(sum(select_row_n_times))
-        sc_bp = int(sum(data["speldur"] + 1))
-        step_counts[(name, "-")] = {"admissions": sc_np - sc_n, "beddays": sc_bp - sc_b}
-        return data
-
     def _run(
         self,
         rng: np.random.Generator,
@@ -458,50 +455,42 @@ class InpatientsModel(Model):
         :rtype: (dict, pandas.DataFrame)
         """
         # select strategies
-        admission_avoidance = self._random_strategy(rng, "admission_avoidance")
+        admission_avoidance = self._random_strategy(rng, "admission_avoidance")[
+            data["rn"]
+        ]
         los_reduction = self._random_strategy(rng, "los_reduction")
         # choose length of stay reduction factors
         losr = self._los_reduction(run_params)
 
-        step_counts = {
-            ("baseline", "-"): {
-                "admissions": len(data.index),
-                "beddays": int(sum(data["speldur"] + 1)),
-            }
-        }
-
-        # first, run hsa as we have the factor already created
-        data = self._run_poisson_step(
-            rng, data, "health_status_adjustment", hsa_f, step_counts
+        # create an array that keeps track of the number of times we have sampled each row
+        admissions = (
+            InpatientsAdmissionsCounter(data, rng)
+            .poisson_step(hsa_f, "health_status_adjustment")
+            .poisson_step(demo_f[data["rn"]], "population_factors")
+            .poisson_step(self._expat_adjustment(data, run_params), "expatriation")
+            .poisson_step(
+                self._repat_adjustment(data, run_params),
+                "repatriation",
+            )
+            .poisson_step(
+                self._waiting_list_adjustment(data), "waiting_list_adjustment"
+            )
+            .poisson_step(
+                self._non_demographic_adjustment(data, run_params),
+                "non-demographic_adjustment",
+            )
+            .binomial_step(
+                self._admission_avoidance(admission_avoidance, run_params),
+                "admission_avoidance",
+                admission_avoidance.tolist(),
+            )
         )
-        # then, demographic modelling
-        data = self._run_poisson_step(
-            rng, data, "population_factors", demo_f[data["rn"]], step_counts
-        )
-        # waiting list adjustments
-        data = self._run_poisson_step(
-            rng,
-            data,
-            "waiting_list_adjustment",
-            self._waiting_list_adjustment(data),
-            step_counts,
-        )
-        # non-demographic adjustment
-        data = self._run_poisson_step(
-            rng,
-            data,
-            "non-demographic_adjustment",
-            self._non_demographic_adjustment(data, run_params),
-            step_counts,
-        )
-        # Admission Avoidance ----------------------------------------------------------------------
-        data = self._admission_avoidance_step(
-            rng, data, admission_avoidance, run_params, step_counts
-        )
-        # done with row count adjustment
+        # done with resampling rows, get the resampled data and the step counts
+        data = admissions.get_data()
+        step_counts = admissions.step_counts
         # LoS Reduction ----------------------------------------------------------------------------
         # set the index for easier querying
-        data.set_index(los_reduction[data["rn"]], inplace=True)
+        data.set_index(los_reduction.loc[data["rn"]], inplace=True)
         # run each of the length of stay reduction strategies
         self._losr_all(data, losr, rng, step_counts)
         self._losr_to_zero(data, losr, rng, "aec", step_counts)
@@ -540,49 +529,30 @@ class InpatientsModel(Model):
         """
         # create the namedtuple type
         result = namedtuple("results", ["pod", "measure", "ward_group"])
-        # extract params
-        ga_ward_groups = pd.Series(
-            self.params["bed_occupancy"]["specialty_mapping"]["General and Acute"],
-            name="ward_group",
-        )
-        # load the kh03 data
-        kh03_data = (
-            pd.read_csv(
-                f"{self._data_path}/kh03.csv",
-                dtype={
-                    "specialty_code": np.character,
-                    "specialty_group": np.character,
-                    "available": np.float64,
-                    "occupied": np.float64,
-                },
-            )
-            .merge(ga_ward_groups, left_on="specialty_code", right_index=True)
-            .groupby(["ward_group"])
-            .agg("sum")
-        )
         if model_run == -1:
             return {
                 result("ip", "day+night", k): v
-                for k, v in kh03_data["available"].iteritems()
+                for k, v in self._kh03_data["available"].iteritems()
             }
 
         target_bed_occupancy_rates = pd.Series(bed_occupancy_params["day+night"])
-        # get the baseline data
-        baseline = (
-            self.data[self.data.classpat.isin(["1", "4"])]
-            .merge(ga_ward_groups, left_on="mainspef", right_index=True)
-            .groupby("ward_group")
-            .speldur.agg(lambda x: sum(x + 1))  # convert los to bed days
-        )
-        baseline.name = "baseline"
+
         # get the model run data
         dn_admissions = (
             ip_rows[
                 (ip_rows["measure"] == "beddays")
-                & (ip_rows["pod"].str.endswith("admission"))
+                & (
+                    ip_rows["pod"].isin(
+                        [
+                            "ip_non-elective_admission",
+                            "ip_elective_admission",
+                            "ip_non-elective_birth-episode",
+                        ]
+                    )
+                )
             ]
-            .merge(ga_ward_groups, left_on="mainspef", right_index=True)
-            .groupby("ward_group")
+            .merge(self._ward_groups, left_on="mainspef", right_index=True)
+            .groupby(["ward_group"])
             .value.sum()
         )
         # return the results
@@ -590,8 +560,8 @@ class InpatientsModel(Model):
             result("ip", "day+night", k): v
             for k, v in (
                 (
-                    (dn_admissions * kh03_data["occupied"])
-                    / (baseline * target_bed_occupancy_rates)
+                    (dn_admissions * self._kh03_data["occupied"])
+                    / (self._beds_baseline * target_bed_occupancy_rates)
                 )
                 .dropna()
                 .to_dict()
@@ -635,29 +605,30 @@ class InpatientsModel(Model):
             theatres_params["change_utilisation"], name="change_utilisation"
         )
 
-        tretspefs = pd.DataFrame({"tretspef": model_results.tretspef.unique()})
-        tretspefs["new_tretspef"] = tretspefs["tretspef"]
-
-        tretspefs.loc[
-            ~tretspefs.tretspef.isin(fhs.index),
-            "new_tretspef",
-        ] = "Other"
-
         activity = pd.concat(
             {
                 k: (
-                    v.query("has_procedure==1")
-                    .merge(tretspefs, on="tretspef")
-                    .drop("tretspef", axis="columns")
-                    .rename(columns={"new_tretspef": "tretspef"})
-                    .assign(is_elective=lambda x: x.admimeth.str.startswith("1"), n=1)
-                    .groupby("tretspef")[["is_elective", "n"]]
-                    .agg("sum")
+                    v.assign(
+                        # keep just the specialties in the fhs object
+                        tretspef=lambda x: np.where(
+                            x.tretspef.isin(fhs.index.to_list()), x.tretspef, "Other"
+                        )
+                    )
+                    .groupby("tretspef")
+                    .sum()
                 )
-                for k, v in [
-                    ("baseline", self.data),
-                    ("future", model_results),
-                ]
+                for k, v in {
+                    "baseline": self._theatres_baseline,
+                    "future": (
+                        model_results[model_results.measure == "procedures"]
+                        .assign(
+                            is_elective=lambda x: (x.admigroup == "elective") * x.value
+                        )
+                        .groupby("tretspef", as_index=False)[["is_elective", "value"]]
+                        .sum()
+                        .rename(columns={"value": "n"})
+                    ),
+                }.items()
             }
         )
 
@@ -704,47 +675,53 @@ class InpatientsModel(Model):
         # get the run params: use principal run for baseline
         run_params = self._get_run_params(max(0, model_run))
 
-        # row's with a classpat of -1 are outpatients and need to be handled separately
-        ip_op_row_ix = model_results["classpat"] == "-1"
-        ip_rows = model_results[~ip_op_row_ix].copy()
-        op_rows = model_results[ip_op_row_ix].copy()
-        # run the theatres utilisation on the model results before we alter ip_rows
-        theatres_available = self._theatres_available(
-            ip_rows, run_params["theatres"], model_run
-        )
-        # handle OP rows
-        op_rows["pod"] = "op_procedure"
-        op_rows["measure"] = "attendances"
-        op_rows["value"] = 1
-        # handle IP rows
-        # create an admission group column
-        ip_rows["admission_group"] = "ip_non-elective"
-        ip_rows.loc[
-            ip_rows["admimeth"].str.startswith("1"), "admission_group"
-        ] = "ip_elective"
-        # quick dq fix: convert any "non-elective" daycases to "elective"
-        ip_rows.loc[
-            ip_rows["classpat"].isin(["2", "3"]), "admission_group"
-        ] = "ip_elective"
-        # create a "pod" column, starting with the admission group
-        ip_rows["pod"] = ip_rows["admission_group"]
-        ip_rows.loc[ip_rows["classpat"].isin(["1", "4"]), "pod"] += "_admission"
-        ip_rows.loc[ip_rows["classpat"].isin(["2", "3"]), "pod"] += "_daycase"
-        ip_rows.loc[ip_rows["classpat"] == "5", "pod"] += "_birth-episode"
-
-        ip_rows["beddays"] = ip_rows["speldur"] + 1
-        ip_rows = (
-            ip_rows.assign(admissions=1)
-            .reset_index()
-            .melt(
-                ["rn", "age_group", "sex", "tretspef", "mainspef", "pod"],
-                ["admissions", "beddays"],
-                "measure",
+        model_results = (
+            model_results.groupby(
+                [
+                    "age_group",
+                    "sex",
+                    "admimeth",
+                    "admigroup",
+                    "classpat",
+                    "mainspef",
+                    "tretspef",
+                ],
+                # as_index = False
             )
+            .agg({"rn": len, "has_procedure": sum, "speldur": sum})
+            .assign(speldur=lambda x: x.speldur + x.rn)
+            .rename(
+                columns={
+                    "rn": "admissions",
+                    "has_procedure": "procedures",
+                    "speldur": "beddays",
+                }
+            )
+            .melt(ignore_index=False, var_name="measure")
+            .reset_index()
         )
 
-        cols = list(set(ip_rows.columns).intersection(set(op_rows.columns)))
-        model_results = pd.concat([op_rows[cols], ip_rows[cols]])
+        model_results.loc[
+            model_results["admigroup"] == "maternity", "admigroup"
+        ] = "non-elective"
+        model_results["pod"] = "ip_" + model_results["admigroup"] + "_admission"
+        # quick dq fix: convert any "non-elective" daycases to "elective"
+        model_results.loc[
+            model_results["classpat"].isin(["2", "3"]), "pod"
+        ] = "ip_elective_daycase"
+        model_results.loc[
+            model_results["classpat"] == "5", "pod"
+        ] = "ip_non-elective_birth-episode"
+
+        # handle the outpatients rows
+        op_rows = model_results.classpat == "-1"
+        # filter out op_rows we don't care for
+        model_results = model_results[
+            ~op_rows | (model_results.measure == "admissions")
+        ]
+        # update the columns
+        model_results.loc[op_rows, "measure"] = "attendances"
+        model_results.loc[op_rows, "pod"] = "op_procedure"
 
         agg = partial(self._create_agg, model_results)
         return {
@@ -752,9 +729,11 @@ class InpatientsModel(Model):
             **agg(["sex", "age_group"]),
             **agg(["sex", "tretspef"]),
             "bed_occupancy": self._bed_occupancy(
-                ip_rows, run_params["bed_occupancy"], model_run
+                model_results.loc[~op_rows], run_params["bed_occupancy"], model_run
             ),
-            "theatres_available": theatres_available,
+            "theatres_available": self._theatres_available(
+                model_results.loc[~op_rows], run_params["theatres"], model_run
+            ),
         }
 
     def save_results(

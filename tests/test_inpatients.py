@@ -28,6 +28,9 @@ def mock_model():
         "end_year": 2020,
         "health_status_adjustment": [0.8, 1.0],
         "waiting_list_adjustment": "waiting_list_adjustment",
+        "expat": {"ip": {"elective": {"Other": [0.7, 0.9]}}},
+        "repat_local": {"ip": {"elective": {"Other": [1.0, 1.2]}}},
+        "repat_nonlocal": {"ip": {"elective": {"Other": [1.3, 1.5]}}},
         "non-demographic_adjustment": {
             "a": {"a_a": [1, 1.2], "a_b": [1, 1.2]},
             "b": {"b_a": [1, 1.2], "b_b": [1, 1.2]},
@@ -70,6 +73,7 @@ def mock_model():
             "age": list(range(1, 6)) * 4,
             "sex": ([1] * 5 + [2] * 5) * 2,
             "hsagrp": [x for _ in range(1, 11) for x in ["aae_a_a", "aae_b_b"]],
+            "admigroup": ["elective", "non-elective"] * 10,
         }
     )
     return mdl
@@ -98,6 +102,7 @@ def test_init_calls_super_init(mocker):
         "model.inpatients.InpatientsModel._load_parquet", wraps=lambda _: Mock()
     )
     mocker.patch("model.inpatients.InpatientsModel._load_theatres_data")
+    mocker.patch("model.inpatients.InpatientsModel._load_kh03_data")
     mdl = InpatientsModel("params", "data_path")
     # no asserts to perform, so long as this method doesn't fail
     assert mdl._load_parquet.call_count == 2
@@ -106,6 +111,48 @@ def test_init_calls_super_init(mocker):
     )
     assert mdl._load_parquet.call_args_list[1][0][0] == "ip_los_reduction_strategies"
     mdl._load_theatres_data.assert_called_once()
+    mdl._load_kh03_data.assert_called_once()
+
+
+def test_load_kh03_data(mocker, mock_model):
+    """test that the kh03 data is loaded correctly"""
+    # arrange
+    mdl = mock_model
+    mdl.params["bed_occupancy"] = {
+        "specialty_mapping": {
+            "General and Acute": {"100": "a", "200": "b", "300": "b", "500": "_"},
+            "Maternity": {"501": "c"},
+        }
+    }
+    mocker.patch(
+        "pandas.read_csv",
+        return_value=pd.DataFrame(
+            {
+                "specialty_code": ["100", "200", "300", "501"],
+                "available": [1, 2, 3, 4],
+                "occupied": [4, 5, 6, 7],
+            }
+        ),
+    )
+    mdl.data = pd.DataFrame(
+        {
+            "classpat": ["1", "1", "1", "2", "4", "1", "5"],
+            "mainspef": ["100", "200", "300", "100", "200", "501", "501"],
+            "speldur": [1, 2, 3, 4, 5, 6, 7],
+        }
+    )
+    # act
+    mdl._load_kh03_data()
+    # assert
+    mdl._ward_groups.equals(
+        pd.Series(["a", "b", "b", "c"], index=["100", "200", "300", "501"])
+    )
+    mdl._kh03_data.equals(
+        pd.DataFrame(
+            {"available": [1, 5, 4], "occupied": [4, 11, 7]}, index=["a", "b", "c"]
+        )
+    )
+    mdl._beds_baseline.equals(pd.Series([2, 13, 13], index=["a", "b", "c"]))
 
 
 def test_load_theatres_data(mocker, mock_model):
@@ -117,6 +164,8 @@ def test_load_theatres_data(mocker, mock_model):
             "four_hour_sessions": {"100": 1, "200": 2, "Other": 3},
         },
     )
+    mock_model.data["has_procedure"] = [i for i in [0, 1] for _j in range(10)]
+    mock_model.data["tretspef"] = ["100", "200"] * 10
     with patch("builtins.open", mock_open()) as mock_file:
         mock_model._load_theatres_data()
         json_mock.assert_called_once()
@@ -126,6 +175,11 @@ def test_load_theatres_data(mocker, mock_model):
         assert mock_model._theatres_data["theatres"] == 10
         assert mock_model._theatres_data["four_hour_sessions"].equals(
             pd.Series({"100": 1, "200": 2, "Other": 3}, name="four_hour_sessions")
+        )
+        assert mock_model._theatres_baseline.equals(
+            pd.DataFrame(
+                {"tretspef": ["100", "200"], "is_elective": [5, 0], "n": [5, 5]}
+            )
         )
 
 
@@ -202,7 +256,11 @@ def test_non_demographic_adjustment(mock_model):
     }
     data = pd.DataFrame(
         {
-            "admimeth": ["11", "12", "21", "22", "31", "32", "81", "82"],
+            "admigroup": [
+                i
+                for i in ["elective", "non-elective", "maternity", "non-elective"]
+                for _ in [0, 1]
+            ],
             "age_group": [0, 1] * 4,
         }
     )
@@ -211,32 +269,20 @@ def test_non_demographic_adjustment(mock_model):
     assert list(actual) == expected
 
 
-def test_admission_avoidance_step(mock_model):
-    """test admission avoidance step returns the correct data and step counts"""
+def test_admission_avoidance(mock_model):
+    """test admission avoidance returns the correct factors"""
     # arrange
     x = list(range(9))
-    rng = Mock()
-    rng.binomial.return_value = np.asarray([1] * 6 + [0] * 3)
     admission_avoidance = pd.Series(
         ["a_a", "a_b", "NULL"] * 3, index=x, name="admission_avoidance_strategy"
     )
-    data = pd.DataFrame({"rn": x, "speldur": x})
     run_params = {
         "inpatient_factors": {"admission_avoidance": {"a_a": 0.25, "a_b": 0.75}}
     }
-    step_counts = {}
     # act
-    data = mock_model._admission_avoidance_step(
-        rng, data, admission_avoidance, run_params, step_counts
-    )
+    actual = mock_model._admission_avoidance(admission_avoidance, run_params)
     # assert
-    assert data["rn"].tolist() == list(range(6))
-    assert data["speldur"].tolist() == list(range(6))
-    assert step_counts == {
-        ("admission_avoidance", "NULL"): {"admissions": -1, "beddays": -9},
-        ("admission_avoidance", "a_a"): {"admissions": -1, "beddays": -7},
-        ("admission_avoidance", "a_b"): {"admissions": -1, "beddays": -8},
-    }
+    assert actual == [0.25, 0.75, 1.0] * 3
 
 
 def test_losr_all(mock_model, mock_losr):
@@ -305,24 +351,74 @@ def test_losr_zero(mock_model, mock_losr):
     assert rng.uniform.call_args_list[0][1] == {"size": 6}
 
 
-def test_run_poisson_step(mock_model):
-    """test that it applies the poisson step, returns the mutates the data, and updates step counts"""
+def test_expat_adjustment():
+    """ "test that it returns the right parameters"""
     # arrange
-    rng = Mock()
-    rng.poisson = Mock(wraps=lambda xs: [2 * x for x in xs])
-    data = pd.DataFrame({"rn": [0, 1, 2, 3], "speldur": [0, 1, 2, 3]})
-    mdl = mock_model
-    step_counts = {}
+    data = pd.DataFrame(
+        {
+            "tretspef": ["100", "120", "Other"] * 2,
+            "admigroup": [i for i in ["elective", "non-elective"] for _ in range(3)],
+        }
+    )
+    run_params = {
+        "expat": {
+            "ip": {
+                "elective": {"100": 0.6, "120": 0.7},
+                "non-elective": {"100": 0.8, "120": 0.9},
+            }
+        }
+    }
     # act
-    data = mdl._run_poisson_step(rng, data, "test", [1, 2, 3, 0], step_counts)
+    actual = InpatientsModel._expat_adjustment(data, run_params)
     # assert
-    assert data.rn.to_list() == [0] * 2 + [1] * 4 + [2] * 6
-    assert data.speldur.to_list() == [0] * 2 + [1] * 4 + [2] * 6
-    assert rng.poisson.call_count == 1
-    assert step_counts == {("test", "-"): {"admissions": 8, "beddays": 18}}
+    assert actual.tolist() == [0.6, 0.7, 1.0, 0.8, 0.9, 1.0]
 
 
-def test_run(mock_model):
+def test_repat_adjustment():
+    """test that it returns the right parameters"""
+    # arrange
+    data = pd.DataFrame(
+        {
+            "tretspef": ["100", "120", "Other"] * 4,
+            "admigroup": [i for i in ["elective", "non-elective"] for _ in range(3)]
+            * 2,
+            "is_main_icb": [i for i in [True, False] for _ in range(6)],
+        }
+    )
+    run_params = {
+        "repat_local": {
+            "ip": {
+                "elective": {"100": 1.1, "120": 1.2},
+                "non-elective": {"100": 1.3, "120": 1.4},
+            }
+        },
+        "repat_nonlocal": {
+            "ip": {
+                "elective": {"100": 1.5, "120": 1.6},
+                "non-elective": {"100": 1.7, "120": 1.8},
+            }
+        },
+    }
+    # act
+    actual = InpatientsModel._repat_adjustment(data, run_params)
+    # assert
+    assert actual.tolist() == [
+        1.1,
+        1.2,
+        1.0,
+        1.3,
+        1.4,
+        1.0,
+        1.5,
+        1.6,
+        1.0,
+        1.7,
+        1.8,
+        1.0,
+    ]
+
+
+def test_run(mocker, mock_model):
     """test that it runs the model steps"""
     # arrange
     data = pd.DataFrame({"rn": [1, 2], "speldur": [0, 1], "hsagrp": ["a", "b"]})
@@ -331,13 +427,21 @@ def test_run(mock_model):
         return_value=pd.Series([1, 2], index=[1, 2]).rename_axis("rn")
     )
     mdl._los_reduction = Mock()
-    mdl._run_poisson_step = Mock(wraps=lambda x, y, *args: y)
+    mdl._expat_adjustment = Mock()
+    mdl._repat_adjustment = Mock()
     mdl._waiting_list_adjustment = Mock()
     mdl._non_demographic_adjustment = Mock()
-    mdl._admission_avoidance_step = Mock(wraps=lambda x, y, *args: y)
+    mdl._admission_avoidance = Mock(wraps=lambda x, y, *args: y)
     mdl._losr_all = Mock()
     mdl._losr_to_zero = Mock()
     mdl._losr_bads = Mock()
+    # mock admissions counter
+    admc = Mock()
+    mocker.patch("model.inpatients.InpatientsAdmissionsCounter", return_value=admc)
+    admc.poisson_step.return_value = admc
+    admc.binomial_step.return_value = admc
+    admc.get_data.return_value = data
+    admc.step_counts = {("baseline", "-"): {"admissions": 2, "beddays": 3}}
     # act
     change_factors, model_results = mdl._run(
         None, data, "run_params", pd.Series({1: 1, 2: 2}), "hsa_f"
@@ -356,136 +460,173 @@ def test_run(mock_model):
     assert model_results.equals(
         data.drop("hsagrp", axis="columns").reset_index(drop=True)
     )
-    assert mdl._run_poisson_step.call_count == 4
     assert mdl._random_strategy.call_count == 2
     mdl._los_reduction.assert_called_once()
+    mdl._expat_adjustment.assert_called_once()
+    mdl._repat_adjustment.assert_called_once()
     mdl._waiting_list_adjustment.assert_called_once()
     mdl._non_demographic_adjustment.assert_called_once()
-    mdl._admission_avoidance_step.assert_called_once()
+    mdl._admission_avoidance.assert_called_once()
     mdl._losr_all.assert_called_once()
     assert mdl._losr_to_zero.call_count == 2
     mdl._losr_bads.assert_called_once()
 
 
-def test_bed_occupancy(mocker, mock_model):
+def test_bed_occupancy(mock_model):
     """test that it aggregates the bed occupancy data"""
     # arrange
-    mock_model.params["bed_occupancy"] = {
+    mdl = mock_model
+    mdl.params["bed_occupancy"] = {
         "specialty_mapping": {
-            "General and Acute": {"100": "a", "200": "b", "300": "b", "500": "c"}
+            "General and Acute": {"100": "a", "200": "b", "300": "b", "500": "_"},
+            "Maternity": {"501": "c"},
         }
     }
-    read_csv = mocker.patch(
-        "pandas.read_csv",
-        return_value=pd.DataFrame(
-            {
-                "specialty_code": ["100", "200", "300", "400"],
-                "specialty_group": ["General and Acute"] * 4,
-                "available": [10, 20, 30, 40],
-                "occupied": [5, 15, 25, 35],
-            }
-        ),
+    mdl._ward_groups = pd.concat(
+        [
+            pd.DataFrame(
+                {"ward_type": k, "ward_group": list(v.values())},
+                index=list(v.keys()),
+            )
+            for k, v in mdl.params["bed_occupancy"]["specialty_mapping"].items()
+        ]
     )
-    mock_model.data = pd.DataFrame(
+    mdl._kh03_data = pd.DataFrame(
         {
-            "classpat": ["1", "1", "1", "2", "4"],
-            "mainspef": ["100", "200", "300", "100", "200"],
-            "speldur": [1, 2, 3, 4, 5],
+            "available": [10, 50, 5],
+            "occupied": [5, 40, 2],
+        },
+        index=["a", "b", "c"],
+    )
+    mdl._beds_baseline = pd.Series([5, 10, 1], index=["a", "b", "c"], name="baseline")
+    mdl.data = pd.DataFrame(
+        {
+            "classpat": ["1", "1", "1", "2", "4", "1", "5"],
+            "mainspef": ["100", "200", "300", "100", "200", "501", "501"],
+            "speldur": [1, 2, 3, 4, 5, 6, 7],
         }
     )
     model_results = pd.DataFrame(
         {
-            "classpat": ["1", "1", "1", "1", "1", "2", "4"] * 2,
-            "mainspef": ["100", "100", "200", "200", "300", "100", "200"] * 2,
-            "pod": [x for x in ["ip_admission", "ip_daycase"] for _ in range(7)],
-            "measure": ["beddays"] * 14,
-            "value": [1, 2, 3, 4, 5, 6, 7] * 2,
+            "classpat": ["1", "1", "1", "1", "1", "2", "4"] * 3 + ["1", "5"],
+            "mainspef": ["100", "100", "200", "200", "300", "100", "200"] * 3
+            + ["501"] * 2,
+            "pod": [
+                x
+                for x in [
+                    "ip_non-elective_admission",
+                    "ip_elective_admission",
+                    "ip_daycase",
+                ]
+                for _ in range(7)
+            ]
+            + ["ip_non-elective_admission", "ip_non-elective_birth-episode"],
+            "measure": ["beddays"] * 23,
+            "value": [1, 2, 3, 4, 5, 6, 7] * 3 + [8, 9],
         }
     )
     # act
-    actual = mock_model._bed_occupancy(
-        model_results, {"day+night": {"a": 0.75, "b": 0.875}}, 0
+    actual = mdl._bed_occupancy(
+        model_results, {"day+night": {"a": 0.75, "b": 0.875, "c": 0.5}}, 0
     )
     # assert
     assert {tuple(k): v for k, v in actual.items()} == {
-        ("ip", "day+night", "a"): (9 * 5) / (2 * 0.75),
-        ("ip", "day+night", "b"): (19 * 40) / (13 * 0.875),
+        ("ip", "day+night", "a"): (18 * 5) / (5 * 0.75),
+        ("ip", "day+night", "b"): (38 * 40) / (10 * 0.875),
+        ("ip", "day+night", "c"): (17 * 2) / (1 * 0.5),
     }
-    read_csv.assert_called_once_with(
-        "data/synthetic/kh03.csv",
-        dtype={
-            "specialty_code": np.character,
-            "specialty_group": np.character,
-            "available": np.float64,
-            "occupied": np.float64,
-        },
-    )
 
 
-def test_bed_occupancy_baseline(mocker, mock_model):
+def test_bed_occupancy_baseline(mock_model):
     """test that it just uses the kh03 available data"""
     # arrange
-    mock_model.params["bed_occupancy"] = {
+    mdl = mock_model
+    mdl.params["bed_occupancy"] = {
         "specialty_mapping": {
-            "General and Acute": {"100": "a", "200": "b", "300": "b", "500": "c"}
+            "General and Acute": {"100": "a", "200": "b", "300": "b", "500": "_"},
+            "Maternity": {"501": "c"},
         }
     }
-    read_csv = mocker.patch(
-        "pandas.read_csv",
-        return_value=pd.DataFrame(
-            {
-                "specialty_code": ["100", "200", "300", "400"],
-                "specialty_group": ["General and Acute"] * 4,
-                "available": [10, 20, 30, 40],
-                "occupied": [5, 15, 25, 35],
-            }
-        ),
+    mdl._ward_groups = pd.concat(
+        [
+            pd.DataFrame(
+                {"ward_type": k, "ward_group": list(v.values())},
+                index=list(v.keys()),
+            )
+            for k, v in mdl.params["bed_occupancy"]["specialty_mapping"].items()
+        ]
     )
-    mock_model.data = pd.DataFrame(
+    mdl._kh03_data = pd.DataFrame(
         {
-            "classpat": ["1", "1", "1", "2", "4"],
-            "mainspef": ["100", "200", "300", "100", "200"],
-            "speldur": [1, 2, 3, 4, 5],
+            "available": [10, 50, 5],
+            "occupied": [5, 40, 2],
+        },
+        index=["a", "b", "c"],
+    )
+    mdl._beds_baseline = pd.Series([5, 10, 1], index=["a", "b", "c"], name="baseline")
+    mdl.data = pd.DataFrame(
+        {
+            "classpat": ["1", "1", "1", "2", "4", "1", "5"],
+            "mainspef": ["100", "200", "300", "100", "200", "501", "501"],
+            "speldur": [1, 2, 3, 4, 5, 6, 7],
         }
     )
     model_results = pd.DataFrame(
         {
-            "classpat": ["1", "1", "1", "1", "1", "2", "4"] * 2,
-            "mainspef": ["100", "100", "200", "200", "300", "100", "200"] * 2,
-            "pod": [x for x in ["ip_admission", "ip_daycase"] for _ in range(7)],
-            "measure": ["beddays"] * 14,
-            "value": [1, 2, 3, 4, 5, 6, 7] * 2,
+            "classpat": ["1", "1", "1", "1", "1", "2", "4"] * 3 + ["1", "5"],
+            "mainspef": ["100", "100", "200", "200", "300", "100", "200"] * 3
+            + ["501"] * 2,
+            "pod": [
+                x
+                for x in [
+                    "ip_non-elective_admission",
+                    "ip_elective_admission",
+                    "ip_daycase",
+                ]
+                for _ in range(7)
+            ]
+            + ["ip_non-elective_admission", "ip_non-elective_birth-episode"],
+            "measure": ["beddays"] * 23,
+            "value": [1, 2, 3, 4, 5, 6, 7] * 3 + [8, 9],
         }
     )
     # act
     actual = mock_model._bed_occupancy(
-        model_results, {"day+night": {"a": 0.75, "b": 0.875}}, -1
+        model_results, {"day+night": {"a": 0.75, "b": 0.875, "c": 0.5}}, -1
     )
     # assert
     assert {tuple(k): v for k, v in actual.items()} == {
         ("ip", "day+night", "a"): 10,
         ("ip", "day+night", "b"): 50,
+        ("ip", "day+night", "c"): 5,
     }
 
 
 def test_theatres_available(mock_model):
     """test that it aggregates the theatres data"""
     # arrange
-    mock_model.data = pd.DataFrame(
+    model_results = pd.DataFrame(
         [
-            {"tretspef": t, "admimeth": a, "has_procedure": p}
+            {"tretspef": t, "admigroup": a, "measure": p}
             for t in ["100", "110", "200", "Other"]
-            for a in ["11", "21"]
-            for p in [1, 0]
+            for a in ["elective", "non-elective"]
+            for p in ["x", "procedures"]
         ]
     )
+    model_results["value"] = list(range(len(model_results)))
     mock_model._theatres_data = {
         "theatres": 10,
         "four_hour_sessions": pd.Series(
             {"100": 100, "110": 200, "Other": 300}, name="four_hour_sessions"
         ),
     }
-    model_results = pd.concat([mock_model.data] * 3)
+    mock_model._theatres_baseline = pd.DataFrame(
+        {
+            "tretspef": ["100", "110", "200", "Other"],
+            "is_elective": [1, 2, 3, 4],
+            "n": [2, 4, 6, 8],
+        },
+    )
     # act
     theatres_available = mock_model._theatres_available(
         model_results,
@@ -497,10 +638,10 @@ def test_theatres_available(mock_model):
     )
     # assert
     assert {tuple(k): v for k, v in theatres_available.items()} == {
-        ("ip_theatres", "four_hour_sessions", "100"): 150.0,
-        ("ip_theatres", "four_hour_sessions", "110"): 240.0,
-        ("ip_theatres", "four_hour_sessions", "Other"): 300.0,
-        ("ip_theatres", "theatres"): 2.3,
+        ("ip_theatres", "four_hour_sessions", "100"): 50,
+        ("ip_theatres", "four_hour_sessions", "110"): 200,
+        ("ip_theatres", "four_hour_sessions", "Other"): 314.2857142857143,
+        ("ip_theatres", "theatres"): 2.276190476190476,
     }
 
 
@@ -557,14 +698,16 @@ def test_aggregate(mock_model):
     xs = list(range(6)) * 2
     model_results = pd.DataFrame(
         {
-            "classpat": ["1", "2", "3", "4", "5", "-1"] * 2,
-            "admimeth": [x for x in ["1", "2"] for _ in range(6)],
-            "speldur": xs,
-            "rn": xs,
             "age_group": xs,
             "sex": xs,
-            "tretspef": xs,
+            "admimeth": xs,
+            "admigroup": ["elective", "non-elective", "maternity"] * 4,
+            "classpat": ["1", "2", "3", "4", "5", "-1"] * 2,
             "mainspef": xs,
+            "tretspef": xs,
+            "rn": [1] * 12,
+            "has_procedure": [0, 1] * 6,
+            "speldur": list(range(12)),
         }
     )
     results = mdl.aggregate(model_results, 1)
@@ -577,40 +720,10 @@ def test_aggregate(mock_model):
         "theatres_available": 3,
     }
     #
-    mr_call = {
-        "pod": ["op_procedure"] * 2
-        + [
-            "ip_elective_admission",
-            "ip_elective_daycase",
-            "ip_elective_daycase",
-            "ip_elective_admission",
-            "ip_elective_birth-episode",
-            "ip_non-elective_admission",
-            "ip_elective_daycase",
-            "ip_elective_daycase",
-            "ip_non-elective_admission",
-            "ip_non-elective_birth-episode",
-        ]
-        * 2,
-        "age_group": [5, 5] + [0, 1, 2, 3, 4] * 4,
-        "rn": [5, 5] + [0, 1, 2, 3, 4] * 4,
-        "sex": [5, 5] + [0, 1, 2, 3, 4] * 4,
-        "mainspef": [5, 5] + [0, 1, 2, 3, 4] * 4,
-        "tretspef": [5, 5] + [0, 1, 2, 3, 4] * 4,
-        "measure": ["attendances"] * 2 + ["admissions"] * 10 + ["beddays"] * 10,
-        "value": [1] * 12 + [1, 2, 3, 4, 5] * 2,
-    }
-    for i in [0, 1, 2]:
-        for k in mr_call.keys():
-            assert (
-                mdl._create_agg.call_args_list[i][0][0][k].to_list() == mr_call[k]
-            ), f"{i=},{k=}"
 
     mdl._get_run_params.assert_called_once_with(1)
     mdl._bed_occupancy.assert_called_once()
     mdl._theatres_available.assert_called_once()
-    for k in mr_call.keys():
-        assert mdl._bed_occupancy.call_args_list[0][0][0][k].to_list() == mr_call[k][2:]
     assert mdl._bed_occupancy.call_args_list[0][0][1] == "run_params"
 
 
