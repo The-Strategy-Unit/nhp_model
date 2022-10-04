@@ -28,6 +28,9 @@ def mock_model():
         "end_year": 2020,
         "health_status_adjustment": [0.8, 1.0],
         "waiting_list_adjustment": "waiting_list_adjustment",
+        "expat": {"ip": {"elective": {"Other": [0.7, 0.9]}}},
+        "repat_local": {"ip": {"elective": {"Other": [1.0, 1.2]}}},
+        "repat_nonlocal": {"ip": {"elective": {"Other": [1.3, 1.5]}}},
         "non-demographic_adjustment": {
             "a": {"a_a": [1, 1.2], "a_b": [1, 1.2]},
             "b": {"b_a": [1, 1.2], "b_b": [1, 1.2]},
@@ -357,6 +360,8 @@ def test_run(mocker, mock_model):
         return_value=pd.Series([1, 2], index=[1, 2]).rename_axis("rn")
     )
     mdl._los_reduction = Mock()
+    mdl._expat_adjustment = Mock()
+    mdl._repat_adjustment = Mock()
     mdl._waiting_list_adjustment = Mock()
     mdl._non_demographic_adjustment = Mock()
     mdl._admission_avoidance = Mock(wraps=lambda x, y, *args: y)
@@ -390,6 +395,8 @@ def test_run(mocker, mock_model):
     )
     assert mdl._random_strategy.call_count == 2
     mdl._los_reduction.assert_called_once()
+    mdl._expat_adjustment.assert_called_once()
+    mdl._repat_adjustment.assert_called_once()
     mdl._waiting_list_adjustment.assert_called_once()
     mdl._non_demographic_adjustment.assert_called_once()
     mdl._admission_avoidance.assert_called_once()

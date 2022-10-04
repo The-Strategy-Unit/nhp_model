@@ -159,7 +159,8 @@ class InpatientsModel(Model):
         )
 
     @staticmethod
-    def _expat_adjustment(data: pd.DataFrame, expat_params: dict) -> pd.Series:
+    def _expat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
+        expat_params = run_params["expat"]["ip"]
         join_cols = ["admigroup", "tretspef"]
         return data.merge(
             pd.DataFrame(
@@ -175,9 +176,9 @@ class InpatientsModel(Model):
         )["value"].fillna(1)
 
     @staticmethod
-    def _repat_adjustment(
-        data: pd.DataFrame, repat_local_params: dict, repat_nonlocal_params: dict
-    ) -> pd.Series:
+    def _repat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
+        repat_local_params = (run_params["repat_local"]["ip"],)
+        repat_nonlocal_params = run_params["repat_nonlocal"]["ip"]
         join_cols = ["admigroup", "tretspef", "is_main_icb"]
         return data.merge(
             pd.DataFrame(
@@ -466,15 +467,9 @@ class InpatientsModel(Model):
             InpatientsAdmissionsCounter(data, rng)
             .poisson_step(hsa_f, "health_status_adjustment")
             .poisson_step(demo_f[data["rn"]], "population_factors")
+            .poisson_step(self._expat_adjustment(data, run_params), "expatriation")
             .poisson_step(
-                self._expat_adjustment(data, run_params["expat"]["ip"]), "expatriation"
-            )
-            .poisson_step(
-                self._repat_adjustment(
-                    data,
-                    run_params["repat_local"]["ip"],
-                    run_params["repat_nonlocal"]["ip"],
-                ),
+                self._repat_adjustment(data, run_params),
                 "repatriation",
             )
             .poisson_step(
