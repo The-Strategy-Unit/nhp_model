@@ -28,6 +28,11 @@ def mock_model():
         "end_year": 2020,
         "health_status_adjustment": [0.8, 1.0],
         "waiting_list_adjustment": "waiting_list_adjustment",
+        "expat": {
+            "aae": {"ambulance": [0.7, 0.9]},
+            "repat_local": {"aae": {"ambulance": [1.0, 1.2]}},
+            "repat_nonlocal": {"aae": {"ambulance": [1.3, 1.5]}},
+        },
         "non-demographic_adjustment": {
             "a": {"a_a": [1, 1.2], "a_b": [1, 1.2]},
             "b": {"b_a": [1, 1.2], "b_b": [1, 1.2]},
@@ -152,6 +157,8 @@ def test_run(mock_model):
     mdl._low_cost_discharged = Mock()
     mdl._left_before_seen = Mock()
     mdl._frequent_attenders = Mock()
+    mdl._expat_adjustment = Mock()
+    mdl._repat_adjustment = Mock()
     data = pd.DataFrame({"rn": [1, 2], "hsagrp": [3, 4], "arrivals": [5, 6]})
     run_params = {"aae_factors": "aae_factors"}
     # act
@@ -170,11 +177,13 @@ def test_run(mock_model):
         )
     )
     assert model_results.equals(data.drop("hsagrp", axis="columns"))
-    assert mdl._run_poisson_step.call_count == 2
-    assert mdl._run_binomial_step.call_count == 3
+    assert mdl._run_poisson_step.call_count == 3
+    assert mdl._run_binomial_step.call_count == 4
     mdl._low_cost_discharged.assert_called_once()
     mdl._left_before_seen.assert_called_once()
     mdl._frequent_attenders.assert_called_once()
+    mdl._expat_adjustment.assert_called_once()
+    mdl._repat_adjustment.assert_called_once()
 
 
 def test_aggregate(mock_model):
