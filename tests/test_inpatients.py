@@ -83,12 +83,14 @@ def mock_model():
 def mock_losr():
     return pd.DataFrame(
         {
-            "type": [x for x in ["all", "zero"] for _ in [0, 1]] + ["bads"] * 3,
-            "baseline_target_rate": [pd.NA] * 4 + [0.25, 0.50, 0.75],
-            "op_dc_split": [pd.NA] * 4 + [0, 1, 0.5],
-            "losr_f": [1 - 1 / (2**x) for x in range(7)],
+            "type": [x for x in ["all", "aec", "pre-op"] for _ in [0, 1]]
+            + ["bads"] * 3,
+            "baseline_target_rate": [pd.NA] * 6 + [0.25, 0.50, 0.75],
+            "op_dc_split": [pd.NA] * 6 + [0, 1, 0.5],
+            "pre-op_days": [pd.NA] * 4 + [1, 2] + [pd.NA] * 3,
+            "losr_f": [1 - 1 / (2**x) for x in range(9)],
         },
-        index=["a", "b", "c", "d", "e", "f", "g"],
+        index=["a", "b", "c", "d", "e", "f", "g", "h", "i"],
     )
 
 
@@ -312,28 +314,29 @@ def test_losr_bads(mock_model, mock_losr):
     # 2: rvr < ur0 + ur1
     # 3: rvr >= ur0 + ur1
     rng.uniform.return_value = (
-        [0.08, 0.08, 0.09] + [0.06, 0.07, 1.0] + [0.06, 0.07, 0.55]
+        [0.02, 0.02, 0.01] + [0.04, 0.03, 1.0] + [0.04, 0.03, 0.55]
     )
     losr = mock_losr
     data = pd.DataFrame(
         {"speldur": list(range(12)), "classpat": ["1"] * 6 + ["2"] * 3 + ["1"] * 3},
-        index=[x for x in ["x", "e", "f", "g"] for _ in range(3)],
+        index=[x for x in ["x", "g", "h", "i"] for _ in range(3)],
     )
     step_counts = {}
     # act
     mock_model._losr_bads(data, losr, rng, step_counts)
     # assert
-    assert data["speldur"].to_list() == [0, 1, 2, 3, 4, 0, 0, 0, 0, 9, 0, 0]
+
+    assert data["speldur"].to_list() == [0, 1, 2, 3, 4, 5, 0, 0, 0, 0, 0, 0]
     assert step_counts == {
-        ("los_reduction", "e"): {"admissions": -1, "beddays": -5},
-        ("los_reduction", "f"): {"admissions": -1, "beddays": -21},
-        ("los_reduction", "g"): {"admissions": -1, "beddays": -21},
+        ("los_reduction", "g"): {"admissions": 0, "beddays": 0},
+        ("los_reduction", "h"): {"admissions": -1, "beddays": -21},
+        ("los_reduction", "i"): {"admissions": -1, "beddays": -30},
     }
     assert rng.uniform.call_args_list[0][1] == {"size": 9}
 
 
-def test_losr_zero(mock_model, mock_losr):
-    """test that it reduces the speldur column for 'zero' types"""
+def test_losr_aec(mock_model, mock_losr):
+    """test that it reduces the speldur column for 'aec' types"""
     # arrange
     rng = Mock()
     rng.binomial.return_value = [0, 0, 0, 1, 1, 1]
@@ -341,7 +344,7 @@ def test_losr_zero(mock_model, mock_losr):
     data = pd.DataFrame({"speldur": list(range(9))}, index=["x", "c", "d"] * 3)
     step_counts = {}
     # act
-    mock_model._losr_to_zero(data, losr, rng, "zero", step_counts)
+    mock_model._losr_aec(data, losr, rng, step_counts)
     # assert
     assert data["speldur"].to_list() == [0, 0, 2, 3, 0, 5, 6, 0, 8]
     assert step_counts == {
@@ -349,7 +352,31 @@ def test_losr_zero(mock_model, mock_losr):
         ("los_reduction", "d"): {"admissions": 0, "beddays": 0},
     }
     assert rng.binomial.call_args_list[0][0][0] == 1
-    assert rng.binomial.call_args_list[0][0][1].equals(losr.loc[["c"] * 3 + ["d"] * 3, "losr_f"])
+    assert rng.binomial.call_args_list[0][0][1].equals(
+        losr.loc[["c"] * 3 + ["d"] * 3, "losr_f"]
+    )
+
+
+def test_losr_preop(mock_model, mock_losr):
+    """test that is reduces the speldur column for 'pre-op' types"""
+    # arrange
+    rng = Mock()
+    rng.binomial.return_value = [0, 1, 0, 1, 0, 1]
+    losr = mock_losr
+    data = pd.DataFrame({"speldur": list(range(9))}, index=["x", "e", "f"] * 3)
+    step_counts = {}
+    # act
+    mock_model._losr_preop(data, losr, rng, step_counts)
+    # assert
+    assert data["speldur"].to_list() == [0, 1, 0, 3, 3, 5, 6, 7, 6]
+    assert step_counts == {
+        ("los_reduction", "e"): {"admissions": 0, "beddays": -1},
+        ("los_reduction", "f"): {"admissions": 0, "beddays": -4},
+    }
+    assert rng.binomial.call_args_list[0][0][0] == 1
+    assert rng.binomial.call_args_list[0][0][1].equals(
+        losr.loc[["e"] * 3 + ["f"] * 3, "losr_f"]
+    )
 
 
 def test_expat_adjustment():
@@ -434,7 +461,8 @@ def test_run(mocker, mock_model):
     mdl._non_demographic_adjustment = Mock()
     mdl._admission_avoidance = Mock(wraps=lambda x, y, *args: y)
     mdl._losr_all = Mock()
-    mdl._losr_to_zero = Mock()
+    mdl._losr_aec = Mock()
+    mdl._losr_preop = Mock()
     mdl._losr_bads = Mock()
     # mock admissions counter
     admc = Mock()
@@ -469,7 +497,8 @@ def test_run(mocker, mock_model):
     mdl._non_demographic_adjustment.assert_called_once()
     mdl._admission_avoidance.assert_called_once()
     mdl._losr_all.assert_called_once()
-    assert mdl._losr_to_zero.call_count == 2
+    mdl._losr_aec.assert_called_once()
+    mdl._losr_preop.assert_called_once()
     mdl._losr_bads.assert_called_once()
 
 

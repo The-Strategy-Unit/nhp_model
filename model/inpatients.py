@@ -393,15 +393,14 @@ class InpatientsModel(Model):
             }
 
     @staticmethod
-    def _losr_to_zero(
+    def _losr_aec(
         data: pd.DataFrame,
         losr: pd.DataFrame,
         rng: np.random.Generator,
-        losr_type: str,
         step_counts: dict,
     ) -> None:
         """
-        Length of Stay Reduction: To Zero Day LoS
+        Length of Stay Reduction: AEC reduction
 
         Updates the length of stay to 0 for a given percentage of rows.
 
@@ -414,9 +413,46 @@ class InpatientsModel(Model):
         :param step_counts: a dictionary containing the changes to measures for this step
         :type step_counts: dict
         """
-        i = losr.index[(losr.type == losr_type) & (losr.index.isin(data.index))]
+        i = losr.index[(losr.type == "aec") & (losr.index.isin(data.index))]
         pre_los = data.loc[i, "speldur"]
         data.loc[i, "speldur"] *= rng.binomial(1, losr.loc[data.loc[i].index, "losr_f"])
+        change_los = (
+            (data.loc[i, "speldur"] - pre_los).groupby(level=0).sum().astype(int)
+        ).to_dict()
+
+        for k in change_los.keys():
+            step_counts[("los_reduction", k)] = {
+                "admissions": 0,
+                "beddays": change_los[k],
+            }
+
+    @staticmethod
+    def _losr_preop(
+        data: pd.DataFrame,
+        losr: pd.DataFrame,
+        rng: np.random.Generator,
+        step_counts: dict,
+    ) -> None:
+        """
+        Length of Stay Reduction: Pre-op reduction
+
+        Updates the length of stay to by removing 1 or 2 days for a given percentage of rows
+
+        :param data: the DataFrame that we are updating
+        :type data: pandas.DataFrame
+        :param losr: the Length of Stay rates table created from self._los_reduction()
+        :type losr: pandas.DataFrame
+        :param rng: a random number generator created for each model iteration
+        :type rng: numpy.random.Generator
+        :param step_counts: a dictionary containing the changes to measures for this step
+        :type step_counts: dict
+        """
+        i = losr.index[(losr.type == "pre-op") & (losr.index.isin(data.index))]
+        pre_los = data.loc[i, "speldur"]
+        data.loc[i, "speldur"] -= (
+            rng.binomial(1, losr.loc[data.loc[i].index, "losr_f"])
+            * losr.loc[data.loc[i].index, "pre-op_days"]
+        )
         change_los = (
             (data.loc[i, "speldur"] - pre_los).groupby(level=0).sum().astype(int)
         ).to_dict()
@@ -490,8 +526,8 @@ class InpatientsModel(Model):
         data.set_index(los_reduction.loc[data["rn"]], inplace=True)
         # run each of the length of stay reduction strategies
         self._losr_all(data, losr, rng, step_counts)
-        self._losr_to_zero(data, losr, rng, "aec", step_counts)
-        self._losr_to_zero(data, losr, rng, "preop", step_counts)
+        self._losr_aec(data, losr, rng, step_counts)
+        self._losr_preop(data, losr, rng, step_counts)
         self._losr_bads(data, losr, rng, step_counts)
         # return the data (select just the columns we have updated in modelling)
         change_factors = pd.melt(

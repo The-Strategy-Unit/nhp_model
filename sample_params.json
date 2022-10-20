@@ -1151,6 +1151,7 @@
       },
       "pre-op_los_1-day": {
         "type": "pre-op",
+        "pre-op_days": 1,
         "interval": [
           0.85,
           0.95
@@ -1158,6 +1159,7 @@
       },
       "pre-op_los_2-day": {
         "type": "pre-op",
+        "pre-op_days": 2,
         "interval": [
           0.85,
           0.95
