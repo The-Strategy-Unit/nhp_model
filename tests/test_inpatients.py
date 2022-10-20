@@ -375,7 +375,7 @@ def test_losr_preop(mock_model, mock_losr):
     }
     assert rng.binomial.call_args_list[0][0][0] == 1
     assert rng.binomial.call_args_list[0][0][1].equals(
-        losr.loc[["e"] * 3 + ["f"] * 3, "losr_f"]
+        1 - losr.loc[["e"] * 3 + ["f"] * 3, "losr_f"]
     )
 
 

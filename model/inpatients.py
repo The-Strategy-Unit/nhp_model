@@ -450,7 +450,7 @@ class InpatientsModel(Model):
         i = losr.index[(losr.type == "pre-op") & (losr.index.isin(data.index))]
         pre_los = data.loc[i, "speldur"]
         data.loc[i, "speldur"] -= (
-            rng.binomial(1, losr.loc[data.loc[i].index, "losr_f"])
+            rng.binomial(1, 1 - losr.loc[data.loc[i].index, "losr_f"])
             * losr.loc[data.loc[i].index, "pre-op_days"]
         )
         change_los = (
