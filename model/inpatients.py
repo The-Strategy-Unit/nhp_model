@@ -416,10 +416,7 @@ class InpatientsModel(Model):
         """
         i = losr.index[(losr.type == losr_type) & (losr.index.isin(data.index))]
         pre_los = data.loc[i, "speldur"]
-        nrow = len(data.loc[i, "speldur"])
-        data.loc[i, "speldur"] *= (
-            rng.uniform(size=nrow) >= losr.loc[data.loc[i].index, "losr_f"]
-        )
+        data.loc[i, "speldur"] *= rng.binomial(1, losr.loc[data.loc[i].index, "losr_f"])
         change_los = (
             (data.loc[i, "speldur"] - pre_los).groupby(level=0).sum().astype(int)
         ).to_dict()

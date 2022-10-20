@@ -336,19 +336,20 @@ def test_losr_zero(mock_model, mock_losr):
     """test that it reduces the speldur column for 'zero' types"""
     # arrange
     rng = Mock()
-    rng.uniform.return_value = [0.75, 0.7, 0.8, 0.875, 0.8, 0.9]
+    rng.binomial.return_value = [0, 0, 0, 1, 1, 1]
     losr = mock_losr
     data = pd.DataFrame({"speldur": list(range(9))}, index=["x", "c", "d"] * 3)
     step_counts = {}
     # act
     mock_model._losr_to_zero(data, losr, rng, "zero", step_counts)
     # assert
-    assert data["speldur"].to_list() == [0, 1, 2, 3, 0, 0, 6, 7, 8]
+    assert data["speldur"].to_list() == [0, 0, 2, 3, 0, 5, 6, 0, 8]
     assert step_counts == {
-        ("los_reduction", "c"): {"admissions": 0, "beddays": -4},
-        ("los_reduction", "d"): {"admissions": 0, "beddays": -5},
+        ("los_reduction", "c"): {"admissions": 0, "beddays": -12},
+        ("los_reduction", "d"): {"admissions": 0, "beddays": 0},
     }
-    assert rng.uniform.call_args_list[0][1] == {"size": 6}
+    assert rng.binomial.call_args_list[0][0][0] == 1
+    assert rng.binomial.call_args_list[0][0][1].equals(losr.loc[["c"] * 3 + ["d"] * 3, "losr_f"])
 
 
 def test_expat_adjustment():
