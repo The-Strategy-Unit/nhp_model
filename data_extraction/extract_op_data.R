@@ -254,7 +254,7 @@ purrr::walk(
     "RA9",
     "RGR",
     c("RXN", "RTX"),
-    c("RH5", "RBA")
+    "RH5" # RBA" is merged in with this activity
   ),
   create_provider_op_extract,
   specialties = rtt_specs

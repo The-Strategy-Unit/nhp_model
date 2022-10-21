@@ -25,12 +25,12 @@ extract_ip_data <- function(providers) {
     clean_names() %>%
     mutate(rn = row_number(), .before = everything())
 
-  strategy_lookups <- tbl(con, in_schema("nhp_modelling", "strategy_lookups"))
+  strategy_lookups <- tbl(con, in_schema("nhp_modelling_reference", "strategy_lookups"))
 
   strategies <- tbl(con, in_schema("nhp_modelling", "strategies")) %>%
     semi_join(tb_inpatients, by = "EPIKEY") %>%
-    inner_join(strategy_lookups, by = c("strategy" = "full_strategy")) %>%
-    select(EPIKEY, strategy = grouped_strategy, strategy_type, sample_rate) %>%
+    inner_join(strategy_lookups, by = c("strategy")) %>%
+    select(EPIKEY, strategy, strategy_type, sample_rate) %>%
     collect() %>%
     clean_names() %>%
     inner_join(select(inpatients, epikey, rn), by = "epikey") %>%
@@ -101,13 +101,13 @@ extract_ip_sample_data <- function() {
   )
   cat("done\n")
 
-  strategy_lookups <- tbl(con, in_schema("nhp_modelling", "strategy_lookups"))
+  strategy_lookups <- tbl(con, in_schema("nhp_modelling_reference", "strategy_lookups"))
 
   cat("* getting strategies\n")
   strategies <- tbl(con, in_schema("nhp_modelling", "strategies")) %>%
     semi_join(ip_sample, by = c("EPIKEY" = "epikey")) %>%
-    inner_join(strategy_lookups, by = c("strategy" = "full_strategy")) %>%
-    select(EPIKEY, strategy = grouped_strategy, strategy_type, sample_rate) %>%
+    inner_join(strategy_lookups, by = c("strategy")) %>%
+    select(EPIKEY, strategy, strategy_type, sample_rate) %>%
     collect() %>%
     clean_names() %>%
     inner_join(select(inpatients, epikey, rn), by = "epikey") %>%
