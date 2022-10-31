@@ -242,19 +242,19 @@ create_synthetic_op_extract(specialties = rtt_specs)
 
 purrr::walk(
   list(
-    "RXC",
-    "RN5",
-    "RYJ",
-    "RGP",
-    "RNQ",
-    "RD8",
-    "RBZ",
-    "RX1",
-    "RHW",
     "RA9",
+    "RD8",
+    "RGP",
     "RGR",
+    "RH5", # "RBA" is merged in with this activity
+    "RH8", # was "RBZ",
+    "RHW",
+    "RN5",
+    "RNQ",
+    "RX1",
+    "RXC",
     c("RXN", "RTX"),
-    "RH5" # RBA" is merged in with this activity
+    "RYJ"
   ),
   create_provider_op_extract,
   specialties = rtt_specs
