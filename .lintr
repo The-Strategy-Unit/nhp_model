@@ -1,0 +1,10 @@
+linters: linters_with_defaults(
+  line_length_linter(120),
+  cyclocomp_linter(20),
+  object_name_linter("snake_case"),
+  object_length_linter(50))
+exclusions: list()
+exclude: "# nolint"
+exclude_start: "# Begin Exclude Linting"
+exclude_end: "# End Exclude Linting"
+encoding: "UTF-8"

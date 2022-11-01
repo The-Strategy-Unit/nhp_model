@@ -1,6 +1,4 @@
-library(tidyverse)
-library(DBI)
-library(dbplyr)
+.data <- NULL # lint helper
 
 extract_reference_data <- function(path) {
   con <- DBI::dbConnect(
@@ -9,27 +7,27 @@ extract_reference_data <- function(path) {
   )
   withr::defer(DBI::dbDisconnect(con))
 
-  tbl(con, in_schema("dbo", "DIM_tbDiagnosis")) |>
-    filter(DiagnosisId > 0) |>
-    select(
-      icd10 = DiagnosisCode,
-      diagnosis = DiagnosisDescription,
-      chapter = ChapterCode,
-      chapter_desc = ChapterDescription,
-      subchapter = SubChapterCode,
-      subchapter_desc = SubChapterDescription
+  dplyr::tbl(con, dbplyr::in_schema("dbo", "DIM_tbDiagnosis")) |>
+    dplyr::filter(.data$DiagnosisId > 0) |>
+    dplyr::select(
+      icd10 = "DiagnosisCode",
+      diagnosis = "DiagnosisDescription",
+      chapter = "ChapterCode",
+      chapter_desc = "ChapterDescription",
+      subchapter = "SubChapterCode",
+      subchapter_desc = "SubChapterDescription"
     ) |>
-    collect() |>
-    write_csv(file.path(path, "icd10.csv"))
+    dplyr::collect() |>
+    readr::write_csv(file.path(path, "icd10.csv"))
 
-  tbl(con, in_schema("dbo", "DIM_tbProcedure")) |>
-    filter(ProcedureId > 0) |>
-    select(
-      opcs4 = ProcedureCode,
-      procedure = ProcedureDescription
+  dplyr::tbl(con, dbplyr::in_schema("dbo", "DIM_tbProcedure")) |>
+    dplyr::filter(.data$ProcedureId > 0) |>
+    dplyr::select(
+      opcs4 = "ProcedureCode",
+      procedure = "ProcedureDescription"
     ) |>
-    collect() |>
-    write_csv(file.path(path, "opcs4.csv"))
+    dplyr::collect() |>
+    readr::write_csv(file.path(path, "opcs4.csv"))
 
-  invisible(NULL)
+  Sys.time()
 }
