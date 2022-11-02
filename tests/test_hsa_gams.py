@@ -8,7 +8,7 @@ from unittest.mock import Mock, mock_open, patch
 import numpy as np
 import pandas as pd
 import pytest
-from model.hsa_gams import _create_activity_type_gams, create_gams, init, main
+from model.hsa_gams import _create_activity_type_gams, create_gams, init, main, run
 
 
 def test_create_activity_type_gams(mocker):
@@ -88,6 +88,17 @@ def test_create_gams(mocker):
     catg_mock.call_args_list[2][0][5] == None
 
 
+def test_run(mocker):
+    """it should create the gams and save them"""
+    path_fn = lambda x: x
+    mocker.patch("model.hsa_gams.create_gams", return_value=("data", "gams", path_fn))
+    pickle_dump_mock = mocker.patch("pickle.dump")
+    with patch("builtins.open", mock_open()) as mock_file:
+        run("test", "2020")
+        assert pickle_dump_mock.call_args_list[0][0][0] == "gams"
+        mock_file.assert_called_with("hsa_gams.pkl", "wb")
+
+
 @pytest.mark.parametrize("passed_args", [[], [1], [1, 2, 3]])
 def test_main_invalid_args(passed_args):
     """the main method should raise an error if incorrect arguments are provided"""
@@ -97,17 +108,11 @@ def test_main_invalid_args(passed_args):
 
 
 def test_main_valid_args(mocker):
-    """the main method should save the gams if correct arguments are provided"""
+    """the main method should call run if correct arguments are provided"""
     with patch.object(sys, "argv", ["filename.py", "test", "2020"]):
-        path_fn = lambda x: x
-        mocker.patch(
-            "model.hsa_gams.create_gams", return_value=("data", "gams", path_fn)
-        )
-        pickle_dump_mock = mocker.patch("pickle.dump")
-        with patch("builtins.open", mock_open()) as mock_file:
-            main()
-            assert pickle_dump_mock.call_args_list[0][0][0] == "gams"
-            mock_file.assert_called_with("hsa_gams.pkl", "wb")
+        run_mock = mocker.patch("model.hsa_gams.run", return_value="run")
+        main()
+        run_mock.assert_called_once_with("test", "2020")
 
 
 def test_init(mocker):
