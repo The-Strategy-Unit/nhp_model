@@ -90,5 +90,5 @@ theatres_save_data <- function(theatres_four_hour_sessions, theatres_available, 
   c(available, list(four_hour_sessions = four_hour_sessions)) |>
     jsonlite::write_json(fn, pretty = TRUE, auto_unbox = TRUE)
 
-  list(file = fn, created = Sys.time())
+  fn
 }

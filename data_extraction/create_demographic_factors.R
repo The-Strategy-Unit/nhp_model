@@ -29,7 +29,7 @@ save_synthetic_demographic_factors <- function(demographic_factors, path = "data
   fn <- file.path(path, "synthetic", "demographic_factors.csv")
   readr::write_csv(data, fn)
 
-  list(file = fn, created = Sys.time())
+  fn
 }
 
 save_demographic_factors <- function(demographic_factors, org_codes, path = "data") {
@@ -42,7 +42,7 @@ save_demographic_factors <- function(demographic_factors, org_codes, path = "dat
   fn <- file.path(path, trust, "demographic_factors.csv")
   readr::write_csv(data, fn)
 
-  list(file = fn, created = Sys.time())
+  fn
 }
 
 create_gams <- function(org_codes, base_year = "2018") {
@@ -53,7 +53,7 @@ create_gams <- function(org_codes, base_year = "2018") {
 
   reticulate::use_condaenv("nhp")
   hsa <- reticulate::import("model.hsa_gams")
-  hsa_file <- hsa$run(trust, "2018")
 
-  list(file = hsa_file, created = Sys.time())
+  hsa$run(trust, "2018") |> # returns filename
+    stringr::str_replace_all("\\\\", "/") # returns files with \, convert to /
 }

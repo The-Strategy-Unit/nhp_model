@@ -1,4 +1,5 @@
 library(targets)
+library(tarchetypes)
 
 # Set target-specific options such as packages.
 tar_option_set(
@@ -42,31 +43,62 @@ list(
     extract_reference_data("../nhp_documentation/data")
   ),
   tar_target(
-    ip_data,
+    ip_data_file_paths,
     create_provider_ip_extract(providers[[1]], specialties = rtt_specs),
     pattern = map(providers)
   ),
   tar_target(
-    ip_synth_data,
-    create_synthetic_ip_extract(specialties = rtt_specs)
+    ip_data,
+    ip_data_file_paths[[1]][[1]],
+    pattern = map(ip_data_file_paths),
+    format = "file"
   ),
   tar_target(
-    op_data,
+    ip_files,
+    ip_data_file_paths[[1]],
+    pattern = map(ip_data_file_paths),
+    format = "file"
+  ),
+  tar_target(
+    ip_synth_data_file_paths,
+    create_synthetic_ip_extract(specialties = rtt_specs),
+  ),
+  tar_target(
+    ip_synth_data,
+    ip_synth_data_file_paths[[1]],
+    format = "file"
+  ),
+  tar_target(
+    op_data_file_paths,
     create_provider_op_extract(providers[[1]], specialties = rtt_specs),
     pattern = map(providers)
   ),
   tar_target(
-    op_synth_data,
-    create_synthetic_op_extract(specialties = rtt_specs)
+    op_data,
+    op_data_file_paths,
+    pattern = map(op_data_file_paths),
+    format = "file"
   ),
   tar_target(
-    aae_data,
+    op_synth_data,
+    create_synthetic_op_extract(specialties = rtt_specs),
+    format = "file"
+  ),
+  tar_target(
+    aae_data_file_paths,
     create_provider_aae_extract(providers[[1]]),
     pattern = map(providers)
   ),
   tar_target(
+    aae_data,
+    aae_data_file_paths,
+    pattern = map(aae_data_file_paths),
+    format = "file"
+  ),
+  tar_target(
     aae_synth_data,
-    create_synthetic_aae_extract()
+    create_synthetic_aae_extract(),
+    format = "file"
   ),
   # kh03 data
   tar_target(
@@ -94,28 +126,76 @@ list(
   ),
   tar_target(kh03_all, kh03_combine(kh03_overnight, kh03_dayonly)),
   tar_target(kh03_processed, kh03_process(kh03_all)),
-  tar_target(kh03_synthetic, kh03_generate_synthnetic(kh03_processed)),
-  tar_target(kh03_save, kh03_save_trust(kh03_processed, providers[[1]]), pattern = map(providers)),
-  # demographic factors
-  tar_target(demographic_raw_data_path, "_scratch/demographic_factors.rds", format = "file"),
-  tar_target(demographic_factors, process_demographic_factors(demographic_raw_data_path)),
   tar_target(
-    demographic_factors_synthetic_created,
-    save_synthetic_demographic_factors(demographic_factors)
+    kh03_synthetic,
+    kh03_generate_synthnetic(kh03_processed),
+    format = "file"
   ),
   tar_target(
-    demographic_factors_created,
-    save_demographic_factors(demographic_factors, providers[[1]]),
+    kh03_save_file_paths,
+    kh03_save_trust(kh03_processed, providers[[1]]),
     pattern = map(providers)
+  ),
+  tar_target(
+    kh03_save,
+    kh03_save_file_paths,
+    pattern = map(kh03_save_file_paths),
+    format = "file"
+  ),
+  # demographic factors
+  tar_target(demographic_raw_data_path, "_scratch/demographic_factors.rds", format = "file"),
+  tar_target(processed_demographic_factors, process_demographic_factors(demographic_raw_data_path)),
+  tar_target(
+    demographic_factors_synthetic,
+    save_synthetic_demographic_factors(processed_demographic_factors),
+    format = "file"
+  ),
+  tar_target(
+    demographic_factors_file_paths,
+    save_demographic_factors(processed_demographic_factors, providers[[1]]),
+    pattern = map(providers)
+  ),
+  tar_target(
+    demographic_factors,
+    demographic_factors_file_paths,
+    pattern = map(demographic_factors_file_paths),
+    format = "file"
+  ),
+  tar_target(
+    gams_file_paths,
+    callr::r(
+      \(fn, p, ...) fn(p),
+      args = list(
+        fn = create_gams,
+        p = providers[[1]],
+        ip_data,
+        op_data,
+        aae_data,
+        demographic_factors
+      )
+    ),
+    pattern = map(providers, ip_data, op_data, aae_data, demographic_factors)
   ),
   tar_target(
     gams,
-    callr::r(\(fn, p) fn(p), args = list(fn = create_gams, p = providers[[1]])),
-    pattern = map(providers)
+    gams_file_paths,
+    pattern = map(gams_file_paths),
+    format = "file"
   ),
   tar_target(
     gams_synthetic,
-    callr::r(\(fn, p) fn(p), args = list(fn = create_gams, p = "synthetic"))
+    callr::r(
+      \(fn, p, ...) fn(p),
+      args = list(
+        fn = create_gams,
+        p = "synthetic",
+        ip_synth_data,
+        op_synth_data,
+        aae_synth_data,
+        demographic_factors_synthetic
+      )
+    ),
+    format = "file"
   ),
   # theatres
   tar_target(theatres_data_path, "_scratch/theatres_data.csv", format = "file"),
@@ -129,12 +209,40 @@ list(
     theatres_get_available(qmco_data_path)
   ),
   tar_target(
-    theatres_saved,
+    theatres_file_paths,
     theatres_save_data(theatres_four_hour_sessions, theatres_available, providers[[1]]),
     pattern = map(providers)
   ),
   tar_target(
-    theatres_synthetic_saved,
-    theatres_generate_synthetic(theatres_four_hour_sessions, theatres_available)
-  )
+    theatres,
+    theatres_file_paths,
+    pattern = map(theatres_file_paths),
+    format = "file"
+  ),
+  tar_target(
+    theatres_synthetic,
+    theatres_generate_synthetic(theatres_four_hour_sessions, theatres_available),
+    format = "file"
+  ),
+  # files upload
+  tar_files(
+    all_files,
+    c(
+      ip_files,
+      ip_synth_data,
+      op_data,
+      op_synth_data,
+      aae_data,
+      aae_synth_data,
+      demographic_factors,
+      demographic_factors_synthetic,
+      gams,
+      gams_synthetic,
+      kh03_save,
+      kh03_synthetic,
+      theatres,
+      theatres_synthetic
+    )
+  ),
+  tar_target(uploaded_file, upload_file_to_azure(all_files), pattern = map(all_files))
 )

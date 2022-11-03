@@ -159,7 +159,7 @@ kh03_generate_synthnetic <- function(kh03, path = "data") {
   fn <- file.path(path, "synthetic", "kh03.csv")
   readr::write_csv(data, fn)
 
-  list(file = fn, created = Sys.time())
+  fn
 }
 
 kh03_save_trust <- function(kh03, org_codes, path = "data") {
@@ -179,5 +179,5 @@ kh03_save_trust <- function(kh03, org_codes, path = "data") {
   fn <- file.path(path, trust, "kh03.csv")
   readr::write_csv(data, fn)
 
-  list(file = fn, created = Sys.time())
+  fn
 }

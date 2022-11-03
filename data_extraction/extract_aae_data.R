@@ -151,12 +151,8 @@ aggregate_aae_data <- function(data, ...) {
     tidyr::drop_na()
 }
 
-save_aae_data <- function(data, name, ...) {
-  path <- function(...) file.path("data", name, ...)
-
-  if (!dir.exists(path())) {
-    dir.create(path())
-  }
+save_aae_data <- function(data, name, path, ...) {
+  fn <- file.path(path, name, "aae.parquet")
 
   data |>
     dplyr::arrange(
@@ -166,39 +162,33 @@ save_aae_data <- function(data, name, ...) {
       .data$is_ambulance,
       ...
     ) |>
-    arrow::write_parquet(path("aae.parquet"))
+    arrow::write_parquet(fn)
 
-  invisible(data)
+  fn
 }
 
 # ------------------------------------------------------------------------------
 
-create_aae_extract <- function(providers, name, extract_fn, synth_fn, ...) {
-  d <- extract_fn(providers) |>
+create_aae_extract <- function(providers, name, extract_fn, synth_fn, path, ...) {
+  extract_fn(providers) |>
     create_aae_data() |>
     synth_fn() |>
     aggregate_aae_data(...) |>
-    save_aae_data(name, ...)
-
-  list(
-    dataset = "aae",
-    name = name,
-    created = Sys.time(),
-    rows = nrow(d)
-  )
+    save_aae_data(name, path, ...)
 }
 
-create_synthetic_aae_extract <- function(..., name = "synthetic") {
+create_synthetic_aae_extract <- function(..., name = "synthetic", path = "data") {
   create_aae_extract(
     NULL,
     name,
     extract_aae_sample_data,
     create_aae_synth_from_data,
+    path,
     ...
   )
 }
 
-create_provider_aae_extract <- function(providers, ..., name) {
+create_provider_aae_extract <- function(providers, ..., name, path = "data") {
   if (missing(name)) {
     name <- paste(providers, collapse = "_")
   }
@@ -209,6 +199,7 @@ create_provider_aae_extract <- function(providers, ..., name) {
     name,
     extract_aae_data,
     identity,
+    path,
     ...
   )
 }

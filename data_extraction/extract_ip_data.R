@@ -248,12 +248,8 @@ create_ip_synth_from_data <- function(data) {
     })()
 }
 
-save_ip_data <- function(data, strategies, name) {
-  path <- function(...) file.path("data", name, ...)
-
-  if (!dir.exists(path())) {
-    dir.create(path())
-  }
+save_ip_data <- function(data, strategies, name, path) {
+  ip_fn <- file.path(path, name, "ip.parquet")
 
   data |>
     dplyr::arrange(
@@ -266,7 +262,7 @@ save_ip_data <- function(data, strategies, name) {
       .data$imd04_decile,
       .data$admidate
     ) |>
-    arrow::write_parquet(path("ip.parquet"))
+    arrow::write_parquet(ip_fn)
 
   null_strats <- dplyr::transmute(data, .data$rn, strategy = "NULL", sample_rate = 1)
 
@@ -286,59 +282,54 @@ save_ip_data <- function(data, strategies, name) {
       dplyr::filter(strategy == "improved_discharge_planning_emergency")
   )
 
-  strategies |>
+  strategies_fns <- strategies |>
     dplyr::anti_join(strategies_to_remove, by = c("rn", "strategy")) |>
     tidyr::drop_na("strategy_type") |>
     dplyr::group_nest(.data$strategy_type) |>
     dplyr::mutate(
       dplyr::across("strategy_type", stringr::str_replace, " ", "_")
     ) |>
-    purrr::pwalk(\(strategy_type, data) {
+    purrr::pmap_chr(\(strategy_type, data) {
       t <- paste0(strategy_type, "_strategy")
+      fn <- file.path(path, name, glue::glue("ip_{strategy_type}_strategies.parquet"))
+
       data |>
         dplyr::bind_rows(null_strats) |>
         dplyr::arrange(.data$strategy, .data$rn) |>
         dplyr::rename({{ t }} := "strategy") |> # nolint
-        arrow::write_parquet(path(glue::glue("ip_{strategy_type}_strategies.parquet")))
+        arrow::write_parquet(fn)
+
+      fn
     })
 
-  list(data, strategies)
+  list(c(ip_fn, strategies_fns))
 }
 
 # ------------------------------------------------------------------------------
 
-create_ip_extract <- function(providers, specialties, name, extract_fn, synth_fn, ...) {
-  inpatients <- strategies <- d <- s <- NULL # for lint
+create_ip_extract <- function(providers, specialties, name, extract_fn, synth_fn, path, ...) {
+  inpatients <- strategies <- NULL # for lint
   c(inpatients, strategies) %<-% extract_fn(providers)
 
-  c(d, s) %<-% (
-    inpatients |>
-      create_ip_data(specialties) |>
-      synth_fn() |>
-      save_ip_data(strategies, name)
-  )
-
-  list(
-    dataset = "ip",
-    name = name,
-    created = Sys.time(),
-    rows = nrow(d),
-    strats = nrow(s)
-  )
+  inpatients |>
+    create_ip_data(specialties) |>
+    synth_fn() |>
+    save_ip_data(strategies, name, path)
 }
 
-create_synthetic_ip_extract <- function(..., name = "synthetic", specialties = NULL) {
+create_synthetic_ip_extract <- function(..., name = "synthetic", specialties = NULL, path = "data") {
   create_ip_extract(
     NULL,
     specialties,
     name,
     extract_ip_sample_data,
     create_ip_synth_from_data,
+    path,
     ...
   )
 }
 
-create_provider_ip_extract <- function(providers, ..., name, specialties = NULL) {
+create_provider_ip_extract <- function(providers, ..., name, specialties = NULL, path = "data") {
   if (missing(name)) {
     name <- paste(providers, collapse = "_")
   }
@@ -350,6 +341,7 @@ create_provider_ip_extract <- function(providers, ..., name, specialties = NULL)
     name,
     extract_ip_data,
     identity,
+    path,
     ...
   )
 }

@@ -209,12 +209,8 @@ aggregate_op_data <- function(data, ...) {
     tidyr::drop_na()
 }
 
-save_op_data <- function(data, name, ...) {
-  path <- function(...) file.path("data", name, ...)
-
-  if (!dir.exists(path())) {
-    dir.create(path())
-  }
+save_op_data <- function(data, name, path, ...) {
+  fn <- file.path(path, name, "op.parquet")
 
   data |>
     dplyr::arrange(
@@ -224,43 +220,34 @@ save_op_data <- function(data, name, ...) {
       .data$is_main_icb,
       ...
     ) |>
-    arrow::write_parquet(path("op.parquet"))
+    arrow::write_parquet(fn)
 
-  invisible(data)
+  fn
 }
 
 # ------------------------------------------------------------------------------
 
-create_op_extract <- function(providers, specialties, name,
-                              extract_fn, synth_fn, ...) {
-  d <- extract_fn(providers) |>
+create_op_extract <- function(providers, specialties, name, extract_fn, synth_fn, path, ...) {
+  extract_fn(providers) |>
     create_op_data(specialties) |>
     synth_fn() |>
     aggregate_op_data(...) |>
-    save_op_data(name, ...)
-
-  list(
-    dataset = "op",
-    name = name,
-    created = Sys.time(),
-    rows = nrow(d)
-  )
+    save_op_data(name, path, ...)
 }
 
-create_synthetic_op_extract <- function(...,
-                                        name = "synthetic",
-                                        specialties = NULL) {
+create_synthetic_op_extract <- function(..., name = "synthetic", specialties = NULL, path = "data") {
   create_op_extract(
     NULL,
     specialties,
     name,
     extract_op_sample_data,
     create_op_synth_from_data,
+    path,
     ...
   )
 }
 
-create_provider_op_extract <- function(providers, ..., name, specialties = NULL) {
+create_provider_op_extract <- function(providers, ..., name, specialties = NULL, path = "data") {
   if (missing(name)) {
     name <- paste(providers, collapse = "_")
   }
@@ -272,6 +259,7 @@ create_provider_op_extract <- function(providers, ..., name, specialties = NULL)
     name,
     extract_op_data,
     identity,
+    path,
     ...
   )
 }
