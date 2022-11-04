@@ -75,13 +75,13 @@ class InpatientsModel(Model):
                 dtype={
                     "specialty_code": np.character,
                     "specialty_group": np.character,
-                    "available": np.float64,
-                    "occupied": np.float64,
+                    "available": np.int64,
+                    "occupied": np.int64,
                 },
             )
             .merge(self._ward_groups, left_on="specialty_code", right_index=True)
-            .groupby(["ward_group"])
-            .agg("sum")
+            .groupby(["ward_group"])[["available", "occupied"]]
+            .agg(lambda x: sum(np.round(x).astype(int)))
         )
         # get the baseline data
         self._beds_baseline = (
@@ -564,7 +564,7 @@ class InpatientsModel(Model):
         result = namedtuple("results", ["pod", "measure", "ward_group"])
         if model_run == -1:
             return {
-                result("ip", "day+night", k): v
+                result("ip", "day+night", k): np.round(v).astype(int)
                 for k, v in self._kh03_data["available"].iteritems()
             }
 
@@ -590,7 +590,7 @@ class InpatientsModel(Model):
         )
         # return the results
         return {
-            result("ip", "day+night", k): v
+            result("ip", "day+night", k): np.round(v).astype(int)
             for k, v in (
                 (
                     (dn_admissions * self._kh03_data["occupied"])

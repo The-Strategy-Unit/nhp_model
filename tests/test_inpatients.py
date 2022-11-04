@@ -563,9 +563,9 @@ def test_bed_occupancy(mock_model):
     )
     # assert
     assert {tuple(k): v for k, v in actual.items()} == {
-        ("ip", "day+night", "a"): (18 * 5) / (5 * 0.75),
-        ("ip", "day+night", "b"): (38 * 40) / (10 * 0.875),
-        ("ip", "day+night", "c"): (17 * 2) / (1 * 0.5),
+        ("ip", "day+night", "a"): np.round((18 * 5) / (5 * 0.75)).astype(int),
+        ("ip", "day+night", "b"): np.round((38 * 40) / (10 * 0.875)).astype(int),
+        ("ip", "day+night", "c"): np.round((17 * 2) / (1 * 0.5)).astype(int),
     }
 
 
