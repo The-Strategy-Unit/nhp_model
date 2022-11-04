@@ -151,7 +151,7 @@ kh03_generate_synthnetic <- function(kh03, path = "data") {
       dplyr::across(tidyselect::starts_with("specialty"))
     ) |>
     dplyr::summarise(
-      dplyr::across(where(is.numeric), mean),
+      dplyr::across(where(is.numeric), purrr::compose(round, mean)),
       .groups = "drop_last"
     ) |>
     dplyr::filter(.data$occupied >= 1)
@@ -172,7 +172,7 @@ kh03_save_trust <- function(kh03, org_codes, path = "data") {
       dplyr::across(where(is.character))
     ) |>
     dplyr::summarise(
-      dplyr::across(where(is.numeric), sum),
+      dplyr::across(where(is.numeric), purrr::compose(round, sum)),
       .groups = "drop"
     )
 
