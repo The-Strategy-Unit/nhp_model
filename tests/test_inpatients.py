@@ -490,6 +490,8 @@ def test_run(mocker, mock_model):
         data.drop("hsagrp", axis="columns").reset_index(drop=True)
     )
     assert mdl._random_strategy.call_count == 2
+    assert admc.poisson_step.call_count == 5
+    assert admc.binomial_step.call_count == 2
     mdl._los_reduction.assert_called_once()
     mdl._expat_adjustment.assert_called_once()
     mdl._repat_adjustment.assert_called_once()
