@@ -290,7 +290,7 @@ class Model:
             **{
                 k: generate_param_values(params[k], v)
                 for k, v in [
-                    ("health_status_adjustment", inrange_0_5),
+                    ("health_status_adjustment", lambda x: x),
                     ("expat", inrange_0_1),
                     ("repat_local", inrange_1_5),
                     ("repat_nonlocal", inrange_1_5),
