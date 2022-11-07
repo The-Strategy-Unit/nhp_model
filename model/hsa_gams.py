@@ -101,16 +101,32 @@ def create_gams(dataset: str, base_year: str) -> None:
     return (pd.concat(data), gams, path_fn)
 
 
+def run(dataset: str, base_year: str) -> str:
+    """Create and save GAMs for a dataset
+
+    :param dataset: a string to the dataset we want to load
+    :type dataset: str
+    :param base_year: the base year to produce the gams from
+    :type base_year: str
+
+    :returns: the filename where the gams have been saved to
+    :rtype: str
+    """
+    _, gams, path_fn = create_gams(dataset, base_year)
+    # save the gams to disk
+    fn = path_fn("hsa_gams.pkl")
+    with open(fn, "wb") as hsa_pkl:
+        pickle.dump(gams, hsa_pkl)
+    return fn
+
+
 def main() -> None:
     """Main Method"""
     assert (
         len(sys.argv) == 3
     ), "Must provide exactly 2 argument: the path to the data and the base year"
 
-    _, gams, path_fn = create_gams(sys.argv[1], sys.argv[2])
-    # save the gams to disk
-    with open(path_fn("hsa_gams.pkl"), "wb") as hsa_pkl:
-        pickle.dump(gams, hsa_pkl)
+    run(sys.argv[1], sys.argv[2])
 
 
 def init():

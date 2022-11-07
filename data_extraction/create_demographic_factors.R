@@ -1,45 +1,59 @@
-library(tidyverse)
-library(dtplyr)
-# load reticulate, but make sure to handle case of using radian
-Sys.setenv("RETICULATE_PYTHON" = "")
-library(reticulate)
-use_condaenv("nhp")
-hsa <- import("model.hsa_gams")
+.data <- NULL # lint helper
 
-rds_path <- file.path("_scratch", "demographic_factors.rds")
-
-df <- local({
-  df <- readRDS(rds_path) |>
-    mutate(
-      across(sex, ~ ifelse(.x == "males", 1, 2)),
-      across(age, pmin, 90)
+process_demographic_factors <- function(rds_path) {
+  readRDS(rds_path) |>
+    dplyr::mutate(
+      dplyr::across("sex", ~ ifelse(.x == "males", 1, 2)),
+      dplyr::across("age", pmin, 90)
     ) |>
-    arrange(id, sex, age, year, procode) |>
-    lazy_dt() |>
-    group_by(variant = id, sex, age, year, procode) |>
-    summarise(across(pop, sum, na.rm = TRUE), .groups = "drop_last")
+    dtplyr::lazy_dt() |>
+    dplyr::group_by(variant = .data$id, .data$sex, .data$age, .data$year, .data$procode) |>
+    dplyr::summarise(
+      dplyr::across("pop", sum, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::as_tibble()
+}
 
-  df_synth <- df |>
-    summarise(across(pop, compose(as.integer, mean), na.rm = TRUE), .groups = "drop") |>
-    as_tibble() |>
-    mutate(procode = "synthetic")
+save_synthetic_demographic_factors <- function(demographic_factors, path = "data") {
+  data <- demographic_factors |>
+    dplyr::select(-"procode") |>
+    dplyr::group_by(dplyr::across(-"pop")) |>
+    dplyr::summarise(
+      dplyr::across("pop", purrr::compose(as.integer, mean), na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    tidyr::pivot_wider(names_from = "year", values_from = "pop") |>
+    dplyr::as_tibble()
 
-  df |>
-    as_tibble() |>
-    bind_rows(df_synth)
-})
+  fn <- file.path(path, "synthetic", "demographic_factors.csv")
+  readr::write_csv(data, fn)
 
-df |>
-  pivot_wider(names_from = year, values_from = pop) |>
-  group_nest(procode) |>
-  transmute(
-    file = file.path("data", procode, "demographic_factors.csv"),
-    x = data
-  ) |>
-  pwalk(write_csv)
+  fn
+}
 
-# create gams
-df |>
-  pluck("procode") |>
-  unique() |>
-  walk(hsa$create_gams, "2020")
+save_demographic_factors <- function(demographic_factors, org_codes, path = "data") {
+  trust <- paste(org_codes, collapse = "_")
+
+  data <- demographic_factors |>
+    dplyr::filter(.data$procode == trust) |>
+    tidyr::pivot_wider(names_from = "year", values_from = "pop")
+
+  fn <- file.path(path, trust, "demographic_factors.csv")
+  readr::write_csv(data, fn)
+
+  fn
+}
+
+create_gams <- function(org_codes, base_year = "2018") {
+  trust <- paste(org_codes, collapse = "_")
+  cat("      ", trust, sep = "")
+
+  withr::local_envvar("RETICULATE_PYTHON" = "")
+
+  reticulate::use_condaenv("nhp")
+  hsa <- reticulate::import("model.hsa_gams")
+
+  hsa$run(trust, "2018") |> # returns filename
+    stringr::str_replace_all("\\\\", "/") # returns files with \, convert to /
+}
