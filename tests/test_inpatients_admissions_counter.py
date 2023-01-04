@@ -6,6 +6,7 @@ from unittest.mock import Mock, call, patch
 import numpy as np
 import pandas as pd
 import pytest
+
 from model.inpatients_admissions_counter import InpatientsAdmissionsCounter
 
 
@@ -13,8 +14,8 @@ from model.inpatients_admissions_counter import InpatientsAdmissionsCounter
 def mock_iac():
     """create a mock InpatientsAdmissionsCounter instance"""
     rng = Mock()
-    rng.poisson.return_value = "poisson"
-    rng.binomial.return_value = "binomial"
+    rng.poisson.return_value = 1
+    rng.binomial.return_value = 0
     return InpatientsAdmissionsCounter(pd.DataFrame({"speldur": [1, 2, 3]}), rng)
 
 
@@ -69,7 +70,25 @@ def test_poisson_step(mock_iac):
     assert actual == "update_step_counts"
     mock_iac._rng.poisson.assert_called_once()
     assert mock_iac._rng.poisson.call_args_list[0][0][0].tolist() == [1, 4, 9]
-    mock_iac._update_step_counts.assert_called_once_with("poisson", "step", "split")
+    mock_iac._update_step_counts.assert_called_once_with(1, "step", "split")
+
+
+def test_modified_poisson_step(mock_iac):
+    """test that it calls the _update_step_counts correctly"""
+    # arrange
+    factor = np.array([1, 2, 3])
+    mock_iac._admissions = factor
+    mock_iac._update_step_counts = Mock(return_value="update_step_counts")
+    # act
+    actual = mock_iac.modified_poisson_step(factor, "step", "split")
+    # assert
+    assert actual == "update_step_counts"
+    mock_iac._rng.poisson.assert_called_once()
+    assert mock_iac._rng.poisson.call_args_list[0][0][0].tolist() == [0, 1, 2]
+    i = mock_iac._update_step_counts.call_args_list[0][0]
+    assert i[0].tolist() == [2, 4, 6]
+    assert i[1] == "step"
+    assert i[2] == "split"
 
 
 def test_binomial_step(mock_iac):
@@ -84,7 +103,7 @@ def test_binomial_step(mock_iac):
     mock_iac._rng.binomial.assert_called_once()
     assert mock_iac._rng.binomial.call_args_list[0][1]["n"].tolist() == [1, 1, 1]
     assert mock_iac._rng.binomial.call_args_list[0][1]["p"].tolist() == [1, 2, 3]
-    mock_iac._update_step_counts.assert_called_once_with("binomial", "step", "split")
+    mock_iac._update_step_counts.assert_called_once_with(0, "step", "split")
 
 
 def test_get_data(mock_iac):

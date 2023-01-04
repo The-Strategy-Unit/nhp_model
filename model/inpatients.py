@@ -501,7 +501,7 @@ class InpatientsModel(Model):
             .poisson_step(hsa_f, "health_status_adjustment")
             .poisson_step(demo_f[data["rn"]], "population_factors")
             .binomial_step(self._expat_adjustment(data, run_params), "expatriation")
-            .poisson_step(
+            .modified_poisson_step(
                 self._repat_adjustment(data, run_params),
                 "repatriation",
             )

@@ -64,6 +64,27 @@ class InpatientsAdmissionsCounter:
         self._admissions = new_admissions
         return self
 
+    def modified_poisson_step(self, factor, name, split_by=None):
+        """update the row counts using a modified poisson distribution
+
+        this gives us a poisson random value, but offset to give us results in [1, inf)
+
+        :param factor: a list the length of the data for the lambda argument for the poisson distribution
+        :type factor: list
+        :param name: the name of the step to insert into the step counts
+        :type name: str
+        :param split_by: a list of values to group the rows by
+        :type split_by: list, optional
+
+        :returns: the admissions counter object
+        :rtype: InpatientsAdmissionsCounter
+        """
+        factor = np.asarray(factor)
+        assert np.all(factor >= 1), "factor must be atleast 1"
+        return self._update_step_counts(
+            (self._rng.poisson(factor - 1) + 1) * self._admissions, name, split_by
+        )
+
     def poisson_step(self, factor, name, split_by=None):
         """update the row counts using a poisson distribution
 

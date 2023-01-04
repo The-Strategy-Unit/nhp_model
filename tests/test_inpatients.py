@@ -6,6 +6,7 @@ from unittest.mock import Mock, call, mock_open, patch
 import numpy as np
 import pandas as pd
 import pytest
+
 from model.inpatients import InpatientsModel
 
 
@@ -468,6 +469,7 @@ def test_run(mocker, mock_model):
     admc = Mock()
     mocker.patch("model.inpatients.InpatientsAdmissionsCounter", return_value=admc)
     admc.poisson_step.return_value = admc
+    admc.modified_poisson_step.return_value = admc
     admc.binomial_step.return_value = admc
     admc.get_data.return_value = data
     admc.step_counts = {("baseline", "-"): {"admissions": 2, "beddays": 3}}
@@ -490,7 +492,8 @@ def test_run(mocker, mock_model):
         data.drop("hsagrp", axis="columns").reset_index(drop=True)
     )
     assert mdl._random_strategy.call_count == 2
-    assert admc.poisson_step.call_count == 5
+    assert admc.poisson_step.call_count == 4
+    assert admc.modified_poisson_step.call_count == 1
     assert admc.binomial_step.call_count == 2
     mdl._los_reduction.assert_called_once()
     mdl._expat_adjustment.assert_called_once()
