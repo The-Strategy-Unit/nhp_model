@@ -483,7 +483,7 @@ class InpatientsModel(Model):
         beddays_after: int,
         admission_avoidance: pd.Series,
         factors: dict,
-    ):
+    ) -> dict:
         # TODO: add docstring and datatypes
         admissions_before = len(admissions)
         admissions_after = sum(admissions)
