@@ -88,7 +88,10 @@ class OutpatientsModel(Model):
 
     @staticmethod
     def _convert_to_tele(
-        rng: np.random.Generator, data: pd.DataFrame, run_params: dict
+        rng: np.random.Generator,
+        data: pd.DataFrame,
+        run_params: dict,
+        step_counts: dict,
     ) -> None:
         """Convert attendances to tele-attendances
 
@@ -99,9 +102,6 @@ class OutpatientsModel(Model):
         :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
         :type run_params: dict
         """
-        # temp disable chained assignment warnings
-        options = pd.get_option("mode.chained_assignment")
-        pd.set_option("mode.chained_assignment", None)
         # get the parameters
         params = run_params["convert_to_tele"]
         # find locations of rows that didn't have procedures
@@ -116,114 +116,10 @@ class OutpatientsModel(Model):
         # number of overall attendances)
         data.loc[npix, "attendances"] -= tele_conversion
         data.loc[npix, "tele_attendances"] += tele_conversion
-        # restore chained assignment warnings
-        pd.set_option("mode.chained_assignment", options)
-
-    def _run_poisson_step(
-        self,
-        rng: np.random.BitGenerator,
-        data: pd.DataFrame,
-        name: str,
-        factor: np.ndarray,
-        step_counts: dict,
-    ) -> None:
-        """Run a poisson step
-
-        Resample the rows of `data` using a randomly generated poisson value for each row from
-        `factor`.
-
-        Updates the `step_counts` dictionary as a side effect.
-
-        :param rng: a random number generator created for each model iteration
-        :type rng: numpy.random.Generator
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param name: the name of the step (inserted into step_counts)
-        :type name: str
-        :param factor: a series with as many values as rows in `data` which will be used as the lambda
-            value for the poisson distribution
-        :type factor: pandas.Series
-        :param step_counts: a dictionary containing the changes to measures for this step
-        :type step_counts: dict
-
-        :returns: the updated DataFrame
-        :rtype: pandas.DataFrame
-        """
-        data.loc[:, "attendances"] = rng.poisson(
-            data["attendances"].to_numpy() * factor
-        )
-        data.loc[:, "tele_attendances"] = rng.poisson(
-            data["tele_attendances"].to_numpy() * factor
-        )
-        # remove rows where the overall number of attendances was 0
-        data.drop(
-            data[data["attendances"] + data["tele_attendances"] == 0].index,
-            inplace=True,
-        )
-        # update the step count values
-        self._update_step_counts(data, name, step_counts)
-
-    def _run_binomial_step(
-        self,
-        rng: np.random.BitGenerator,
-        data: pd.DataFrame,
-        name: str,
-        factor: np.ndarray,
-        step_counts: dict,
-    ) -> None:
-        """Run a binomial step
-
-        Resample the rows of `data` using a randomly generated binomial value for each row from
-        `factor`.
-
-        Updates the `step_counts` dictionary as a side effect.
-
-        :param rng: a random number generator created for each model iteration
-        :type rng: numpy.random.Generator
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param name: the name of the step (inserted into step_counts)
-        :type name: str
-        :param factor: a series with as many values as rows in `data` which will be used as the
-            parameter of the distribution
-        :type factor: pandas.Series
-        :param step_counts: a dictionary containing the changes to measures for this step
-        :type step_counts: dict
-
-        :returns: the updated DataFrame
-        :rtype: pandas.DataFrame
-        """
-        data.loc[:, "attendances"] = rng.binomial(
-            data["attendances"].to_numpy(), factor
-        )
-        data.loc[:, "tele_attendances"] = rng.binomial(
-            data["tele_attendances"].to_numpy(), factor
-        )
-        # remove rows where the overall number of attendances was 0
-        data.drop(
-            data[data["attendances"] + data["tele_attendances"] == 0].index,
-            inplace=True,
-        )
-        # update the step count values
-        self._update_step_counts(data, name, step_counts)
-
-    @staticmethod
-    def _update_step_counts(data: pd.DataFrame, name: str, step_counts: dict) -> None:
-        """Update the dictionary of step counts
-
-        Helper method for updating the step counts dictionary, which keeps track of the changes to
-        the data after performing each step
-
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param name: the name of the step we just performed
-        :type name: str
-        :param step_counts: the dictionary that contains the step counts
-        :type step_counts: dict
-        """
-        step_counts[name] = {
-            k: sum(data[k]) - sum(v[k] for v in step_counts.values())
-            for k in ["attendances", "tele_attendances"]
+        tele_conversion = tele_conversion.sum()
+        step_counts["convert_to_tele"] = {
+            "attendances": -tele_conversion,
+            "tele_attendances": tele_conversion,
         }
 
     @staticmethod
@@ -260,6 +156,42 @@ class OutpatientsModel(Model):
             right_index=True,
         )["value"].fillna(1)
 
+    @staticmethod
+    def _step_counts(
+        attendances: pd.Series,
+        tele_attendances: pd.Series,
+        attendances_after: int,
+        tele_attendances_after: int,
+        factors: dict,
+    ) -> dict:
+        cf = {}
+        # convert the attendances/tele_attendances before modelling to a complex number:
+        #   * the "real" part is the attendances count
+        #   * the "imaginary" part is the tele attendances count
+        # this makes it easy to keep track of both values
+        n = (attendances + tele_attendances * 1j).to_numpy()
+        before = ns = n.sum()
+        for k, v in factors.items():
+            n2 = n * v
+            n2s = n2.sum()
+            cf[k] = n2s - ns
+            n, ns = n2, n2s
+
+        attendances_slack = 1 + (attendances_after - ns.real) / (ns.real - before.real)
+        tele_attendances_slack = 1 + (tele_attendances_after - ns.imag) / (
+            ns.imag - before.imag
+        )
+        return {
+            "baseline": {"attendances": before.real, "tele_attendances": before.imag},
+            **{
+                k: {
+                    "attendances": v.real * attendances_slack,
+                    "tele_attendances": v.imag * tele_attendances_slack,
+                }
+                for k, v in cf.items()
+            },
+        }
+
     def _run(
         self,
         rng: np.random.Generator,
@@ -285,63 +217,37 @@ class OutpatientsModel(Model):
         :rtype: (dict, pandas.DataFrame)
         """
         params = run_params["outpatient_factors"]
-        step_counts = {
-            "baseline": {k: data[k].sum() for k in ["attendances", "tele_attendances"]}
-        }
 
-        # captue current pandas options, and set chainged assignment off
-        pd_options = pd.set_option("mode.chained_assignment", None)
-        # first, run hsa as we have the factor already created
-        self._run_poisson_step(
-            rng, data, "health_status_adjustment", hsa_f, step_counts
+        factors = {
+            "health_status_adjustment": hsa_f,
+            "population_factors": demo_f[data["rn"]].to_numpy(),
+            "expatriation": self._expat_adjustment(data, run_params).to_numpy(),
+            "repatriation": self._repat_adjustment(data, run_params).to_numpy(),
+            "waiting_list_adjustment": self._waiting_list_adjustment(data),
+            "followup_reduction": self._followup_reduction(data, params),
+            "consultant_to_consultant_referrals": self._consultant_to_consultant_reduction(
+                data, params
+            ),
+        }
+        reduced_factor = np.prod(list(factors.values()), axis=0)
+
+        new_attendances = rng.poisson(data["attendances"] * reduced_factor)
+        new_tele_attendances = rng.poisson(data["tele_attendances"] * reduced_factor)
+
+        step_counts = self._step_counts(
+            data["attendances"],
+            data["tele_attendances"],
+            new_attendances.sum(),
+            new_tele_attendances.sum(),
+            factors,
         )
-        # then, demographic modelling
-        self._run_poisson_step(
-            rng, data, "population_factors", demo_f[data["rn"]], step_counts
-        )
-        # expat/repat
-        self._run_binomial_step(
-            rng,
-            data,
-            "expatriation",
-            self._expat_adjustment(data, run_params),
-            step_counts,
-        )
-        self._run_poisson_step(
-            rng,
-            data,
-            "repatriation",
-            self._repat_adjustment(data, run_params),
-            step_counts,
-        )
-        # waiting list adjustments
-        self._run_poisson_step(
-            rng,
-            data,
-            "waiting_list_adjustment",
-            self._waiting_list_adjustment(data),
-            step_counts,
-        )
-        # now run strategies
-        self._run_binomial_step(
-            rng,
-            data,
-            "followup_reduction",
-            self._followup_reduction(data, params),
-            step_counts,
-        )
-        self._run_binomial_step(
-            rng,
-            data,
-            "consultant_to_consultant_referrals",
-            self._consultant_to_consultant_reduction(data, params),
-            step_counts,
-        )
-        # now run_step's are finished, restore pandas options
-        pd.set_option("mode.chained_assignment", pd_options)
+
+        data["attendances"] = new_attendances
+        data["tele_attendances"] = new_tele_attendances
+
         # convert attendances to tele attendances
-        self._convert_to_tele(rng, data, params)
-        self._update_step_counts(data, "tele_conversion", step_counts)
+        self._convert_to_tele(rng, data, params, step_counts)
+
         # return the data
         change_factors = (
             pd.DataFrame.from_dict(step_counts, orient="index")
@@ -354,7 +260,6 @@ class OutpatientsModel(Model):
                 "measure",
             )
         )
-        change_factors["value"] = change_factors["value"].astype(int)
         return (change_factors, data.drop(["hsagrp"], axis="columns"))
 
     def aggregate(self, model_results: pd.DataFrame, model_run: int) -> dict:

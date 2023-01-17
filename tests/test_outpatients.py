@@ -6,6 +6,7 @@ from unittest.mock import Mock, mock_open, patch
 import numpy as np
 import pandas as pd
 import pytest
+
 from model.outpatients import OutpatientsModel
 
 
@@ -122,8 +123,10 @@ def test_consultant_to_consultant_reduction(mock_model):
 
 def test_convert_to_tele(mock_model):
     """test that it mutates the data"""
+    # arrange
+    mdl = mock_model
     rng = Mock()
-    rng.binomial.return_value = 10
+    rng.binomial.return_value = np.array([10])
     data = pd.DataFrame(
         {
             "has_procedures": [False, False, True],
@@ -132,56 +135,16 @@ def test_convert_to_tele(mock_model):
             "tele_attendances": [5, 10, 0],
         }
     )
-    mdl = mock_model
-    mdl._convert_to_tele(rng, data, {"convert_to_tele": {"a": 1, "b": 2}})
+    step_counts = {}
+    # act
+    mdl._convert_to_tele(rng, data, {"convert_to_tele": {"a": 1, "b": 2}}, step_counts)
+    # assert
     assert data["attendances"].to_list() == [10, 15, 30]
     assert data["tele_attendances"].to_list() == [15, 20, 0]
     assert rng.binomial.called_once_with(pd.Series([20, 25]), [1, 2])
-
-
-def test_run_poisson_step(mock_model):
-    """test that it applies the poisson step and mutates the data and calls update step counts"""
-    # arrange
-    rng = Mock()
-    rng.poisson = Mock(wraps=lambda xs: [2 * x for x in xs])
-    data = pd.DataFrame({"attendances": [0, 1, 2, 3], "tele_attendances": [4, 0, 5, 6]})
-    mdl = mock_model
-    mdl._update_step_counts = Mock()
-    # act
-    mdl._run_poisson_step(rng, data, "test", [1, 2, 3, 0], "step_counts")
-    # assert
-    assert data.attendances.to_list() == [0, 4, 12]
-    assert data.tele_attendances.to_list() == [8, 0, 30]
-    assert rng.poisson.call_count == 2
-    mdl._update_step_counts.assert_called_once_with(data, "test", "step_counts")
-
-
-def test_run_binomial_step(mock_model):
-    """test that it applies the binomial step and mutates the data and calls update step counts"""
-    # arrange
-    rng = Mock()
-    rng.binomial = Mock(wraps=lambda xs, ys: [2 * (x - y) for x, y in zip(xs, ys)])
-    data = pd.DataFrame({"attendances": [3, 6, 7, 1], "tele_attendances": [4, 5, 8, 1]})
-    mdl = mock_model
-    mdl._update_step_counts = Mock()
-    # act
-    mdl._run_binomial_step(rng, data, "test", [3, 5, 2, 1], "step_counts")
-    # assert
-    assert data.attendances.to_list() == [0, 2, 10]
-    assert data.tele_attendances.to_list() == [2, 0, 12]
-    assert rng.binomial.call_count == 2
-    mdl._update_step_counts.assert_called_once_with(data, "test", "step_counts")
-
-
-def test_update_step_counts(mock_model):
-    """test that it updates the step counts object"""
-    # arrange
-    step_counts = {"baseline": {"attendances": 6, "tele_attendances": 15}}
-    data = pd.DataFrame({"attendances": [2, 3, 4], "tele_attendances": [6, 7, 8]})
-    # act
-    mock_model._update_step_counts(data, "test", step_counts)
-    # assert
-    assert step_counts["test"] == {"attendances": 3, "tele_attendances": 6}
+    assert step_counts == {
+        "convert_to_tele": {"attendances": -10, "tele_attendances": 10}
+    }
 
 
 def test_expat_adjustment():
@@ -214,19 +177,52 @@ def test_repat_adjustment():
     assert actual.tolist() == [1.1, 1.2, 1.0, 1.3, 1.4, 1.0]
 
 
+def test_step_counts(mock_model):
+    """test that it estimates the step counts correctly"""
+    # arrange
+    mdl = mock_model
+    attendances_before = pd.Series([1, 2])
+    tele_attendances_before = pd.Series([3, 4])
+    attendances_after = 6
+    tele_attendances_after = 16
+    factors = {"a": [0.75, 0.875], "b": [1.5, 2.0]}
+    # act
+    actual = mdl._step_counts(
+        attendances_before,
+        tele_attendances_before,
+        attendances_after,
+        tele_attendances_after,
+        factors,
+    )
+    # arrange
+    assert actual == {
+        "baseline": {"attendances": 3, "tele_attendances": 7},
+        "a": {
+            "attendances": -0.9230769230769231,
+            "tele_attendances": -3.333333333333334,
+        },
+        "b": {
+            "attendances": 3.9230769230769234,
+            "tele_attendances": 12.333333333333334,
+        },
+    }
+
+
 def test_run(mock_model):
     """test that it runs the model steps"""
     # arrange
     mdl = mock_model
-    mdl._run_poisson_step = Mock()
-    mdl._run_binomial_step = Mock()
-    mdl._waiting_list_adjustment = Mock()
-    mdl._followup_reduction = Mock()
-    mdl._consultant_to_consultant_reduction = Mock()
+    rng = Mock()
+    rng.poisson = Mock(wraps=lambda x: x)
+    mdl._waiting_list_adjustment = Mock(return_value=np.array([1, 2]))
+    mdl._followup_reduction = Mock(return_value=np.array([3, 4]))
+    mdl._consultant_to_consultant_reduction = Mock(return_value=np.array([5, 6]))
+    mdl._expat_adjustment = Mock(return_value=pd.Series([7, 8]))
+    mdl._repat_adjustment = Mock(return_value=pd.Series([9, 10]))
+    mdl._step_counts = Mock(
+        return_value={"baseline": {"attendances": 1, "tele_attendances": 2}}
+    )
     mdl._convert_to_tele = Mock()
-    mdl._update_step_counts = Mock()
-    mdl._expat_adjustment = Mock()
-    mdl._repat_adjustment = Mock()
     data = pd.DataFrame(
         {
             "rn": [1, 2],
@@ -238,29 +234,43 @@ def test_run(mock_model):
     run_params = {"outpatient_factors": "outpatient_factors"}
     # act
     change_factors, model_results = mdl._run(
-        None, data, run_params, pd.Series({1: 1, 2: 2}), "hsa_f"
+        rng, data, run_params, pd.Series({1: 1, 2: 2}), np.array([11, 12])
     )
     # assert
-    assert change_factors.equals(
-        pd.DataFrame(
-            {
-                "change_factor": ["baseline"] * 2,
-                "strategy": ["-"] * 2,
-                "measure": ["attendances", "tele_attendances"],
-                "value": np.array([11, 15]),
-            }
-        )
-    )
-    assert model_results.equals(data.drop("hsagrp", axis="columns"))
-    assert mdl._run_poisson_step.call_count == 4
-    assert mdl._run_binomial_step.call_count == 3
+    assert change_factors.to_dict("list") == {
+        "change_factor": ["baseline"] * 2,
+        "strategy": ["-"] * 2,
+        "measure": ["attendances", "tele_attendances"],
+        "value": [1, 2],
+    }
+    assert model_results.to_dict("list") == {
+        "rn": [1, 2],
+        "attendances": [51975, 552960],
+        "tele_attendances": [72765, 737280],
+    }
     mdl._waiting_list_adjustment.assert_called_once()
     mdl._followup_reduction.assert_called_once()
     mdl._consultant_to_consultant_reduction.assert_called_once()
     mdl._convert_to_tele.assert_called_once()
-    mdl._update_step_counts.assert_called_once()
     mdl._expat_adjustment.assert_called_once()
     mdl._repat_adjustment.assert_called_once()
+    assert rng.poisson.call_count == 2
+    mdl._step_counts.assert_called_once()
+    assert mdl._step_counts.call_args_list[0][0][0].to_list() == [5, 6]
+    assert mdl._step_counts.call_args_list[0][0][1].to_list() == [7, 8]
+    assert mdl._step_counts.call_args_list[0][0][2] == 604935
+    assert mdl._step_counts.call_args_list[0][0][3] == 810045
+    assert {
+        k: v.tolist() for k, v in mdl._step_counts.call_args_list[0][0][4].items()
+    } == {
+        "health_status_adjustment": [11, 12],
+        "population_factors": [1, 2],
+        "expatriation": [7, 8],
+        "repatriation": [9, 10],
+        "waiting_list_adjustment": [1, 2],
+        "followup_reduction": [3, 4],
+        "consultant_to_consultant_referrals": [5, 6],
+    }
 
 
 def test_aggregate(mock_model):
