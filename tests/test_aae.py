@@ -6,6 +6,7 @@ from unittest.mock import Mock, mock_open, patch
 import numpy as np
 import pandas as pd
 import pytest
+
 from model.aae import AaEModel
 
 
@@ -124,30 +125,6 @@ def test_frequent_attenders(mock_model):
     )
 
 
-def test_run_poisson_step(mock_model):
-    """test that it applies the poisson step and mutates the data and step counts objects"""
-    rng = Mock()
-    rng.poisson = Mock(wraps=lambda xs: [2 * x for x in xs])
-    data = pd.DataFrame({"arrivals": [1, 2, 3, 4, 5]})
-    step_counts = {"baseline": 15}
-    mock_model._run_poisson_step(rng, data, "test", [0, 1, 2, 3, 4], step_counts)
-    assert data.arrivals.to_list() == [4, 12, 24, 40]
-    assert step_counts["test"] == 65
-    rng.poisson.assert_called_once()
-
-
-def test_run_binomial_step(mock_model):
-    """test that it applies the poisson step and mutates the data and step counts objects"""
-    rng = Mock()
-    rng.binomial = Mock(wraps=lambda xs, ys: [2 * (x - y) for x, y in zip(xs, ys)])
-    data = pd.DataFrame({"arrivals": [5, 6, 7, 8, 9]})
-    step_counts = {"baseline": 15}
-    mock_model._run_binomial_step(rng, data, "test", [5, 4, 3, 2, 1], step_counts)
-    assert data.arrivals.to_list() == [4, 8, 12, 16]
-    assert step_counts["test"] == 25
-    rng.binomial.assert_called_once()
-
-
 def test_expat_adjustment():
     """ "test that it returns the right parameters"""
     # arrange
@@ -178,42 +155,53 @@ def test_repat_adjustment():
     assert actual.tolist() == [1.1, 1.0, 1.3, 1.0]
 
 
+def test_step_counts(mock_model):
+    """test that it estimates the step counts correctly"""
+    # arrange
+    mdl = mock_model
+    arrivals = pd.Series([1, 2, 3])
+    arrivals_after = 15
+    factors = {"a": [0.5, 0.75, 0.875], "b": [1.0, 1.5, 2.0]}
+    # act
+    actual = mdl._step_counts(arrivals, arrivals_after, factors)
+    # assert
+    assert actual == {"baseline": 6, "a": -6.1875, "b": 15.1875}
+
+
 def test_run(mock_model):
     """test that it runs the model steps"""
     # arrange
     mdl = mock_model
-    mdl._run_poisson_step = Mock()
-    mdl._run_binomial_step = Mock()
-    mdl._low_cost_discharged = Mock()
-    mdl._left_before_seen = Mock()
-    mdl._frequent_attenders = Mock()
-    mdl._expat_adjustment = Mock()
-    mdl._repat_adjustment = Mock()
+    rng = Mock()
+    rng.poisson.return_value = np.array([7, 8])
+    mdl._step_counts = Mock(return_value={"a": 1, "b": 2})
+    mdl._low_cost_discharged = Mock(return_value=[5, 6])
+    mdl._left_before_seen = Mock(return_value=[7, 8])
+    mdl._frequent_attenders = Mock(return_value=[9, 10])
+    mdl._expat_adjustment = Mock(return_value=pd.Series([11, 12]))
+    mdl._repat_adjustment = Mock(return_value=pd.Series([13, 14]))
     data = pd.DataFrame({"rn": [1, 2], "hsagrp": [3, 4], "arrivals": [5, 6]})
     run_params = {"aae_factors": "aae_factors"}
     # act
     change_factors, model_results = mdl._run(
-        None, data, run_params, pd.Series({1: 1, 2: 2}), "hsa_f"
+        rng, data, run_params, pd.Series({1: 1, 2: 2}), [3, 4]
     )
     # assert
-    assert change_factors.equals(
-        pd.DataFrame(
-            {
-                "change_factor": ["baseline"],
-                "strategy": ["-"],
-                "measure": ["arrivals"],
-                "value": np.array([11]),
-            }
-        )
-    )
-    assert model_results.equals(data.drop("hsagrp", axis="columns"))
-    assert mdl._run_poisson_step.call_count == 3
-    assert mdl._run_binomial_step.call_count == 4
+    assert change_factors.to_dict("list") == {
+        "change_factor": ["a", "b"],
+        "strategy": ["-"] * 2,
+        "measure": ["arrivals"] * 2,
+        "value": [1, 2],
+    }
+    assert model_results.to_dict("list") == {"rn": [1, 2], "arrivals": [7, 8]}
+    rng.poisson.assert_called_once()
+    assert rng.poisson.call_args_list[0][0][0].to_list() == [675675, 3870720]
     mdl._low_cost_discharged.assert_called_once()
     mdl._left_before_seen.assert_called_once()
     mdl._frequent_attenders.assert_called_once()
     mdl._expat_adjustment.assert_called_once()
     mdl._repat_adjustment.assert_called_once()
+    mdl._step_counts.assert_called_once()
 
 
 def test_aggregate(mock_model):
