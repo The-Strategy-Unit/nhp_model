@@ -244,5 +244,9 @@ list(
       theatres_synthetic
     )
   ),
-  tar_target(uploaded_file, upload_file_to_azure(all_files), pattern = map(all_files))
+  tar_target(
+    uploaded_file,
+    upload_file_to_azure(all_files, data_version),
+    pattern = map(all_files)
+  )
 )
