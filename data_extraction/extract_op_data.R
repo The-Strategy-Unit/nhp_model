@@ -1,6 +1,6 @@
 .data <- NULL # lint helper
 
-extract_op_data <- function(providers) {
+extract_op_data <- function(start_date, end_date, providers) {
   con <- DBI::dbConnect(
     odbc::odbc(),
     .connection_string = Sys.getenv("CONSTR"), timeout = 10
@@ -9,7 +9,8 @@ extract_op_data <- function(providers) {
 
   dplyr::tbl(con, dbplyr::in_schema("nhp_modelling", "outpatients")) |>
     dplyr::filter(
-      .data$fyear == 201819,
+      .data$apptdate >= start_date,
+      .data$apptdate <= end_date,
       .data$apptage <= 120,
       .data$procode3 %in% providers
     ) |>
@@ -22,7 +23,7 @@ extract_op_data <- function(providers) {
     )
 }
 
-extract_op_sample_data <- function(...) {
+extract_op_sample_data <- function(start_date, end_date, ...) {
   con <- DBI::dbConnect(
     odbc::odbc(),
     .connection_string = Sys.getenv("CONSTR"), timeout = 10
@@ -38,7 +39,8 @@ extract_op_sample_data <- function(...) {
 
   tbl_outpatients <- dplyr::tbl(con, dbplyr::in_schema("nhp_modelling", "outpatients")) |>
     dplyr::filter(
-      .data$fyear == 201819,
+      .data$apptdate >= start_date,
+      .data$apptdate <= end_date,
       .data$apptage <= 120
     ) |>
     dplyr::semi_join(tbl_providers_of_interest, by = c("procode3" = "org_code"))
@@ -227,16 +229,31 @@ save_op_data <- function(data, name, path, ...) {
 
 # ------------------------------------------------------------------------------
 
-create_op_extract <- function(providers, specialties, name, extract_fn, synth_fn, path, ...) {
-  extract_fn(providers) |>
+create_op_extract <- function(start_date,
+                              end_date,
+                              providers,
+                              specialties,
+                              name,
+                              extract_fn,
+                              synth_fn,
+                              path,
+                              ...) {
+  extract_fn(start_date, end_date, providers) |>
     create_op_data(specialties) |>
     synth_fn() |>
     aggregate_op_data(...) |>
     save_op_data(name, path, ...)
 }
 
-create_synthetic_op_extract <- function(..., name = "synthetic", specialties = NULL, path = "data") {
+create_synthetic_op_extract <- function(start_date,
+                                        end_date,
+                                        ...,
+                                        name = "synthetic",
+                                        specialties = NULL,
+                                        path = "data") {
   create_op_extract(
+    start_date,
+    end_date,
     NULL,
     specialties,
     name,
@@ -247,13 +264,21 @@ create_synthetic_op_extract <- function(..., name = "synthetic", specialties = N
   )
 }
 
-create_provider_op_extract <- function(providers, ..., name, specialties = NULL, path = "data") {
+create_provider_op_extract <- function(start_date,
+                                       end_date,
+                                       providers,
+                                       ...,
+                                       name,
+                                       specialties = NULL,
+                                       path = "data") {
   if (missing(name)) {
     name <- paste(providers, collapse = "_")
   }
   cat(paste("    running:", name))
 
   create_op_extract(
+    start_date,
+    end_date,
     providers,
     specialties,
     name,

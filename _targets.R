@@ -1,5 +1,6 @@
 library(targets)
 library(tarchetypes)
+library(lubridate)
 
 # Set target-specific options such as packages.
 tar_option_set(
@@ -18,6 +19,12 @@ purrr::walk(fs::dir_ls("data_extraction", glob = "*.R"), source)
 
 # End this file with a list of target objects.
 list(
+  # variables ----
+  # these may need to be update as required
+  tar_target(data_version, "v0.2.0"),
+  tar_target(start_date, ymd("20180401")),
+  # default end_date to be 1 year (-1 day) after the start date
+  tar_target(end_date, start_date %m+% years(1) %m-% days(1)),
   tar_target(rtt_specs, c(
     "100", "101", "110", "120", "130", "140", "160", "300", "320", "330", "400",
     "410", "430", "502"
@@ -37,6 +44,7 @@ list(
     c("RXN", "RTX"),
     "RYJ"
   )),
+  # targets ----
   # sql data
   tar_target(
     reference_data,
@@ -44,7 +52,7 @@ list(
   ),
   tar_target(
     ip_data_file_paths,
-    create_provider_ip_extract(providers[[1]], specialties = rtt_specs),
+    create_provider_ip_extract(start_date, end_date, providers[[1]], specialties = rtt_specs),
     pattern = map(providers)
   ),
   tar_target(
@@ -61,7 +69,7 @@ list(
   ),
   tar_target(
     ip_synth_data_file_paths,
-    create_synthetic_ip_extract(specialties = rtt_specs),
+    create_synthetic_ip_extract(start_date, end_date, specialties = rtt_specs),
   ),
   tar_target(
     ip_synth_data,
@@ -70,7 +78,7 @@ list(
   ),
   tar_target(
     op_data_file_paths,
-    create_provider_op_extract(providers[[1]], specialties = rtt_specs),
+    create_provider_op_extract(start_date, end_date, providers[[1]], specialties = rtt_specs),
     pattern = map(providers)
   ),
   tar_target(
@@ -81,12 +89,12 @@ list(
   ),
   tar_target(
     op_synth_data,
-    create_synthetic_op_extract(specialties = rtt_specs),
+    create_synthetic_op_extract(start_date, end_date, specialties = rtt_specs),
     format = "file"
   ),
   tar_target(
     aae_data_file_paths,
-    create_provider_aae_extract(providers[[1]]),
+    create_provider_aae_extract(start_date, end_date, providers[[1]]),
     pattern = map(providers)
   ),
   tar_target(
@@ -97,7 +105,7 @@ list(
   ),
   tar_target(
     aae_synth_data,
-    create_synthetic_aae_extract(),
+    create_synthetic_aae_extract(start_date, end_date),
     format = "file"
   ),
   # kh03 data

@@ -1,7 +1,7 @@
 .data <- NULL # lint helper
 `%<-%` <- zeallot::`%<-%` # nolint
 
-extract_ip_data <- function(providers) {
+extract_ip_data <- function(start_date, end_date, providers) {
   con <- DBI::dbConnect(
     odbc::odbc(),
     .connection_string = Sys.getenv("CONSTR"), timeout = 10
@@ -10,7 +10,8 @@ extract_ip_data <- function(providers) {
 
   tb_inpatients <- dplyr::tbl(con, dbplyr::in_schema("nhp_modelling", "inpatients")) |>
     dplyr::filter(
-      .data$FYEAR == 201819,
+      .data$DISDATE >= start_date,
+      .data$DISDATE <= end_date,
       .data$ADMIAGE <= 120,
       .data$PROCODE3 %in% providers
     )
@@ -45,7 +46,7 @@ extract_ip_data <- function(providers) {
   )
 }
 
-extract_ip_sample_data <- function(...) {
+extract_ip_sample_data <- function(start_date, end_date, ...) {
   con <- DBI::dbConnect(
     odbc::odbc(),
     .connection_string = Sys.getenv("CONSTR"), timeout = 10
@@ -63,7 +64,8 @@ extract_ip_sample_data <- function(...) {
 
   tbl_inpatients <- dplyr::tbl(con, dbplyr::in_schema("nhp_modelling", "inpatients")) |>
     dplyr::filter(
-      .data$FYEAR == 201819,
+      .data$DISDATE >= start_date,
+      .data$DISDATE <= end_date,
       .data$ADMIAGE <= 120
     ) |>
     dplyr::semi_join(tbl_providers_of_interest, by = c("PROCODE3" = "org_code"))
@@ -307,9 +309,17 @@ save_ip_data <- function(data, strategies, name, path) {
 
 # ------------------------------------------------------------------------------
 
-create_ip_extract <- function(providers, specialties, name, extract_fn, synth_fn, path, ...) {
+create_ip_extract <- function(start_date,
+                              end_date,
+                              providers,
+                              specialties,
+                              name,
+                              extract_fn,
+                              synth_fn,
+                              path,
+                              ...) {
   inpatients <- strategies <- NULL # for lint
-  c(inpatients, strategies) %<-% extract_fn(providers)
+  c(inpatients, strategies) %<-% extract_fn(start_date, end_date, providers)
 
   inpatients |>
     create_ip_data(specialties) |>
@@ -317,8 +327,15 @@ create_ip_extract <- function(providers, specialties, name, extract_fn, synth_fn
     save_ip_data(strategies, name, path)
 }
 
-create_synthetic_ip_extract <- function(..., name = "synthetic", specialties = NULL, path = "data") {
+create_synthetic_ip_extract <- function(start_date,
+                                        end_date,
+                                        ...,
+                                        name = "synthetic",
+                                        specialties = NULL,
+                                        path = "data") {
   create_ip_extract(
+    start_date,
+    end_date,
     NULL,
     specialties,
     name,
@@ -329,13 +346,21 @@ create_synthetic_ip_extract <- function(..., name = "synthetic", specialties = N
   )
 }
 
-create_provider_ip_extract <- function(providers, ..., name, specialties = NULL, path = "data") {
+create_provider_ip_extract <- function(start_date,
+                                       end_date,
+                                       providers,
+                                       ...,
+                                       name,
+                                       specialties = NULL,
+                                       path = "data") {
   if (missing(name)) {
     name <- paste(providers, collapse = "_")
   }
   cat(paste("    running:", name))
 
   create_ip_extract(
+    start_date,
+    end_date,
     providers,
     specialties,
     name,
