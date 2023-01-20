@@ -5,6 +5,7 @@
   "model_runs": 256,
   "start_year": 2018,
   "end_year": 2038,
+  "app_version": "dev",
   "create_datetime": "20220101_000000",
   "demographic_factors": {
     "file": "demographic_factors.csv",
