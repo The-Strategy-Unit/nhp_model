@@ -77,6 +77,7 @@ class ModelSave:
             "submitted_by": params.get("submitted_by", None),
             "start_year": params["start_year"],
             "end_year": params["end_year"],
+            "app_version": params.get("app_version", "0.1"),
         }
         #
         self._save_results = save_results
