@@ -5,7 +5,7 @@ upload_file_to_azure <- function(file, data_version) {
   )
   fs <- AzureStor::adls_filesystem(ep, "data")
 
-  AzureStor::upload_adls_file(fs, file, stringr::str_replace(file, "^data/", data_version))
+  AzureStor::upload_adls_file(fs, file, stringr::str_replace(file, "^data(?=/)", data_version))
 
   tibble::tibble(file = file, uploaded = Sys.time())
 }
