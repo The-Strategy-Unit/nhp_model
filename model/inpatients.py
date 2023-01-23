@@ -76,6 +76,7 @@ class InpatientsModel(Model):
             pd.read_csv(
                 f"{self._data_path}/kh03.csv",
                 dtype={
+                    "quarter": np.character,
                     "specialty_code": np.character,
                     "specialty_group": np.character,
                     "available": np.int64,
@@ -83,7 +84,7 @@ class InpatientsModel(Model):
                 },
             )
             .merge(self._ward_groups, left_on="specialty_code", right_index=True)
-            .groupby(["ward_group"])[["available", "occupied"]]
+            .groupby(["quarter", "ward_group"])[["available", "occupied"]]
             .agg(lambda x: sum(np.round(x).astype(int)))
         )
         # get the baseline data
@@ -659,7 +660,7 @@ class InpatientsModel(Model):
             .query(f"quarter.dt.qyear == {year + 1}")
             .groupby(["quarter", "ward_type", "ward_group"], as_index=False)
             .agg({"size": max})
-            .assign(quarter=lambda x: x.quarter.astype(str).str[4:])
+            .assign(quarter=lambda x: x.quarter.astype(str).str[4:].str.lower())
         )
 
     def _bed_occupancy(
@@ -684,8 +685,7 @@ class InpatientsModel(Model):
             # todo: load kh03 data by quarter
             return {
                 result("ip", "day+night", q, k): np.round(v).astype(int)
-                for k, v in self._kh03_data["available"].iteritems()
-                for q in ["q1", "q2", "q3", "q4"]
+                for (q, k), v in self._kh03_data["available"].iteritems()
             }
 
         target_bed_occupancy_rates = pd.Series(bed_occupancy_params["day+night"])
@@ -696,7 +696,7 @@ class InpatientsModel(Model):
             .rename(columns={"size": "model"})
             .merge(
                 self._kh03_data["occupied"],
-                left_on="ward_group",
+                left_on=["quarter", "ward_group"],
                 right_index=True,
                 how="outer",
             )

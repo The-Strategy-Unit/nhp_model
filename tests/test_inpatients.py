@@ -135,9 +135,10 @@ def test_load_kh03_data(mocker, mock_model):
         "pandas.read_csv",
         return_value=pd.DataFrame(
             {
-                "specialty_code": ["100", "200", "300", "501"],
-                "available": [1, 2, 3, 4],
-                "occupied": [4, 5, 6, 7],
+                "quarter": ["q1"] * 4 + ["q2"],
+                "specialty_code": ["100", "200", "300", "501", "100"],
+                "available": [1, 2, 3, 4, 5],
+                "occupied": [4, 5, 6, 7, 8],
             }
         ),
     )
@@ -145,14 +146,19 @@ def test_load_kh03_data(mocker, mock_model):
     # act
     mdl._load_kh03_data()
     # assert
-    mdl._ward_groups.equals(
-        pd.Series(["a", "b", "b", "c"], index=["100", "200", "300", "501"])
-    )
-    mdl._kh03_data.equals(
-        pd.DataFrame(
-            {"available": [1, 5, 4], "occupied": [4, 11, 7]}, index=["a", "b", "c"]
-        )
-    )
+    assert mdl._ward_groups.to_dict("index") == {
+        "100": {"ward_type": "General and Acute", "ward_group": "a"},
+        "200": {"ward_type": "General and Acute", "ward_group": "b"},
+        "300": {"ward_type": "General and Acute", "ward_group": "b"},
+        "500": {"ward_type": "General and Acute", "ward_group": "_"},
+        "501": {"ward_type": "Maternity", "ward_group": "c"},
+    }
+    assert mdl._kh03_data.to_dict("index") == {
+        ("q1", "a"): {"available": 1, "occupied": 4},
+        ("q1", "b"): {"available": 5, "occupied": 11},
+        ("q1", "c"): {"available": 4, "occupied": 7},
+        ("q2", "a"): {"available": 5, "occupied": 8},
+    }
     mdl._bedday_summary.assert_called_once_with("data", 2018)
     assert mdl._beds_baseline == "beds_baseline"
 
@@ -568,7 +574,7 @@ def test_bedday_summary(mock_model):
     actual = mdl._bedday_summary(data, 2022)
     # assert
     assert actual.to_dict("list") == {
-        "quarter": ["Q1", "Q1"],
+        "quarter": ["q1", "q1"],
         "ward_type": ["general_and_acute", "general_and_acute"],
         "ward_group": ["A", "B"],
         "size": [4, 2],
@@ -582,26 +588,28 @@ def test_bed_occupancy(mock_model):
     mdl._bedday_summary = Mock(
         return_value=pd.DataFrame(
             {
-                "quarter": ["Q1"] * 3,
-                "ward_type": ["general_and_acute"] * 3,
-                "ward_group": ["A", "B", "C"],
-                "size": [4, 2, 1],
+                "quarter": ["q1"] * 3 + ["q2"] * 3,
+                "ward_type": ["general_and_acute"] * 6,
+                "ward_group": ["A", "B", "C"] * 2,
+                "size": [4, 2, 1, 8, 4, 2],
             }
         )
     )
     mdl._kh03_data = pd.DataFrame(
         {
-            "available": [10, 50],
-            "occupied": [5, 40],
+            "available": [10, 50, 20, 100],
+            "occupied": [5, 40, 10, 80],
         },
-        index=["A", "B"],
+        index=pd.MultiIndex.from_tuples(
+            [(q, k) for q in ["q1", "q2"] for k in ["A", "B"]]
+        ),
     )
     mdl._beds_baseline = pd.DataFrame(
         {
-            "quarter": ["Q1"] * 3,
-            "ward_type": ["general_and_acute"] * 3,
-            "ward_group": ["A", "B", "C"],
-            "size": [2, 1, 1],
+            "quarter": ["q1"] * 3 + ["q2"] * 3,
+            "ward_type": ["general_and_acute"] * 6,
+            "ward_group": ["A", "B", "C"] * 2,
+            "size": [2, 1, 1, 4, 2, 2],
         }
     )
     # act
@@ -610,9 +618,12 @@ def test_bed_occupancy(mock_model):
     )
     # assert
     assert {tuple(k): v for k, v in actual.items()} == {
-        ("ip", "day+night", "Q1", "A"): 13,
-        ("ip", "day+night", "Q1", "B"): 91,
-        ("ip", "day+night", "Q1", "C"): 0,
+        ("ip", "day+night", "q1", "A"): 13,
+        ("ip", "day+night", "q1", "B"): 91,
+        ("ip", "day+night", "q1", "C"): 0,
+        ("ip", "day+night", "q2", "A"): 27,
+        ("ip", "day+night", "q2", "B"): 183,
+        ("ip", "day+night", "q2", "C"): 0,
     }
     mdl._bedday_summary.assert_called_once_with("model_results", 2018)
 
@@ -638,12 +649,21 @@ def test_bed_occupancy_baseline(mock_model):
     )
     mdl._kh03_data = pd.DataFrame(
         {
-            "available": [10, 50, 5],
-            "occupied": [5, 40, 2],
+            "available": [10, 50, 20, 100],
+            "occupied": [5, 40, 10, 80],
         },
-        index=["a", "b", "c"],
+        index=pd.MultiIndex.from_tuples(
+            [(q, k) for q in ["q1", "q2"] for k in ["A", "B"]]
+        ),
     )
-    mdl._beds_baseline = pd.Series([5, 10, 1], index=["a", "b", "c"], name="baseline")
+    mdl._beds_baseline = pd.DataFrame(
+        {
+            "quarter": ["q1"] * 3 + ["q2"] * 3,
+            "ward_type": ["general_and_acute"] * 6,
+            "ward_group": ["A", "B", "C"] * 2,
+            "size": [2, 1, 1, 4, 2, 2],
+        }
+    )
     mdl.data = pd.DataFrame(
         {
             "classpat": ["1", "1", "1", "2", "4", "1", "5"],
@@ -676,18 +696,10 @@ def test_bed_occupancy_baseline(mock_model):
     )
     # assert
     assert {tuple(k): v for k, v in actual.items()} == {
-        ("ip", "day+night", "q1", "a"): 10,
-        ("ip", "day+night", "q1", "b"): 50,
-        ("ip", "day+night", "q1", "c"): 5,
-        ("ip", "day+night", "q2", "a"): 10,
-        ("ip", "day+night", "q2", "b"): 50,
-        ("ip", "day+night", "q2", "c"): 5,
-        ("ip", "day+night", "q3", "a"): 10,
-        ("ip", "day+night", "q3", "b"): 50,
-        ("ip", "day+night", "q3", "c"): 5,
-        ("ip", "day+night", "q4", "a"): 10,
-        ("ip", "day+night", "q4", "b"): 50,
-        ("ip", "day+night", "q4", "c"): 5,
+        ("ip", "day+night", "q1", "A"): 10,
+        ("ip", "day+night", "q1", "B"): 50,
+        ("ip", "day+night", "q2", "A"): 20,
+        ("ip", "day+night", "q2", "B"): 100,
     }
 
 
