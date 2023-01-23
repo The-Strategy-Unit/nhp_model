@@ -114,7 +114,12 @@ kh03_process <- function(kh03_all) {
     tidyr::unnest("by_specialty") |>
     dplyr::mutate(available = .data$occupied / .data$rate, .before = "occupied") |>
     # summarise rows to the year
-    dplyr::group_by(.data$org_code, .data$specialty_group, .data$specialty_code) |>
+    dplyr::group_by(
+      dplyr::across("quarter", purrr::compose(stringr::str_to_lower, stringr::str_extract), "Q\\d$"),
+      .data$org_code,
+      .data$specialty_group,
+      .data$specialty_code
+    ) |>
     dplyr::summarise(
       dplyr::across(c("available", "occupied"), mean),
       .groups = "drop_last"
@@ -136,18 +141,25 @@ kh03_process <- function(kh03_all) {
 kh03_generate_synthnetic <- function(kh03, path = "data") {
   data <- kh03 |>
     dplyr::filter(.data$specialty_group == "general_and_acute") |>
-    dplyr::group_by(.data$org_code) |>
+    dplyr::group_by(.data$org_code, .data$quarter) |>
     dplyr::summarise(
-      dplyr::across(where(is.numeric), sum)
+      dplyr::across(where(is.numeric), sum),
+      .groups = "drop_last"
+    ) |>
+    dplyr::summarise(
+      dplyr::across(where(is.numeric), min),
+      .groups = "drop"
     ) |>
     dplyr::filter(.data$available |> dplyr::between(600, 900)) |>
     dplyr::semi_join(x = kh03, by = "org_code") |>
     tidyr::complete(
+      .data$quarter,
       .data$org_code,
       tidyr::nesting(specialty_group, specialty_code),
       fill = list(available = 0, occupied = 0)
     ) |>
     dplyr::group_by(
+      .data$quarter,
       dplyr::across(tidyselect::starts_with("specialty"))
     ) |>
     dplyr::summarise(

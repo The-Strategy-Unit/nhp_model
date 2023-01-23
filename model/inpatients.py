@@ -5,14 +5,14 @@ Implements the inpatients model.
 """
 import json
 from collections import defaultdict, namedtuple
-from functools import partial
+from datetime import timedelta
+from functools import partial, reduce
 from typing import Callable
 
 import numpy as np
 import pandas as pd
 
 from model.helpers import inrange
-from model.inpatients_admissions_counter import InpatientsAdmissionsCounter
 from model.model import Model
 
 
@@ -46,6 +46,7 @@ class InpatientsModel(Model):
                 "hsagrp",
                 "has_procedure",
                 "is_main_icb",
+                "admidate",
             ],
         )
         # load the strategies, store each strategy file as a separate entry in a dictionary
@@ -57,6 +58,8 @@ class InpatientsModel(Model):
         self._load_theatres_data()
         # load the kh03 data
         self._load_kh03_data()
+        # oversample
+        self._union_bedday_rows()
 
     def _load_kh03_data(self):
         # load the kh03 data
@@ -73,6 +76,7 @@ class InpatientsModel(Model):
             pd.read_csv(
                 f"{self._data_path}/kh03.csv",
                 dtype={
+                    "quarter": np.character,
                     "specialty_code": np.character,
                     "specialty_group": np.character,
                     "available": np.int64,
@@ -80,17 +84,26 @@ class InpatientsModel(Model):
                 },
             )
             .merge(self._ward_groups, left_on="specialty_code", right_index=True)
-            .groupby(["ward_group"])[["available", "occupied"]]
+            .groupby(["quarter", "ward_group"])[["available", "occupied"]]
             .agg(lambda x: sum(np.round(x).astype(int)))
         )
         # get the baseline data
-        self._beds_baseline = (
-            self.data[self.data.classpat.isin(["1", "4", "5"])]
-            .merge(self._ward_groups, left_on="mainspef", right_index=True)
-            .groupby(["ward_group"])
-            .speldur.agg(lambda x: sum(x + 1))  # convert los to bed days
-        )
-        self._beds_baseline.name = "baseline"
+        self._beds_baseline = self._bedday_summary(self.data, self.params["start_year"])
+
+    def _union_bedday_rows(self) -> None:
+        """Oversample the rows that are admitted in the prior financial year to simulate those
+        who were discharged in the next financial year.
+        """
+        start_year = self.params["start_year"]
+        pre_rows = self.data[
+            pd.to_datetime(self.data.admidate) < pd.to_datetime(f"{start_year}-04-01")
+        ].copy()
+        pre_rows.admidate += timedelta(days=365)
+        # add column to indicate whether this is a row used for bedday calculations
+        pre_rows["bedday_rows"] = True
+        self.data["bedday_rows"] = False
+        # append these rows of data to the actual data
+        self.data = pd.concat([self.data, pre_rows]).reset_index(drop=True)
 
     def _load_theatres_data(self) -> None:
         """Load the Theatres data
@@ -379,9 +392,10 @@ class InpatientsModel(Model):
             .to_dict()
         )
         step_counts_beddays = (
-            (data.loc[i, "speldur"] - bads_df["speldur"])
-            .groupby(level=0)
-            .sum()
+            (
+                data.loc[i, "speldur"].groupby(level=0).sum()
+                - bads_df["speldur"].groupby(level=0).sum()
+            )
             .astype(int)
             .to_dict()
         )
@@ -463,6 +477,63 @@ class InpatientsModel(Model):
                 "beddays": change_los[k],
             }
 
+    @staticmethod
+    def _step_counts(
+        admissions: pd.Series,
+        beddays_before: pd.Series,
+        beddays_after: int,
+        admission_avoidance: pd.Series,
+        factors: dict,
+    ) -> dict:
+        # TODO: add docstring and datatypes
+        admissions_before = len(admissions)
+        admissions_after = sum(admissions)
+
+        # convert the beddays before modelling to a complex number:
+        #   * the "real" part is the beddays
+        #   * the "imaginary" part is the number of admissions
+        # this makes it easy to keep track of both admissions and beddays count
+        n = (beddays_before + 1j).to_numpy()
+
+        # get the next value of n
+        nt = n * admission_avoidance
+        cf = {
+            ("admission_avoidance", k): {"admissions": v.imag, "beddays": v.real}
+            for k, v in (n - nt).groupby(level=0).sum().to_dict().items()
+            if v != 0
+        }
+        # replace n, and then work out the sum of n
+        n = nt.to_numpy()
+        ns = n.sum()
+
+        # then apply all other steps
+        for k, v in factors.items():
+            nt = n * v
+            nts = nt.sum()
+            x = nts - ns
+            cf[(k, "-")] = {"admissions": x.imag, "beddays": x.real}
+            n, ns = nt, nts
+
+        # work out the "slack" between the model results and the estimated change factors
+        admissions_slack = 1 + (admissions_after - ns.imag) / (
+            ns.imag - admissions_before
+        )
+        beddays_slack = 1 + (beddays_after - ns.real) / (ns.real - beddays_before.sum())
+
+        return {
+            ("baseline", "-"): {
+                "admissions": admissions_before,
+                "beddays": beddays_before.sum(),
+            },
+            **{
+                k: {
+                    "admissions": v["admissions"] * admissions_slack,
+                    "beddays": v["beddays"] * beddays_slack,
+                }
+                for k, v in cf.items()
+            },
+        }
+
     def _run(
         self,
         rng: np.random.Generator,
@@ -495,32 +566,48 @@ class InpatientsModel(Model):
         # choose length of stay reduction factors
         losr = self._los_reduction(run_params)
 
+        # Row Resampling ---------------------------------------------------------------------------
+        aa = self._admission_avoidance(admission_avoidance, run_params)
+        factors = {
+            "health_status_adjustment": hsa_f,
+            "population_factors": demo_f[data["rn"]].to_numpy(),
+            "expatriation": self._expat_adjustment(data, run_params).to_numpy(),
+            "repatriation": self._repat_adjustment(data, run_params).to_numpy(),
+            "waiting_list_adjustment": self._waiting_list_adjustment(data),
+            "non-demographic_adjustment": self._non_demographic_adjustment(
+                data, run_params
+            ),
+        }
+
+        reduced_factor = np.prod(list(factors.values()), axis=0) * aa
+
         # create an array that keeps track of the number of times we have sampled each row
-        admissions = (
-            InpatientsAdmissionsCounter(data, rng)
-            .poisson_step(hsa_f, "health_status_adjustment")
-            .poisson_step(demo_f[data["rn"]], "population_factors")
-            .binomial_step(self._expat_adjustment(data, run_params), "expatriation")
-            .modified_poisson_step(
-                self._repat_adjustment(data, run_params),
-                "repatriation",
-            )
-            .poisson_step(
-                self._waiting_list_adjustment(data), "waiting_list_adjustment"
-            )
-            .poisson_step(
-                self._non_demographic_adjustment(data, run_params),
-                "non-demographic_adjustment",
-            )
-            .binomial_step(
-                self._admission_avoidance(admission_avoidance, run_params),
-                "admission_avoidance",
-                admission_avoidance.tolist(),
-            )
+        admissions = rng.poisson(reduced_factor)
+
+        # beddays before resamping rows
+        beddays_before = data["speldur"] + 1
+
+        # resample rows
+        data = data.loc[data.index.repeat(admissions)].reset_index(drop=True)
+
+        r = run_params["inpatient_factors"]["admission_avoidance"]
+
+        # calculate beddays after resampling rows
+        beddays_after = data["speldur"] + 1
+        # calculate step counts
+        step_counts = self._step_counts(
+            admissions,
+            beddays_before,
+            beddays_after.sum(),
+            # admission_avoidance contains the strategy assigned to each row
+            # convert that to the factor for the given strategy
+            # then set the index to be the name of the strategy
+            admission_avoidance.apply(lambda v: r.get(v, 1.0)).set_axis(
+                admission_avoidance
+            ),
+            factors,
         )
-        # done with resampling rows, get the resampled data and the step counts
-        data = admissions.get_data()
-        step_counts = admissions.step_counts
+
         # LoS Reduction ----------------------------------------------------------------------------
         # set the index for easier querying
         data.set_index(los_reduction.loc[data["rn"]], inplace=True)
@@ -538,19 +625,51 @@ class InpatientsModel(Model):
             ["admissions", "beddays"],
             "measure",
         )
-        change_factors["value"] = change_factors["value"].astype(int)
         return (
             change_factors,
             data.drop(["hsagrp"], axis="columns").reset_index(drop=True),
         )
 
+    def _bedday_summary(self, data, year):
+        """Summarise data to count how many beddays per quarter
+
+        Calculated midnight bed occupancy per day, summarises to maximum in quarter.
+
+        :param data: the baseline data, or results of running the model
+        :type data: pandas.DataFrame
+        :param year: the year that the data represents
+        :type year: int
+        :return: a DataFrame containing a summary per quarter/ward group of maximum number of beds
+            used in a quarter
+        :rtype: pandas.DataFrame
+        """
+        return (
+            data.query("(speldur > 0) & (classpat == '1')")
+            .assign(day_n=lambda x: x.speldur.apply(np.arange))
+            .explode("day_n")
+            .groupby(["admidate", "day_n", "mainspef"], as_index=False)
+            .size()
+            .assign(
+                date=lambda x: pd.to_datetime(x.admidate)
+                + pd.to_timedelta(x.day_n, unit="d")
+            )
+            .merge(self._ward_groups, left_on="mainspef", right_index=True)
+            .groupby(["date", "ward_type", "ward_group"], as_index=False)
+            .agg({"size": sum})
+            .assign(quarter=lambda x: x.date.dt.to_period("Q-MAR"))
+            .query(f"quarter.dt.qyear == {year + 1}")
+            .groupby(["quarter", "ward_type", "ward_group"], as_index=False)
+            .agg({"size": max})
+            .assign(quarter=lambda x: x.quarter.astype(str).str[4:].str.lower())
+        )
+
     def _bed_occupancy(
-        self, ip_rows: pd.DataFrame, bed_occupancy_params: dict, model_run: int
+        self, data: pd.DataFrame, bed_occupancy_params: dict, model_run: int
     ) -> dict[namedtuple, int]:
         """Calculate bed occupancy
 
-        :param ip_rows: the Inpatient rows from model results
-        :type ip_rows: pandas.DataFrame
+        :param data: the baseline data, or the model results
+        :type data: pandas.DataFrame
         :param bed_occupancy_params: the bed occupancy parameters from run_params
         :type bed_occupancy_params: dict
         :param model_run: the current model run
@@ -561,44 +680,51 @@ class InpatientsModel(Model):
         :rtype: dict
         """
         # create the namedtuple type
-        result = namedtuple("results", ["pod", "measure", "ward_group"])
+        result = namedtuple("results", ["pod", "measure", "quarter", "ward_group"])
         if model_run == -1:
+            # todo: load kh03 data by quarter
             return {
-                result("ip", "day+night", k): np.round(v).astype(int)
-                for k, v in self._kh03_data["available"].iteritems()
+                result("ip", "day+night", q, k): np.round(v).astype(int)
+                for (q, k), v in self._kh03_data["available"].iteritems()
             }
 
         target_bed_occupancy_rates = pd.Series(bed_occupancy_params["day+night"])
+        target_bed_occupancy_rates.name = "target_occupancy_rate"
 
-        # get the model run data
-        dn_admissions = (
-            ip_rows[
-                (ip_rows["measure"] == "beddays")
-                & (
-                    ip_rows["pod"].isin(
-                        [
-                            "ip_non-elective_admission",
-                            "ip_elective_admission",
-                            "ip_non-elective_birth-episode",
-                        ]
-                    )
-                )
-            ]
-            .merge(self._ward_groups, left_on="mainspef", right_index=True)
-            .groupby(["ward_group"])
-            .value.sum()
+        beddays_model = (
+            self._bedday_summary(data, self.params["start_year"])
+            .rename(columns={"size": "model"})
+            .merge(
+                self._kh03_data["occupied"],
+                left_on=["quarter", "ward_group"],
+                right_index=True,
+                how="outer",
+            )
+            .fillna(value={"occupied": 0})
+            .set_index(["quarter", "ward_group"])
         )
+        beddays_baseline = (
+            self._beds_baseline.rename(columns={"size": "baseline"})
+            .merge(target_bed_occupancy_rates, left_on="ward_group", right_index=True)
+            .set_index(["quarter", "ward_group"])
+        )
+
+        beddays_results = (
+            (
+                (beddays_model["model"] * beddays_model["occupied"])
+                / (
+                    beddays_baseline["baseline"]
+                    * beddays_baseline["target_occupancy_rate"]
+                )
+            )
+            .fillna(0)
+            .to_dict()
+        )
+
         # return the results
         return {
-            result("ip", "day+night", k): np.round(v).astype(int)
-            for k, v in (
-                (
-                    (dn_admissions * self._kh03_data["occupied"])
-                    / (self._beds_baseline * target_bed_occupancy_rates)
-                )
-                .dropna()
-                .to_dict()
-            ).items()
+            result("ip", "day+night", p, s): np.round(v).astype(int)
+            for (p, s), v in beddays_results.items()
         }
 
     def _theatres_available(
@@ -708,8 +834,15 @@ class InpatientsModel(Model):
         # get the run params: use principal run for baseline
         run_params = self._get_run_params(max(0, model_run))
 
+        bed_occupancy = self._bed_occupancy(
+            model_results,
+            run_params["bed_occupancy"],
+            model_run,
+        )
+
         model_results = (
-            model_results.groupby(
+            model_results[~model_results["bedday_rows"]]
+            .groupby(
                 [
                     "age_group",
                     "sex",
@@ -761,11 +894,11 @@ class InpatientsModel(Model):
             **agg(),
             **agg(["sex", "age_group"]),
             **agg(["sex", "tretspef"]),
-            "bed_occupancy": self._bed_occupancy(
-                model_results.loc[~op_rows], run_params["bed_occupancy"], model_run
-            ),
+            "bed_occupancy": bed_occupancy,
             "theatres_available": self._theatres_available(
-                model_results.loc[~op_rows], run_params["theatres"], model_run
+                model_results.loc[~op_rows],
+                run_params["theatres"],
+                model_run,
             ),
         }
 

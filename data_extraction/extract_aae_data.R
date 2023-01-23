@@ -1,6 +1,8 @@
 .data <- NULL # lint helper
+`%m+%` <- lubridate::`%m+%` # nolint
+`%m-%` <- lubridate::`%m-%` # nolint
 
-extract_aae_data <- function(providers) {
+extract_aae_data <- function(start_date, end_date, providers) {
   con <- DBI::dbConnect(
     odbc::odbc(),
     .connection_string = Sys.getenv("CONSTR"), timeout = 10
@@ -9,7 +11,8 @@ extract_aae_data <- function(providers) {
 
   dplyr::tbl(con, dbplyr::in_schema("nhp_modelling", "aae")) |>
     dplyr::filter(
-      .data$fyear == 201819,
+      .data$arrivaldate >= start_date,
+      .data$arrivaldate <= end_date,
       .data$activage <= 120,
       .data$procode3 %in% providers
     ) |>
@@ -23,7 +26,7 @@ extract_aae_data <- function(providers) {
     )
 }
 
-extract_aae_sample_data <- function(...) {
+extract_aae_sample_data <- function(start_date, end_date, ...) {
   con <- DBI::dbConnect(
     odbc::odbc(),
     .connection_string = Sys.getenv("CONSTR"), timeout = 10
@@ -39,7 +42,8 @@ extract_aae_sample_data <- function(...) {
 
   tbl_aae <- dplyr::tbl(con, dbplyr::in_schema("nhp_modelling", "aae")) |>
     dplyr::filter(
-      .data$fyear == 201819,
+      .data$arrivaldate >= start_date,
+      .data$arrivaldate <= end_date,
       .data$activage <= 120
     ) |>
     dplyr::semi_join(tbl_providers_of_interest, by = c("procode3" = "org_code"))
@@ -169,16 +173,29 @@ save_aae_data <- function(data, name, path, ...) {
 
 # ------------------------------------------------------------------------------
 
-create_aae_extract <- function(providers, name, extract_fn, synth_fn, path, ...) {
-  extract_fn(providers) |>
+create_aae_extract <- function(start_date,
+                               end_date,
+                               providers,
+                               name,
+                               extract_fn,
+                               synth_fn,
+                               path,
+                               ...) {
+  extract_fn(start_date, end_date, providers) |>
     create_aae_data() |>
     synth_fn() |>
     aggregate_aae_data(...) |>
     save_aae_data(name, path, ...)
 }
 
-create_synthetic_aae_extract <- function(..., name = "synthetic", path = "data") {
+create_synthetic_aae_extract <- function(start_date,
+                                         end_date,
+                                         ...,
+                                         name = "synthetic",
+                                         path = "data") {
   create_aae_extract(
+    start_date,
+    end_date,
     NULL,
     name,
     extract_aae_sample_data,
@@ -188,13 +205,20 @@ create_synthetic_aae_extract <- function(..., name = "synthetic", path = "data")
   )
 }
 
-create_provider_aae_extract <- function(providers, ..., name, path = "data") {
+create_provider_aae_extract <- function(start_date,
+                                        end_date,
+                                        providers,
+                                        ...,
+                                        name,
+                                        path = "data") {
   if (missing(name)) {
     name <- paste(providers, collapse = "_")
   }
   cat(paste("    running:", name))
 
   create_aae_extract(
+    start_date,
+    end_date,
     providers,
     name,
     extract_aae_data,

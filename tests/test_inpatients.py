@@ -1,6 +1,7 @@
 """test inpatients model"""
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
 
+from datetime import datetime, timedelta
 from unittest.mock import Mock, call, mock_open, patch
 
 import numpy as np
@@ -75,6 +76,7 @@ def mock_model():
             "sex": ([1] * 5 + [2] * 5) * 2,
             "hsagrp": [x for _ in range(1, 11) for x in ["aae_a_a", "aae_b_b"]],
             "admigroup": ["elective", "non-elective"] * 10,
+            "admidate": [pd.to_datetime("2022-01-01")] * 20,
         }
     )
     return mdl
@@ -106,6 +108,7 @@ def test_init_calls_super_init(mocker):
     )
     mocker.patch("model.inpatients.InpatientsModel._load_theatres_data")
     mocker.patch("model.inpatients.InpatientsModel._load_kh03_data")
+    mocker.patch("model.inpatients.InpatientsModel._union_bedday_rows")
     mdl = InpatientsModel("params", "data_path")
     # no asserts to perform, so long as this method doesn't fail
     assert mdl._load_parquet.call_count == 2
@@ -115,6 +118,7 @@ def test_init_calls_super_init(mocker):
     assert mdl._load_parquet.call_args_list[1][0][0] == "ip_los_reduction_strategies"
     mdl._load_theatres_data.assert_called_once()
     mdl._load_kh03_data.assert_called_once()
+    mdl._union_bedday_rows.assert_called_once()
 
 
 def test_load_kh03_data(mocker, mock_model):
@@ -127,35 +131,53 @@ def test_load_kh03_data(mocker, mock_model):
             "Maternity": {"501": "c"},
         }
     }
+    mdl._bedday_summary = Mock(return_value="beds_baseline")
     mocker.patch(
         "pandas.read_csv",
         return_value=pd.DataFrame(
             {
-                "specialty_code": ["100", "200", "300", "501"],
-                "available": [1, 2, 3, 4],
-                "occupied": [4, 5, 6, 7],
+                "quarter": ["q1"] * 4 + ["q2"],
+                "specialty_code": ["100", "200", "300", "501", "100"],
+                "available": [1, 2, 3, 4, 5],
+                "occupied": [4, 5, 6, 7, 8],
             }
         ),
     )
-    mdl.data = pd.DataFrame(
-        {
-            "classpat": ["1", "1", "1", "2", "4", "1", "5"],
-            "mainspef": ["100", "200", "300", "100", "200", "501", "501"],
-            "speldur": [1, 2, 3, 4, 5, 6, 7],
-        }
-    )
+    mdl.data = "data"
     # act
     mdl._load_kh03_data()
     # assert
-    mdl._ward_groups.equals(
-        pd.Series(["a", "b", "b", "c"], index=["100", "200", "300", "501"])
-    )
-    mdl._kh03_data.equals(
-        pd.DataFrame(
-            {"available": [1, 5, 4], "occupied": [4, 11, 7]}, index=["a", "b", "c"]
-        )
-    )
-    mdl._beds_baseline.equals(pd.Series([2, 13, 13], index=["a", "b", "c"]))
+    assert mdl._ward_groups.to_dict("index") == {
+        "100": {"ward_type": "General and Acute", "ward_group": "a"},
+        "200": {"ward_type": "General and Acute", "ward_group": "b"},
+        "300": {"ward_type": "General and Acute", "ward_group": "b"},
+        "500": {"ward_type": "General and Acute", "ward_group": "_"},
+        "501": {"ward_type": "Maternity", "ward_group": "c"},
+    }
+    assert mdl._kh03_data.to_dict("index") == {
+        ("q1", "a"): {"available": 1, "occupied": 4},
+        ("q1", "b"): {"available": 5, "occupied": 11},
+        ("q1", "c"): {"available": 4, "occupied": 7},
+        ("q2", "a"): {"available": 5, "occupied": 8},
+    }
+    mdl._bedday_summary.assert_called_once_with("data", 2018)
+    assert mdl._beds_baseline == "beds_baseline"
+
+
+def test_union_beddays(mock_model):
+    """test that it appends rows"""
+    # arrange
+    mdl = mock_model
+    year = mdl.params["start_year"]
+    # we need dates before the start of the financial year, and during it
+    mdl.data["admidate"] = [
+        datetime(year, 1 + m, 1) for m in range(10) for _ in range(2)
+    ]
+    # act
+    mdl._union_bedday_rows()
+    # assert
+    assert len(mdl.data.index) == 26
+    assert sum(mdl.data["bedday_rows"]) == 6
 
 
 def test_load_theatres_data(mocker, mock_model):
@@ -447,129 +469,180 @@ def test_repat_adjustment():
     ]
 
 
-def test_run(mocker, mock_model):
+def test_step_counts(mock_model):
+    """test that it estimates the step counts correctly"""
+    # arrange
+    mdl = mock_model
+    admissions = pd.Series([0, 1, 2, 3, 4, 5])
+    beddays_before = admissions + 1
+    beddays_after = (admissions * beddays_before).sum()
+    admission_avoidance = pd.Series(
+        [0.5 + x / 16 for x in admissions], index=["a", "a", "b", "b", "c", "c"]
+    )
+    factors = {
+        "x": [1.0 + x / 16 for x in admissions],
+        "y": [1.5 + x / 16 for x in admissions],
+    }
+    # act
+    actual = mdl._step_counts(
+        admissions, beddays_before, beddays_after, admission_avoidance, factors
+    )
+    # assert
+    assert actual == {
+        ("baseline", "-"): {"admissions": 6, "beddays": 21},
+        ("admission_avoidance", "a"): {
+            "admissions": 4.746600741656366,
+            "beddays": 6.5056105610561055,
+        },
+        ("admission_avoidance", "b"): {
+            "admissions": 3.480840543881335,
+            "beddays": 11.236963696369637,
+        },
+        ("admission_avoidance", "c"): {
+            "admissions": 2.215080346106304,
+            "beddays": 11.236963696369637,
+        },
+        ("x", "-"): {"admissions": 3.4610630407910996, "beddays": 15.524752475247524},
+        ("y", "-"): {"admissions": 15.981458590852904, "beddays": 62.454785478547855},
+    }
+
+
+def test_run(mock_model):
     """test that it runs the model steps"""
     # arrange
     data = pd.DataFrame({"rn": [1, 2], "speldur": [0, 1], "hsagrp": ["a", "b"]})
     mdl = mock_model
     mdl._random_strategy = Mock(
-        return_value=pd.Series([1, 2], index=[1, 2]).rename_axis("rn")
+        return_value=pd.Series(["a", "b"], index=data["rn"]).rename_axis("rn")
     )
     mdl._los_reduction = Mock()
-    mdl._expat_adjustment = Mock()
-    mdl._repat_adjustment = Mock()
-    mdl._waiting_list_adjustment = Mock()
-    mdl._non_demographic_adjustment = Mock()
-    mdl._admission_avoidance = Mock(wraps=lambda x, y, *args: y)
+    mdl._expat_adjustment = Mock(return_value=pd.Series([5, 6]))
+    mdl._repat_adjustment = Mock(return_value=pd.Series([7, 8]))
+    mdl._waiting_list_adjustment = Mock(return_value=np.array([9, 10]))
+    mdl._non_demographic_adjustment = Mock(return_value=np.array([11, 12]))
+    mdl._admission_avoidance = Mock(return_value=pd.Series([13, 14], index=data["rn"]))
+    mdl._step_counts = Mock(
+        return_value={("baseline", "-"): {"admissions": 2, "beddays": 3}}
+    )
     mdl._losr_all = Mock()
     mdl._losr_aec = Mock()
     mdl._losr_preop = Mock()
     mdl._losr_bads = Mock()
-    # mock admissions counter
-    admc = Mock()
-    mocker.patch("model.inpatients.InpatientsAdmissionsCounter", return_value=admc)
-    admc.poisson_step.return_value = admc
-    admc.modified_poisson_step.return_value = admc
-    admc.binomial_step.return_value = admc
-    admc.get_data.return_value = data
-    admc.step_counts = {("baseline", "-"): {"admissions": 2, "beddays": 3}}
+    rng = Mock()
+    rng.poisson.return_value = [1, 2]
     # act
     change_factors, model_results = mdl._run(
-        None, data, "run_params", pd.Series({1: 1, 2: 2}), "hsa_f"
+        rng,
+        data,
+        {"inpatient_factors": {"admission_avoidance": {"a": 1, "b": 2}}},
+        pd.Series([1, 2], index=data["rn"]),
+        np.array([3, 4]),
     )
     # assert
-    assert change_factors.equals(
-        pd.DataFrame(
-            {
-                "change_factor": ["baseline"] * 2,
-                "strategy": ["-"] * 2,
-                "measure": ["admissions", "beddays"],
-                "value": np.array([2, 3]),
-            }
-        )
-    )
+    assert change_factors.to_dict() == {
+        "change_factor": {0: "baseline", 1: "baseline"},
+        "strategy": {0: "-", 1: "-"},
+        "measure": {0: "admissions", 1: "beddays"},
+        "value": {0: 2, 1: 3},
+    }
     assert model_results.equals(
-        data.drop("hsagrp", axis="columns").reset_index(drop=True)
+        data.loc[[0, 1, 1]].drop("hsagrp", axis="columns").reset_index(drop=True)
     )
     assert mdl._random_strategy.call_count == 2
-    assert admc.poisson_step.call_count == 4
-    assert admc.modified_poisson_step.call_count == 1
-    assert admc.binomial_step.call_count == 2
+    rng.poisson.assert_called_once()
+    assert rng.poisson.call_args_list[0][0][0].to_list() == [135135, 645120]
     mdl._los_reduction.assert_called_once()
     mdl._expat_adjustment.assert_called_once()
     mdl._repat_adjustment.assert_called_once()
     mdl._waiting_list_adjustment.assert_called_once()
     mdl._non_demographic_adjustment.assert_called_once()
     mdl._admission_avoidance.assert_called_once()
+    mdl._step_counts.assert_called_once()
+    assert mdl._step_counts.call_args_list[0][0][0] == [1, 2]
+    assert mdl._step_counts.call_args_list[0][0][1].to_list() == [1, 2]
+    assert mdl._step_counts.call_args_list[0][0][2] == 5
+    assert mdl._step_counts.call_args_list[0][0][3].to_dict() == {"a": 1, "b": 2}
     mdl._losr_all.assert_called_once()
     mdl._losr_aec.assert_called_once()
     mdl._losr_preop.assert_called_once()
     mdl._losr_bads.assert_called_once()
 
 
+def test_bedday_summary(mock_model):
+    """test that it aggregates the data to the maximum beds occupied in a day per quarter"""
+    # arrange
+    mdl = mock_model
+    mdl._ward_groups = pd.DataFrame(
+        {
+            "ward_type": ["general_and_acute"] * 3,
+            "ward_group": ["A", "A", "B"],
+        },
+        index=["a", "b", "c"],
+    )
+    data = pd.DataFrame(
+        {
+            "admidate": [f"2022-04-0{d}" for d in range(6)] * 2,
+            "speldur": list(range(6)) * 2,
+            "mainspef": ["a", "b", "c"] * 4,
+            "classpat": (["1"] * 5 + ["2"]) * 2,
+        }
+    )
+    # act
+    actual = mdl._bedday_summary(data, 2022)
+    # assert
+    assert actual.to_dict("list") == {
+        "quarter": ["q1", "q1"],
+        "ward_type": ["general_and_acute", "general_and_acute"],
+        "ward_group": ["A", "B"],
+        "size": [4, 2],
+    }
+
+
 def test_bed_occupancy(mock_model):
     """test that it aggregates the bed occupancy data"""
     # arrange
     mdl = mock_model
-    mdl.params["bed_occupancy"] = {
-        "specialty_mapping": {
-            "General and Acute": {"100": "a", "200": "b", "300": "b", "500": "_"},
-            "Maternity": {"501": "c"},
-        }
-    }
-    mdl._ward_groups = pd.concat(
-        [
-            pd.DataFrame(
-                {"ward_type": k, "ward_group": list(v.values())},
-                index=list(v.keys()),
-            )
-            for k, v in mdl.params["bed_occupancy"]["specialty_mapping"].items()
-        ]
+    mdl._bedday_summary = Mock(
+        return_value=pd.DataFrame(
+            {
+                "quarter": ["q1"] * 3 + ["q2"] * 3,
+                "ward_type": ["general_and_acute"] * 6,
+                "ward_group": ["A", "B", "C"] * 2,
+                "size": [4, 2, 1, 8, 4, 2],
+            }
+        )
     )
     mdl._kh03_data = pd.DataFrame(
         {
-            "available": [10, 50, 5],
-            "occupied": [5, 40, 2],
+            "available": [10, 50, 20, 100],
+            "occupied": [5, 40, 10, 80],
         },
-        index=["a", "b", "c"],
+        index=pd.MultiIndex.from_tuples(
+            [(q, k) for q in ["q1", "q2"] for k in ["A", "B"]]
+        ),
     )
-    mdl._beds_baseline = pd.Series([5, 10, 1], index=["a", "b", "c"], name="baseline")
-    mdl.data = pd.DataFrame(
+    mdl._beds_baseline = pd.DataFrame(
         {
-            "classpat": ["1", "1", "1", "2", "4", "1", "5"],
-            "mainspef": ["100", "200", "300", "100", "200", "501", "501"],
-            "speldur": [1, 2, 3, 4, 5, 6, 7],
-        }
-    )
-    model_results = pd.DataFrame(
-        {
-            "classpat": ["1", "1", "1", "1", "1", "2", "4"] * 3 + ["1", "5"],
-            "mainspef": ["100", "100", "200", "200", "300", "100", "200"] * 3
-            + ["501"] * 2,
-            "pod": [
-                x
-                for x in [
-                    "ip_non-elective_admission",
-                    "ip_elective_admission",
-                    "ip_daycase",
-                ]
-                for _ in range(7)
-            ]
-            + ["ip_non-elective_admission", "ip_non-elective_birth-episode"],
-            "measure": ["beddays"] * 23,
-            "value": [1, 2, 3, 4, 5, 6, 7] * 3 + [8, 9],
+            "quarter": ["q1"] * 3 + ["q2"] * 3,
+            "ward_type": ["general_and_acute"] * 6,
+            "ward_group": ["A", "B", "C"] * 2,
+            "size": [2, 1, 1, 4, 2, 2],
         }
     )
     # act
     actual = mdl._bed_occupancy(
-        model_results, {"day+night": {"a": 0.75, "b": 0.875, "c": 0.5}}, 0
+        "model_results", {"day+night": {"A": 0.75, "B": 0.875, "C": 0.5}}, 0
     )
     # assert
     assert {tuple(k): v for k, v in actual.items()} == {
-        ("ip", "day+night", "a"): np.round((18 * 5) / (5 * 0.75)).astype(int),
-        ("ip", "day+night", "b"): np.round((38 * 40) / (10 * 0.875)).astype(int),
-        ("ip", "day+night", "c"): np.round((17 * 2) / (1 * 0.5)).astype(int),
+        ("ip", "day+night", "q1", "A"): 13,
+        ("ip", "day+night", "q1", "B"): 91,
+        ("ip", "day+night", "q1", "C"): 0,
+        ("ip", "day+night", "q2", "A"): 27,
+        ("ip", "day+night", "q2", "B"): 183,
+        ("ip", "day+night", "q2", "C"): 0,
     }
+    mdl._bedday_summary.assert_called_once_with("model_results", 2018)
 
 
 def test_bed_occupancy_baseline(mock_model):
@@ -593,12 +666,21 @@ def test_bed_occupancy_baseline(mock_model):
     )
     mdl._kh03_data = pd.DataFrame(
         {
-            "available": [10, 50, 5],
-            "occupied": [5, 40, 2],
+            "available": [10, 50, 20, 100],
+            "occupied": [5, 40, 10, 80],
         },
-        index=["a", "b", "c"],
+        index=pd.MultiIndex.from_tuples(
+            [(q, k) for q in ["q1", "q2"] for k in ["A", "B"]]
+        ),
     )
-    mdl._beds_baseline = pd.Series([5, 10, 1], index=["a", "b", "c"], name="baseline")
+    mdl._beds_baseline = pd.DataFrame(
+        {
+            "quarter": ["q1"] * 3 + ["q2"] * 3,
+            "ward_type": ["general_and_acute"] * 6,
+            "ward_group": ["A", "B", "C"] * 2,
+            "size": [2, 1, 1, 4, 2, 2],
+        }
+    )
     mdl.data = pd.DataFrame(
         {
             "classpat": ["1", "1", "1", "2", "4", "1", "5"],
@@ -631,9 +713,10 @@ def test_bed_occupancy_baseline(mock_model):
     )
     # assert
     assert {tuple(k): v for k, v in actual.items()} == {
-        ("ip", "day+night", "a"): 10,
-        ("ip", "day+night", "b"): 50,
-        ("ip", "day+night", "c"): 5,
+        ("ip", "day+night", "q1", "A"): 10,
+        ("ip", "day+night", "q1", "B"): 50,
+        ("ip", "day+night", "q2", "A"): 20,
+        ("ip", "day+night", "q2", "B"): 100,
     }
 
 
@@ -733,16 +816,17 @@ def test_aggregate(mock_model):
     xs = list(range(6)) * 2
     model_results = pd.DataFrame(
         {
-            "age_group": xs,
-            "sex": xs,
-            "admimeth": xs,
-            "admigroup": ["elective", "non-elective", "maternity"] * 4,
-            "classpat": ["1", "2", "3", "4", "5", "-1"] * 2,
-            "mainspef": xs,
-            "tretspef": xs,
-            "rn": [1] * 12,
-            "has_procedure": [0, 1] * 6,
-            "speldur": list(range(12)),
+            "age_group": xs * 2,
+            "sex": xs * 2,
+            "admimeth": xs * 2,
+            "admigroup": ["elective", "non-elective", "maternity"] * 8,
+            "classpat": ["1", "2", "3", "4", "5", "-1"] * 4,
+            "mainspef": xs * 2,
+            "tretspef": xs * 2,
+            "rn": [1] * 24,
+            "has_procedure": [0, 1] * 12,
+            "speldur": list(range(12)) * 2,
+            "bedday_rows": [False] * 12 + [True] * 12,
         }
     )
     results = mdl.aggregate(model_results, 1)

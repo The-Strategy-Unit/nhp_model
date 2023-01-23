@@ -81,80 +81,6 @@ class AaEModel(Model):
         )
 
     @staticmethod
-    def _run_poisson_step(
-        rng: np.random.BitGenerator,
-        data: pd.DataFrame,
-        name: str,
-        factor: np.ndarray,
-        step_counts: dict,
-    ) -> None:
-        """Run a poisson step
-
-        Resample the rows of `data` using a randomly generated poisson value for each row from
-        `factor`.
-
-        Updates the `step_counts` dictionary as a side effect.
-
-        :param rng: a random number generator created for each model iteration
-        :type rng: numpy.random.Generator
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param name: the name of the step (inserted into step_counts)
-        :type name: str
-        :param factor: a series with as many values as rows in `data` which will be used as the lambda
-            value for the poisson distribution
-        :type factor: pandas.Series
-        :param step_counts: a dictionary containing the changes to measures for this step
-        :type step_counts: dict
-
-        :returns: the updated DataFrame
-        :rtype: pandas.DataFrame
-        """
-        # perform the step
-        data["arrivals"] = rng.poisson(data["arrivals"].to_numpy() * factor)
-        # remove rows where the overall number of attendances was 0
-        data.drop(data[data["arrivals"] == 0].index, inplace=True)
-        # update the step counts
-        step_counts[name] = sum(data["arrivals"]) - sum(step_counts.values())
-
-    @staticmethod
-    def _run_binomial_step(
-        rng: np.random.BitGenerator,
-        data: pd.DataFrame,
-        name: str,
-        factor: np.ndarray,
-        step_counts: dict,
-    ) -> None:
-        """Run a binomial step
-
-        Resample the rows of `data` using a randomly generated binomial value for each row from
-        `factor`.
-
-        Updates the `step_counts` dictionary as a side effect.
-
-        :param rng: a random number generator created for each model iteration
-        :type rng: numpy.random.Generator
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param name: the name of the step (inserted into step_counts)
-        :type name: str
-        :param factor: a series with as many values as rows in `data` which will be used as the
-            parameter of the distribution
-        :type factor: pandas.Series
-        :param step_counts: a dictionary containing the changes to measures for this step
-        :type step_counts: dict
-
-        :returns: the updated DataFrame
-        :rtype: pandas.DataFrame
-        """
-        # perform the step
-        data["arrivals"] = rng.binomial(data["arrivals"].to_numpy(), factor)
-        # remove rows where the overall number of attendances was 0
-        data.drop(data[data["arrivals"] == 0].index, inplace=True)
-        # update the step counts
-        step_counts[name] = sum(data["arrivals"]) - sum(step_counts.values())
-
-    @staticmethod
     def _expat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
         expat_params = run_params["expat"]["aae"]
         join_cols = ["is_ambulance"]
@@ -191,6 +117,22 @@ class AaEModel(Model):
             right_index=True,
         )["value"].fillna(1)
 
+    @staticmethod
+    def _step_counts(arrivals: pd.Series, arrivals_after: float, factors: dict) -> dict:
+        cf = {}
+        # as each row has a different weight attached to it, we need to use the factors
+        # applied to each row individually
+        n = arrivals
+        arrivals_before = ns = n.sum()
+        for k, v in factors.items():
+            n2 = n * v
+            n2s = n2.sum()
+            cf[k] = n2s - ns
+            n, ns = n2, n2s
+
+        slack = 1 + (arrivals_after - ns) / (ns - arrivals_before)
+        return {"baseline": arrivals_before, **{k: v * slack for k, v in cf.items()}}
+
     def _run(
         self,
         rng: np.random.Generator,
@@ -217,60 +159,24 @@ class AaEModel(Model):
         """
         params = run_params["aae_factors"]
 
-        step_counts = {"baseline": sum(data["arrivals"])}
+        # get the factors
+        factors = {
+            "health_status_adjustment": hsa_f,
+            "population_factors": demo_f[data["rn"]].to_numpy(),
+            "expatriation": self._expat_adjustment(data, run_params).to_numpy(),
+            "repatriation": self._repat_adjustment(data, run_params).to_numpy(),
+            "low_cost_dischaged": self._low_cost_discharged(data, params),
+            "left_before_seen": self._left_before_seen(data, params),
+            "frequent_attenders": self._frequent_attenders(data, params),
+        }
+        reduced_factor = np.prod(list(factors.values()), axis=0)
+        arrivals_after = rng.poisson(data["arrivals"] * reduced_factor)
 
-        # captue current pandas options, and set chainged assignment off
-        pd_options = pd.set_option("mode.chained_assignment", None)
-        # first, run hsa as we have the factor already created
-        self._run_poisson_step(
-            rng, data, "health_status_adjustment", hsa_f, step_counts
-        )
-        # then, demographic modelling
-        self._run_poisson_step(
-            rng, data, "population_factors", demo_f[data["rn"]], step_counts
-        )
-        # expat/repat
-        self._run_binomial_step(
-            rng,
-            data,
-            "expatriation",
-            self._expat_adjustment(data, run_params),
-            step_counts,
-        )
-        self._run_poisson_step(
-            rng,
-            data,
-            "repatriation",
-            self._repat_adjustment(data, run_params),
-            step_counts,
-        )
-        # now run strategies
-        self._run_binomial_step(
-            rng,
-            data,
-            "low_cost_dischaged",
-            self._low_cost_discharged(data, params),
-            step_counts,
-        )
-        self._run_binomial_step(
-            rng,
-            data,
-            "left_before_seen",
-            self._left_before_seen(data, params),
-            step_counts,
-        )
-        self._run_binomial_step(
-            rng,
-            data,
-            "frequent_attenders",
-            self._frequent_attenders(data, params),
-            step_counts,
-        )
-        # now run_step's are finished, restore pandas options
-        pd.set_option("mode.chained_assignment", pd_options)
         # return the data
         change_factors = (
-            pd.Series(step_counts)
+            pd.Series(
+                self._step_counts(data["arrivals"], arrivals_after.sum(), factors)
+            )
             .to_frame("value")
             .reset_index()
             .rename(columns={"index": "change_factor"})
@@ -278,7 +184,7 @@ class AaEModel(Model):
                 ["change_factor", "strategy", "measure", "value"]
             ]
         )
-        change_factors["value"] = change_factors["value"].astype(int)
+        data["arrivals"] = arrivals_after
         return (change_factors, data.drop(["hsagrp"], axis="columns"))
 
     def aggregate(self, model_results: pd.DataFrame, model_run: int) -> dict:
