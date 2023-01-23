@@ -24,6 +24,7 @@ def mock_params():
         "submitted_by": "username",
         "start_year": 2018,
         "end_year": 2020,
+        "app_version": "1.2",
     }
 
 
@@ -118,7 +119,7 @@ def test_model_save_init(mocker, mock_params):
         "submitted_by": "username",
         "start_year": 2018,
         "end_year": 2020,
-        "app_version": "0.1",
+        "app_version": "1.2",
     }
     assert m._save_results == "save_results"
     assert makedirs_mock.call_count == 2
