@@ -1,6 +1,7 @@
 """test inpatients model"""
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
 
+from datetime import datetime, timedelta
 from unittest.mock import Mock, call, mock_open, patch
 
 import numpy as np
@@ -161,6 +162,22 @@ def test_load_kh03_data(mocker, mock_model):
     }
     mdl._bedday_summary.assert_called_once_with("data", 2018)
     assert mdl._beds_baseline == "beds_baseline"
+
+
+def test_union_beddays(mock_model):
+    """test that it appends rows"""
+    # arrange
+    mdl = mock_model
+    year = mdl.params["start_year"]
+    # we need dates before the start of the financial year, and during it
+    mdl.data["admidate"] = [
+        datetime(year, 1 + m, 1) for m in range(10) for _ in range(2)
+    ]
+    # act
+    mdl._union_bedday_rows()
+    # assert
+    assert len(mdl.data.index) == 26
+    assert sum(mdl.data["bedday_rows"]) == 6
 
 
 def test_load_theatres_data(mocker, mock_model):
