@@ -17,7 +17,7 @@ To run the model locally you will need to have installed miniconda, git, and VSC
 4. Open Visual Studio Code, on the left hand panel, press the "extensions" button (or press Ctrl+Shift+X)
 5. Search for "python" and press install
 6. Search for "jupyter" and press install
-7. Clone the git repository: the easiest way is to press `Ctrl+Shift+p` and type "clone", you should see "Git: clone". Choose that, then choose "Clone from GitHub". Follow the prompts to sign in, then when it asks you to type a repository name, type `The-Strategy-Unit/834_nhp_model`.
+7. Clone the git repository: the easiest way is to press `Ctrl+Shift+p` and type "clone", you should see "Git: clone". Choose that, then choose "Clone from GitHub". Follow the prompts to sign in, then when it asks you to type a repository name, type `The-Strategy-Unit/nhp_model`.
 
 ### Set up Python
 
