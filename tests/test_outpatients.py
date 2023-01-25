@@ -177,6 +177,32 @@ def test_repat_adjustment():
     assert actual.tolist() == [1.1, 1.2, 1.0, 1.3, 1.4, 1.0]
 
 
+def test_baseline_adjustment():
+    """test that it returns the right parameters"""
+    # arrange
+    data = pd.DataFrame(
+        {
+            "rn": list(range(12)),
+            "tretspef": ["100", "200", "Other"] * 4,
+            "is_first": ([True] * 3 + [False] * 3) * 2,
+            "has_procedures": [False] * 6 + [True] * 6,
+        }
+    )
+    run_params = {
+        "baseline_adjustment": {
+            "op": {
+                "first": {"100": 1, "200": 2, "Other": 3},
+                "followup": {"100": 4, "200": 5, "Other": 6},
+                "procedure": {"100": 7, "200": 8, "Other": 9},
+            }
+        }
+    }
+    # act
+    actual = OutpatientsModel._baseline_adjustment(data, run_params)
+    # assert
+    assert actual.tolist() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9]
+
+
 def test_step_counts(mock_model):
     """test that it estimates the step counts correctly"""
     # arrange
@@ -219,6 +245,7 @@ def test_run(mock_model):
     mdl._consultant_to_consultant_reduction = Mock(return_value=np.array([5, 6]))
     mdl._expat_adjustment = Mock(return_value=pd.Series([7, 8]))
     mdl._repat_adjustment = Mock(return_value=pd.Series([9, 10]))
+    mdl._baseline_adjustment = Mock(return_value=pd.Series([11, 12]))
     mdl._step_counts = Mock(
         return_value={"baseline": {"attendances": 1, "tele_attendances": 2}}
     )
@@ -245,8 +272,8 @@ def test_run(mock_model):
     }
     assert model_results.to_dict("list") == {
         "rn": [1, 2],
-        "attendances": [51975, 552960],
-        "tele_attendances": [72765, 737280],
+        "attendances": [571725, 6635520],
+        "tele_attendances": [800415, 8847360],
     }
     mdl._waiting_list_adjustment.assert_called_once()
     mdl._followup_reduction.assert_called_once()
@@ -254,12 +281,13 @@ def test_run(mock_model):
     mdl._convert_to_tele.assert_called_once()
     mdl._expat_adjustment.assert_called_once()
     mdl._repat_adjustment.assert_called_once()
+    mdl._baseline_adjustment.assert_called_once()
     assert rng.poisson.call_count == 2
     mdl._step_counts.assert_called_once()
     assert mdl._step_counts.call_args_list[0][0][0].to_list() == [5, 6]
     assert mdl._step_counts.call_args_list[0][0][1].to_list() == [7, 8]
-    assert mdl._step_counts.call_args_list[0][0][2] == 604935
-    assert mdl._step_counts.call_args_list[0][0][3] == 810045
+    assert mdl._step_counts.call_args_list[0][0][2] == 7207245
+    assert mdl._step_counts.call_args_list[0][0][3] == 9647775
     assert {
         k: v.tolist() for k, v in mdl._step_counts.call_args_list[0][0][4].items()
     } == {
@@ -267,6 +295,7 @@ def test_run(mock_model):
         "population_factors": [1, 2],
         "expatriation": [7, 8],
         "repatriation": [9, 10],
+        "baseline_adjustment": [11, 12],
         "waiting_list_adjustment": [1, 2],
         "followup_reduction": [3, 4],
         "consultant_to_consultant_referrals": [5, 6],

@@ -157,6 +157,35 @@ class OutpatientsModel(Model):
         )["value"].fillna(1)
 
     @staticmethod
+    def _baseline_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
+        """Create a series of factors for baseline adjustment.
+
+        A value of 1 will indicate that we want to sample this row at the baseline rate. A value
+        less that 1 will indicate we want to sample that row less often that in the baseline, and
+        a value greater than 1 will indicate that we want to sample that row more often than in the
+        baseline
+
+        :param data: the DataFrame that we are updating
+        :type data: pandas.DataFrame
+        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+        :type run_params: dict
+
+        :returns: a series of floats indicating how often we want to sample that row
+        :rtype: pandas.Series
+        """
+
+        # create an attendance type series: procedure should overwrite first/followup
+        attend_type = pd.Series("first", index=data.index)
+        attend_type.loc[~data["is_first"]] = "followup"
+        attend_type.loc[data["has_procedures"]] = "procedure"
+
+        # extract the parameters
+        params = run_params["baseline_adjustment"]["op"]
+
+        # get the parameter value for each row
+        return np.array([params[k][t] for (k, t) in zip(attend_type, data["tretspef"])])
+
+    @staticmethod
     def _step_counts(
         attendances: pd.Series,
         tele_attendances: pd.Series,
@@ -223,6 +252,7 @@ class OutpatientsModel(Model):
             "population_factors": demo_f[data["rn"]].to_numpy(),
             "expatriation": self._expat_adjustment(data, run_params).to_numpy(),
             "repatriation": self._repat_adjustment(data, run_params).to_numpy(),
+            "baseline_adjustment": self._baseline_adjustment(data, run_params),
             "waiting_list_adjustment": self._waiting_list_adjustment(data),
             "followup_reduction": self._followup_reduction(data, params),
             "consultant_to_consultant_referrals": self._consultant_to_consultant_reduction(

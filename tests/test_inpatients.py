@@ -469,6 +469,31 @@ def test_repat_adjustment():
     ]
 
 
+def test_baseline_adjustment(mock_model):
+    """test that it returns the right parameters"""
+    # arrange
+    mdl = mock_model
+    data = pd.DataFrame(
+        {
+            "rn": list(range(6)),
+            "tretspef": ["100", "200", "Other"] * 2,
+            "admigroup": ["elective"] * 3 + ["non-elective"] * 3,
+        }
+    )
+    run_params = {
+        "baseline_adjustment": {
+            "ip": {
+                "elective": {"100": 1, "200": 2, "Other": 3},
+                "non-elective": {"100": 2, "200": 3, "Other": 4},
+            }
+        }
+    }
+    # act
+    actual = mdl._baseline_adjustment(data, run_params)
+    # assert
+    assert actual.to_list() == [1, 2, 3, 2, 3, 4]
+
+
 def test_step_counts(mock_model):
     """test that it estimates the step counts correctly"""
     # arrange
@@ -518,6 +543,7 @@ def test_run(mock_model):
     mdl._los_reduction = Mock()
     mdl._expat_adjustment = Mock(return_value=pd.Series([5, 6]))
     mdl._repat_adjustment = Mock(return_value=pd.Series([7, 8]))
+    mdl._baseline_adjustment = Mock(return_value=pd.Series([15, 16]))
     mdl._waiting_list_adjustment = Mock(return_value=np.array([9, 10]))
     mdl._non_demographic_adjustment = Mock(return_value=np.array([11, 12]))
     mdl._admission_avoidance = Mock(return_value=pd.Series([13, 14], index=data["rn"]))
@@ -550,10 +576,11 @@ def test_run(mock_model):
     )
     assert mdl._random_strategy.call_count == 2
     rng.poisson.assert_called_once()
-    assert rng.poisson.call_args_list[0][0][0].to_list() == [135135, 645120]
+    assert rng.poisson.call_args_list[0][0][0].to_list() == [2027025, 10321920]
     mdl._los_reduction.assert_called_once()
     mdl._expat_adjustment.assert_called_once()
     mdl._repat_adjustment.assert_called_once()
+    mdl._baseline_adjustment.assert_called_once()
     mdl._waiting_list_adjustment.assert_called_once()
     mdl._non_demographic_adjustment.assert_called_once()
     mdl._admission_avoidance.assert_called_once()

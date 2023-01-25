@@ -155,6 +155,17 @@ def test_repat_adjustment():
     assert actual.tolist() == [1.1, 1.0, 1.3, 1.0]
 
 
+def test_baseline_adjustment():
+    """test that it returns the right parameters"""
+    # arrange
+    data = pd.DataFrame({"rn": list(range(2)), "is_ambulance": [True, False]})
+    run_params = {"baseline_adjustment": {"aae": {"ambulance": 1, "walk-in": 2}}}
+    # act
+    actual = AaEModel._baseline_adjustment(data, run_params)
+    # assert
+    assert actual.tolist() == [1, 2]
+
+
 def test_step_counts(mock_model):
     """test that it estimates the step counts correctly"""
     # arrange
@@ -180,6 +191,7 @@ def test_run(mock_model):
     mdl._frequent_attenders = Mock(return_value=[9, 10])
     mdl._expat_adjustment = Mock(return_value=pd.Series([11, 12]))
     mdl._repat_adjustment = Mock(return_value=pd.Series([13, 14]))
+    mdl._baseline_adjustment = Mock(return_value=pd.Series([15, 16]))
     data = pd.DataFrame({"rn": [1, 2], "hsagrp": [3, 4], "arrivals": [5, 6]})
     run_params = {"aae_factors": "aae_factors"}
     # act
@@ -195,12 +207,13 @@ def test_run(mock_model):
     }
     assert model_results.to_dict("list") == {"rn": [1, 2], "arrivals": [7, 8]}
     rng.poisson.assert_called_once()
-    assert rng.poisson.call_args_list[0][0][0].to_list() == [675675, 3870720]
+    assert rng.poisson.call_args_list[0][0][0].to_list() == [10135125, 61931520]
     mdl._low_cost_discharged.assert_called_once()
     mdl._left_before_seen.assert_called_once()
     mdl._frequent_attenders.assert_called_once()
     mdl._expat_adjustment.assert_called_once()
     mdl._repat_adjustment.assert_called_once()
+    mdl._baseline_adjustment.assert_called_once()
     mdl._step_counts.assert_called_once()
 
 

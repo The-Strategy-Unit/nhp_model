@@ -8,6 +8,7 @@ from unittest.mock import Mock, mock_open, patch
 import numpy as np
 import pandas as pd
 import pytest
+
 from model.model import Model
 
 
@@ -33,6 +34,7 @@ def mock_model():
         "expat": {"ip": {"elective": {"Other": [0.7, 0.9]}}},
         "repat_local": {"ip": {"elective": {"Other": [1.0, 1.2]}}},
         "repat_nonlocal": {"ip": {"elective": {"Other": [1.3, 1.5]}}},
+        "baseline_adjustment": {"ip": {"elective": {"Other": [1.5, 1.7]}}},
         "non-demographic_adjustment": {
             "a": {"a_a": [1, 1.2], "a_b": [1, 1.2]},
             "b": {"b_a": [1, 1.2], "b_b": [1, 1.2]},
@@ -91,29 +93,30 @@ def mock_run_params():
         "expat": {"ip": {"elective": {"Other": [0.8, 4, 5, 6]}}},
         "repat_local": {"ip": {"elective": {"Other": [1.1, 7, 8, 9]}}},
         "repat_nonlocal": {"ip": {"elective": {"Other": [1.4, 10, 11, 12]}}},
+        "baseline_adjustment": {"ip": {"elective": {"Other": [1.6, 13, 14, 15]}}},
         "non-demographic_adjustment": {
-            "a": {"a_a": [1.1, 13, 14, 15], "a_b": [1.1, 16, 17, 18]},
-            "b": {"b_a": [1.1, 19, 20, 21], "b_b": [1.1, 22, 23, 24]},
+            "a": {"a_a": [1.1, 16, 17, 18], "a_b": [1.1, 19, 20, 21]},
+            "b": {"b_a": [1.1, 22, 23, 24], "b_b": [1.1, 25, 26, 27]},
         },
         "inpatient_factors": {
-            "admission_avoidance": {"a_a": [0.5, 25, 26, 27], "a_b": [0.5, 28, 29, 30]},
-            "los_reduction": {"b_a": [0.5, 31, 32, 33], "b_b": [0.5, 34, 35, 36]},
+            "admission_avoidance": {"a_a": [0.5, 28, 29, 30], "a_b": [0.5, 31, 32, 33]},
+            "los_reduction": {"b_a": [0.5, 34, 35, 36], "b_b": [0.5, 37, 38, 39]},
         },
         "outpatient_factors": {
-            "a": {"a_a": [0.5, 37, 38, 39], "a_b": [0.5, 40, 41, 42]},
-            "b": {"b_a": [0.5, 43, 44, 45], "b_b": [0.5, 46, 47, 48]},
+            "a": {"a_a": [0.5, 40, 41, 42], "a_b": [0.5, 43, 44, 45]},
+            "b": {"b_a": [0.5, 46, 47, 48], "b_b": [0.5, 49, 50, 51]},
         },
         "aae_factors": {
-            "a": {"a_a": [0.5, 49, 50, 51], "a_b": [0.5, 52, 53, 54]},
-            "b": {"b_a": [0.5, 55, 56, 57], "b_b": [0.5, 58, 59, 60]},
+            "a": {"a_a": [0.5, 52, 53, 54], "a_b": [0.5, 55, 56, 57]},
+            "b": {"b_a": [0.5, 58, 59, 60], "b_b": [0.5, 61, 62, 63]},
         },
         "bed_occupancy": {
-            "a": {"a": [0.5, 70, 71, 72], "b": [0.7, 0.7, 0.7, 0.7]},
-            "b": {"a": [0.5, 73, 74, 75], "b": [0.8, 0.8, 0.8, 0.8]},
+            "a": {"a": [0.5, 73, 74, 75], "b": [0.7, 0.7, 0.7, 0.7]},
+            "b": {"a": [0.5, 76, 77, 78], "b": [0.8, 0.8, 0.8, 0.8]},
         },
         "theatres": {
-            "change_utilisation": {"a": [1.02, 61, 62, 63], "b": [1.03, 64, 65, 66]},
-            "change_availability": [1.04, 67, 68, 69],
+            "change_utilisation": {"a": [1.02, 64, 65, 66], "b": [1.03, 67, 68, 69]},
+            "change_availability": [1.04, 70, 71, 72],
         },
     }
 
@@ -336,6 +339,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "expat": {"ip": {"elective": {"Other": 0.8}}},
                 "repat_local": {"ip": {"elective": {"Other": 1.1}}},
                 "repat_nonlocal": {"ip": {"elective": {"Other": 1.4}}},
+                "baseline_adjustment": {"ip": {"elective": {"Other": 1.6}}},
                 "inpatient_factors": {
                     "admission_avoidance": {"a_a": 0.5, "a_b": 0.5},
                     "los_reduction": {"b_a": 0.5, "b_b": 0.5},
@@ -365,31 +369,32 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "seed": 3,
                 "health_status_adjustment": 2,
                 "non-demographic_adjustment": {
-                    "a": {"a_a": 14, "a_b": 17},
-                    "b": {"b_a": 20, "b_b": 23},
+                    "a": {"a_a": 17, "a_b": 20},
+                    "b": {"b_a": 23, "b_b": 26},
                 },
                 "expat": {"ip": {"elective": {"Other": 5}}},
                 "repat_local": {"ip": {"elective": {"Other": 8}}},
                 "repat_nonlocal": {"ip": {"elective": {"Other": 11}}},
+                "baseline_adjustment": {"ip": {"elective": {"Other": 14}}},
                 "inpatient_factors": {
-                    "admission_avoidance": {"a_a": 26, "a_b": 29},
-                    "los_reduction": {"b_a": 32, "b_b": 35},
+                    "admission_avoidance": {"a_a": 29, "a_b": 32},
+                    "los_reduction": {"b_a": 35, "b_b": 38},
                 },
                 "outpatient_factors": {
-                    "a": {"a_a": 38, "a_b": 41},
-                    "b": {"b_a": 44, "b_b": 47},
+                    "a": {"a_a": 41, "a_b": 44},
+                    "b": {"b_a": 47, "b_b": 50},
                 },
                 "aae_factors": {
-                    "a": {"a_a": 50, "a_b": 53},
-                    "b": {"b_a": 56, "b_b": 59},
+                    "a": {"a_a": 53, "a_b": 56},
+                    "b": {"b_a": 59, "b_b": 62},
                 },
                 "bed_occupancy": {
-                    "a": {"a": 71, "b": 0.7},
-                    "b": {"a": 74, "b": 0.8},
+                    "a": {"a": 74, "b": 0.7},
+                    "b": {"a": 77, "b": 0.8},
                 },
                 "theatres": {
-                    "change_utilisation": {"a": 62, "b": 65},
-                    "change_availability": 68,
+                    "change_utilisation": {"a": 65, "b": 68},
+                    "change_availability": 71,
                 },
             },
         ),
@@ -397,9 +402,13 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
 )
 def test_get_run_params(mock_model, mock_run_params, model_run, expected_run_params):
     """tests _get_run_params gets the right params for a model run"""
+    # arrange
     mdl = mock_model
     mdl.run_params = mock_run_params
-    assert mdl._get_run_params(model_run) == expected_run_params
+    # act
+    actual = mdl._get_run_params(model_run)
+    # assert
+    assert actual == expected_run_params
 
 
 # run()
