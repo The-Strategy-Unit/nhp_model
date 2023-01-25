@@ -811,7 +811,7 @@
         "Other (Surgical)": 1.0,
         "Other": 1.0
       },
-    "procedure": {
+      "procedure": {
         "100": 1.0,
         "101": 1.0,
         "110": 1.0,
@@ -834,7 +834,10 @@
         "Other": 1.0
       }
     },
-    "aae": {}
+    "aae": {
+      "ambulance": 1.0,
+      "walk-in": 1.0
+    }
   },
   "waiting_list_adjustment": {
     "ip": {

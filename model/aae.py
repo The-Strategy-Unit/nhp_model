@@ -118,6 +118,32 @@ class AaEModel(Model):
         )["value"].fillna(1)
 
     @staticmethod
+    def _baseline_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
+        """Create a series of factors for baseline adjustment.
+
+        A value of 1 will indicate that we want to sample this row at the baseline rate. A value
+        less that 1 will indicate we want to sample that row less often that in the baseline, and
+        a value greater than 1 will indicate that we want to sample that row more often than in the
+        baseline
+
+        :param data: the DataFrame that we are updating
+        :type data: pandas.DataFrame
+        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
+        :type run_params: dict
+
+        :returns: a series of floats indicating how often we want to sample that row
+        :rtype: pandas.Series
+        """
+
+        # extract the parameters
+        params = run_params["baseline_adjustment"]["aae"]
+
+        # get the parameter value for each row
+        return np.array(
+            [params["ambulance" if k else "walk-in"] for k in data["is_ambulance"]]
+        )
+
+    @staticmethod
     def _step_counts(arrivals: pd.Series, arrivals_after: float, factors: dict) -> dict:
         cf = {}
         # as each row has a different weight attached to it, we need to use the factors
@@ -165,6 +191,7 @@ class AaEModel(Model):
             "population_factors": demo_f[data["rn"]].to_numpy(),
             "expatriation": self._expat_adjustment(data, run_params).to_numpy(),
             "repatriation": self._repat_adjustment(data, run_params).to_numpy(),
+            "baseline_adjustment": self._baseline_adjustment(data, run_params),
             "low_cost_dischaged": self._low_cost_discharged(data, params),
             "left_before_seen": self._left_before_seen(data, params),
             "frequent_attenders": self._frequent_attenders(data, params),
