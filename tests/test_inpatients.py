@@ -60,7 +60,14 @@ def mock_model():
             "b": {"a": [0.4, 0.6], "b": 0.8},
         },
         "theatres": {
-            "change_utilisation": {"a": [1.01, 1.03], "b": [1.02, 1.04]},
+            "change_utilisation": {
+                "100": {
+                    "baseline": 1.01,
+                    "interval": [1.02, 1.04],
+                },
+                "110": {"baseline": 1.11, "interval": [1.12, 1.14]},
+                "Other (Surgical)": {"baseline": 1.21, "interval": [1.22, 1.24]},
+            },
             "change_availability": [1.03, 1.05],
         },
     }
@@ -198,14 +205,13 @@ def test_load_theatres_data(mocker, mock_model):
             "data/synthetic/theatres.json", "r", encoding="UTF-8"
         )
         assert mock_model._theatres_data["theatres"] == 10
-        assert mock_model._theatres_data["four_hour_sessions"].equals(
-            pd.Series({"100": 1, "200": 2, "Other": 3}, name="four_hour_sessions")
-        )
-        assert mock_model._theatres_baseline.equals(
-            pd.DataFrame(
-                {"tretspef": ["100", "200"], "is_elective": [5, 0], "n": [5, 5]}
-            )
-        )
+        assert mock_model._theatres_data["four_hour_sessions"].to_dict() == {
+            "100": 1,
+            "200": 2,
+            "Other (Surgical)": 3,
+        }
+        assert mock_model._theatres_baseline.to_dict() == {"100": 5, "200": 5}
+        assert mock_model._theatre_spells_baseline == 3.469437852876197
 
 
 def test_los_reduction(mock_model):
@@ -750,43 +756,44 @@ def test_bed_occupancy_baseline(mock_model):
 def test_theatres_available(mock_model):
     """test that it aggregates the theatres data"""
     # arrange
+    mdl = mock_model
+    mdl._theatres_data = {
+        "theatres": 10,
+        "four_hour_sessions": pd.Series(
+            {"100": 100, "110": 200, "Other (Surgical)": 300}, name="four_hour_sessions"
+        ),
+    }
+    mdl._procedures_baseline = pd.Series(
+        {"100": 2, "110": 3, "200": 4, "Other (Surgical)": 5}
+    )
+
+    mdl._theatre_spells_baseline = 1000
+
     model_results = pd.DataFrame(
         [
-            {"tretspef": t, "admigroup": a, "measure": p}
-            for t in ["100", "110", "200", "Other"]
-            for a in ["elective", "non-elective"]
-            for p in ["x", "procedures"]
+            {"tretspef": t, "measure": p}
+            for t in ["100", "110", "200", "Other (Surgical)"]
+            for p in ["x"] + ["procedures"] * 2
         ]
     )
     model_results["value"] = list(range(len(model_results)))
-    mock_model._theatres_data = {
-        "theatres": 10,
-        "four_hour_sessions": pd.Series(
-            {"100": 100, "110": 200, "Other": 300}, name="four_hour_sessions"
-        ),
-    }
-    mock_model._theatres_baseline = pd.DataFrame(
-        {
-            "tretspef": ["100", "110", "200", "Other"],
-            "is_elective": [1, 2, 3, 4],
-            "n": [2, 4, 6, 8],
-        },
-    )
+    # this makes the results nicer numberse
+    model_results["value"] *= 3
     # act
-    theatres_available = mock_model._theatres_available(
+    actual = mdl._theatres_available(
         model_results,
         {
-            "change_utilisation": {"100": 2, "110": 2.5, "Other": 3},
+            "change_utilisation": {"100": 2, "110": 2.5, "Other (Surgical)": 3},
             "change_availability": 5,
         },
         0,
     )
     # assert
-    assert {tuple(k): v for k, v in theatres_available.items()} == {
-        ("ip_theatres", "four_hour_sessions", "100"): 50,
-        ("ip_theatres", "four_hour_sessions", "110"): 200,
-        ("ip_theatres", "four_hour_sessions", "Other"): 314.2857142857143,
-        ("ip_theatres", "theatres"): 2.276190476190476,
+    assert {tuple(k): v for k, v in actual.items()} == {
+        ("ip_theatres", "four_hour_sessions", "100"): 450.0,
+        ("ip_theatres", "four_hour_sessions", "110"): 1800.0,
+        ("ip_theatres", "four_hour_sessions", "Other (Surgical)"): 3780.0,
+        ("ip_theatres", "theatres"): 4.41,
     }
 
 
@@ -796,7 +803,7 @@ def test_theatres_available_baseline(mock_model):
     mock_model.data = pd.DataFrame(
         [
             {"tretspef": t, "admimeth": a, "has_procedure": p}
-            for t in ["100", "110", "200", "Other"]
+            for t in ["100", "110", "200", "Other (Surgical)"]
             for a in ["11", "21"]
             for p in [1, 0]
         ]
@@ -804,15 +811,14 @@ def test_theatres_available_baseline(mock_model):
     mock_model._theatres_data = {
         "theatres": 10,
         "four_hour_sessions": pd.Series(
-            {"100": 100, "110": 200, "Other": 300}, name="four_hour_sessions"
+            {"100": 100, "110": 200, "Other (Surgical)": 300}, name="four_hour_sessions"
         ),
     }
-    model_results = pd.concat([mock_model.data] * 3)
     # act
     theatres_available = mock_model._theatres_available(
-        model_results,
+        None,
         {
-            "change_utilisation": {"100": 2, "110": 2.5, "Other": 3},
+            "change_utilisation": {"100": 2, "110": 2.5, "Other (Surgical)": 3},
             "change_availability": 5,
         },
         -1,
@@ -821,7 +827,7 @@ def test_theatres_available_baseline(mock_model):
     assert {tuple(k): v for k, v in theatres_available.items()} == {
         ("ip_theatres", "four_hour_sessions", "100"): 100,
         ("ip_theatres", "four_hour_sessions", "110"): 200,
-        ("ip_theatres", "four_hour_sessions", "Other"): 300,
+        ("ip_theatres", "four_hour_sessions", "Other (Surgical)"): 300,
         ("ip_theatres", "theatres"): 10,
     }
 

@@ -112,15 +112,21 @@ class InpatientsModel(Model):
         """
         with open(f"{self._data_path}/theatres.json", "r", encoding="UTF-8") as tdf:
             self._theatres_data = json.load(tdf)
-        self._theatres_data["four_hour_sessions"] = pd.Series(
+
+        fhs_baseline = pd.Series(
             self._theatres_data["four_hour_sessions"], name="four_hour_sessions"
+        ).rename(index={"Other": "Other (Surgical)"})
+
+        baseline_params = pd.Series(
+            {
+                k: v["baseline"]
+                for k, v in self.params["theatres"]["change_utilisation"].items()
+            }
         )
-        self._theatres_baseline = (
-            self.data[self.data.has_procedure == 1]
-            .assign(is_elective=lambda x: x.admigroup == "elective", n=1)
-            .groupby("tretspef", as_index=False)[["is_elective", "n"]]
-            .sum()
-        )
+
+        self._theatres_data["four_hour_sessions"] = fhs_baseline
+        self._theatres_baseline = self.data.groupby("tretspef")["has_procedure"].sum()
+        self._theatre_spells_baseline = (fhs_baseline / baseline_params).sum()
 
     def _los_reduction(self, run_params: dict) -> pd.DataFrame:
         """Create a dictionary of the LOS reduction factors to use for a run
@@ -600,7 +606,9 @@ class InpatientsModel(Model):
             "population_factors": demo_f[data["rn"]].to_numpy(),
             "expatriation": self._expat_adjustment(data, run_params).to_numpy(),
             "repatriation": self._repat_adjustment(data, run_params).to_numpy(),
-            "baseline_adjustment": self._baseline_adjustment(data, run_params).to_numpy(),
+            "baseline_adjustment": self._baseline_adjustment(
+                data, run_params
+            ).to_numpy(),
             "waiting_list_adjustment": self._waiting_list_adjustment(data),
             "non-demographic_adjustment": self._non_demographic_adjustment(
                 data, run_params
@@ -775,73 +783,41 @@ class InpatientsModel(Model):
         result_u = namedtuple("results", ["pod", "measure", "tretspef"])
         result_a = namedtuple("results", ["pod", "measure"])
 
-        fhs = self._theatres_data["four_hour_sessions"]
+        fhs_baseline = self._theatres_data["four_hour_sessions"]
         theatres = self._theatres_data["theatres"]
 
         if model_run == -1:
             return {
                 **{
                     result_u("ip_theatres", "four_hour_sessions", k): v
-                    for k, v in fhs.iteritems()
+                    for k, v in fhs_baseline.iteritems()
                 },
                 result_a("ip_theatres", "theatres"): theatres,
             }
-
         change_availability = theatres_params["change_availability"]
         change_utilisation = pd.Series(
             theatres_params["change_utilisation"], name="change_utilisation"
         )
 
-        activity = pd.concat(
-            {
-                k: (
-                    v.assign(
-                        # keep just the specialties in the fhs object
-                        tretspef=lambda x: np.where(
-                            x.tretspef.isin(fhs.index.to_list()), x.tretspef, "Other"
-                        )
-                    )
-                    .groupby("tretspef")
-                    .sum()
-                )
-                for k, v in {
-                    "baseline": self._theatres_baseline,
-                    "future": (
-                        model_results[model_results.measure == "procedures"]
-                        .assign(
-                            is_elective=lambda x: (x.admigroup == "elective") * x.value
-                        )
-                        .groupby("tretspef", as_index=False)[["is_elective", "value"]]
-                        .sum()
-                        .rename(columns={"value": "n"})
-                    ),
-                }.items()
-            }
-        )
-
-        activity["four_hour_sessions"] = pd.concat(
-            {
-                "baseline": fhs,
-                "future": activity.loc["future", "is_elective"]
-                / activity.loc["baseline", "is_elective"]
-                * fhs
-                / change_utilisation,
-            }
-        )
-
-        fhs_with_non_el = (
-            (activity["n"] / activity["is_elective"] * activity["four_hour_sessions"])
-            .groupby(level=0)
+        future = (
+            model_results[model_results["measure"] == "procedures"]
+            .groupby("tretspef")["value"]
             .sum()
         )
-        fhs_with_non_el_change = fhs_with_non_el["future"] / fhs_with_non_el["baseline"]
 
-        new_theatres = fhs_with_non_el_change * theatres / change_availability
+        baseline = self._procedures_baseline
+        theatre_spells_baseline = self._theatre_spells_baseline
 
+        fhs_future = (future / baseline * fhs_baseline).dropna()
+        theatre_spells_future = fhs_future / change_utilisation
+
+        theatre_spells_change = theatre_spells_future.sum() / theatre_spells_baseline
+
+        new_theatres = theatres * theatre_spells_change / change_availability
         return {
             **{
                 result_u("ip_theatres", "four_hour_sessions", k): v
-                for k, v in activity.loc["future", "four_hour_sessions"].iteritems()
+                for k, v in fhs_future.iteritems()
             },
             result_a("ip_theatres", "theatres"): new_theatres,
         }
