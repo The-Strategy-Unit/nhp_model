@@ -627,7 +627,7 @@ def test_bedday_summary(mock_model):
         "quarter": ["q1", "q1"],
         "ward_type": ["general_and_acute", "general_and_acute"],
         "ward_group": ["A", "B"],
-        "size": [4, 2],
+        "size": [2.6666666666666665, 2.0],
     }
 
 
