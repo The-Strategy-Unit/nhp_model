@@ -669,7 +669,7 @@ class InpatientsModel(Model):
     def _bedday_summary(self, data, year):
         """Summarise data to count how many beddays per quarter
 
-        Calculated midnight bed occupancy per day, summarises to maximum in quarter.
+        Calculated midnight bed occupancy per day, summarises to mean in quarter.
 
         :param data: the baseline data, or results of running the model
         :type data: pandas.DataFrame
@@ -695,7 +695,7 @@ class InpatientsModel(Model):
             .assign(quarter=lambda x: x.date.dt.to_period("Q-MAR"))
             .query(f"quarter.dt.qyear == {year + 1}")
             .groupby(["quarter", "ward_type", "ward_group"], as_index=False)
-            .agg({"size": max})
+            .agg({"size": np.mean})
             .assign(quarter=lambda x: x.quarter.astype(str).str[4:].str.lower())
         )
 
