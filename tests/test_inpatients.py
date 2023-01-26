@@ -210,7 +210,7 @@ def test_load_theatres_data(mocker, mock_model):
             "200": 2,
             "Other (Surgical)": 3,
         }
-        assert mock_model._theatres_baseline.to_dict() == {"100": 5, "200": 5}
+        assert mock_model._procedures_baseline.to_dict() == {"100": 5, "200": 5}
         assert mock_model._theatre_spells_baseline == 3.469437852876197
 
 

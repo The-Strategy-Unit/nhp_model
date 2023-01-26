@@ -125,7 +125,7 @@ class InpatientsModel(Model):
         )
 
         self._theatres_data["four_hour_sessions"] = fhs_baseline
-        self._theatres_baseline = self.data.groupby("tretspef")["has_procedure"].sum()
+        self._procedures_baseline = self.data.groupby("tretspef")["has_procedure"].sum()
         self._theatre_spells_baseline = (fhs_baseline / baseline_params).sum()
 
     def _los_reduction(self, run_params: dict) -> pd.DataFrame:
