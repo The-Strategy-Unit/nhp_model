@@ -15,7 +15,7 @@ theatres_get_four_hour_sessions <- function(theatres_data_path, start_year = lub
         "Oral and Maxfax", "140",
         "Plastics", "160",
         "Obs and Gynae", "502",
-        "Trust", "Other"
+        "Trust", "Other (Surgical)"
       ),
       by = "sub_specialty"
     ) |>
