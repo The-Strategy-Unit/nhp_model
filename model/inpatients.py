@@ -532,7 +532,7 @@ class InpatientsModel(Model):
         nt = n * admission_avoidance
         cf = {
             ("admission_avoidance", k): {"admissions": v.imag, "beddays": v.real}
-            for k, v in (n - nt).groupby(level=0).sum().to_dict().items()
+            for k, v in (nt - n).groupby(level=0).sum().to_dict().items()
             if v != 0
         }
         # replace n, and then work out the sum of n
