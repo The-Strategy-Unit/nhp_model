@@ -115,7 +115,7 @@ class InpatientsModel(Model):
 
         fhs_baseline = pd.Series(
             self._theatres_data["four_hour_sessions"], name="four_hour_sessions"
-        ).rename(index={"Other": "Other (Surgical)"})
+        )
 
         baseline_params = pd.Series(
             {
@@ -125,7 +125,11 @@ class InpatientsModel(Model):
         )
 
         self._theatres_data["four_hour_sessions"] = fhs_baseline
-        self._procedures_baseline = self.data.groupby("tretspef")["has_procedure"].sum()
+        # sum the amount of procedures, by specialty,
+        # then keep only the ones which appear in fhs_baseline
+        self._procedures_baseline = self.data.groupby("tretspef")[
+            "has_procedure"
+        ].sum()[fhs_baseline.index]
         self._theatre_spells_baseline = (fhs_baseline / baseline_params).sum()
 
     def _los_reduction(self, run_params: dict) -> pd.DataFrame:
@@ -799,10 +803,12 @@ class InpatientsModel(Model):
             theatres_params["change_utilisation"], name="change_utilisation"
         )
 
+        # sum the amount of procedures, by specialty,
+        # then keep only the ones which appear in fhs_baseline
         future = (
             model_results[model_results["measure"] == "procedures"]
             .groupby("tretspef")["value"]
-            .sum()
+            .sum()[fhs_baseline.index]
         )
 
         baseline = self._procedures_baseline
