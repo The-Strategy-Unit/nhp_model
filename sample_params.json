@@ -1361,6 +1361,20 @@
         ],
         "baseline_target_rate": 0.83,
         "op_dc_split": 0.7
+      },
+      "general_los_reduction_non-elective": {
+        "type": "all",
+        "interval": [
+          0.51,
+          0.54
+        ]
+      },
+      "general_los_reduction_elective": {
+        "type": "all",
+        "interval": [
+          0.71,
+          0.74
+        ]
       }
     }
   },

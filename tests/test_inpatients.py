@@ -193,7 +193,7 @@ def test_load_theatres_data(mocker, mock_model):
         "json.load",
         return_value={
             "theatres": 10,
-            "four_hour_sessions": {"100": 1, "200": 2, "Other": 3},
+            "four_hour_sessions": {"100": 1, "200": 2, "Other (Surgical)": 3},
         },
     )
     mock_model.data["has_procedure"] = [i for i in [0, 1] for _j in range(10)]
@@ -522,16 +522,16 @@ def test_step_counts(mock_model):
     assert actual == {
         ("baseline", "-"): {"admissions": 6, "beddays": 21},
         ("admission_avoidance", "a"): {
-            "admissions": 4.746600741656366,
-            "beddays": 6.5056105610561055,
+            "admissions": -4.746600741656366,
+            "beddays": -6.5056105610561055,
         },
         ("admission_avoidance", "b"): {
-            "admissions": 3.480840543881335,
-            "beddays": 11.236963696369637,
+            "admissions": -3.480840543881335,
+            "beddays": -11.236963696369637,
         },
         ("admission_avoidance", "c"): {
-            "admissions": 2.215080346106304,
-            "beddays": 11.236963696369637,
+            "admissions": -2.215080346106304,
+            "beddays": -11.236963696369637,
         },
         ("x", "-"): {"admissions": 3.4610630407910996, "beddays": 15.524752475247524},
         ("y", "-"): {"admissions": 15.981458590852904, "beddays": 62.454785478547855},

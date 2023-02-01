@@ -266,7 +266,18 @@ save_ip_data <- function(data, strategies, name, path) {
     ) |>
     arrow::write_parquet(ip_fn)
 
-  null_strats <- dplyr::transmute(data, .data$rn, strategy = "NULL", sample_rate = 1)
+  # for the los reduction strategy NULL is replaced for elective/non-elective ordinary admissions
+  # but not for daycases or maternity admissions
+  null_strats <- data |>
+    dplyr::transmute(
+      .data$rn,
+      strategy = dplyr::case_when(
+        .data$admigroup == "maternity" ~ "NULL",
+        .data$classpat != "1" ~ "NULL",
+        TRUE ~ paste0("general_los_reduction_", .data$admigroup)
+      ),
+      sample_rate = 1
+    )
 
   strategies_to_remove <- dplyr::bind_rows(
     # bads records where we wont convert daycases
@@ -295,8 +306,13 @@ save_ip_data <- function(data, strategies, name, path) {
       t <- paste0(strategy_type, "_strategy")
       fn <- file.path(path, name, glue::glue("ip_{strategy_type}_strategies.parquet"))
 
+      ns <- null_strats
+      if (strategy_type != "los_reduction") {
+        ns$strategy <- "NULL"
+      }
+
       data |>
-        dplyr::bind_rows(null_strats) |>
+        dplyr::bind_rows(ns) |>
         dplyr::arrange(.data$strategy, .data$rn) |>
         dplyr::rename({{ t }} := "strategy") |> # nolint
         arrow::write_parquet(fn)

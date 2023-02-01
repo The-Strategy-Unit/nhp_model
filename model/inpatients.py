@@ -127,9 +127,10 @@ class InpatientsModel(Model):
         self._theatres_data["four_hour_sessions"] = fhs_baseline
         # sum the amount of procedures, by specialty,
         # then keep only the ones which appear in fhs_baseline
-        self._procedures_baseline = self.data.groupby("tretspef")[
-            "has_procedure"
-        ].sum()[fhs_baseline.index]
+        self._procedures_baseline = self.data.groupby("tretspef")["has_procedure"].sum()
+        self._procedures_baseline = self._procedures_baseline[
+            self._procedures_baseline.index.isin(fhs_baseline.index)
+        ]
         self._theatre_spells_baseline = (fhs_baseline / baseline_params).sum()
 
     def _los_reduction(self, run_params: dict) -> pd.DataFrame:
@@ -168,9 +169,14 @@ class InpatientsModel(Model):
             rng.binomial(1, strategies["sample_rate"]).astype(bool)
         ].iloc[:, 0]
         # filter the strategies to only include those listed in the params file
-        valid_strategies = list(
+        # make sure always to include the NULL/general_los_reduction* strategies
+        valid_strategies = set(
             self.params["inpatient_factors"][strategy_type].keys()
-        ) + ["NULL"]
+        ) | {
+            "NULL",
+            "general_los_reduction_elective",
+            "general_los_reduction_non-elective",
+        }
         strategies = strategies[strategies.isin(valid_strategies)]
         return (
             strategies
