@@ -219,7 +219,7 @@ def test_run(mock_model):
 
 def test_aggregate(mock_model):
     """test that it aggregates the results correctly"""
-
+    # arrange
     def create_agg_stub(model_results, cols=None):
         name = "+".join(cols) if cols else "default"
         return {name: 1}
@@ -228,23 +228,27 @@ def test_aggregate(mock_model):
     mdl._create_agg = Mock(wraps=create_agg_stub)
     model_results = pd.DataFrame(
         {
-            "age_group": [1, 1, 1, 1],
-            "sex": [1, 1, 1, 1],
+            "sitetret": ["trust"] * 4,
+            "age_group": [1] * 4,
+            "sex": [1] * 4,
             "aedepttype": ["01", "01", "02", "02"],
             "is_ambulance": [True, False, True, False],
             "value": [1, 2, 3, 4],
         }
     )
+    # act
     results = mdl.aggregate(model_results, 1)
+    # assert
     assert mdl._create_agg.call_count == 2
     assert results == {"default": 1, "sex+age_group": 1}
     #
     mr_call = pd.DataFrame(
         {
             "pod": ["aae_type-01", "aae_type-01", "aae_type-02", "aae_type-02"],
+            "sitetret": ["trust"] * 4,
             "measure": ["ambulance", "walk-in"] * 2,
-            "sex": [1, 1, 1, 1],
-            "age_group": [1, 1, 1, 1],
+            "sex": [1] * 4,
+            "age_group": [1] * 4,
             "value": [1, 2, 3, 4],
         }
     )

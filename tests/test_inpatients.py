@@ -834,7 +834,7 @@ def test_theatres_available_baseline(mock_model):
 
 def test_aggregate(mock_model):
     """test that it aggregates the results correctly"""
-
+    # arrange
     def create_agg_stub(model_results, cols=None):
         name = "+".join(cols) if cols else "default"
         return {name: 1}
@@ -849,6 +849,7 @@ def test_aggregate(mock_model):
     xs = list(range(6)) * 2
     model_results = pd.DataFrame(
         {
+            "sitetret": ["trust"] * 24,
             "age_group": xs * 2,
             "sex": xs * 2,
             "admimeth": xs * 2,
@@ -862,7 +863,9 @@ def test_aggregate(mock_model):
             "bedday_rows": [False] * 12 + [True] * 12,
         }
     )
+    # act
     results = mdl.aggregate(model_results, 1)
+    # assert
     assert mdl._create_agg.call_count == 3
     assert results == {
         "default": 1,
@@ -871,8 +874,6 @@ def test_aggregate(mock_model):
         "bed_occupancy": 2,
         "theatres_available": 3,
     }
-    #
-
     mdl._get_run_params.assert_called_once_with(1)
     mdl._bed_occupancy.assert_called_once()
     mdl._theatres_available.assert_called_once()

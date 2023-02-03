@@ -126,6 +126,7 @@ def mock_model_results():
     return pd.DataFrame(
         {
             "pod": [i for i in range(3) for _ in range(4)],
+            "sitetret": ["trust"] * 12,
             "measure": [0, 1] * 6,
             "col1": [0, 0, 1, 1] * 3,
             "col2": [0, 0, 0, 1] * 3,
@@ -446,12 +447,12 @@ def test_run(mocker, mock_model):
             True,
             lambda r: {
                 "default": {
-                    r(0, 0): 4,
-                    r(0, 1): 6,
-                    r(1, 0): 12,
-                    r(1, 1): 14,
-                    r(2, 0): 20,
-                    r(2, 1): 22,
+                    r("trust", 0, 0): 4,
+                    r("trust", 0, 1): 6,
+                    r("trust", 1, 0): 12,
+                    r("trust", 1, 1): 14,
+                    r("trust", 2, 0): 20,
+                    r("trust", 2, 1): 22,
                 }
             },
         ),
@@ -461,12 +462,12 @@ def test_run(mocker, mock_model):
             True,
             lambda r: {
                 "thing": {
-                    r(0, 0): 4,
-                    r(0, 1): 6,
-                    r(1, 0): 12,
-                    r(1, 1): 14,
-                    r(2, 0): 20,
-                    r(2, 1): 22,
+                    r("trust", 0, 0): 4,
+                    r("trust", 0, 1): 6,
+                    r("trust", 1, 0): 12,
+                    r("trust", 1, 1): 14,
+                    r("trust", 2, 0): 20,
+                    r("trust", 2, 1): 22,
                 }
             },
         ),
@@ -476,18 +477,18 @@ def test_run(mocker, mock_model):
             True,
             lambda r: {
                 "col1": {
-                    r(0, 0, 0): 1,
-                    r(0, 0, 1): 3,
-                    r(0, 1, 0): 2,
-                    r(0, 1, 1): 4,
-                    r(1, 0, 0): 5,
-                    r(1, 0, 1): 7,
-                    r(1, 1, 0): 6,
-                    r(1, 1, 1): 8,
-                    r(2, 0, 0): 9,
-                    r(2, 0, 1): 11,
-                    r(2, 1, 0): 10,
-                    r(2, 1, 1): 12,
+                    r("trust", 0, 0, 0): 1,
+                    r("trust", 0, 0, 1): 3,
+                    r("trust", 0, 1, 0): 2,
+                    r("trust", 0, 1, 1): 4,
+                    r("trust", 1, 0, 0): 5,
+                    r("trust", 1, 0, 1): 7,
+                    r("trust", 1, 1, 0): 6,
+                    r("trust", 1, 1, 1): 8,
+                    r("trust", 2, 0, 0): 9,
+                    r("trust", 2, 0, 1): 11,
+                    r("trust", 2, 1, 0): 10,
+                    r("trust", 2, 1, 1): 12,
                 }
             },
         ),
@@ -497,15 +498,15 @@ def test_run(mocker, mock_model):
             False,
             lambda r: {
                 "col1+col2": {
-                    r(0, 0, 0): 3,
-                    r(0, 1, 0): 3,
-                    r(0, 1, 1): 4,
-                    r(1, 0, 0): 11,
-                    r(1, 1, 0): 7,
-                    r(1, 1, 1): 8,
-                    r(2, 0, 0): 19,
-                    r(2, 1, 0): 11,
-                    r(2, 1, 1): 12,
+                    r("trust", 0, 0, 0): 3,
+                    r("trust", 0, 1, 0): 3,
+                    r("trust", 0, 1, 1): 4,
+                    r("trust", 1, 0, 0): 11,
+                    r("trust", 1, 1, 0): 7,
+                    r("trust", 1, 1, 1): 8,
+                    r("trust", 2, 0, 0): 19,
+                    r("trust", 2, 1, 0): 11,
+                    r("trust", 2, 1, 1): 12,
                 }
             },
         ),
@@ -516,5 +517,5 @@ def test_create_agg(
 ):
     """test that it aggregates the data correctly"""
     actual = mock_model._create_agg(mock_model_results, cols, name, include_measure)
-    cols = ["pod"] + (["measure"] if include_measure else []) + (cols or [])
+    cols = ["sitetret", "pod"] + (["measure"] if include_measure else []) + (cols or [])
     assert actual == expected(namedtuple("results", cols))
