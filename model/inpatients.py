@@ -35,6 +35,7 @@ class InpatientsModel(Model):
             data_path,
             columns_to_load=[
                 "rn",
+                "sitetret",
                 "speldur",
                 "age",
                 "sex",
@@ -814,8 +815,9 @@ class InpatientsModel(Model):
         future = (
             model_results[model_results["measure"] == "procedures"]
             .groupby("tretspef")["value"]
-            .sum()[fhs_baseline.index]
+            .sum()
         )
+        future = future[future.index.isin(fhs_baseline.index)]
 
         baseline = self._procedures_baseline
         theatre_spells_baseline = self._theatre_spells_baseline
@@ -860,6 +862,7 @@ class InpatientsModel(Model):
             model_results[~model_results["bedday_rows"]]
             .groupby(
                 [
+                    "sitetret",
                     "age_group",
                     "sex",
                     "admimeth",

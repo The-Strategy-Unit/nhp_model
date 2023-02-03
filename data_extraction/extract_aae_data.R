@@ -104,7 +104,8 @@ create_aae_data <- function(aae) {
         "Less deprived 10-20%",
         "Least deprived 10%"
       ),
-      dplyr::across(c("age", "sex"), as.integer)
+      dplyr::across(c("age", "sex"), as.integer),
+      sitetret = "trust" # not currently available in our HES data
     ) |>
     dplyr::filter(.data$sex %in% c(1, 2))
 }

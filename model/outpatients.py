@@ -319,7 +319,7 @@ class OutpatientsModel(Model):
             .groupby(
                 # note: any columns used in the calls to _create_agg, including pod and measure
                 # must be included below
-                ["pod", "measure", "sex", "age_group", "tretspef"],
+                ["pod", "sitetret", "measure", "sex", "age_group", "tretspef"],
                 as_index=False,
             )
             .agg({"value": "sum"})

@@ -444,7 +444,9 @@ class Model:
         if name is None:
             name = "+".join(cols) if cols else "default"
         cols = (
-            ["pod"] + (["measure"] if include_measure else []) + (cols if cols else [])
+            ["sitetret", "pod"]
+            + (["measure"] if include_measure else [])
+            + (cols if cols else [])
         )
         result = namedtuple("results", cols)
         agg = model_results.groupby(cols)["value"].sum()
