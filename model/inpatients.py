@@ -152,8 +152,8 @@ class InpatientsModel(Model):
         return losr
 
     def _random_strategy(
-        self, rng: np.random.Generator, strategy_type: str
-    ) -> pd.DataFrame:
+        self, data: pd.DataFrame, rng: np.random.Generator, strategy_type: str
+    ) -> pd.Series:
         """Select one strategy per record
         :param rng: a random number generator created for each model iteration
         :type rng: numpy.random.Generator
@@ -174,19 +174,19 @@ class InpatientsModel(Model):
         valid_strategies = set(
             self.params["inpatient_factors"][strategy_type].keys()
         ) | {
-            "NULL",
             "general_los_reduction_elective",
             "general_los_reduction_non-elective",
         }
-        strategies = strategies[strategies.isin(valid_strategies)]
-        return (
-            strategies
+        strategies = defaultdict(
+            lambda: "NULL",
+            strategies[strategies.isin(valid_strategies)]
             # take all of the rows and randomly reshuffle them into a new order. We *do not* want to
             # use resampling here. make sure to use the same random state using rng.bit_generator
             .sample(frac=1, random_state=rng.bit_generator)
             # for each rn, select a single row, i.e. select 1 strategy per rn
-            .groupby(level=0).head(1)
+            .groupby(level=0).head(1).to_dict(),
         )
+        return data["rn"].apply(lambda x: strategies[x])
 
     @staticmethod
     def _expat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
@@ -603,15 +603,14 @@ class InpatientsModel(Model):
         :rtype: (dict, pandas.DataFrame)
         """
         # select strategies
-        admission_avoidance = self._random_strategy(rng, "admission_avoidance")[
-            data["rn"]
-        ]
-        los_reduction = self._random_strategy(rng, "los_reduction")
+        admission_avoidance = self._random_strategy(data, rng, "admission_avoidance")
+        los_reduction = self._random_strategy(data, rng, "los_reduction")
         # choose length of stay reduction factors
         losr = self._los_reduction(run_params)
 
         # Row Resampling ---------------------------------------------------------------------------
         aa = self._admission_avoidance(admission_avoidance, run_params)
+
         factors = {
             "health_status_adjustment": hsa_f,
             "population_factors": demo_f[data["rn"]].to_numpy(),
