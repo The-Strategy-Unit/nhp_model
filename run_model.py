@@ -51,7 +51,11 @@ def debug_run(model: Model, model_run: int) -> None:
     #
     print()
     print("change factors:")
-    print(change_factors)
+    print(
+        change_factors.groupby(["change_factor", "measure"], as_index=False)["value"]
+        .sum()
+        .pivot(index="change_factor", columns="measure", values="value")
+    )
     #
     print()
     print("aggregated (default) results:")
@@ -59,6 +63,8 @@ def debug_run(model: Model, model_run: int) -> None:
         pd.DataFrame.from_dict(
             [{**k._asdict(), "value": v} for k, v in agg_results["default"].items()]
         )
+        .groupby(["pod", "measure"], as_index=False)
+        .agg({"value": sum})
         .pivot(index="pod", columns="measure")
         .fillna(0)
     )
@@ -225,8 +231,10 @@ def main() -> None:
             print("Running         post-runs")
             save_model.post_runs()
 
+
 def init():
     if __name__ == "__main__":
         main()
+
 
 init()
