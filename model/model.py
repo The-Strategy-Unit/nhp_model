@@ -74,8 +74,11 @@ class Model:
         with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
             self._hsa_gams = pickle.load(hsa_pkl)
         # load the data. we only need some of the columns for the model, so just load what we need
-        self.data = self._load_parquet(self.model_type, columns_to_load)
+        self.data = self._load_parquet(self.model_type, columns_to_load).sort_values(
+            "rn"
+        )
         self.data["age_group"] = age_groups(self.data["age"])
+
         # now data is loaded we can load the demographic factors
         self._load_demog_factors()
         # generate the run parameters
@@ -119,6 +122,13 @@ class Model:
 
         self._variants = list(dfp["variant_probabilities"].keys())
         self._probabilities = list(dfp["variant_probabilities"].values())
+
+    def _demographic_adjustment(
+        self, data: pd.DataFrame, run_params: dict
+    ) -> np.ndarray:
+        df = self._demog_factors[run_params["variant"]]
+        # rows can be duplicated, so reselect
+        return df[data["rn"]].to_numpy()
 
     def _health_status_adjustment(
         self, data: pd.DataFrame, run_params: dict
@@ -350,6 +360,7 @@ class Model:
                     "theatres",
                 ]
             },
+            "waiting_list_adjustment": params["waiting_list_adjustment"],
         }
 
     def _run(
@@ -400,7 +411,7 @@ class Model:
         rng = np.random.default_rng(run_params["seed"])
         data = self.data.copy()
         # demographics factor
-        demo_f = self._demog_factors[run_params["variant"]]
+        demo_f = self._demographic_adjustment(data, run_params)
         # hsa
         hsa_f = self._health_status_adjustment(data, run_params)
         # choose which function to use
