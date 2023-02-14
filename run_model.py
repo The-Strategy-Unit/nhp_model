@@ -51,15 +51,18 @@ def debug_run(model: Model, model_run: int) -> None:
     #
     print()
     print("change factors:")
-    print(
+    cf_agg = (
         change_factors.groupby(["change_factor", "measure"], as_index=False)["value"]
         .sum()
         .pivot(index="change_factor", columns="measure", values="value")
+        .loc[change_factors["change_factor"].unique()]
     )
+    cf_agg.loc["results"] = cf_agg.sum()
+    print(cf_agg)
     #
     print()
     print("aggregated (default) results:")
-    print(
+    agg_res = (
         pd.DataFrame.from_dict(
             [{**k._asdict(), "value": v} for k, v in agg_results["default"].items()]
         )
@@ -68,6 +71,8 @@ def debug_run(model: Model, model_run: int) -> None:
         .pivot(index="pod", columns="measure")
         .fillna(0)
     )
+    agg_res.loc["total"] = agg_res.sum()
+    print(agg_res)
 
 
 def run_model(

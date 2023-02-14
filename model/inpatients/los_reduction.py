@@ -83,12 +83,13 @@ def losr_all(
     :type step_counts: dict
     """
     i = losr.index[(losr.type == "all") & (losr.index.isin(data.index))]
+    mask = ~data.loc[i, "bedday_rows"]
     pre_los = data.loc[i, "speldur"]
     data.loc[i, "speldur"] = rng.binomial(
         data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"]
     )
     change_los = (
-        (data.loc[i, "speldur"] - pre_los).groupby(level=0).sum().astype(int)
+        ((data.loc[i, "speldur"] - pre_los) * mask).groupby(level=0).sum().astype(int)
     ).to_dict()
 
     for k in change_los.keys():
@@ -163,20 +164,27 @@ def losr_bads(
     # set the speldur to 0 if we aren't inpatients
     data.loc[i, "speldur"] *= data.loc[i, "classpat"] == "1"
 
-    step_counts_admissions = (
-        ((data.loc[i, "classpat"] == "-1").groupby(level=0).sum() * -1)
+    step_counts_admissions = -(
+        ((data.loc[i, "classpat"] == "-1") * ~data.loc[i, "bedday_rows"])
+        .groupby(level=0)
+        .sum()
         .astype(int)
-        .to_dict()
     )
     step_counts_beddays = (
         (
-            data.loc[i, "speldur"].groupby(level=0).sum()
-            - bads_df["speldur"].groupby(level=0).sum()
+            (
+                (data.loc[i, "speldur"] * ~data.loc[i, "bedday_rows"])
+                .groupby(level=0)
+                .sum()
+                - (bads_df["speldur"] * ~bads_df["bedday_rows"]).groupby(level=0).sum()
+                + step_counts_admissions
+            )
         )
         .astype(int)
         .to_dict()
     )
 
+    step_counts_admissions = step_counts_admissions.to_dict()
     for k in step_counts_admissions.keys():
         step_counts[("los_reduction", k)] = {
             "admissions": step_counts_admissions[k],
@@ -205,10 +213,11 @@ def losr_aec(
     :type step_counts: dict
     """
     i = losr.index[(losr.type == "aec") & (losr.index.isin(data.index))]
+    mask = ~data.loc[i, "bedday_rows"]
     pre_los = data.loc[i, "speldur"]
     data.loc[i, "speldur"] *= rng.binomial(1, losr.loc[data.loc[i].index, "losr_f"])
     change_los = (
-        (data.loc[i, "speldur"] - pre_los).groupby(level=0).sum().astype(int)
+        ((data.loc[i, "speldur"] - pre_los) * mask).groupby(level=0).sum().astype(int)
     ).to_dict()
 
     for k in change_los.keys():
@@ -240,12 +249,13 @@ def losr_preop(
     """
     i = losr.index[(losr.type == "pre-op") & (losr.index.isin(data.index))]
     pre_los = data.loc[i, "speldur"]
+    mask = ~data.loc[i, "bedday_rows"]
     data.loc[i, "speldur"] -= (
         rng.binomial(1, 1 - losr.loc[data.loc[i].index, "losr_f"])
         * losr.loc[data.loc[i].index, "pre-op_days"]
     )
     change_los = (
-        (data.loc[i, "speldur"] - pre_los).groupby(level=0).sum().astype(int)
+        ((data.loc[i, "speldur"] - pre_los) * mask).groupby(level=0).sum().astype(int)
     ).to_dict()
 
     for k in change_los.keys():

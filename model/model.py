@@ -70,124 +70,14 @@ class Model:
             self.params["create_datetime"] = f"{datetime.now():%Y%m%d_%H%M%S}"
         # store the path where the data is stored and the results are stored
         self._data_path = os.path.join(data_path, self.params["dataset"])
-        # load the data that's shared across different model types
-        with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
-            self._hsa_gams = pickle.load(hsa_pkl)
         # load the data. we only need some of the columns for the model, so just load what we need
         self.data = self._load_parquet(self.model_type, columns_to_load).sort_values(
             "rn"
         )
         self.data["age_group"] = age_groups(self.data["age"])
 
-        # now data is loaded we can load the demographic factors
-        self._load_demog_factors()
         # generate the run parameters
         self._generate_run_params()
-
-    def _load_demog_factors(self) -> None:
-        """Load the demographic factors
-
-        Load the demographic factors csv file and calculate the demographics growth factor for the
-        years in the parameters.
-
-        Creates 3 private variables:
-
-          * | `self._demog_factors`: a pandas.DataFrame which has a 1:1 correspondance to the model
-            | data and a column for each of the different population projections available
-          * | `self._variants`: a list containing the names of the different population projections
-            | available
-          * `self._probabilities`: a list containing the probability of selecting a given variant
-        """
-        dfp = self.params["demographic_factors"]
-        start_year = str(self.params["start_year"])
-        end_year = str(self.params["end_year"])
-
-        merge_cols = ["age", "sex"]
-
-        demog_factors = pd.read_csv(os.path.join(self._data_path, dfp["file"]))
-        demog_factors[merge_cols] = demog_factors[merge_cols].astype(int)
-        demog_factors["factor"] = demog_factors[end_year] / demog_factors[start_year]
-        demog_factors.set_index(merge_cols, inplace=True)
-
-        self._demog_factors = (
-            self.data[["rn"] + merge_cols]
-            .merge(
-                demog_factors.pivot(None, "variant", "factor"),
-                left_on=merge_cols,
-                right_index=True,
-            )
-            .drop(merge_cols, axis="columns")
-            .set_index("rn")
-        )
-
-        self._variants = list(dfp["variant_probabilities"].keys())
-        self._probabilities = list(dfp["variant_probabilities"].values())
-
-    def _demographic_adjustment(
-        self, data: pd.DataFrame, run_params: dict
-    ) -> np.ndarray:
-        df = self._demog_factors[run_params["variant"]]
-        # rows can be duplicated, so reselect
-        return df[data["rn"]].to_numpy()
-
-    def _health_status_adjustment(
-        self, data: pd.DataFrame, run_params: dict
-    ) -> np.ndarray:
-        """Get the health status adjustment factor for the current model run
-
-        This starts off by taking the `life_expectancy` values from the params, as well as the
-        `health_status_adjustment` value for the current model run. We use these values to work
-        out an "adjusted age" for our population.
-
-        We then use the HSA GAM's (g) to work out our factor with
-
-        .. math:: \\frac{g(age_{\\text{adjusted}})}{g(age_{\\text{actual}})}
-
-        :param data: the data of the current model run
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-
-        :returns: a list containing the HSA factor for each row in `data`
-        :rtype: numpy.ndarray
-        """
-        # convert the arrays from the life expectancy paramerters into a data frame
-        lep = self.params["life_expectancy"]
-        ages = np.tile(np.arange(lep["min_age"], lep["max_age"] + 1), 2)
-        sexs = np.repeat([1, 2], len(ages) // 2)
-        lex = pd.DataFrame({"age": ages, "sex": sexs, "ex": lep["m"] + lep["f"]})
-        # adjust the life expectancy column using the health status adjustment parameter
-        lex["ex"] *= run_params["health_status_adjustment"]
-        # caclulate the adjusted age
-        lex["adjusted_age"] = lex["age"] - lex["ex"]
-
-        lex.set_index("sex", inplace=True)
-
-        # use the hsa gam's to predict with the adjusted age and the actual age to calculate the
-        # health status adjustment factor
-        hsa = pd.concat(
-            [
-                pd.DataFrame(
-                    {
-                        "hsagrp": h,
-                        "sex": int(s),
-                        "age": lex.loc[int(s), "age"],
-                        "hsa_f": g.predict(lex.loc[int(s), "adjusted_age"])
-                        / g.predict(lex.loc[int(s), "age"]),
-                    }
-                )
-                for (h, s), g in self._hsa_gams.items()
-            ]
-        ).reset_index(drop=True)
-        return (
-            (
-                data.reset_index()
-                .merge(hsa, on=["hsagrp", "sex", "age"], how="left")
-                .set_index(["rn"])
-            )["hsa_f"]
-            .fillna(1)
-            .to_numpy()
-        )
 
     def _load_parquet(self, file: str, *args: list[str]) -> pd.DataFrame:
         """Load a parquet file
@@ -287,11 +177,13 @@ class Model:
                 p = p["interval"]
             return [valid_range(gen_value(mr, p)) for mr in range(model_runs)]
 
+        variants = list(params["demographic_factors"]["variant_probabilities"].keys())
+        probabilities = list(
+            params["demographic_factors"]["variant_probabilities"].values()
+        )
         self.run_params = {
-            "variant": [self._variants[np.argmax(self._probabilities)]]
-            + rng.choice(
-                self._variants, model_runs - 1, p=self._probabilities
-            ).tolist(),
+            "variant": [variants[np.argmax(probabilities)]]
+            + rng.choice(variants, model_runs - 1, p=probabilities).tolist(),
             "seeds": rng.integers(0, 65535, model_runs).tolist(),
             "waiting_list_adjustment": params["waiting_list_adjustment"],
             # generate param values for the different items in params: this will traverse the dicts
@@ -362,60 +254,6 @@ class Model:
             },
             "waiting_list_adjustment": params["waiting_list_adjustment"],
         }
-
-    def _run(
-        self,
-        rng: np.random.Generator,
-        data: pd.DataFrame,
-        run_params: dict,
-        demo_f: pd.Series,
-        hsa_f: pd.Series,
-    ) -> tuple[dict, pd.DataFrame]:
-        """Run the model
-
-        :param rng: a random number generator created for each model iteration
-        :type rng: numpy.random.Generator
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-        :param demo_f: the demographic adjustment factors
-        :type demo_f: pandas.Series
-        :param hsa_f: the health status adjustment factors
-        :type hsa_f: pandas.Series
-
-        :returns: a tuple containing the change factors DataFrame and the mode results DataFrame
-        :rtype: (dict, pandas.DataFrame)
-        """
-        # implemeneted by the concrete class
-
-    def run(self, model_run: int) -> tuple[dict, pd.DataFrame]:
-        """Run the model once
-
-        Performs a single iteration of the model. The `model_run` parameter controls what parameters
-        to use for this run of the model, with the principal model run having 0, and all other model
-        runs having a value greater than 0.
-
-        Running the model multiple times with the same `model_run` will give the same results.
-
-        The return value is a tuple that contains the change factors as a dictionary, and the model
-        results as a :class:`pandas.DataFrame`.
-
-        :param model_run: the current model run
-        :type model_run: int
-        :returns: a tuple of the change factors and the model results
-        :rtype: (dict, pandas.DataFrame)
-        """
-        # get the run params
-        run_params = self._get_run_params(model_run)
-        rng = np.random.default_rng(run_params["seed"])
-        data = self.data.copy()
-        # demographics factor
-        demo_f = self._demographic_adjustment(data, run_params)
-        # hsa
-        hsa_f = self._health_status_adjustment(data, run_params)
-        # choose which function to use
-        return self._run(rng, data, run_params, demo_f, hsa_f)
 
     def aggregate(self, model_results: pd.DataFrame, model_run: int):
         """Aggregate the model results

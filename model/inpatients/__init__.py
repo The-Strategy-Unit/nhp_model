@@ -4,18 +4,17 @@ Inpatients Module
 Implements the inpatients model.
 """
 import json
-from collections import defaultdict, namedtuple
+from collections import namedtuple
 from datetime import timedelta
-from functools import partial, reduce
+from functools import partial
 from typing import Callable, Tuple
 
 import numpy as np
 import pandas as pd
 
-import model.inpatients.row_resampling as rr
-from model.helpers import inrange
 from model.inpatients.los_reduction import los_reduction
 from model.model import Model
+from model.row_resampling import RowResampling
 
 
 class InpatientsModel(Model):
@@ -151,34 +150,6 @@ class InpatientsModel(Model):
         # subset the strategies
         return s[s.iloc[:, 0].isin(p)]
 
-    def row_resampling(
-        self, rng: np.random.Generator, data: pd.DataFrame, run_params: dict
-    ) -> Tuple[pd.DataFrame, dict]:
-        methods = [
-            self._demographic_adjustment,
-            self._health_status_adjustment,
-            rr.expat_adjustment,
-            rr.repat_adjustment,
-            rr.baseline_adjustment,
-            rr.waiting_list_adjustment,
-            rr.non_demographic_adjustment,
-        ]
-
-        factors = {
-            # run the listed row resampling methods above
-            **{
-                (f.__name__.removeprefix("_"), "-"): f(data, run_params)
-                for f in methods
-            },
-            # add in the admission avoidance strategies
-            **rr.admission_avoidance(
-                rng, data, self._strategies["admission_avoidance"], run_params
-            ),
-        }
-
-        # apply the row resampling
-        return rr.apply_resampling(rng, data, factors)
-
     def run(self, model_run: int) -> tuple[dict, pd.DataFrame]:
         """Run the model once
 
@@ -200,9 +171,36 @@ class InpatientsModel(Model):
         run_params = self._get_run_params(model_run)
         rng = np.random.default_rng(run_params["seed"])
 
-        data = self.data.copy()
+        data = self.data.assign(is_wla=lambda x: x.admimeth == "11").rename(
+            columns={"admigroup": "group"}
+        )
+        mask = ~data["bedday_rows"].to_numpy()
+        counts = np.array([np.ones_like(data["rn"]), (1 + data["speldur"]).to_numpy()])
 
-        data, step_counts = self.row_resampling(rng, data, run_params)
+        data, step_counts = (
+            RowResampling(
+                self._data_path,
+                data,
+                counts,
+                "ip",
+                self.params,
+                run_params,
+                row_mask=mask,
+            )
+            .demographic_adjustment()
+            .health_status_adjustment()
+            .expat_adjustment()
+            .repat_adjustment()
+            .baseline_adjustment()
+            .waiting_list_adjustment()
+            .non_demographic_adjustment()
+            .admission_avoidance(self._strategies["admission_avoidance"], rng)
+            .apply_resampling(rng)
+        )
+
+        step_counts = {
+            k: {"admissions": v[0], "beddays": v[1]} for k, v in step_counts.items()
+        }
 
         # los reduction
         los_reduction(
@@ -416,7 +414,7 @@ class InpatientsModel(Model):
                     "age_group",
                     "sex",
                     "admimeth",
-                    "admigroup",
+                    "group",
                     "classpat",
                     "mainspef",
                     "tretspef",
@@ -436,7 +434,7 @@ class InpatientsModel(Model):
             .reset_index()
         )
 
-        model_results["pod"] = "ip_" + model_results["admigroup"] + "_admission"
+        model_results["pod"] = "ip_" + model_results["group"] + "_admission"
         # quick dq fix: convert any "non-elective" daycases to "elective"
         model_results.loc[
             model_results["classpat"].isin(["2", "3"]), "pod"

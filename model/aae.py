@@ -4,7 +4,6 @@ Accident and Emergency Module
 Implements the A&E model.
 """
 
-import os
 from functools import partial
 from typing import Callable
 
@@ -12,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from model.model import Model
+from model.row_resampling import RowResampling
 
 
 class AaEModel(Model):
@@ -80,93 +80,7 @@ class AaEModel(Model):
             data, run_params["frequent_attenders"], {"is_frequent_attender": 1}
         )
 
-    @staticmethod
-    def _expat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
-        expat_params = run_params["expat"]["aae"]
-        join_cols = ["is_ambulance"]
-        return data.merge(
-            pd.DataFrame(
-                [
-                    {"is_ambulance": k == "ambulance", "value": v}
-                    for k, v in expat_params.items()
-                ]
-            ).set_index(join_cols),
-            how="left",
-            left_on=join_cols,
-            right_index=True,
-        )["value"].fillna(1)
-
-    @staticmethod
-    def _repat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
-        repat_local_params = run_params["repat_local"]["aae"]
-        repat_nonlocal_params = run_params["repat_nonlocal"]["aae"]
-        join_cols = ["is_ambulance", "is_main_icb"]
-        return data.merge(
-            pd.DataFrame(
-                [
-                    {"is_ambulance": k1 == "ambulance", "is_main_icb": icb, "value": v1}
-                    for (k0, icb) in [
-                        (repat_local_params, True),
-                        (repat_nonlocal_params, False),
-                    ]
-                    for k1, v1 in k0.items()
-                ]
-            ).set_index(join_cols),
-            how="left",
-            left_on=join_cols,
-            right_index=True,
-        )["value"].fillna(1)
-
-    @staticmethod
-    def _baseline_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
-        """Create a series of factors for baseline adjustment.
-
-        A value of 1 will indicate that we want to sample this row at the baseline rate. A value
-        less that 1 will indicate we want to sample that row less often that in the baseline, and
-        a value greater than 1 will indicate that we want to sample that row more often than in the
-        baseline
-
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-
-        :returns: a series of floats indicating how often we want to sample that row
-        :rtype: pandas.Series
-        """
-
-        # extract the parameters
-        params = run_params["baseline_adjustment"]["aae"]
-
-        # get the parameter value for each row
-        return np.array(
-            [params["ambulance" if k else "walk-in"] for k in data["is_ambulance"]]
-        )
-
-    @staticmethod
-    def _step_counts(arrivals: pd.Series, arrivals_after: float, factors: dict) -> dict:
-        cf = {}
-        # as each row has a different weight attached to it, we need to use the factors
-        # applied to each row individually
-        n = arrivals
-        arrivals_before = ns = n.sum()
-        for k, v in factors.items():
-            n2 = n * v
-            n2s = n2.sum()
-            cf[k] = n2s - ns
-            n, ns = n2, n2s
-
-        slack = 1 + (arrivals_after - ns) / (ns - arrivals_before)
-        return {"baseline": arrivals_before, **{k: v * slack for k, v in cf.items()}}
-
-    def _run(
-        self,
-        rng: np.random.Generator,
-        data: pd.DataFrame,
-        run_params: dict,
-        demo_f: pd.Series,
-        hsa_f: pd.Series,
-    ) -> tuple[dict, pd.DataFrame]:
+    def run(self, model_run: int) -> tuple[dict, pd.DataFrame]:
         """Run the model
 
         :param rng: a random number generator created for each model iteration
@@ -183,35 +97,44 @@ class AaEModel(Model):
         :returns: a tuple containing the change factors DataFrame and the mode results DataFrame
         :rtype: (dict, pandas.DataFrame)
         """
-        params = run_params["aae_factors"]
+        run_params = self._get_run_params(model_run)
+        rng = np.random.default_rng(run_params["seed"])
 
-        # get the factors
-        factors = {
-            "health_status_adjustment": hsa_f,
-            "population_factors": demo_f[data["rn"]].to_numpy(),
-            "expatriation": self._expat_adjustment(data, run_params).to_numpy(),
-            "repatriation": self._repat_adjustment(data, run_params).to_numpy(),
-            "baseline_adjustment": self._baseline_adjustment(data, run_params),
-            "low_cost_dischaged": self._low_cost_discharged(data, params),
-            "left_before_seen": self._left_before_seen(data, params),
-            "frequent_attenders": self._frequent_attenders(data, params),
-        }
-        reduced_factor = np.prod(list(factors.values()), axis=0)
-        arrivals_after = rng.poisson(data["arrivals"] * reduced_factor)
+        data = self.data
+        data["group"] = np.where(data["is_ambulance"], "ambulance", "walk-in")
+        data["tretspef"] = "Other"
+        counts = np.array([data["arrivals"]]).astype(float)
 
+        # patch run params
+        for rpk in ["expat", "repat_local", "repat_nonlocal", "baseline_adjustment"]:
+            run_params[rpk]["aae"] = {
+                k: {"Other": v} for k, v in run_params[rpk]["aae"].items()
+            }
+
+        data, step_counts = (
+            RowResampling(
+                self._data_path,
+                data,
+                counts,
+                "aae",
+                self.params,
+                run_params,
+            )
+            .demographic_adjustment()
+            .health_status_adjustment()
+            .expat_adjustment()
+            .repat_adjustment()
+            .baseline_adjustment()
+            .apply_resampling(rng)
+        )
         # return the data
         change_factors = (
-            pd.Series(
-                self._step_counts(data["arrivals"], arrivals_after.sum(), factors)
-            )
+            pd.Series({k: v[0] for k, v in step_counts.items()})
             .to_frame("value")
+            .rename_axis(["change_factor", "strategy"])
             .reset_index()
-            .rename(columns={"index": "change_factor"})
-            .assign(strategy="-", measure="arrivals")[
-                ["change_factor", "strategy", "measure", "value"]
-            ]
+            .assign(measure="arrivals")
         )
-        data["arrivals"] = arrivals_after
         return (change_factors, data.drop(["hsagrp"], axis="columns"))
 
     def aggregate(self, model_results: pd.DataFrame, model_run: int) -> dict:
