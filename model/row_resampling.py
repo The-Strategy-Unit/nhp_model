@@ -13,7 +13,15 @@ import pandas as pd
 
 class RowResampling:
     def __init__(
-        self, data_path, data, counts, activity_type, params, run_params, row_mask=None
+        self,
+        demog_factors,
+        hsa_gams,
+        data,
+        counts,
+        activity_type,
+        params,
+        run_params,
+        row_mask=None,
     ):
         self.data = data
         self._activity_type = activity_type
@@ -31,45 +39,8 @@ class RowResampling:
         self.step_counts = {}
         self._update_step_counts(("baseline", "-"))
 
-        self._data_path = data_path
-        self._load_demog_factors()
-        self._load_hsa_gams()
-
-    def _load_demog_factors(self) -> None:
-        """Load the demographic factors
-
-        Load the demographic factors csv file and calculate the demographics growth factor for the
-        years in the parameters.
-
-        Creates 3 private variables:
-
-          * | `self._demog_factors`: a pandas.DataFrame which has a 1:1 correspondance to the model
-            | data and a column for each of the different population projections available
-          * | `self._variants`: a list containing the names of the different population projections
-            | available
-          * `self._probabilities`: a list containing the probability of selecting a given variant
-        """
-        dfp = self.params["demographic_factors"]
-        start_year = str(self.params["start_year"])
-        end_year = str(self.params["end_year"])
-
-        merge_cols = ["age", "sex"]
-
-        demog_factors = pd.read_csv(os.path.join(self._data_path, dfp["file"]))
-        demog_factors[merge_cols] = demog_factors[merge_cols].astype(int)
-        demog_factors["demographic_adjustment"] = (
-            demog_factors[end_year] / demog_factors[start_year]
-        )
-        demog_factors.set_index(merge_cols, inplace=True)
-
-        self._demog_factors = {
-            k: v["demographic_adjustment"] for k, v in demog_factors.groupby("variant")
-        }
-
-    def _load_hsa_gams(self):
-        # load the data that's shared across different model types
-        with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
-            self._hsa_gams = pickle.load(hsa_pkl)
+        self._demog_factors = demog_factors
+        self._hsa_gams = hsa_gams
 
     def _update(self, factor: pd.Series, cols: List[str], group=None):
         step = factor.name

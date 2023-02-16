@@ -182,7 +182,8 @@ class InpatientsModel(Model):
 
         data, step_counts = (
             RowResampling(
-                self._data_path,
+                self._demog_factors,
+                self._hsa_gams,
                 data,
                 counts,
                 "ip",

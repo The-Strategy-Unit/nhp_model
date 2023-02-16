@@ -75,7 +75,8 @@ class Model:
             "rn"
         )
         self.data["age_group"] = age_groups(self.data["age"])
-
+        self._load_demog_factors()
+        self._load_hsa_gams()
         # generate the run parameters
         self._generate_run_params()
 
@@ -97,6 +98,42 @@ class Model:
         return pq.read_pandas(
             os.path.join(self._data_path, f"{file}.parquet"), *args
         ).to_pandas()
+
+    def _load_demog_factors(self) -> None:
+        """Load the demographic factors
+
+        Load the demographic factors csv file and calculate the demographics growth factor for the
+        years in the parameters.
+
+        Creates 3 private variables:
+
+          * | `self._demog_factors`: a pandas.DataFrame which has a 1:1 correspondance to the model
+            | data and a column for each of the different population projections available
+          * | `self._variants`: a list containing the names of the different population projections
+            | available
+          * `self._probabilities`: a list containing the probability of selecting a given variant
+        """
+        dfp = self.params["demographic_factors"]
+        start_year = str(self.params["start_year"])
+        end_year = str(self.params["end_year"])
+
+        merge_cols = ["age", "sex"]
+
+        demog_factors = pd.read_csv(os.path.join(self._data_path, dfp["file"]))
+        demog_factors[merge_cols] = demog_factors[merge_cols].astype(int)
+        demog_factors["demographic_adjustment"] = (
+            demog_factors[end_year] / demog_factors[start_year]
+        )
+        demog_factors.set_index(merge_cols, inplace=True)
+
+        self._demog_factors = {
+            k: v["demographic_adjustment"] for k, v in demog_factors.groupby("variant")
+        }
+
+    def _load_hsa_gams(self):
+        # load the data that's shared across different model types
+        with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
+            self._hsa_gams = pickle.load(hsa_pkl)
 
     def _factor_helper(
         self, data: pd.DataFrame, factor_run_params: dict, column_values: dict
