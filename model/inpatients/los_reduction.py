@@ -2,15 +2,14 @@ import numpy as np
 import pandas as pd
 
 from model.helpers import inrange
+from model.model_run import ModelRun
 
 
 def los_reduction(
-    rng: np.random.Generator,
+    model_run: ModelRun,
     data: pd.DataFrame,
     los_strategies: pd.DataFrame,
     step_counts: dict,
-    params: dict,
-    run_params: dict,
 ) -> None:
     """Perform the los reduction step
 
@@ -29,7 +28,9 @@ def los_reduction(
     :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
     :type run_params: dict
     """
-    params = params["inpatient_factors"]["los_reduction"]
+    params = model_run.params["inpatient_factors"]["los_reduction"]
+    run_params = model_run.run_params
+    rng = model_run.rng
     # convert the parameters dictionary to a dataframe: each item becomes a row (with the item
     # being the name of the row in the index), and then each sub-item becoming a column
     losr = pd.DataFrame.from_dict(params, orient="index")

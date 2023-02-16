@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 
 from model.model import Model
+from model.model_run import ModelRun
 from model.row_resampling import RowResampling
 
 
@@ -35,6 +36,13 @@ class OutpatientsModel(Model):
             np.where(self.data["is_first"], "first", "followup"),
         )
         self.data["is_wla"] = True
+
+        self._baseline_counts = (
+            self.data[["attendances", "tele_attendances"]]
+            .to_numpy()
+            .astype(float)
+            .transpose()
+        )
 
     def _followup_reduction(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
         """Followup Appointment Reduction
@@ -111,7 +119,7 @@ class OutpatientsModel(Model):
             "tele_attendances": tele_conversion,
         }
 
-    def run(self, model_run: int) -> tuple[dict, pd.DataFrame]:
+    def _run(self, model_run: ModelRun) -> tuple[dict, pd.DataFrame]:
         """Run the model
 
         :param rng: a random number generator created for each model iteration
@@ -128,40 +136,15 @@ class OutpatientsModel(Model):
         :returns: a tuple containing the change factors DataFrame and the mode results DataFrame
         :rtype: (dict, pandas.DataFrame)
         """
-        run_params = self._get_run_params(model_run)
-        rng = np.random.default_rng(run_params["seed"])
-
-        data = self.data
-        counts = (
-            data[["attendances", "tele_attendances"]]
-            .to_numpy()
-            .astype(float)
-            .transpose()
-        )
-
-        # patch run params
-        for rpk in ["expat", "repat_local", "repat_nonlocal"]:
-            run_params[rpk]["op"] = {
-                g: run_params[rpk]["op"] for g in ["first", "followup", "procedure"]
-            }
-
         data, step_counts = (
-            RowResampling(
-                self._demog_factors,
-                self._hsa_gams,
-                data,
-                counts,
-                "op",
-                self.params,
-                run_params,
-            )
+            RowResampling(model_run, self._baseline_counts)
             .demographic_adjustment()
             .health_status_adjustment()
             .expat_adjustment()
             .repat_adjustment()
             .waiting_list_adjustment()
             .baseline_adjustment()
-            .apply_resampling(rng)
+            .apply_resampling()
         )
 
         step_counts = {
@@ -171,7 +154,9 @@ class OutpatientsModel(Model):
         }
 
         # convert attendances to tele attendances
-        self._convert_to_tele(rng, data, run_params["outpatient_factors"], step_counts)
+        self._convert_to_tele(
+            model_run.rng, data, model_run.run_params["outpatient_factors"], step_counts
+        )
 
         # return the data
         change_factors = (

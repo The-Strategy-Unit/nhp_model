@@ -19,6 +19,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from model.helpers import age_groups, inrange, rnorm
+from model.model_run import ModelRun
 
 
 class Model:
@@ -291,6 +292,10 @@ class Model:
             },
             "waiting_list_adjustment": params["waiting_list_adjustment"],
         }
+
+    def run(self, model_run: int):
+        mr = ModelRun(self, model_run)
+        return self._run(mr)
 
     def aggregate(self, model_results: pd.DataFrame, model_run: int):
         """Aggregate the model results

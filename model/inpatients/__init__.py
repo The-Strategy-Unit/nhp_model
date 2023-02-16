@@ -14,6 +14,7 @@ import pandas as pd
 
 from model.inpatients.los_reduction import los_reduction
 from model.model import Model
+from model.model_run import ModelRun
 from model.row_resampling import RowResampling
 
 
@@ -65,6 +66,10 @@ class InpatientsModel(Model):
         self._load_kh03_data()
         # oversample
         self._union_bedday_rows()
+        # make sure to create the counts after oversampling
+        self._baseline_counts = np.array(
+            [np.ones_like(self.data["rn"]), (1 + self.data["speldur"]).to_numpy()]
+        ).astype(float)
 
     def _load_kh03_data(self):
         # load the kh03 data
@@ -109,6 +114,8 @@ class InpatientsModel(Model):
         self.data["bedday_rows"] = False
         # append these rows of data to the actual data
         self.data = pd.concat([self.data, pre_rows]).reset_index(drop=True)
+        # create a row mask for use when counting rows
+        self._data_mask = ~self.data["bedday_rows"].to_numpy()
 
     def _load_theatres_data(self) -> None:
         """Load the Theatres data
@@ -153,7 +160,7 @@ class InpatientsModel(Model):
         # subset the strategies
         return s[s.iloc[:, 0].isin(p)]
 
-    def run(self, model_run: int) -> tuple[dict, pd.DataFrame]:
+    def _run(self, model_run: ModelRun) -> tuple[dict, pd.DataFrame]:
         """Run the model once
 
         Performs a single iteration of the model. The `model_run` parameter controls what parameters
@@ -170,27 +177,8 @@ class InpatientsModel(Model):
         :returns: a tuple of the change factors and the model results
         :rtype: (dict, pandas.DataFrame)
         """
-        # get the run params
-        run_params = self._get_run_params(model_run)
-        rng = np.random.default_rng(run_params["seed"])
-
-        data = self.data
-        mask = ~data["bedday_rows"].to_numpy()
-        counts = np.array(
-            [np.ones_like(data["rn"]), (1 + data["speldur"]).to_numpy()]
-        ).astype(float)
-
         data, step_counts = (
-            RowResampling(
-                self._demog_factors,
-                self._hsa_gams,
-                data,
-                counts,
-                "ip",
-                self.params,
-                run_params,
-                row_mask=mask,
-            )
+            RowResampling(model_run, self._baseline_counts, row_mask=self._data_mask)
             .demographic_adjustment()
             .health_status_adjustment()
             .expat_adjustment()
@@ -198,8 +186,8 @@ class InpatientsModel(Model):
             .baseline_adjustment()
             .waiting_list_adjustment()
             .non_demographic_adjustment()
-            .admission_avoidance(self._strategies["admission_avoidance"], rng)
-            .apply_resampling(rng)
+            .admission_avoidance(self._strategies["admission_avoidance"])
+            .apply_resampling()
         )
 
         step_counts = {
@@ -207,14 +195,7 @@ class InpatientsModel(Model):
         }
 
         # los reduction
-        los_reduction(
-            rng,
-            data,
-            self._strategies["los_reduction"],
-            step_counts,
-            self.params,
-            run_params,
-        )
+        los_reduction(model_run, data, self._strategies["los_reduction"], step_counts)
         # return the data (select just the columns we have updated in modelling)
         change_factors = pd.melt(
             pd.DataFrame.from_dict(step_counts, "index")

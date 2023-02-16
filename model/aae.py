@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from model.model import Model
+from model.model_run import ModelRun
 from model.row_resampling import RowResampling
 
 
@@ -28,6 +29,8 @@ class AaEModel(Model):
         super().__init__("aae", params, data_path)
         self.data["group"] = np.where(self.data["is_ambulance"], "ambulance", "walk-in")
         self.data["tretspef"] = "Other"
+
+        self._baseline_counts = np.array([self.data["arrivals"]]).astype(float)
 
     def _low_cost_discharged(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
         """Low Cost Discharge Reduction
@@ -82,7 +85,7 @@ class AaEModel(Model):
             data, run_params["frequent_attenders"], {"is_frequent_attender": 1}
         )
 
-    def run(self, model_run: int) -> tuple[dict, pd.DataFrame]:
+    def _run(self, model_run: ModelRun) -> tuple[dict, pd.DataFrame]:
         """Run the model
 
         :param rng: a random number generator created for each model iteration
@@ -99,34 +102,14 @@ class AaEModel(Model):
         :returns: a tuple containing the change factors DataFrame and the mode results DataFrame
         :rtype: (dict, pandas.DataFrame)
         """
-        run_params = self._get_run_params(model_run)
-        rng = np.random.default_rng(run_params["seed"])
-
-        data = self.data
-        counts = np.array([data["arrivals"]]).astype(float)
-
-        # patch run params
-        for rpk in ["expat", "repat_local", "repat_nonlocal", "baseline_adjustment"]:
-            run_params[rpk]["aae"] = {
-                k: {"Other": v} for k, v in run_params[rpk]["aae"].items()
-            }
-
         data, step_counts = (
-            RowResampling(
-                self._demog_factors,
-                self._hsa_gams,
-                data,
-                counts,
-                "aae",
-                self.params,
-                run_params,
-            )
+            RowResampling(model_run, self._baseline_counts)
             .demographic_adjustment()
             .health_status_adjustment()
             .expat_adjustment()
             .repat_adjustment()
             .baseline_adjustment()
-            .apply_resampling(rng)
+            .apply_resampling()
         )
         # return the data
         change_factors = (
