@@ -29,6 +29,11 @@ def los_reduction(
     :type run_params: dict
     """
     params = model_run.params["inpatient_factors"]["los_reduction"]
+
+    # if there are no items in params for los_reduction then exit
+    if params == dict():
+        return
+
     run_params = model_run.run_params
     rng = model_run.rng
     # convert the parameters dictionary to a dataframe: each item becomes a row (with the item

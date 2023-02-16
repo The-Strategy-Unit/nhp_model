@@ -183,9 +183,14 @@ class RowResampling:
 
     def admission_avoidance(self, strategies: pd.DataFrame) -> dict:
         rng = self._model_run.rng
-        p = pd.Series(
-            self.run_params["inpatient_factors"]["admission_avoidance"], name="aaf"
-        )
+
+        p = self.run_params["inpatient_factors"]["admission_avoidance"]
+
+        # if there are no items in params for admission_avoidance then exit
+        if p == dict():
+            return self
+
+        p = pd.Series(p, name="aaf")
 
         strategies_grouped = (
             strategies.reset_index()
