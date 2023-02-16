@@ -171,12 +171,13 @@ class ModelSave:
         for activity_type in ["aae", "ip", "op"]:
             aggregated_results[activity_type] = list()
             for model_run in range(-1, self._model_runs + 1):
-                with open(
-                    f"{self._ar_path}/{activity_type}_{model_run}.dill", "rb"
-                ) as arf:
+                file = f"{self._ar_path}/{activity_type}_{model_run}.dill"
+                if not os.path.exists(file):
+                    continue
+                with open(file, "rb") as arf:
                     aggregated_results[activity_type].append(dill.load(arf))
 
-        flipped_results = self._flip_results(aggregated_results)
+        flipped_results = self._flip_results({k: v for k, v in aggregated_results.items() if v != []})
 
         available_aggregations = defaultdict(set)
         for key, val in flipped_results.items():
@@ -211,7 +212,7 @@ class ModelSave:
         """
         # create a nested defaultdict which contains an array of 0's the lenght of the results:
         # that gives us a value even if a model run did not output a row for a given aggregate
-        flipped = defaultdict(lambda: defaultdict(lambda: [0] * len(results["aae"])))
+        flipped = defaultdict(lambda: defaultdict(lambda: [0] * len(results[list(results.keys())[0]])))
         for dataset_results in results.values():
             # iterate over each result
             for idx, result in enumerate(dataset_results):
