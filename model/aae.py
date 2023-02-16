@@ -26,6 +26,8 @@ class AaEModel(Model):
     def __init__(self, params: list, data_path: str) -> None:
         # call the parent init function
         super().__init__("aae", params, data_path)
+        self.data["group"] = np.where(self.data["is_ambulance"], "ambulance", "walk-in")
+        self.data["tretspef"] = "Other"
 
     def _low_cost_discharged(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
         """Low Cost Discharge Reduction
@@ -101,8 +103,6 @@ class AaEModel(Model):
         rng = np.random.default_rng(run_params["seed"])
 
         data = self.data
-        data["group"] = np.where(data["is_ambulance"], "ambulance", "walk-in")
-        data["tretspef"] = "Other"
         counts = np.array([data["arrivals"]]).astype(float)
 
         # patch run params

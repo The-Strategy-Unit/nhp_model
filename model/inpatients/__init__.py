@@ -51,6 +51,9 @@ class InpatientsModel(Model):
                 "admidate",
             ],
         )
+        self.data = self.data.assign(is_wla=lambda x: x.admimeth == "11").rename(
+            columns={"admigroup": "group"}
+        )
         # load the strategies, store each strategy file as a separate entry in a dictionary
         self._strategies = {
             x: self._load_strategies(x)
@@ -171,11 +174,11 @@ class InpatientsModel(Model):
         run_params = self._get_run_params(model_run)
         rng = np.random.default_rng(run_params["seed"])
 
-        data = self.data.assign(is_wla=lambda x: x.admimeth == "11").rename(
-            columns={"admigroup": "group"}
-        )
+        data = self.data
         mask = ~data["bedday_rows"].to_numpy()
-        counts = np.array([np.ones_like(data["rn"]), (1 + data["speldur"]).to_numpy()])
+        counts = np.array(
+            [np.ones_like(data["rn"]), (1 + data["speldur"]).to_numpy()]
+        ).astype(float)
 
         data, step_counts = (
             RowResampling(

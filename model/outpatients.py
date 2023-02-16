@@ -29,6 +29,13 @@ class OutpatientsModel(Model):
         # call the parent init function
         super().__init__("op", params, data_path)
 
+        self.data["group"] = np.where(
+            self.data["has_procedures"],
+            "procedure",
+            np.where(self.data["is_first"], "first", "followup"),
+        )
+        self.data["is_wla"] = True
+
     def _followup_reduction(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
         """Followup Appointment Reduction
 
@@ -125,12 +132,6 @@ class OutpatientsModel(Model):
         rng = np.random.default_rng(run_params["seed"])
 
         data = self.data
-        data["group"] = np.where(
-            data["has_procedures"],
-            "procedure",
-            np.where(data["is_first"], "first", "followup"),
-        )
-        data["is_wla"] = True
         counts = (
             data[["attendances", "tele_attendances"]]
             .to_numpy()
