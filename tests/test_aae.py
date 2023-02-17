@@ -86,91 +86,98 @@ def test_init_calls_super_init(mocker):
     super_mock = mocker.patch("model.aae.super")
     ubd_mock = mocker.patch("model.aae.AaEModel._update_baseline_data")
     gdc_mock = mocker.patch("model.aae.AaEModel._get_data_counts", return_value=1)
-    gst_mock = mocker.patch("model.aae.AaEModel._generate_strategies")
+    lst_mock = mocker.patch("model.aae.AaEModel._load_strategies")
     # act
     mdl = AaEModel("params", "data_path")
     # assert
     super_mock.assert_called_once()
     ubd_mock.assert_called_once()
     gdc_mock.assert_called_once_with(None)
-    gst_mock.assert_called_once()
+    lst_mock.assert_called_once()
     assert mdl._baseline_counts == 1
 
 
-def test_low_cost_discharged(mock_model):
-    """test that it calls factor helper"""
+def test_update_baseline_data(mock_model):
+    # arrange
     mdl = mock_model
-    mdl._factor_helper = Mock(return_value="low cost discharged")
-    assert (
-        mdl._low_cost_discharged("data", {"low_cost_discharged": "lcd"})
-        == "low cost discharged"
-    )
-    mdl._factor_helper.assert_called_once_with(
-        "data", "lcd", {"is_low_cost_referred_or_discharged": 1}
-    )
+    mdl.data["is_ambulance"] = [True] * 10 + [False] * 10
+    # act
+    mdl._update_baseline_data()
+    # assert
+    assert mdl.data["group"].to_list() == ["ambulance"] * 10 + ["walk-in"] * 10
+    assert mdl.data["tretspef"].to_list() == ["Other"] * 20
 
 
-def test_left_before_seen(mock_model):
-    """test that it calls factor helper"""
+def test_get_data_counts(mock_model):
+    # arrange
     mdl = mock_model
-    mdl._factor_helper = Mock(return_value="left before seen")
-    assert (
-        mdl._left_before_seen("data", {"left_before_seen": "lbs"}) == "left before seen"
-    )
-    mdl._factor_helper.assert_called_once_with(
-        "data", "lbs", {"is_left_before_treatment": 1}
-    )
+    data = mdl.data
+    data["arrivals"] = list(range(1, 21))
+    # act
+    actual = mdl._get_data_counts(data)
+    # assert
+    assert actual.tolist() == [[float(i) for i in range(1, 21)]]
 
 
-def test_frequent_attenders(mock_model):
-    """test that is calls factor helper"""
+def test_load_strategies(mock_model):
+    # arrange
     mdl = mock_model
-    mdl._factor_helper = Mock(return_value="frequent attenders")
-    assert (
-        mdl._frequent_attenders("data", {"frequent_attenders": "fa"})
-        == "frequent attenders"
+    mdl.data["is_frequent_attender"] = [False] * 0 + [True] * 4 + [False] * 16
+    mdl.data["is_left_before_treatment"] = [False] * 4 + [True] * 4 + [False] * 12
+    mdl.data["is_low_cost_referred_or_discharged"] = (
+        [False] * 12 + [True] * 4 + [False] * 4
     )
-    mdl._factor_helper.assert_called_once_with(
-        "data", "fa", {"is_frequent_attender": 1}
-    )
+    # act
+    mdl._load_strategies()
+    # assert
+    assert mdl._strategies["activity_avoidance"]["strategy"].to_list() == [
+        "frequent_attenders_a_a",
+        "frequent_attenders_b_b",
+        "frequent_attenders_a_a",
+        "frequent_attenders_b_b",
+        "left_before_seen_a_a",
+        "left_before_seen_b_b",
+        "left_before_seen_a_a",
+        "left_before_seen_b_b",
+        "low_cost_discharged_a_a",
+        "low_cost_discharged_b_b",
+        "low_cost_discharged_a_a",
+        "low_cost_discharged_b_b",
+    ]
+    assert mdl._strategies["activity_avoidance"]["sample_rate"].to_list() == [1] * 12
 
 
-def test_run(mock_model):
+def test_run(mocker, mock_model):
     """test that it runs the model steps"""
     # arrange
     mdl = mock_model
-    rng = Mock()
-    rng.poisson.return_value = np.array([7, 8])
-    mdl._step_counts = Mock(return_value={"a": 1, "b": 2})
-    mdl._low_cost_discharged = Mock(return_value=[5, 6])
-    mdl._left_before_seen = Mock(return_value=[7, 8])
-    mdl._frequent_attenders = Mock(return_value=[9, 10])
-    mdl._expat_adjustment = Mock(return_value=pd.Series([11, 12]))
-    mdl._repat_adjustment = Mock(return_value=pd.Series([13, 14]))
-    mdl._baseline_adjustment = Mock(return_value=pd.Series([15, 16]))
-    data = pd.DataFrame({"rn": [1, 2], "hsagrp": [3, 4], "arrivals": [5, 6]})
-    run_params = {"aae_factors": "aae_factors"}
-    # act
-    change_factors, model_results = mdl._run(
-        rng, data, run_params, pd.Series({1: 1, 2: 2}), [3, 4]
+    mdl._baseline_counts = 0
+    rr_mock = Mock()
+    mocker.patch("model.aae.RowResampling", return_value=rr_mock)
+    rr_mock.demographic_adjustment.return_value = rr_mock
+    rr_mock.health_status_adjustment.return_value = rr_mock
+    rr_mock.expat_adjustment.return_value = rr_mock
+    rr_mock.repat_adjustment.return_value = rr_mock
+    rr_mock.baseline_adjustment.return_value = rr_mock
+    rr_mock.activity_avoidance.return_value = rr_mock
+    rr_mock.apply_resampling.return_value = (
+        pd.DataFrame({"rn": [1], "hsagrp": [1]}),
+        {
+            ("baseline", "-"): np.array([1]),
+            ("demographic_adjustment", "-"): np.array([2]),
+        },
     )
+
+    # act
+    change_factors, model_results = mdl._run("model_run")
     # assert
     assert change_factors.to_dict("list") == {
-        "change_factor": ["a", "b"],
-        "strategy": ["-"] * 2,
-        "measure": ["arrivals"] * 2,
+        "change_factor": ["baseline", "demographic_adjustment"],
+        "strategy": ["-", "-"],
         "value": [1, 2],
+        "measure": ["arrivals", "arrivals"],
     }
-    assert model_results.to_dict("list") == {"rn": [1, 2], "arrivals": [7, 8]}
-    rng.poisson.assert_called_once()
-    assert rng.poisson.call_args_list[0][0][0].to_list() == [10135125, 61931520]
-    mdl._low_cost_discharged.assert_called_once()
-    mdl._left_before_seen.assert_called_once()
-    mdl._frequent_attenders.assert_called_once()
-    mdl._expat_adjustment.assert_called_once()
-    mdl._repat_adjustment.assert_called_once()
-    mdl._baseline_adjustment.assert_called_once()
-    mdl._step_counts.assert_called_once()
+    assert model_results.to_dict("list") == {"rn": [1]}
 
 
 def test_aggregate(mock_model):

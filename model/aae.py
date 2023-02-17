@@ -32,7 +32,7 @@ class AaEModel(Model):
         super().__init__("aae", params, data_path)
         self._update_baseline_data()
         self._baseline_counts = self._get_data_counts(self.data)
-        self._generate_strategies()
+        self._load_strategies()
 
     def _update_baseline_data(self) -> None:
         self.data["group"] = np.where(self.data["is_ambulance"], "ambulance", "walk-in")
@@ -41,7 +41,7 @@ class AaEModel(Model):
     def _get_data_counts(self, data) -> npt.ArrayLike:
         return np.array([data["arrivals"]]).astype(float)
 
-    def _generate_strategies(self):
+    def _load_strategies(self):
         data = self.data.set_index("rn")
         self._strategies = {
             "activity_avoidance": pd.concat(
