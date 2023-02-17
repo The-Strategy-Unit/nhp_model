@@ -4,11 +4,11 @@ Outpatients Module
 Implements the Outpatients model.
 """
 
-import os
 from functools import partial
 from typing import Callable
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from model.model import Model
@@ -29,7 +29,11 @@ class OutpatientsModel(Model):
     def __init__(self, params: list, data_path: str) -> None:
         # call the parent init function
         super().__init__("op", params, data_path)
+        self._update_baseline_data()
+        self._baseline_counts = self._get_data_counts(self.data)
+        self._generate_strategies()
 
+    def _update_baseline_data(self) -> None:
         self.data["group"] = np.where(
             self.data["has_procedures"],
             "procedure",
@@ -37,51 +41,30 @@ class OutpatientsModel(Model):
         )
         self.data["is_wla"] = True
 
-        self._baseline_counts = (
+    def _get_data_counts(self, data) -> npt.ArrayLike:
+        return (
             self.data[["attendances", "tele_attendances"]]
             .to_numpy()
             .astype(float)
             .transpose()
         )
 
-    def _followup_reduction(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
-        """Followup Appointment Reduction
+    def _generate_strategies(self):
+        data = self.data.set_index("rn")
 
-        Returns the factor values for the Followup Appointment Reduction strategy
-
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-
-        :returns: an array of factors, the length of data
-        :rtype: numpy.ndarray
-        """
-        return self._factor_helper(
-            data, run_params["followup_reduction"], {"has_procedures": 0, "is_first": 0}
-        )
-
-    def _consultant_to_consultant_reduction(
-        self, data: pd.DataFrame, run_params: dict
-    ) -> np.ndarray:
-        """Consultant to Consultant Referral Reduction
-
-
-        Returns the factor values for the Consultant to Consultant Reduction strategy
-
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-
-        :returns: an array of factors, the length of data
-        :rtype: numpy.ndarray
-        """
-        return self._factor_helper(
-            data,
-            run_params["consultant_to_consultant_reduction"],
-            {"is_cons_cons_ref": 1},
-        )
+        self._strategies = {
+            "activity_avoidance": pd.concat(
+                [
+                    "followup_reduction_"
+                    + data[data["is_first"] & ~data["has_procedures"]]["type"],
+                    "consultant_to_consultant_reduction_"
+                    + data[data["is_cons_cons_ref"]]["type"],
+                ]
+            )
+            .rename("strategy")
+            .to_frame()
+            .assign(sample_rate=1)
+        }
 
     @staticmethod
     def _convert_to_tele(
@@ -144,6 +127,7 @@ class OutpatientsModel(Model):
             .repat_adjustment()
             .waiting_list_adjustment()
             .baseline_adjustment()
+            .activity_avoidance()
             .apply_resampling()
         )
 
