@@ -70,6 +70,10 @@ class InpatientsModel(Model):
         self._baseline_counts = np.array(
             [np.ones_like(self.data["rn"]), (1 + self.data["speldur"]).to_numpy()]
         ).astype(float)
+        # TODO: this should be fixed by renaming files and altering the columns
+        self._strategies["activity_avoidance"] = self._strategies.pop(
+            "admission_avoidance"
+        ).rename(columns={"admission_avoidance_strategy": "strategy"})
 
     def _load_kh03_data(self):
         # load the kh03 data
@@ -177,6 +181,7 @@ class InpatientsModel(Model):
         :returns: a tuple of the change factors and the model results
         :rtype: (dict, pandas.DataFrame)
         """
+
         data, step_counts = (
             RowResampling(model_run, self._baseline_counts, row_mask=self._data_mask)
             .demographic_adjustment()
@@ -186,7 +191,7 @@ class InpatientsModel(Model):
             .baseline_adjustment()
             .waiting_list_adjustment()
             .non_demographic_adjustment()
-            .admission_avoidance(self._strategies["admission_avoidance"])
+            .activity_avoidance()
             .apply_resampling()
         )
 

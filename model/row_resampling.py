@@ -38,6 +38,10 @@ class RowResampling:
         self._demog_factors = model_run._model._demog_factors
         self._hsa_gams = model_run._model._hsa_gams
 
+        self._activity_avoidance_strategies = model_run._model._strategies[
+            "activity_avoidance"
+        ]
+
     def _update(self, factor: pd.Series, cols: List[str], group=None):
         step = factor.name
 
@@ -181,12 +185,14 @@ class RowResampling:
         )
         return self._update(f, ["age_group", "group"])
 
-    def admission_avoidance(self, strategies: pd.DataFrame) -> dict:
+    def activity_avoidance(self) -> dict:
         rng = self._model_run.rng
 
-        p = self.run_params["inpatient_factors"]["admission_avoidance"]
+        strategies = self._activity_avoidance_strategies
 
-        # if there are no items in params for admission_avoidance then exit
+        p = self.run_params["activity_avoidance"][self._activity_type]
+
+        # if there are no items in params for activity_avoidance then exit
         if p == dict():
             return self
 
@@ -194,18 +200,18 @@ class RowResampling:
 
         strategies_grouped = (
             strategies.reset_index()
-            .merge(p, left_on="admission_avoidance_strategy", right_index=True)
+            .merge(p, left_on="strategy", right_index=True)
             .assign(
                 aaf=lambda x: 1 - rng.binomial(1, x["sample_rate"]) * (1 - x["aaf"])
             )
-            .set_index(["admission_avoidance_strategy", "rn"])["aaf"]
+            .set_index(["strategy", "rn"])["aaf"]
         )
 
         for k in strategies_grouped.index.levels[0]:
             self._update(
                 strategies_grouped[k, slice(None)].rename(k),
                 ["rn"],
-                group="admission_avoidance",
+                group="activity_avoidance",
             )
 
         return self
@@ -213,8 +219,6 @@ class RowResampling:
     def apply_resampling(self):
         if self._row_counts is None:
             raise Exception("can only apply resampling once")
-
-        rng = self._model_run.rng
         fns = {
             "ip": self._apply_resampling_ip,
             "op": self._apply_resampling_op,

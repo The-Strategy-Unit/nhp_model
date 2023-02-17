@@ -31,3 +31,28 @@ class ModelRun:
         rp["baseline_adjustment"]["aae"] = {
             k: {"Other": v} for k, v in rp["baseline_adjustment"]["aae"].items()
         }
+
+        rp["activity_avoidance"] = {
+            "ip": rp["inpatient_factors"]["admission_avoidance"]
+        }
+
+        rp["activity_avoidance"]["aae"] = {
+            f"{k0}_{k1}": v1
+            for k0, v0 in rp["aae_factors"].items()
+            for k1, v1 in v0.items()
+        }
+
+        rp["activity_avoidance"]["op"] = {
+            f"{k0}_{k1}": v1
+            for k0, v0 in rp["outpatient_factors"].items()
+            for k1, v1 in v0.items()
+            if k0 != "convert_to_tele"
+        }
+
+        rp["efficiencies"] = {
+            "ip": rp["inpatient_factors"]["los_reduction"],
+            "op": {
+                f"convert_to_tele_{k1}": v1
+                for k1, v1 in rp["outpatient_factors"]["convert_to_tele"].items()
+            },
+        }
