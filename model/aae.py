@@ -8,6 +8,7 @@ from functools import partial
 from typing import Callable
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from model.model import Model
@@ -25,65 +26,37 @@ class AaEModel(Model):
     """
 
     def __init__(self, params: list, data_path: str) -> None:
+        # initialise values for testing purposes
+        self.data = None
         # call the parent init function
         super().__init__("aae", params, data_path)
+        self._update_baseline_data()
+        self._baseline_counts = self._get_data_counts(self.data)
+        self._generate_strategies()
+
+    def _update_baseline_data(self) -> None:
         self.data["group"] = np.where(self.data["is_ambulance"], "ambulance", "walk-in")
         self.data["tretspef"] = "Other"
 
-        self._baseline_counts = np.array([self.data["arrivals"]]).astype(float)
+    def _get_data_counts(self, data) -> npt.ArrayLike:
+        return np.array([data["arrivals"]]).astype(float)
 
-    def _low_cost_discharged(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
-        """Low Cost Discharge Reduction
-
-        Returns the factor values for the Low Cost Discharge Reduction strategy
-
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-
-        :returns: an array of factors, the length of data
-        :rtype: numpy.ndarray
-        """
-        return self._factor_helper(
-            data,
-            run_params["low_cost_discharged"],
-            {"is_low_cost_referred_or_discharged": 1},
-        )
-
-    def _left_before_seen(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
-        """Left Before Seen Reduction
-
-        Returns the factor values for the Left Before Seen Reduction strategy
-
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-
-        :returns: an array of factors, the length of data
-        :rtype: numpy.ndarray
-        """
-        return self._factor_helper(
-            data, run_params["left_before_seen"], {"is_left_before_treatment": 1}
-        )
-
-    def _frequent_attenders(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
-        """Frequent Attenders Reduction
-
-        Returns the factor values for the Frequent Attenders Reduction strategy
-
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-
-        :returns: an array of factors, the length of data
-        :rtype: numpy.ndarray
-        """
-        return self._factor_helper(
-            data, run_params["frequent_attenders"], {"is_frequent_attender": 1}
-        )
+    def _generate_strategies(self):
+        data = self.data.set_index("rn")
+        self._strategies = {
+            "activity_avoidance": pd.concat(
+                [
+                    data[data[c]]["hsagrp"].str.replace("aae", n).rename("strategy")
+                    for (c, n) in [
+                        ("is_frequent_attender", "frequent_attenders"),
+                        ("is_left_before_treatment", "left_before_seen"),
+                        ("is_low_cost_referred_or_discharged", "low_cost_discharged"),
+                    ]
+                ]
+            )
+            .to_frame()
+            .assign(sample_rate=1)
+        }
 
     def _run(self, model_run: ModelRun) -> tuple[dict, pd.DataFrame]:
         """Run the model
@@ -109,6 +82,7 @@ class AaEModel(Model):
             .expat_adjustment()
             .repat_adjustment()
             .baseline_adjustment()
+            .activity_avoidance()
             .apply_resampling()
         )
         # return the data

@@ -82,9 +82,19 @@ def mock_model():
 
 def test_init_calls_super_init(mocker):
     """test that the model calls the super method"""
-    mocker.patch("model.aae.super")
-    AaEModel("params", "data_path")
-    # no asserts to perform, so long as this method doesn't fail
+    # arrange
+    super_mock = mocker.patch("model.aae.super")
+    ubd_mock = mocker.patch("model.aae.AaEModel._update_baseline_data")
+    gdc_mock = mocker.patch("model.aae.AaEModel._get_data_counts", return_value=1)
+    gst_mock = mocker.patch("model.aae.AaEModel._generate_strategies")
+    # act
+    mdl = AaEModel("params", "data_path")
+    # assert
+    super_mock.assert_called_once()
+    ubd_mock.assert_called_once()
+    gdc_mock.assert_called_once_with(None)
+    gst_mock.assert_called_once()
+    assert mdl._baseline_counts == 1
 
 
 def test_low_cost_discharged(mock_model):
@@ -123,60 +133,6 @@ def test_frequent_attenders(mock_model):
     mdl._factor_helper.assert_called_once_with(
         "data", "fa", {"is_frequent_attender": 1}
     )
-
-
-def test_expat_adjustment():
-    """ "test that it returns the right parameters"""
-    # arrange
-    data = pd.DataFrame({"is_ambulance": [True, False]})
-    run_params = {"expat": {"aae": {"ambulance": 0.8}}}
-    # act
-    actual = AaEModel._expat_adjustment(data, run_params)
-    # assert
-    assert actual.tolist() == [0.8, 1.0]
-
-
-def test_repat_adjustment():
-    """test that it returns the right parameters"""
-    # arrange
-    data = pd.DataFrame(
-        {
-            "is_ambulance": [True, False] * 2,
-            "is_main_icb": [i for i in [True, False] for _ in range(2)],
-        }
-    )
-    run_params = {
-        "repat_local": {"aae": {"ambulance": 1.1}},
-        "repat_nonlocal": {"aae": {"ambulance": 1.3}},
-    }
-    # act
-    actual = AaEModel._repat_adjustment(data, run_params)
-    # assert
-    assert actual.tolist() == [1.1, 1.0, 1.3, 1.0]
-
-
-def test_baseline_adjustment():
-    """test that it returns the right parameters"""
-    # arrange
-    data = pd.DataFrame({"rn": list(range(2)), "is_ambulance": [True, False]})
-    run_params = {"baseline_adjustment": {"aae": {"ambulance": 1, "walk-in": 2}}}
-    # act
-    actual = AaEModel._baseline_adjustment(data, run_params)
-    # assert
-    assert actual.tolist() == [1, 2]
-
-
-def test_step_counts(mock_model):
-    """test that it estimates the step counts correctly"""
-    # arrange
-    mdl = mock_model
-    arrivals = pd.Series([1, 2, 3])
-    arrivals_after = 15
-    factors = {"a": [0.5, 0.75, 0.875], "b": [1.0, 1.5, 2.0]}
-    # act
-    actual = mdl._step_counts(arrivals, arrivals_after, factors)
-    # assert
-    assert actual == {"baseline": 6, "a": -6.1875, "b": 15.1875}
 
 
 def test_run(mock_model):
