@@ -27,11 +27,13 @@ class OutpatientsModel(Model):
     """
 
     def __init__(self, params: list, data_path: str) -> None:
+        # initialise values for testing purposes
+        self.data = None
         # call the parent init function
         super().__init__("op", params, data_path)
         self._update_baseline_data()
         self._baseline_counts = self._get_data_counts(self.data)
-        self._generate_strategies()
+        self._load_strategies()
 
     def _update_baseline_data(self) -> None:
         self.data["group"] = np.where(
@@ -49,14 +51,14 @@ class OutpatientsModel(Model):
             .transpose()
         )
 
-    def _generate_strategies(self):
+    def _load_strategies(self):
         data = self.data.set_index("rn")
 
         self._strategies = {
             "activity_avoidance": pd.concat(
                 [
                     "followup_reduction_"
-                    + data[data["is_first"] & ~data["has_procedures"]]["type"],
+                    + data[~data["is_first"] & ~data["has_procedures"]]["type"],
                     "consultant_to_consultant_reduction_"
                     + data[data["is_cons_cons_ref"]]["type"],
                 ]
@@ -97,7 +99,7 @@ class OutpatientsModel(Model):
         data.loc[npix, "attendances"] -= tele_conversion
         data.loc[npix, "tele_attendances"] += tele_conversion
         tele_conversion = tele_conversion.sum()
-        step_counts[("convert_to_tele", "-")] = {
+        step_counts[("efficiencies", "convert_to_tele")] = {
             "attendances": -tele_conversion,
             "tele_attendances": tele_conversion,
         }

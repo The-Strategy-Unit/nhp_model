@@ -50,7 +50,7 @@ def mock_model():
             "a": {"a_a": {"interval": [0.4, 0.6]}, "a_b": {"interval": [0.4, 0.6]}},
             "b": {"b_a": {"interval": [0.4, 0.6]}, "b_b": {"interval": [0.4, 0.6]}},
         },
-        "aae_factors": {
+        "op_factors": {
             "a": {"a_a": {"interval": [0.4, 0.6]}, "a_b": {"interval": [0.4, 0.6]}},
             "b": {"b_a": {"interval": [0.4, 0.6]}, "b_b": {"interval": [0.4, 0.6]}},
         },
@@ -62,14 +62,14 @@ def mock_model():
     mdl._data_path = "data/synthetic"
     # create a mock object for the hsa gams
     hsa_mock = type("mocked_hsa", (object,), {"predict": lambda x: x})
-    mdl._hsa_gams = {(i, j): hsa_mock for i in ["aae_a_a", "aae_b_b"] for j in [1, 2]}
+    mdl._hsa_gams = {(i, j): hsa_mock for i in ["op_a_a", "op_b_b"] for j in [1, 2]}
     # create a minimal data object for testing
     mdl.data = pd.DataFrame(
         {
             "rn": list(range(1, 21)),
             "age": list(range(1, 6)) * 4,
             "sex": ([1] * 5 + [2] * 5) * 2,
-            "hsagrp": [x for _ in range(1, 11) for x in ["aae_a_a", "aae_b_b"]],
+            "hsagrp": [x for _ in range(1, 11) for x in ["op_a_a", "op_b_b"]],
         }
     )
     return mdl
@@ -80,45 +80,69 @@ def mock_model():
 
 def test_init_calls_super_init(mocker):
     """test that the model calls the super method"""
-    mocker.patch("model.outpatients.super")
-    OutpatientsModel("params", "data_path")
-    # no asserts to perform, so long as this method doesn't fail
+    # arrange
+    super_mock = mocker.patch("model.outpatients.super")
+    ubd_mock = mocker.patch("model.outpatients.OutpatientsModel._update_baseline_data")
+    gdc_mock = mocker.patch(
+        "model.outpatients.OutpatientsModel._get_data_counts", return_value=1
+    )
+    lst_mock = mocker.patch("model.outpatients.OutpatientsModel._load_strategies")
+    # act
+    mdl = OutpatientsModel("params", "data_path")
+    # assert
+    super_mock.assert_called_once()
+    ubd_mock.assert_called_once()
+    gdc_mock.assert_called_once_with(None)
+    lst_mock.assert_called_once()
+    assert mdl._baseline_counts == 1
 
 
-def test_waiting_list_adjutment(mock_model):
-    """test that it returns the wla numpy array"""
-    data = pd.DataFrame({"tretspef": [1] * 2 + [2] * 8 + [3] * 4 + [4] * 1})
+def test_update_baseline_data(mock_model):
+    # arrange
     mdl = mock_model
-    mdl.params["waiting_list_adjustment"] = {"op": {1: 1, 2: 2, 3: 3, 5: 1}}
-    actual = mdl._waiting_list_adjustment(data)
-    expected = [1.5] * 2 + [1.25] * 8 + [1.75] * 4 + [1]
-    assert np.array_equal(actual, expected)
-
-
-def test_followup_reduction(mock_model):
-    """test that it calls factor helper"""
-    mdl = mock_model
-    mdl._factor_helper = Mock(return_value="followup reduction")
+    mdl.data["has_procedures"] = [True] * 10 + [False] * 10
+    mdl.data["is_first"] = ([True] * 5 + [False] * 5) * 2
+    # act
+    mdl._update_baseline_data()
+    # assert
     assert (
-        mdl._followup_reduction("data", {"followup_reduction": "fupr"})
-        == "followup reduction"
+        mdl.data["group"].to_list()
+        == ["procedure"] * 10 + ["first"] * 5 + ["followup"] * 5
     )
-    mdl._factor_helper.assert_called_once_with(
-        "data", "fupr", {"has_procedures": 0, "is_first": 0}
-    )
+    assert mdl.data["is_wla"].to_list() == [True] * 20
 
 
-def test_consultant_to_consultant_reduction(mock_model):
-    """test that it calls factor helper"""
+def test_get_data_counts(mock_model):
+    # arrange
     mdl = mock_model
-    mdl._factor_helper = Mock(return_value="c2c reduction")
-    assert (
-        mdl._consultant_to_consultant_reduction(
-            "data", {"consultant_to_consultant_reduction": "c2c"}
-        )
-        == "c2c reduction"
-    )
-    mdl._factor_helper.assert_called_once_with("data", "c2c", {"is_cons_cons_ref": 1})
+    data = mdl.data
+    data["attendances"] = list(range(1, 21))
+    data["tele_attendances"] = list(range(21, 41))
+    # act
+    actual = mdl._get_data_counts(data)
+    # assert
+    assert actual.tolist() == [
+        [float(i) for i in range(1, 21)],
+        [float(i) for i in range(21, 41)],
+    ]
+
+
+def test_load_strategies(mock_model):
+    # arrange
+    mdl = mock_model
+    mdl.data["has_procedures"] = [True] * 10 + [False] * 10
+    mdl.data["is_first"] = ([True] * 5 + [False] * 5) * 2
+    mdl.data["is_cons_cons_ref"] = [True] * 10 + [False] * 10
+    mdl.data["type"] = ["a", "b", "c", "d", "e"] * 4
+    # act
+    mdl._load_strategies()
+    # assert
+    assert mdl._strategies["activity_avoidance"]["strategy"].to_list() == [
+        f"{i}_{j}"
+        for i in ["followup_reduction"] + ["consultant_to_consultant_reduction"] * 2
+        for j in ["a", "b", "c", "d", "e"]
+    ]
+    assert mdl._strategies["activity_avoidance"]["sample_rate"].to_list() == [1] * 15
 
 
 def test_convert_to_tele(mock_model):
@@ -143,163 +167,49 @@ def test_convert_to_tele(mock_model):
     assert data["tele_attendances"].to_list() == [15, 20, 0]
     assert rng.binomial.called_once_with(pd.Series([20, 25]), [1, 2])
     assert step_counts == {
-        "convert_to_tele": {"attendances": -10, "tele_attendances": 10}
-    }
-
-
-def test_expat_adjustment():
-    """ "test that it returns the right parameters"""
-    # arrange
-    data = pd.DataFrame({"tretspef": ["100", "120", "Other"]})
-    run_params = {"expat": {"op": {"100": 0.8, "120": 0.9}}}
-    # act
-    actual = OutpatientsModel._expat_adjustment(data, run_params)
-    # assert
-    assert actual.tolist() == [0.8, 0.9, 1.0]
-
-
-def test_repat_adjustment():
-    """test that it returns the right parameters"""
-    # arrange
-    data = pd.DataFrame(
-        {
-            "tretspef": ["100", "120", "Other"] * 2,
-            "is_main_icb": [i for i in [True, False] for _ in range(3)],
-        }
-    )
-    run_params = {
-        "repat_local": {"op": {"100": 1.1, "120": 1.2}},
-        "repat_nonlocal": {"op": {"100": 1.3, "120": 1.4}},
-    }
-    # act
-    actual = OutpatientsModel._repat_adjustment(data, run_params)
-    # assert
-    assert actual.tolist() == [1.1, 1.2, 1.0, 1.3, 1.4, 1.0]
-
-
-def test_baseline_adjustment():
-    """test that it returns the right parameters"""
-    # arrange
-    data = pd.DataFrame(
-        {
-            "rn": list(range(12)),
-            "tretspef": ["100", "200", "Other"] * 4,
-            "is_first": ([True] * 3 + [False] * 3) * 2,
-            "has_procedures": [False] * 6 + [True] * 6,
-        }
-    )
-    run_params = {
-        "baseline_adjustment": {
-            "op": {
-                "first": {"100": 1, "200": 2, "Other": 3},
-                "followup": {"100": 4, "200": 5, "Other": 6},
-                "procedure": {"100": 7, "200": 8, "Other": 9},
-            }
+        ("efficiencies", "convert_to_tele"): {
+            "attendances": -10,
+            "tele_attendances": 10,
         }
     }
-    # act
-    actual = OutpatientsModel._baseline_adjustment(data, run_params)
-    # assert
-    assert actual.tolist() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9]
 
 
-def test_step_counts(mock_model):
-    """test that it estimates the step counts correctly"""
-    # arrange
-    mdl = mock_model
-    attendances_before = pd.Series([1, 2])
-    tele_attendances_before = pd.Series([3, 4])
-    attendances_after = 6
-    tele_attendances_after = 16
-    factors = {"a": [0.75, 0.875], "b": [1.5, 2.0]}
-    # act
-    actual = mdl._step_counts(
-        attendances_before,
-        tele_attendances_before,
-        attendances_after,
-        tele_attendances_after,
-        factors,
-    )
-    # arrange
-    assert actual == {
-        "baseline": {"attendances": 3, "tele_attendances": 7},
-        "a": {
-            "attendances": -0.9230769230769231,
-            "tele_attendances": -3.333333333333334,
-        },
-        "b": {
-            "attendances": 3.9230769230769234,
-            "tele_attendances": 12.333333333333334,
-        },
-    }
-
-
-def test_run(mock_model):
+def test_run(mocker, mock_model):
     """test that it runs the model steps"""
     # arrange
+    model_run = Mock()
+    model_run.rng = "rng"
+    model_run.run_params = {"outpatient_factors": "outpatient_factors"}
     mdl = mock_model
-    rng = Mock()
-    rng.poisson = Mock(wraps=lambda x: x)
-    mdl._waiting_list_adjustment = Mock(return_value=np.array([1, 2]))
-    mdl._followup_reduction = Mock(return_value=np.array([3, 4]))
-    mdl._consultant_to_consultant_reduction = Mock(return_value=np.array([5, 6]))
-    mdl._expat_adjustment = Mock(return_value=pd.Series([7, 8]))
-    mdl._repat_adjustment = Mock(return_value=pd.Series([9, 10]))
-    mdl._baseline_adjustment = Mock(return_value=pd.Series([11, 12]))
-    mdl._step_counts = Mock(
-        return_value={"baseline": {"attendances": 1, "tele_attendances": 2}}
+    mdl._baseline_counts = 0
+    rr_mock = Mock()
+    mocker.patch("model.outpatients.RowResampling", return_value=rr_mock)
+    rr_mock.demographic_adjustment.return_value = rr_mock
+    rr_mock.health_status_adjustment.return_value = rr_mock
+    rr_mock.expat_adjustment.return_value = rr_mock
+    rr_mock.repat_adjustment.return_value = rr_mock
+    rr_mock.waiting_list_adjustment.return_value = rr_mock
+    rr_mock.baseline_adjustment.return_value = rr_mock
+    rr_mock.activity_avoidance.return_value = rr_mock
+    rr_mock.apply_resampling.return_value = (
+        pd.DataFrame({"rn": [1], "hsagrp": [1]}),
+        {
+            ("baseline", "-"): np.array([1, 2]),
+            ("demographic_adjustment", "-"): np.array([3, 4]),
+        },
     )
     mdl._convert_to_tele = Mock()
-    data = pd.DataFrame(
-        {
-            "rn": [1, 2],
-            "hsagrp": [3, 4],
-            "attendances": [5, 6],
-            "tele_attendances": [7, 8],
-        }
-    )
-    run_params = {"outpatient_factors": "outpatient_factors"}
     # act
-    change_factors, model_results = mdl._run(
-        rng, data, run_params, pd.Series({1: 1, 2: 2}), np.array([11, 12])
-    )
+    change_factors, model_results = mdl._run(model_run)
     # assert
     assert change_factors.to_dict("list") == {
-        "change_factor": ["baseline"] * 2,
-        "strategy": ["-"] * 2,
-        "measure": ["attendances", "tele_attendances"],
-        "value": [1, 2],
+        "change_factor": ["baseline", "demographic_adjustment"] * 2,
+        "strategy": ["-"] * 4,
+        "measure": ["attendances"] * 2 + ["tele_attendances"] * 2,
+        "value": [1, 3, 2, 4],
     }
-    assert model_results.to_dict("list") == {
-        "rn": [1, 2],
-        "attendances": [571725, 6635520],
-        "tele_attendances": [800415, 8847360],
-    }
-    mdl._waiting_list_adjustment.assert_called_once()
-    mdl._followup_reduction.assert_called_once()
-    mdl._consultant_to_consultant_reduction.assert_called_once()
+    assert model_results.to_dict("list") == {"rn": [1]}
     mdl._convert_to_tele.assert_called_once()
-    mdl._expat_adjustment.assert_called_once()
-    mdl._repat_adjustment.assert_called_once()
-    mdl._baseline_adjustment.assert_called_once()
-    assert rng.poisson.call_count == 2
-    mdl._step_counts.assert_called_once()
-    assert mdl._step_counts.call_args_list[0][0][0].to_list() == [5, 6]
-    assert mdl._step_counts.call_args_list[0][0][1].to_list() == [7, 8]
-    assert mdl._step_counts.call_args_list[0][0][2] == 7207245
-    assert mdl._step_counts.call_args_list[0][0][3] == 9647775
-    assert {
-        k: v.tolist() for k, v in mdl._step_counts.call_args_list[0][0][4].items()
-    } == {
-        "health_status_adjustment": [11, 12],
-        "population_factors": [1, 2],
-        "expatriation": [7, 8],
-        "repatriation": [9, 10],
-        "baseline_adjustment": [11, 12],
-        "waiting_list_adjustment": [1, 2],
-        "followup_reduction": [3, 4],
-        "consultant_to_consultant_referrals": [5, 6],
-    }
 
 
 def test_aggregate(mock_model):
