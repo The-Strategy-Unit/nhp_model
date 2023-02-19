@@ -153,7 +153,7 @@ def test_run(mocker, mock_model):
     mdl = mock_model
     mdl._baseline_counts = 0
     rr_mock = Mock()
-    mocker.patch("model.aae.RowResampling", return_value=rr_mock)
+    mocker.patch("model.aae.ActivityAvoidance", return_value=rr_mock)
     rr_mock.demographic_adjustment.return_value = rr_mock
     rr_mock.health_status_adjustment.return_value = rr_mock
     rr_mock.expat_adjustment.return_value = rr_mock

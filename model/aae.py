@@ -11,9 +11,9 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from model.activity_avoidance import ActivityAvoidance
 from model.model import Model
 from model.model_run import ModelRun
-from model.row_resampling import RowResampling
 
 
 class AaEModel(Model):
@@ -76,7 +76,7 @@ class AaEModel(Model):
         :rtype: (dict, pandas.DataFrame)
         """
         data, step_counts = (
-            RowResampling(model_run, self._baseline_counts)
+            ActivityAvoidance(model_run, self._baseline_counts)
             .demographic_adjustment()
             .health_status_adjustment()
             .expat_adjustment()

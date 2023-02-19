@@ -99,7 +99,7 @@ def losr_all(
     ).to_dict()
 
     for k in change_los.keys():
-        step_counts[("los_reduction", k)] = {
+        step_counts[("efficiencies", k)] = {
             "admissions": 0,
             "beddays": change_los[k],
         }
@@ -192,7 +192,7 @@ def losr_bads(
 
     step_counts_admissions = step_counts_admissions.to_dict()
     for k in step_counts_admissions.keys():
-        step_counts[("los_reduction", k)] = {
+        step_counts[("efficiencies", k)] = {
             "admissions": step_counts_admissions[k],
             "beddays": step_counts_beddays[k],
         }
@@ -227,7 +227,7 @@ def losr_aec(
     ).to_dict()
 
     for k in change_los.keys():
-        step_counts[("los_reduction", k)] = {
+        step_counts[("efficiencies", k)] = {
             "admissions": 0,
             "beddays": change_los[k],
         }
@@ -265,7 +265,7 @@ def losr_preop(
     ).to_dict()
 
     for k in change_los.keys():
-        step_counts[("los_reduction", k)] = {
+        step_counts[("efficiencies", k)] = {
             "admissions": 0,
             "beddays": change_los[k],
         }

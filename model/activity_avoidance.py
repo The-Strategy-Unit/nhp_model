@@ -11,7 +11,7 @@ import pandas as pd
 from model.model_run import ModelRun
 
 
-class RowResampling:
+class ActivityAvoidance:
     def __init__(
         self,
         model_run: ModelRun,

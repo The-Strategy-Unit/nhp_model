@@ -10,12 +10,13 @@ from functools import partial
 from typing import Callable, Tuple
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
+from model.activity_avoidance import ActivityAvoidance
 from model.inpatients.los_reduction import los_reduction
 from model.model import Model
 from model.model_run import ModelRun
-from model.row_resampling import RowResampling
 
 
 class InpatientsModel(Model):
@@ -67,9 +68,7 @@ class InpatientsModel(Model):
         # oversample
         self._union_bedday_rows()
         # make sure to create the counts after oversampling
-        self._baseline_counts = np.array(
-            [np.ones_like(self.data["rn"]), (1 + self.data["speldur"]).to_numpy()]
-        ).astype(float)
+        self._baseline_counts = self._get_data_counts(self.data)
         # TODO: this should be fixed by renaming files and altering the columns
         self._strategies["activity_avoidance"] = self._strategies.pop(
             "admission_avoidance"
@@ -164,6 +163,11 @@ class InpatientsModel(Model):
         # subset the strategies
         return s[s.iloc[:, 0].isin(p)]
 
+    def _get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
+        return np.array(
+            [np.ones_like(data["rn"]), (1 + data["speldur"]).to_numpy()]
+        ).astype(float)
+
     def _run(self, model_run: ModelRun) -> tuple[dict, pd.DataFrame]:
         """Run the model once
 
@@ -183,7 +187,7 @@ class InpatientsModel(Model):
         """
 
         data, step_counts = (
-            RowResampling(model_run, self._baseline_counts, row_mask=self._data_mask)
+            ActivityAvoidance(model_run, self._baseline_counts, row_mask=self._data_mask)
             .demographic_adjustment()
             .health_status_adjustment()
             .expat_adjustment()
