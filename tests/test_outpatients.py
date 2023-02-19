@@ -174,6 +174,21 @@ def test_convert_to_tele(mock_model):
     }
 
 
+def test_apply_resampling(mocker, mock_model):
+    # arrange
+    row_samples = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
+    gdc_mock = mocker.patch(
+        "model.outpatients.OutpatientsModel._get_data_counts", return_value=1
+    )
+    # act
+    data, counts = mock_model._apply_resampling(row_samples, pd.DataFrame())
+    # assert
+    assert data["attendances"].to_list() == [1, 2, 3, 4]
+    assert data["tele_attendances"].to_list() == [5, 6, 7, 8]
+    assert counts == 1
+    gdc_mock.assert_called_once()
+
+
 def test_run(mocker, mock_model):
     """test that it runs the model steps"""
     # arrange

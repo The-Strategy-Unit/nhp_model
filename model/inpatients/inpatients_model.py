@@ -168,6 +168,13 @@ class InpatientsModel(Model):
             [np.ones_like(data["rn"]), (1 + data["speldur"]).to_numpy()]
         ).astype(float)
 
+    def _apply_resampling(self, row_samples, data):
+        data = data.loc[data.index.repeat(row_samples[0])].reset_index(drop=True)
+        # filter out the "oversampled" rows from the counts
+        mask = (~data["bedday_rows"]).to_numpy().astype(float)
+        # return the altered data and the amount of admissions/beddays after resampling
+        return (data, self._get_data_counts(data) * mask)
+
     def _run(self, model_run: ModelRun) -> tuple[dict, pd.DataFrame]:
         """Run the model once
 
@@ -187,7 +194,9 @@ class InpatientsModel(Model):
         """
 
         data, step_counts = (
-            ActivityAvoidance(model_run, self._baseline_counts, row_mask=self._data_mask)
+            ActivityAvoidance(
+                model_run, self._baseline_counts, row_mask=self._data_mask
+            )
             .demographic_adjustment()
             .health_status_adjustment()
             .expat_adjustment()

@@ -538,6 +538,24 @@ def test_step_counts(mock_model):
     }
 
 
+def test_apply_resampling(mocker, mock_model):
+    # arrange
+    row_samples = np.array([[0, 1, 2, 3], [4, 5, 6, 7]])
+    gdc_mock = mocker.patch(
+        "model.inpatients.InpatientsModel._get_data_counts",
+        return_value=np.array([1, 1, 1, 1, 1, 1]),
+    )
+    data = pd.DataFrame(
+        {"rn": [0, 1, 2, 3], "bedday_rows": [False, False, False, True]}
+    )
+    # act
+    data, counts = mock_model._apply_resampling(row_samples, data)
+    # assert
+    assert data["rn"].to_list() == [1, 2, 2, 3, 3, 3]
+    assert counts.sum() == 3.0
+    gdc_mock.assert_called_once()
+
+
 def test_run(mock_model):
     """test that it runs the model steps"""
     # arrange

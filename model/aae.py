@@ -58,6 +58,11 @@ class AaEModel(Model):
             .assign(sample_rate=1)
         }
 
+    def _apply_resampling(self, row_samples, data):
+        data["arrivals"] = row_samples[0]
+        # return the altered data and the amount of admissions/beddays after resampling
+        return (data, self._get_data_counts(data))
+
     def _run(self, model_run: ModelRun) -> tuple[dict, pd.DataFrame]:
         """Run the model
 

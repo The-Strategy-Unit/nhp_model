@@ -147,6 +147,18 @@ def test_load_strategies(mock_model):
     assert mdl._strategies["activity_avoidance"]["sample_rate"].to_list() == [1] * 12
 
 
+def test_apply_resampling(mocker, mock_model):
+    # arrange
+    row_samples = np.array([[1, 2, 3, 4]])
+    gdc_mock = mocker.patch("model.aae.AaEModel._get_data_counts", return_value=1)
+    # act
+    data, counts = mock_model._apply_resampling(row_samples, pd.DataFrame())
+    # assert
+    assert data["arrivals"].to_list() == [1, 2, 3, 4]
+    assert counts == 1
+    gdc_mock.assert_called_once()
+
+
 def test_run(mocker, mock_model):
     """test that it runs the model steps"""
     # arrange

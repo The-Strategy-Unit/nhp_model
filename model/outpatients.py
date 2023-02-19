@@ -104,6 +104,12 @@ class OutpatientsModel(Model):
             "tele_attendances": tele_conversion,
         }
 
+    def _apply_resampling(self, row_samples, data):
+        data["attendances"] = row_samples[0]
+        data["tele_attendances"] = row_samples[1]
+        # return the altered data and the amount of admissions/beddays after resampling
+        return (data, self._get_data_counts(data))
+
     def _run(self, model_run: ModelRun) -> tuple[dict, pd.DataFrame]:
         """Run the model
 
