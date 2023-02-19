@@ -4,7 +4,9 @@ from collections import namedtuple
 from unittest.mock import Mock, call, patch
 
 import numpy as np
+import pandas as pd
 import pytest
+
 from run_model import debug_run, main, run_model, timeit
 
 
@@ -29,7 +31,17 @@ def test_debug_run(mocker, capsys):
     timeit_mock = mocker.patch(
         "run_model.timeit",
         side_effect=[
-            ("change_factors", "results"),
+            (
+                pd.DataFrame(
+                    {
+                        "change_factor": ["a"] * 4 + ["b"] * 4,
+                        "strategy": ["-"] * 8,
+                        "measure": ["a", "b"] * 4,
+                        "value": list(range(8)),
+                    }
+                ),
+                "results",
+            ),
             {
                 "default": {
                     result("a", "a"): 1,
@@ -49,7 +61,11 @@ def test_debug_run(mocker, capsys):
         [
             "running model... aggregating results... ",
             "change factors:",
-            "change_factors",
+            "measure         a   b",
+            "change_factor        ",
+            "a               2   4",
+            "b              10  12",
+            "results        12  16",
             "",
             "aggregated (default) results:",
             "        value",
@@ -58,6 +74,7 @@ def test_debug_run(mocker, capsys):
             "a           1",
             "b           2",
             "c           3",
+            "total       6",
             "",
         ]
     )
