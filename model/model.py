@@ -58,11 +58,10 @@ class Model:
         data_path: str,
         columns_to_load: list[str] = None,
     ) -> None:
-        assert model_type in [
-            "aae",
-            "ip",
-            "op",
-        ], "Model type must be one of 'aae', 'ip', or 'op'"
+        valid_model_types = ["aae", "ip", "op"]
+        assert (
+            model_type in valid_model_types
+        ), "Model type must be one of 'aae', 'ip', or 'op'"
         self.model_type = model_type
         #
         self.params = params
