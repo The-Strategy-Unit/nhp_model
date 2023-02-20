@@ -89,21 +89,6 @@ def mock_model():
     return mdl
 
 
-@pytest.fixture
-def mock_losr():
-    return pd.DataFrame(
-        {
-            "type": [x for x in ["all", "aec", "pre-op"] for _ in [0, 1]]
-            + ["bads"] * 3,
-            "baseline_target_rate": [pd.NA] * 6 + [0.25, 0.50, 0.75],
-            "op_dc_split": [pd.NA] * 6 + [0, 1, 0.5],
-            "pre-op_days": [pd.NA] * 4 + [1, 2] + [pd.NA] * 3,
-            "losr_f": [1 - 1 / (2**x) for x in range(9)],
-        },
-        index=["a", "b", "c", "d", "e", "f", "g", "h", "i"],
-    )
-
-
 # methods
 
 
@@ -228,11 +213,40 @@ def test_load_theatres_data(mocker, mock_model):
 
 def test_load_strategies(mock_model):
     """test that the method returns a dataframe"""
-    assert False
+    # arrange
+    mdl = mock_model
+    mdl.params["inpatient_factors"] = {
+        "admission_avoidance": {"a": 1, "b": 2},
+        "los_reduction": {"b": 3, "c": 4},
+    }
+
+    mdl._load_parquet = Mock()
+    mdl._load_parquet.side_effect = [
+        pd.DataFrame(
+            {"rn": [1, 2, 3], "admission_avoidance_strategy": ["a", "b", "c"]}
+        ),
+        pd.DataFrame({"rn": [4, 5, 6], "los_reduction_strategy": ["a", "b", "c"]}),
+    ]
+    expected = {
+        "activity_avoidance": {"strategy": {1: "a", 2: "b"}},
+        "efficiencies": {"strategy": {5: "b", 6: "c"}},
+    }
+    # act
+    mdl._load_strategies()
+    # assert
+    assert {k: v.to_dict() for k, v in mdl._strategies.items()} == expected
 
 
-def test_get_data_counts():
-    assert False
+def test_get_data_counts(mock_model):
+    # arrange
+    mdl = mock_model
+    data = pd.DataFrame({"rn": [1, 2, 3], "speldur": [0, 1, 2]})
+
+    # act
+    actual = mdl._get_data_counts(data)
+
+    # assert
+    assert actual.tolist() == [[1.0, 1.0, 1.0], [1.0, 2.0, 3.0]]
 
 
 def test_apply_resampling(mocker, mock_model):
@@ -253,8 +267,21 @@ def test_apply_resampling(mocker, mock_model):
     gdc_mock.assert_called_once()
 
 
-def test_get_step_counts_dataframe():
-    assert False
+def test_get_step_counts_dataframe(mock_model):
+    # arrange
+    step_counts = {("a", "-"): [1, 2], ("b", "-"): [3, 4]}
+    expected = {
+        "change_factor": ["a", "b", "a", "b"],
+        "strategy": ["-", "-", "-", "-"],
+        "measure": ["admissions", "admissions", "beddays", "beddays"],
+        "value": [1, 3, 2, 4],
+    }
+
+    # act
+    actual = mock_model._get_step_counts_dataframe(step_counts)
+
+    # assert
+    assert actual.to_dict("list") == expected
 
 
 def test_run(mocker, mock_model):
@@ -339,6 +366,13 @@ def test_bed_occupancy(mock_model):
     """test that it aggregates the bed occupancy data"""
     # arrange
     mdl = mock_model
+
+    mr_mock = Mock()
+    mr_mock.run_params = {
+        "bed_occupancy": {"day+night": {"A": 0.75, "B": 0.875, "C": 0.5}}
+    }
+    mr_mock.model_run = 0
+
     mdl._bedday_summary = Mock(
         return_value=pd.DataFrame(
             {
@@ -366,10 +400,10 @@ def test_bed_occupancy(mock_model):
             "size": [2, 1, 1, 4, 2, 2],
         }
     )
+
     # act
-    actual = mdl._bed_occupancy(
-        "model_results", {"day+night": {"A": 0.75, "B": 0.875, "C": 0.5}}, 0
-    )
+    actual = mdl._bed_occupancy("model_results", mr_mock)
+
     # assert
     assert {tuple(k): v for k, v in actual.items()} == {
         ("ip", "day+night", "q1", "A"): 13,
@@ -386,21 +420,13 @@ def test_bed_occupancy_baseline(mock_model):
     """test that it just uses the kh03 available data"""
     # arrange
     mdl = mock_model
-    mdl.params["bed_occupancy"] = {
-        "specialty_mapping": {
-            "General and Acute": {"100": "a", "200": "b", "300": "b", "500": "_"},
-            "Maternity": {"501": "c"},
-        }
+
+    mr_mock = Mock()
+    mr_mock.run_params = {
+        "bed_occupancy": {"day+night": {"A": 0.75, "B": 0.875, "C": 0.5}}
     }
-    mdl._ward_groups = pd.concat(
-        [
-            pd.DataFrame(
-                {"ward_type": k, "ward_group": list(v.values())},
-                index=list(v.keys()),
-            )
-            for k, v in mdl.params["bed_occupancy"]["specialty_mapping"].items()
-        ]
-    )
+    mr_mock.model_run = -1
+
     mdl._kh03_data = pd.DataFrame(
         {
             "available": [10, 50, 20, 100],
@@ -410,44 +436,9 @@ def test_bed_occupancy_baseline(mock_model):
             [(q, k) for q in ["q1", "q2"] for k in ["A", "B"]]
         ),
     )
-    mdl._beds_baseline = pd.DataFrame(
-        {
-            "quarter": ["q1"] * 3 + ["q2"] * 3,
-            "ward_type": ["general_and_acute"] * 6,
-            "ward_group": ["A", "B", "C"] * 2,
-            "size": [2, 1, 1, 4, 2, 2],
-        }
-    )
-    mdl.data = pd.DataFrame(
-        {
-            "classpat": ["1", "1", "1", "2", "4", "1", "5"],
-            "mainspef": ["100", "200", "300", "100", "200", "501", "501"],
-            "speldur": [1, 2, 3, 4, 5, 6, 7],
-        }
-    )
-    model_results = pd.DataFrame(
-        {
-            "classpat": ["1", "1", "1", "1", "1", "2", "4"] * 3 + ["1", "5"],
-            "mainspef": ["100", "100", "200", "200", "300", "100", "200"] * 3
-            + ["501"] * 2,
-            "pod": [
-                x
-                for x in [
-                    "ip_non-elective_admission",
-                    "ip_elective_admission",
-                    "ip_daycase",
-                ]
-                for _ in range(7)
-            ]
-            + ["ip_non-elective_admission", "ip_non-elective_birth-episode"],
-            "measure": ["beddays"] * 23,
-            "value": [1, 2, 3, 4, 5, 6, 7] * 3 + [8, 9],
-        }
-    )
     # act
-    actual = mock_model._bed_occupancy(
-        model_results, {"day+night": {"a": 0.75, "b": 0.875, "c": 0.5}}, -1
-    )
+    actual = mock_model._bed_occupancy("model_results", mr_mock)
+
     # assert
     assert {tuple(k): v for k, v in actual.items()} == {
         ("ip", "day+night", "q1", "A"): 10,
@@ -461,6 +452,16 @@ def test_theatres_available(mock_model):
     """test that it aggregates the theatres data"""
     # arrange
     mdl = mock_model
+
+    mr_mock = Mock()
+    mr_mock.run_params = {
+        "theatres": {
+            "change_utilisation": {"100": 2, "110": 2.5, "Other (Surgical)": 3},
+            "change_availability": 5,
+        }
+    }
+    mr_mock.model_run = 0
+
     mdl._theatres_data = {
         "theatres": 10,
         "four_hour_sessions": pd.Series(
@@ -481,17 +482,12 @@ def test_theatres_available(mock_model):
         ]
     )
     model_results["value"] = list(range(len(model_results)))
-    # this makes the results nicer numberse
+    # this makes the results nicer numbers
     model_results["value"] *= 3
+
     # act
-    actual = mdl._theatres_available(
-        model_results,
-        {
-            "change_utilisation": {"100": 2, "110": 2.5, "Other (Surgical)": 3},
-            "change_availability": 5,
-        },
-        0,
-    )
+    actual = mdl._theatres_available(model_results, mr_mock)
+
     # assert
     assert {tuple(k): v for k, v in actual.items()} == {
         ("ip_theatres", "four_hour_sessions", "100"): 450.0,
@@ -504,29 +500,26 @@ def test_theatres_available(mock_model):
 def test_theatres_available_baseline(mock_model):
     """test that it returns the baseline theatres data"""
     # arrange
-    mock_model.data = pd.DataFrame(
-        [
-            {"tretspef": t, "admimeth": a, "has_procedure": p}
-            for t in ["100", "110", "200", "Other (Surgical)"]
-            for a in ["11", "21"]
-            for p in [1, 0]
-        ]
-    )
+
+    mr_mock = Mock()
+    mr_mock.run_params = {
+        "theatres": {
+            "change_utilisation": {"100": 2, "110": 2.5, "Other (Surgical)": 3},
+            "change_availability": 5,
+        }
+    }
+    mr_mock.model_run = -1
+
     mock_model._theatres_data = {
         "theatres": 10,
         "four_hour_sessions": pd.Series(
             {"100": 100, "110": 200, "Other (Surgical)": 300}, name="four_hour_sessions"
         ),
     }
+
     # act
-    theatres_available = mock_model._theatres_available(
-        None,
-        {
-            "change_utilisation": {"100": 2, "110": 2.5, "Other (Surgical)": 3},
-            "change_availability": 5,
-        },
-        -1,
-    )
+    theatres_available = mock_model._theatres_available(None, mr_mock)
+
     # assert
     assert {tuple(k): v for k, v in theatres_available.items()} == {
         ("ip_theatres", "four_hour_sessions", "100"): 100,
@@ -609,98 +602,3 @@ def test_save_results(mocker, mock_model):
     assert to_parquet_mock.call_count == 2
     assert to_parquet_mock.call_args_list[0] == call("op_conversion/0.parquet")
     assert to_parquet_mock.call_args_list[1] == call("ip/0.parquet")
-
-
-# ------------------------------------------------------------------------------------------
-
-
-def test_losr_all(mock_model, mock_losr):
-    """test that it reduces the speldur column for 'all' types"""
-    # arrange
-    rng = Mock()
-    rng.binomial.return_value = list(range(6))
-    losr = mock_losr
-    data = pd.DataFrame({"speldur": list(range(9))}, index=["x", "a", "b"] * 3)
-    step_counts = {}
-    # act
-    mock_model._losr_all(data, losr, rng, step_counts)
-    # assert
-    assert data["speldur"].to_list() == [0, 0, 3, 3, 1, 4, 6, 2, 5]
-    assert step_counts == {
-        ("los_reduction", "a"): {"admissions": 0, "beddays": -9},
-        ("los_reduction", "b"): {"admissions": 0, "beddays": -3},
-    }
-    assert rng.binomial.call_args_list[0][0][0].to_list() == [1, 4, 7, 2, 5, 8]
-    assert rng.binomial.call_args_list[0][0][1].to_list() == [0, 0, 0, 0.5, 0.5, 0.5]
-
-
-def test_losr_bads(mock_model, mock_losr):
-    """test that it reduces the speldur column for 'bads' types"""
-    rng = Mock()
-    # 1: rvr < ur0
-    # 2: rvr < ur0 + ur1
-    # 3: rvr >= ur0 + ur1
-    rng.uniform.return_value = (
-        [0.02, 0.02, 0.01] + [0.04, 0.03, 1.0] + [0.04, 0.03, 0.55]
-    )
-    losr = mock_losr
-    data = pd.DataFrame(
-        {"speldur": list(range(12)), "classpat": ["1"] * 6 + ["2"] * 3 + ["1"] * 3},
-        index=[x for x in ["x", "g", "h", "i"] for _ in range(3)],
-    )
-    step_counts = {}
-    # act
-    mock_model._losr_bads(data, losr, rng, step_counts)
-    # assert
-
-    assert data["speldur"].to_list() == [0, 1, 2, 3, 4, 5, 0, 0, 0, 0, 0, 0]
-    assert step_counts == {
-        ("los_reduction", "g"): {"admissions": 0, "beddays": 0},
-        ("los_reduction", "h"): {"admissions": -1, "beddays": -21},
-        ("los_reduction", "i"): {"admissions": -1, "beddays": -30},
-    }
-    assert rng.uniform.call_args_list[0][1] == {"size": 9}
-
-
-def test_losr_aec(mock_model, mock_losr):
-    """test that it reduces the speldur column for 'aec' types"""
-    # arrange
-    rng = Mock()
-    rng.binomial.return_value = [0, 0, 0, 1, 1, 1]
-    losr = mock_losr
-    data = pd.DataFrame({"speldur": list(range(9))}, index=["x", "c", "d"] * 3)
-    step_counts = {}
-    # act
-    mock_model._losr_aec(data, losr, rng, step_counts)
-    # assert
-    assert data["speldur"].to_list() == [0, 0, 2, 3, 0, 5, 6, 0, 8]
-    assert step_counts == {
-        ("los_reduction", "c"): {"admissions": 0, "beddays": -12},
-        ("los_reduction", "d"): {"admissions": 0, "beddays": 0},
-    }
-    assert rng.binomial.call_args_list[0][0][0] == 1
-    assert rng.binomial.call_args_list[0][0][1].equals(
-        losr.loc[["c"] * 3 + ["d"] * 3, "losr_f"]
-    )
-
-
-def test_losr_preop(mock_model, mock_losr):
-    """test that is reduces the speldur column for 'pre-op' types"""
-    # arrange
-    rng = Mock()
-    rng.binomial.return_value = [0, 1, 0, 1, 0, 1]
-    losr = mock_losr
-    data = pd.DataFrame({"speldur": list(range(9))}, index=["x", "e", "f"] * 3)
-    step_counts = {}
-    # act
-    mock_model._losr_preop(data, losr, rng, step_counts)
-    # assert
-    assert data["speldur"].to_list() == [0, 1, 0, 3, 3, 5, 6, 7, 6]
-    assert step_counts == {
-        ("los_reduction", "e"): {"admissions": 0, "beddays": -1},
-        ("los_reduction", "f"): {"admissions": 0, "beddays": -4},
-    }
-    assert rng.binomial.call_args_list[0][0][0] == 1
-    assert rng.binomial.call_args_list[0][0][1].equals(
-        1 - losr.loc[["e"] * 3 + ["f"] * 3, "losr_f"]
-    )

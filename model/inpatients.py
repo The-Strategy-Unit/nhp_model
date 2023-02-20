@@ -355,6 +355,7 @@ class InpatientsModel(Model):
                 },
                 result_a("ip_theatres", "theatres"): theatres,
             }
+
         change_availability = theatres_params["change_availability"]
         change_utilisation = pd.Series(
             theatres_params["change_utilisation"], name="change_utilisation"
