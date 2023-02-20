@@ -27,21 +27,20 @@ def test_debug_run(mocker, capsys):
 
     m = Mock()
 
+    mr_mock = Mock()
+    mr_mock.get_step_counts.return_value = pd.DataFrame(
+        {
+            "change_factor": ["a"] * 4 + ["b"] * 4,
+            "strategy": ["-"] * 8,
+            "measure": ["a", "b"] * 4,
+            "value": list(range(8)),
+        }
+    )
     result = namedtuple("result", ["pod", "measure"])
     timeit_mock = mocker.patch(
         "run_model.timeit",
         side_effect=[
-            (
-                pd.DataFrame(
-                    {
-                        "change_factor": ["a"] * 4 + ["b"] * 4,
-                        "strategy": ["-"] * 8,
-                        "measure": ["a", "b"] * 4,
-                        "value": list(range(8)),
-                    }
-                ),
-                "results",
-            ),
+            mr_mock,
             {
                 "default": {
                     result("a", "a"): 1,
@@ -55,7 +54,7 @@ def test_debug_run(mocker, capsys):
 
     assert timeit_mock.call_count == 2
     assert timeit_mock.call_args_list[0] == call(m.run, 0)
-    assert timeit_mock.call_args_list[1] == call(m.aggregate, "results", 0)
+    assert timeit_mock.call_args_list[1] == call(m.aggregate, mr_mock)
 
     assert capsys.readouterr().out == "\n".join(
         [
