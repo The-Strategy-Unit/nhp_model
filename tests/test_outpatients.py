@@ -197,14 +197,18 @@ def test_apply_resampling(mocker, mock_model):
     gdc_mock.assert_called_once()
 
 
+def test_get_step_counts_dataframe():
+    assert False
+
+
 def test_run(mocker, mock_model):
     """test that it runs the model steps"""
     # arrange
     mdl = mock_model
     mdl._baseline_counts = 1
 
-    rr_mock = Mock()
-    m = mocker.patch("model.outpatients.ActivityAvoidance", return_value=rr_mock)
+    rr_mock = mocker.patch("model.outpatients.ActivityAvoidance")
+    rr_mock.return_value = rr_mock
     rr_mock.demographic_adjustment.return_value = rr_mock
     rr_mock.health_status_adjustment.return_value = rr_mock
     rr_mock.expat_adjustment.return_value = rr_mock
@@ -219,7 +223,7 @@ def test_run(mocker, mock_model):
     mdl._run("model_run")
 
     # assert
-    m.assert_called_once_with("model_run", 1)
+    rr_mock.assert_called_once_with("model_run", 1)
     rr_mock.demographic_adjustment.assert_called_once()
     rr_mock.health_status_adjustment.assert_called_once()
     rr_mock.expat_adjustment.assert_called_once()

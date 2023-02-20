@@ -159,6 +159,10 @@ def test_apply_resampling(mocker, mock_model):
     gdc_mock.assert_called_once()
 
 
+def test_get_step_counts_dataframe():
+    assert False
+
+    
 def test_run(mocker, mock_model):
     """test that it runs the model steps"""
     # arrange
