@@ -32,7 +32,7 @@ class ActivityAvoidance:
             self._row_mask = row_mask.astype(float)
         # initialise step counts
         self._sum = 0.0
-        self.step_counts = {}
+        self.step_counts = model_run.step_counts
         self._update_step_counts(("baseline", "-"))
 
         self._demog_factors = model_run._model._demog_factors
@@ -217,16 +217,14 @@ class ActivityAvoidance:
         return self
 
     def apply_resampling(self):
-        if self._row_counts is None:
-            raise Exception("can only apply resampling once")
         # get the random sampling for each row
         rng = self._model_run.rng
         row_samples = rng.poisson(self._row_counts)
         # apply the random sampling, update the data and get the counts
-        self.data, counts = self._model_run._model._apply_resampling(
+        self._model_run.data, counts = self._model_run._model._apply_resampling(
             row_samples, self.data
         )
-        sa = counts.sum()
+        sa = counts.sum(axis=1)
         # after resampling we will have a different amount of rows (sa) from the expectation
         # calculated in the step counts. work out the "slack" we are left with, and adjust all
         # of the steps for this slack.
@@ -239,7 +237,5 @@ class ActivityAvoidance:
         for k in self.step_counts.keys():
             if k != ("baseline", "-"):
                 self.step_counts[k] *= slack
-        # prevent the method from being called a second time
-        self._row_counts = None
         # return the data
-        return self.data, self.step_counts
+        return self._model_run.data, self.step_counts

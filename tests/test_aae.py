@@ -163,33 +163,30 @@ def test_run(mocker, mock_model):
     """test that it runs the model steps"""
     # arrange
     mdl = mock_model
-    mdl._baseline_counts = 0
+    mdl._baseline_counts = 1
+
     rr_mock = Mock()
-    mocker.patch("model.aae.ActivityAvoidance", return_value=rr_mock)
+    m = mocker.patch("model.aae.ActivityAvoidance", return_value=rr_mock)
     rr_mock.demographic_adjustment.return_value = rr_mock
     rr_mock.health_status_adjustment.return_value = rr_mock
     rr_mock.expat_adjustment.return_value = rr_mock
     rr_mock.repat_adjustment.return_value = rr_mock
     rr_mock.baseline_adjustment.return_value = rr_mock
     rr_mock.activity_avoidance.return_value = rr_mock
-    rr_mock.apply_resampling.return_value = (
-        pd.DataFrame({"rn": [1], "hsagrp": [1]}),
-        {
-            ("baseline", "-"): np.array([1]),
-            ("demographic_adjustment", "-"): np.array([2]),
-        },
-    )
+    rr_mock.apply_resampling.return_value = rr_mock
 
     # act
-    change_factors, model_results = mdl._run("model_run")
+    mdl._run("model_run")
+
     # assert
-    assert change_factors.to_dict("list") == {
-        "change_factor": ["baseline", "demographic_adjustment"],
-        "strategy": ["-", "-"],
-        "value": [1, 2],
-        "measure": ["arrivals", "arrivals"],
-    }
-    assert model_results.to_dict("list") == {"rn": [1]}
+    m.assert_called_once_with("model_run", 1)
+    rr_mock.demographic_adjustment.assert_called_once()
+    rr_mock.health_status_adjustment.assert_called_once()
+    rr_mock.expat_adjustment.assert_called_once()
+    rr_mock.repat_adjustment.assert_called_once()
+    rr_mock.baseline_adjustment.assert_called_once()
+    rr_mock.activity_avoidance.assert_called_once()
+    rr_mock.apply_resampling.assert_called_once()
 
 
 def test_aggregate(mock_model):
@@ -201,7 +198,9 @@ def test_aggregate(mock_model):
 
     mdl = mock_model
     mdl._create_agg = Mock(wraps=create_agg_stub)
-    model_results = pd.DataFrame(
+
+    mr_mock = Mock()
+    mr_mock.get_model_results.return_value = pd.DataFrame(
         {
             "sitetret": ["trust"] * 4,
             "age_group": [1] * 4,
@@ -212,7 +211,7 @@ def test_aggregate(mock_model):
         }
     )
     # act
-    results = mdl.aggregate(model_results, 1)
+    results = mdl.aggregate(mr_mock)
     # assert
     assert mdl._create_agg.call_count == 2
     assert results == {"default": 1, "sex+age_group": 1}
@@ -235,7 +234,9 @@ def test_save_results(mocker, mock_model):
     """test that it correctly saves the results"""
     path_fn = lambda x: x
 
+    mr_mock = Mock()
+    mr_mock.get_model_results.return_value = pd.DataFrame({"rn": [0], "arrivals": [1]})
+
     to_parquet_mock = mocker.patch("pandas.DataFrame.to_parquet")
-    results = pd.DataFrame({"rn": [0], "arrivals": [1]})
-    mock_model.save_results(results, path_fn)
+    mock_model.save_results(mr_mock, path_fn)
     to_parquet_mock.assert_called_once_with("aae/0.parquet")

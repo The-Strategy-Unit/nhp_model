@@ -136,45 +136,6 @@ class Model:
         with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
             self._hsa_gams = pickle.load(hsa_pkl)
 
-    def _factor_helper(
-        self, data: pd.DataFrame, factor_run_params: dict, column_values: dict
-    ) -> np.ndarray:
-        """Get a factor column
-
-        Helper method (for aae/op) to generate a factor column. This is intended to be used with
-        columns which are binary flags.
-
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param factor_run_params: a set of parameters to use for this factor, the keys of which
-            will join to `data` on the `hsagrp` column
-        :type factor_run_params: dict
-        :param column_values: a dictionary containing a mapping between column and value, this is
-            used to "filter" the `data` to only apply this factor to relevant rows
-
-        :returns: a numpy array of the factors for each row of data
-        :rtype: numpy.ndarray
-        """
-        hsagrps = (
-            data.merge(pd.DataFrame(column_values, index=[0])).hsagrp.unique().tolist()
-        )
-        factor = {
-            h: v
-            for k, v in factor_run_params.items()
-            for h in hsagrps
-            if h.startswith(f"{self.model_type}_{k}")
-        }
-
-        factor = pd.DataFrame(
-            {"hsagrp": factor.keys(), **column_values, "f": factor.values()}
-        )
-
-        return (
-            data.merge(factor, how="left", on=list(factor.columns[:-1]))
-            .f.fillna(1)
-            .to_numpy()
-        )
-
     def _generate_run_params(self):
         """Generate the values for each model run from the params
 
@@ -295,9 +256,10 @@ class Model:
 
     def run(self, model_run: int):
         mr = ModelRun(self, model_run)
-        return self._run(mr)
+        self._run(mr)
+        return mr
 
-    def aggregate(self, model_results: pd.DataFrame, model_run: int):
+    def aggregate(self, model_run: ModelRun):
         """Aggregate the model results
 
         Can also be used to aggregate the baseline data by passing in the raw data

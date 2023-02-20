@@ -63,24 +63,22 @@ class AaEModel(Model):
         # return the altered data and the amount of admissions/beddays after resampling
         return (data, self._get_data_counts(data))
 
-    def _run(self, model_run: ModelRun) -> tuple[dict, pd.DataFrame]:
+    def _get_step_counts_dataframe(self, step_counts: dict):
+        return (
+            pd.Series({k: v[0] for k, v in step_counts.items()})
+            .to_frame("value")
+            .rename_axis(["change_factor", "strategy"])
+            .reset_index()
+            .assign(measure="arrivals")
+        )
+
+    def _run(self, model_run: ModelRun) -> None:
         """Run the model
 
-        :param rng: a random number generator created for each model iteration
-        :type rng: numpy.random.Generator
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-        :param demo_f: the demographic adjustment factors
-        :type demo_f: pandas.Series
-        :param hsa_f: the health status adjustment factors
-        :type hsa_f: pandas.Series
-
-        :returns: a tuple containing the change factors DataFrame and the mode results DataFrame
-        :rtype: (dict, pandas.DataFrame)
+        :param model_run: an instance of the ModelRun class
+        :type model_run: model.model_run.ModelRun
         """
-        data, step_counts = (
+        (
             ActivityAvoidance(model_run, self._baseline_counts)
             .demographic_adjustment()
             .health_status_adjustment()
@@ -90,17 +88,8 @@ class AaEModel(Model):
             .activity_avoidance()
             .apply_resampling()
         )
-        # return the data
-        change_factors = (
-            pd.Series({k: v[0] for k, v in step_counts.items()})
-            .to_frame("value")
-            .rename_axis(["change_factor", "strategy"])
-            .reset_index()
-            .assign(measure="arrivals")
-        )
-        return (change_factors, data.drop(["hsagrp"], axis="columns"))
 
-    def aggregate(self, model_results: pd.DataFrame, model_run: int) -> dict:
+    def aggregate(self, model_run: ModelRun) -> dict:
         """Aggregate the model results
 
         Can also be used to aggregate the baseline data by passing in the raw data
@@ -113,6 +102,8 @@ class AaEModel(Model):
         :returns: a dictionary containing the different aggregations of this data
         :rtype: dict
         """
+        model_results = model_run.get_model_results()
+
         model_results["pod"] = "aae_type-" + model_results["aedepttype"]
         model_results["measure"] = "walk-in"
         model_results.loc[model_results["is_ambulance"], "measure"] = "ambulance"
@@ -129,9 +120,7 @@ class AaEModel(Model):
         agg = partial(self._create_agg, model_results)
         return {**agg(), **agg(["sex", "age_group"])}
 
-    def save_results(
-        self, model_results: pd.DataFrame, path_fn: Callable[[str], str]
-    ) -> None:
+    def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model
 
         This method is used for saving the results of the model run to disk as a parquet file.
@@ -141,6 +130,6 @@ class AaEModel(Model):
         :param model_results: a DataFrame containing the results of a model iteration
         :param path_fn: a function which takes the activity type and returns a path
         """
-        model_results.set_index(["rn"])[["arrivals"]].to_parquet(
+        model_run.get_model_results().set_index(["rn"])[["arrivals"]].to_parquet(
             f"{path_fn('aae')}/0.parquet"
         )

@@ -149,29 +149,37 @@ def test_convert_to_tele(mock_model):
     """test that it mutates the data"""
     # arrange
     mdl = mock_model
-    rng = Mock()
-    rng.binomial.return_value = np.array([10])
-    data = pd.DataFrame(
+
+    mr_mock = Mock()
+    mr_mock.rng.binomial.return_value = np.array([10, 15, 0])
+    mr_mock.data = pd.DataFrame(
         {
+            "rn": [1, 2, 3],
             "has_procedures": [False, False, True],
             "type": ["a", "b", "a"],
             "attendances": [20, 25, 30],
             "tele_attendances": [5, 10, 0],
         }
     )
-    step_counts = {}
-    # act
-    mdl._convert_to_tele(rng, data, {"convert_to_tele": {"a": 1, "b": 2}}, step_counts)
-    # assert
-    assert data["attendances"].to_list() == [10, 15, 30]
-    assert data["tele_attendances"].to_list() == [15, 20, 0]
-    assert rng.binomial.called_once_with(pd.Series([20, 25]), [1, 2])
-    assert step_counts == {
-        ("efficiencies", "convert_to_tele"): {
-            "attendances": -10,
-            "tele_attendances": 10,
-        }
+    mr_mock._model._strategies = {
+        "efficiencies": pd.Series({1: "convert_to_tele_a", 2: "convert_to_tele_b"})
     }
+    mr_mock.step_counts = {}
+    mr_mock.run_params = {
+        "efficiencies": {"op": {"convert_to_tele_a": 2, "convert_to_tele_b": 3}}
+    }
+    # act
+    mdl._convert_to_tele(mr_mock)
+    # assert
+    assert mr_mock.data["attendances"].to_list() == [10, 10, 30]
+    assert mr_mock.data["tele_attendances"].to_list() == [15, 25, 0]
+
+    rng_call = mr_mock.rng.binomial.call_args_list[0][0]
+    rng_call[0].to_list() == [20, 25, 30]
+    rng_call[1].to_list() == [2.0, 3.0, 1.0]
+
+    step_counts = mr_mock.step_counts[("efficiencies", "convert_to_tele")]
+    assert step_counts.tolist() == [-25, 25]
 
 
 def test_apply_resampling(mocker, mock_model):
@@ -192,13 +200,11 @@ def test_apply_resampling(mocker, mock_model):
 def test_run(mocker, mock_model):
     """test that it runs the model steps"""
     # arrange
-    model_run = Mock()
-    model_run.rng = "rng"
-    model_run.run_params = {"outpatient_factors": "outpatient_factors"}
     mdl = mock_model
-    mdl._baseline_counts = 0
+    mdl._baseline_counts = 1
+
     rr_mock = Mock()
-    mocker.patch("model.outpatients.ActivityAvoidance", return_value=rr_mock)
+    m = mocker.patch("model.outpatients.ActivityAvoidance", return_value=rr_mock)
     rr_mock.demographic_adjustment.return_value = rr_mock
     rr_mock.health_status_adjustment.return_value = rr_mock
     rr_mock.expat_adjustment.return_value = rr_mock
@@ -206,25 +212,24 @@ def test_run(mocker, mock_model):
     rr_mock.waiting_list_adjustment.return_value = rr_mock
     rr_mock.baseline_adjustment.return_value = rr_mock
     rr_mock.activity_avoidance.return_value = rr_mock
-    rr_mock.apply_resampling.return_value = (
-        pd.DataFrame({"rn": [1], "hsagrp": [1]}),
-        {
-            ("baseline", "-"): np.array([1, 2]),
-            ("demographic_adjustment", "-"): np.array([3, 4]),
-        },
-    )
+    rr_mock.apply_resampling.return_value = rr_mock
+
     mdl._convert_to_tele = Mock()
     # act
-    change_factors, model_results = mdl._run(model_run)
+    mdl._run("model_run")
+
     # assert
-    assert change_factors.to_dict("list") == {
-        "change_factor": ["baseline", "demographic_adjustment"] * 2,
-        "strategy": ["-"] * 4,
-        "measure": ["attendances"] * 2 + ["tele_attendances"] * 2,
-        "value": [1, 3, 2, 4],
-    }
-    assert model_results.to_dict("list") == {"rn": [1]}
-    mdl._convert_to_tele.assert_called_once()
+    m.assert_called_once_with("model_run", 1)
+    rr_mock.demographic_adjustment.assert_called_once()
+    rr_mock.health_status_adjustment.assert_called_once()
+    rr_mock.expat_adjustment.assert_called_once()
+    rr_mock.repat_adjustment.assert_called_once()
+    rr_mock.waiting_list_adjustment.assert_called_once()
+    rr_mock.baseline_adjustment.assert_called_once()
+    rr_mock.activity_avoidance.assert_called_once()
+    rr_mock.apply_resampling.assert_called_once()
+
+    mdl._convert_to_tele.assert_called_once_with("model_run")
 
 
 def test_aggregate(mock_model):
@@ -236,7 +241,8 @@ def test_aggregate(mock_model):
 
     mdl = mock_model
     mdl._create_agg = Mock(wraps=create_agg_stub)
-    model_results = pd.DataFrame(
+    mr_mock = Mock()
+    mr_mock.get_model_results.return_value = pd.DataFrame(
         {
             "sitetret": ["trust"] * 4,
             "is_first": [True, True, False, False],
@@ -250,7 +256,7 @@ def test_aggregate(mock_model):
         }
     )
     # act
-    results = mdl.aggregate(model_results, 1)
+    results = mdl.aggregate(mr_mock)
     # assert
     assert mdl._create_agg.call_count == 3
     assert results == {"default": 1, "sex+age_group": 1, "sex+tretspef": 1}
@@ -276,7 +282,11 @@ def test_save_results(mocker, mock_model):
     """test that it correctly saves the results"""
     path_fn = lambda x: x
 
+    mr_mock = Mock()
+    mr_mock.get_model_results.return_value = pd.DataFrame(
+        {"rn": [0], "attendances": [1], "tele_attendances": [2]}
+    )
+
     to_parquet_mock = mocker.patch("pandas.DataFrame.to_parquet")
-    results = pd.DataFrame({"rn": [0], "attendances": [1], "tele_attendances": [2]})
-    mock_model.save_results(results, path_fn)
+    mock_model.save_results(mr_mock, path_fn)
     to_parquet_mock.assert_called_once_with("op/0.parquet")

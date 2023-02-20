@@ -111,7 +111,7 @@ class ModelSave:
             results = model.data.copy()
         else:
             # run the model
-            change_factors, results = model.run(model_run)
+            mr = model.run(model_run)
             # save results
             if self._save_results:
 
@@ -126,9 +126,9 @@ class ModelSave:
                     os.makedirs(p, exist_ok=True)
                     return p
 
-                model.save_results(results, path_fn)
+                model.save_results(mr, path_fn)
             # save change factors
-            change_factors.assign(
+            mr.get_step_counts().assign(
                 activity_type=activity_type, model_run=model_run
             ).to_parquet(
                 f"{self._cf_path}/{activity_type}_{model_run}.parquet", index=False

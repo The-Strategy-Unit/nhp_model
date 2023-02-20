@@ -14,7 +14,7 @@ import numpy.typing as npt
 import pandas as pd
 
 from model.activity_avoidance import ActivityAvoidance
-from model.inpatients.los_reduction import los_reduction
+from model.inpatients.inpatient_efficiencies import InpatientEfficiencies
 from model.model import Model
 from model.model_run import ModelRun
 
@@ -73,6 +73,9 @@ class InpatientsModel(Model):
         self._strategies["activity_avoidance"] = self._strategies.pop(
             "admission_avoidance"
         ).rename(columns={"admission_avoidance_strategy": "strategy"})
+        self._strategies["efficiencies"] = self._strategies.pop("los_reduction").rename(
+            columns={"los_reduction_strategy": "strategy"}
+        )
 
     def _load_kh03_data(self):
         # load the kh03 data
@@ -175,25 +178,30 @@ class InpatientsModel(Model):
         # return the altered data and the amount of admissions/beddays after resampling
         return (data, self._get_data_counts(data) * mask)
 
-    def _run(self, model_run: ModelRun) -> tuple[dict, pd.DataFrame]:
-        """Run the model once
+    def _get_step_counts_dataframe(self, step_counts: dict):
+        return pd.melt(
+            pd.DataFrame.from_dict(
+                {
+                    k: {"admissions": v[0], "beddays": v[1]}
+                    for k, v in step_counts.items()
+                },
+                "index",
+            )
+            .rename_axis(["change_factor", "strategy"])
+            .reset_index(),
+            ["change_factor", "strategy"],
+            ["admissions", "beddays"],
+            "measure",
+        )
 
-        Performs a single iteration of the model. The `model_run` parameter controls what parameters
-        to use for this run of the model, with the principal model run having 0, and all other model
-        runs having a value greater than 0.
+    def _run(self, model_run: ModelRun) -> None:
+        """Run the model
 
-        Running the model multiple times with the same `model_run` will give the same results.
-
-        The return value is a tuple that contains the change factors as a dictionary, and the model
-        results as a :class:`pandas.DataFrame`.
-
-        :param model_run: the current model run
-        :type model_run: int
-        :returns: a tuple of the change factors and the model results
-        :rtype: (dict, pandas.DataFrame)
+        :param model_run: an instance of the ModelRun class
+        :type model_run: model.model_run.ModelRun
         """
 
-        data, step_counts = (
+        (
             ActivityAvoidance(
                 model_run, self._baseline_counts, row_mask=self._data_mask
             )
@@ -205,27 +213,16 @@ class InpatientsModel(Model):
             .waiting_list_adjustment()
             .non_demographic_adjustment()
             .activity_avoidance()
+            # call apply_resampling last, as this is what actually alters the data
             .apply_resampling()
         )
 
-        step_counts = {
-            k: {"admissions": v[0], "beddays": v[1]} for k, v in step_counts.items()
-        }
-
-        # los reduction
-        los_reduction(model_run, data, self._strategies["los_reduction"], step_counts)
-        # return the data (select just the columns we have updated in modelling)
-        change_factors = pd.melt(
-            pd.DataFrame.from_dict(step_counts, "index")
-            .rename_axis(["change_factor", "strategy"])
-            .reset_index(),
-            ["change_factor", "strategy"],
-            ["admissions", "beddays"],
-            "measure",
-        )
-        return (
-            change_factors,
-            data.drop(["hsagrp"], axis="columns").reset_index(drop=True),
+        (
+            InpatientEfficiencies(model_run)
+            .losr_all()
+            .losr_aec()
+            .losr_preop()
+            .losr_bads()
         )
 
     def _bedday_summary(self, data, year):
@@ -387,7 +384,7 @@ class InpatientsModel(Model):
             result_a("ip_theatres", "theatres"): new_theatres,
         }
 
-    def aggregate(self, model_results: pd.DataFrame, model_run: int) -> dict:
+    def aggregate(self, model_run: ModelRun) -> dict:
         """Aggregate the model results
 
         Can also be used to aggregate the baseline data by passing in the raw data
@@ -401,7 +398,8 @@ class InpatientsModel(Model):
         :rtype: dict
         """
         # get the run params: use principal run for baseline
-        run_params = self._get_run_params(max(0, model_run))
+        model_results = model_run.get_model_results()
+        run_params = self._get_run_params(max(0, model_run.model_run))
 
         bed_occupancy = self._bed_occupancy(
             model_results,
@@ -466,9 +464,7 @@ class InpatientsModel(Model):
             ),
         }
 
-    def save_results(
-        self, model_results: pd.DataFrame, path_fn: Callable[[str], str]
-    ) -> None:
+    def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model
 
         :param model_results: a DataFrame containing the results of a model iteration
@@ -476,6 +472,7 @@ class InpatientsModel(Model):
         :param path_fn: a function that takes the activity type and generates a path where to save the file
         :type path_fn: Callable[[str], str]
         """
+        model_results = model_run.get_model_results()
         ip_op_row_ix = model_results["classpat"] == "-1"
         # save the op converted rows
         model_results[ip_op_row_ix].groupby(["age", "sex", "tretspef"]).size().to_frame(

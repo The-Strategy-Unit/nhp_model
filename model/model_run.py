@@ -16,6 +16,8 @@ class ModelRun:
         self.data = model.data
 
         self._patch_run_params()
+        
+        self.step_counts = {}
 
     def _patch_run_params(self):
         """Patch Run Parameters
@@ -56,3 +58,9 @@ class ModelRun:
                 for k1, v1 in rp["outpatient_factors"]["convert_to_tele"].items()
             },
         }
+
+    def get_step_counts(self):
+        return self._model._get_step_counts_dataframe(self.step_counts)
+
+    def get_model_results(self):
+        return self.data.reset_index(drop=True).drop(columns=["hsagrp"])
