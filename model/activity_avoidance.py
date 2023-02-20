@@ -38,9 +38,7 @@ class ActivityAvoidance:
         self._demog_factors = model_run._model._demog_factors
         self._hsa_gams = model_run._model._hsa_gams
 
-        self._activity_avoidance_strategies = model_run._model._strategies[
-            "activity_avoidance"
-        ]
+        self._strategies = model_run._model._strategies["activity_avoidance"]
 
     def _update(self, factor: pd.Series, cols: List[str], group=None):
         step = factor.name
@@ -57,7 +55,7 @@ class ActivityAvoidance:
         self._update_step_counts((step, group or "-"))
         return self
 
-    def _update_step_counts(self, step: str) -> None:
+    def _update_step_counts(self, step: tuple[str, str]) -> None:
         s = (self._row_counts * self._row_mask).sum(axis=1)
         self.step_counts[step] = s - self._sum
         self._sum = s
@@ -188,7 +186,7 @@ class ActivityAvoidance:
     def activity_avoidance(self) -> dict:
         rng = self._model_run.rng
 
-        strategies = self._activity_avoidance_strategies
+        strategies = self._strategies
 
         p = self.run_params["activity_avoidance"][self._activity_type]
 
