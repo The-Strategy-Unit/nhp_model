@@ -506,7 +506,6 @@ class InpatientEfficiencies:
                 na_action="ignore",
             )
             .fillna("NULL")
-            .loc[self.data["rn"]]
             .rename(None)
         )
         self.data.set_index(selected_strategy, inplace=True)
