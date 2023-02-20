@@ -259,7 +259,7 @@ class InpatientsModel(Model):
         )
 
     def _bed_occupancy(
-        self, data: pd.DataFrame, bed_occupancy_params: dict, model_run: int
+        self, data: pd.DataFrame, model_run: ModelRun
     ) -> dict[namedtuple, int]:
         """Calculate bed occupancy
 
@@ -274,9 +274,10 @@ class InpatientsModel(Model):
             measure, and the ward group. The value is the number of beds available
         :rtype: dict
         """
+        bed_occupancy_params = model_run.run_params["bed_occupancy"]
         # create the namedtuple type
         result = namedtuple("results", ["pod", "measure", "quarter", "ward_group"])
-        if model_run == -1:
+        if model_run.model_run == -1:
             # todo: load kh03 data by quarter
             return {
                 result("ip", "day+night", q, k): np.round(v).astype(int)
@@ -323,7 +324,7 @@ class InpatientsModel(Model):
         }
 
     def _theatres_available(
-        self, model_results: pd.DataFrame, theatres_params: dict, model_run: int
+        self, model_results: pd.DataFrame, model_run: Model
     ) -> dict[namedtuple, int]:
         """Calculate the theatres available
 
@@ -338,6 +339,7 @@ class InpatientsModel(Model):
             are returned: the number of theatres available, and the number of four hour sessions.
         :rtype: dict
         """
+        theatres_params = model_run.run_params["theatres"]
         # create the namedtuple types
         result_u = namedtuple("results", ["pod", "measure", "tretspef"])
         result_a = namedtuple("results", ["pod", "measure"])
@@ -345,7 +347,7 @@ class InpatientsModel(Model):
         fhs_baseline = self._theatres_data["four_hour_sessions"]
         theatres = self._theatres_data["theatres"]
 
-        if model_run == -1:
+        if model_run.model_run == -1:
             return {
                 **{
                     result_u("ip_theatres", "four_hour_sessions", k): v
@@ -399,13 +401,8 @@ class InpatientsModel(Model):
         """
         # get the run params: use principal run for baseline
         model_results = model_run.get_model_results()
-        run_params = self._get_run_params(max(0, model_run.model_run))
 
-        bed_occupancy = self._bed_occupancy(
-            model_results,
-            run_params["bed_occupancy"],
-            model_run,
-        )
+        bed_occupancy = self._bed_occupancy(model_results, model_run)
 
         model_results = (
             model_results[~model_results["bedday_rows"]]
@@ -451,17 +448,18 @@ class InpatientsModel(Model):
         model_results.loc[op_rows, "measure"] = "attendances"
         model_results.loc[op_rows, "pod"] = "op_procedure"
 
+        theatres_available = self._theatres_available(
+            model_results.loc[~op_rows],
+            model_run,
+        )
+
         agg = partial(self._create_agg, model_results)
         return {
             **agg(),
             **agg(["sex", "age_group"]),
             **agg(["sex", "tretspef"]),
             "bed_occupancy": bed_occupancy,
-            "theatres_available": self._theatres_available(
-                model_results.loc[~op_rows],
-                run_params["theatres"],
-                model_run,
-            ),
+            "theatres_available": theatres_available,
         }
 
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
