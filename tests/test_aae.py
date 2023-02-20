@@ -159,10 +159,23 @@ def test_apply_resampling(mocker, mock_model):
     gdc_mock.assert_called_once()
 
 
-def test_get_step_counts_dataframe():
-    assert False
+def test_get_step_counts_dataframe(mock_model):
+    # arrange
+    step_counts = {("a", "-"): [1], ("b", "-"): [2]}
+    expected = {
+        "change_factor": ["a", "b"],
+        "strategy": ["-", "-"],
+        "measure": ["arrivals", "arrivals"],
+        "value": [1, 2],
+    }
 
-    
+    # act
+    actual = mock_model._get_step_counts_dataframe(step_counts)
+
+    # assert
+    assert actual.to_dict("list") == expected
+
+
 def test_run(mocker, mock_model):
     """test that it runs the model steps"""
     # arrange

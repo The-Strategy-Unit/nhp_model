@@ -194,6 +194,20 @@ def test_model_init_sets_create_datetime(mocker):
     assert re.match("^\\d{8}_\\d{6}$", mdl.params["create_datetime"])
 
 
+# _load_parquet()
+
+
+def test_load_parquet(mocker, mock_model):
+    """test that load parquet properly loads files"""
+    m = Mock()
+    m.to_pandas.return_value = "data"
+    mocker.patch("pyarrow.parquet.read_pandas", return_value=m)
+    mdl = mock_model
+    assert mdl._load_parquet("ip") == "data"
+    m.expect_called_with_args("data/ip.parquet")
+    m.to_pandas.assert_called_once()
+
+
 # _load_demog_factors()
 
 
@@ -234,18 +248,18 @@ def test_demog_factors_loads_correctly(mocker, mock_model, start_year, end_year)
     assert mdl._demog_factors["b"].to_list() == [(i + diff) / i for i in b_range]
 
 
-# _load_parquet()
+# _load_hsa_gams()
+def test_load_hsa_gams(mocker, mock_model):
+    # arrange
+    mocker.patch("pickle.load", return_value="pkl_load")
 
+    # act
+    with patch("builtins.open", mock_open(read_data="hsa_gams")) as mock_file:
+        mock_model._load_hsa_gams()
 
-def test_load_parquet(mocker, mock_model):
-    """test that load parquet properly loads files"""
-    m = Mock()
-    m.to_pandas.return_value = "data"
-    mocker.patch("pyarrow.parquet.read_pandas", return_value=m)
-    mdl = mock_model
-    assert mdl._load_parquet("ip") == "data"
-    m.expect_called_with_args("data/ip.parquet")
-    m.to_pandas.assert_called_once()
+    # assert
+    assert mock_model._hsa_gams == "pkl_load"
+    mock_file.assert_called_with("data/synthetic/hsa_gams.pkl", "rb")
 
 
 # _generate_run_params()
