@@ -20,6 +20,7 @@ from azure.cosmos import ContainerProxy, CosmosClient
 from dotenv import load_dotenv
 
 from model.model import Model
+from model.model_run import ModelRun
 
 
 class ModelSave:
@@ -108,7 +109,7 @@ class ModelSave:
         activity_type = model.model_type
         # don't run the model if it's the baseline: just run the aggregate step
         if model_run == -1:
-            results = model.data.copy()
+            mr = ModelRun(model, 0)
         else:
             # run the model
             mr = model.run(model_run)
@@ -135,7 +136,7 @@ class ModelSave:
             )
 
         # save aggregated results
-        aggregated_results = model.aggregate(results, model_run)
+        aggregated_results = model.aggregate(mr)
         with open(f"{self._ar_path}/{activity_type}_{model_run}.dill", "wb") as arf:
             dill.dump(aggregated_results, arf)
 
@@ -177,7 +178,9 @@ class ModelSave:
                 with open(file, "rb") as arf:
                     aggregated_results[activity_type].append(dill.load(arf))
 
-        flipped_results = self._flip_results({k: v for k, v in aggregated_results.items() if v != []})
+        flipped_results = self._flip_results(
+            {k: v for k, v in aggregated_results.items() if v != []}
+        )
 
         available_aggregations = defaultdict(set)
         for key, val in flipped_results.items():
@@ -212,7 +215,9 @@ class ModelSave:
         """
         # create a nested defaultdict which contains an array of 0's the lenght of the results:
         # that gives us a value even if a model run did not output a row for a given aggregate
-        flipped = defaultdict(lambda: defaultdict(lambda: [0] * len(results[list(results.keys())[0]])))
+        flipped = defaultdict(
+            lambda: defaultdict(lambda: [0] * len(results[list(results.keys())[0]]))
+        )
         for dataset_results in results.values():
             # iterate over each result
             for idx, result in enumerate(dataset_results):
