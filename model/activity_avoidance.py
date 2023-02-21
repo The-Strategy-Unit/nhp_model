@@ -16,7 +16,7 @@ class ActivityAvoidance:
         self,
         model_run: ModelRun,
         counts,
-        row_mask=None,
+        row_mask=np.array([1.0]),
     ):
         self._model_run = model_run
         self.data = model_run.data
@@ -26,10 +26,7 @@ class ActivityAvoidance:
         self.run_params = model_run.run_params
 
         self._row_counts = counts.copy()
-        if row_mask is None:
-            self._row_mask = 1
-        else:
-            self._row_mask = row_mask.astype(float)
+        self._row_mask = row_mask.astype(float)
         # initialise step counts
         self._sum = 0.0
         self.step_counts = model_run.step_counts
