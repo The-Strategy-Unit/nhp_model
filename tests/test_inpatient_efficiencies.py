@@ -72,22 +72,61 @@ def test_select_single_strategy(mock_ipe):
     assert m.data.index.to_list() == ["b", "b", "a", "NULL"]
 
 
-def test_generate_losr_df(mocker):
+def test_generate_losr_df(mock_ipe):
     # arrange
+    m = mock_ipe
+
+    m._model_run.params = {
+        "inpatient_factors": {
+            "los_reduction": {
+                "a": {"type": "1", "interval": [1, 3]},
+                "b": {"type": "1", "interval": [2, 4]},
+                "c": {"type": "2", "other": 1, "interval": [3, 5]},
+            }
+        }
+    }
+    m._model_run.run_params = {"efficiencies": {"ip": {"a": 2, "b": 3, "c": 4}}}
+
+    expected = {
+        "type": ["1", "1", "2"],
+        "interval": [[1, 3], [2, 4], [3, 5]],
+        "other": [None, None, 1.0],
+        "losr_f": [2, 3, 4],
+    }
 
     # act
+    m._generate_losr_df()
+    actual = m.losr.to_dict(orient="list")
+    actual["other"] = [None if np.isnan(i) else i for i in actual["other"]]
 
     # assert
-    assert False
+    assert actual == expected
 
 
-def test_update(mocker):
+def test_update(mock_ipe):
     # arrange
+    m = mock_ipe
+    m.step_counts = {}
+
+    indexes = ["a", "b", "c"]
+    ixl = len(indexes)
+
+    m.data = pd.DataFrame(
+        {"bedday_rows": [True, False] * 2 * ixl, "speldur": range(4 * ixl)},
+        index=[i for i in indexes for _ in range(4)],
+    )
 
     # act
+    i = indexes[1:]
+    m._update(i, range(4 * (ixl - 1)))
 
     # assert
-    assert False
+    assert m.data["speldur"].tolist()[:4] == list(range(4))
+    assert m.data["speldur"].tolist()[4:] == list(range(8))
+    assert {k: v.tolist() for k, v in m.step_counts.items()} == {
+        ("efficiencies", "b"): [0, -8],
+        ("efficiencies", "c"): [0, -8],
+    }
 
 
 def test_losr_all(mock_ipe):

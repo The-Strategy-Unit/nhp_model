@@ -340,9 +340,122 @@ def test_non_demographic_adjustment(mocker, mock_activity_avoidance):
     assert cols == ["age_group", "group"]
 
 
-def test_activity_avoidance():
-    assert False
+def test_activity_avoidance_no_params(mocker, mock_activity_avoidance):
+    # arrange
+    aa_mock = mock_activity_avoidance
+    aa_mock._model_run = Mock()
+    aa_mock._strategies = None
+
+    aa_mock._activity_type = "ip"
+    aa_mock.run_params = {"activity_avoidance": {"ip": {}}}
+
+    u_mock = mocker.patch(
+        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+    )
+    # act
+    actual = aa_mock.activity_avoidance()
+
+    # assert
+    assert actual == aa_mock
+    u_mock.assert_not_called()
 
 
-def test_apply_resampling():
-    assert False
+@pytest.mark.parametrize(
+    "binomial_rv, expected",
+    [
+        (
+            [1] * 9,
+            [
+                ("a", [1 / 8] * 1, True),
+                ("b", [2 / 8] * 2, True),
+                ("c", [3 / 8] * 3, True),
+                ("d", [4 / 8] * 2, True),
+                ("e", [5 / 8] * 1, True),
+            ],
+        ),
+        (
+            [0] * 9,
+            [
+                ("a", [1] * 1, True),
+                ("b", [1] * 2, True),
+                ("c", [1] * 3, True),
+                ("d", [1] * 2, True),
+                ("e", [1] * 1, True),
+            ],
+        ),
+    ],
+)
+def test_activity_avoidance(mocker, mock_activity_avoidance, binomial_rv, expected):
+    # arrange
+    aa_mock = mock_activity_avoidance
+
+    aa_mock._model_run = Mock()
+    aa_mock._model_run.rng.binomial.return_value = binomial_rv
+
+    aa_mock._strategies = pd.DataFrame(
+        {
+            "strategy": ["a", "b", "c"] + ["b", "c", "d"] + ["c", "d", "e"],
+            "sample_rate": [0.5, 1.0, 1.0] + [1.0, 1.0, 1.0] + [1.0, 1.0, 0.5],
+        },
+        index=pd.Index([1, 1, 1, 2, 2, 2, 3, 3, 3], name="rn"),
+    )
+
+    aa_mock._activity_type = "ip"
+    aa_mock.run_params = {
+        "activity_avoidance": {
+            "ip": {"a": 1 / 8, "b": 2 / 8, "c": 3 / 8, "d": 4 / 8, "e": 5 / 8}
+        }
+    }
+
+    u_mock = mocker.patch(
+        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+    )
+
+    # act
+    actual = aa_mock.activity_avoidance()
+    call_args = [
+        (i[0][0].name, i[0][0].to_list(), i[0][1] == ["rn"])
+        for i in u_mock.call_args_list
+    ]
+
+    # assert
+    assert actual == aa_mock
+    call_args == expected
+
+
+def test_apply_resampling(mocker, mock_activity_avoidance):
+    # arrange
+    aa_mock = mock_activity_avoidance
+
+    aa_mock._row_counts = "row_counts"
+    aa_mock.data = "data"
+
+    mr = Mock()
+    aa_mock._model_run = mr
+    mr.rng.poisson.return_value = "poisson"
+    mr._model._apply_resampling.return_value = ("data", np.array([[30.0, 50.0]]))
+
+    aa_mock.step_counts = {
+        ("baseline", "-"): np.array([20.0, 30.0]),
+        ("a", "-"): np.array([5.0, 10.0]),  # 25, 40
+        ("b", "-"): np.array([10.0, 5.0]),  # 45, 45
+        ("c", "-"): np.array([-10.0, -5.0]),  # 25, 40
+    }
+
+    expected = {
+        ('baseline', '-'): [20.0, 30.0],
+        ('a', '-'): [60.0, 50.0],
+        ('b', '-'): [120.0,  25.0],
+        ('c', '-'): [-120.0,  -25.0]
+    }
+
+    # act
+    aa_mock.apply_resampling()
+
+    # assert
+    mr.rng.poisson.assert_called_once_with("row_counts")
+    mr._model._apply_resampling.assert_called_once_with("poisson", "data")
+
+    assert mr.data == "data"
+
+    assert {k: v.tolist() for k,v in aa_mock.step_counts.items()} == expected

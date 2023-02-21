@@ -191,7 +191,7 @@ class ActivityAvoidance:
         p = self.run_params["activity_avoidance"][self._activity_type]
 
         # if there are no items in params for activity_avoidance then exit
-        if p == dict():
+        if not p:
             return self
 
         p = pd.Series(p, name="aaf")
@@ -235,5 +235,3 @@ class ActivityAvoidance:
         for k in self.step_counts.keys():
             if k != ("baseline", "-"):
                 self.step_counts[k] *= slack
-        # return the data
-        return self._model_run.data, self.step_counts
