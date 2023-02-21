@@ -1,4 +1,4 @@
-"""test model"""
+"""test activity avoidance"""
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
 
 from unittest.mock import Mock, patch
@@ -443,10 +443,10 @@ def test_apply_resampling(mocker, mock_activity_avoidance):
     }
 
     expected = {
-        ('baseline', '-'): [20.0, 30.0],
-        ('a', '-'): [60.0, 50.0],
-        ('b', '-'): [120.0,  25.0],
-        ('c', '-'): [-120.0,  -25.0]
+        ("baseline", "-"): [20.0, 30.0],
+        ("a", "-"): [60.0, 50.0],
+        ("b", "-"): [120.0, 25.0],
+        ("c", "-"): [-120.0, -25.0],
     }
 
     # act
@@ -458,4 +458,4 @@ def test_apply_resampling(mocker, mock_activity_avoidance):
 
     assert mr.data == "data"
 
-    assert {k: v.tolist() for k,v in aa_mock.step_counts.items()} == expected
+    assert {k: v.tolist() for k, v in aa_mock.step_counts.items()} == expected
