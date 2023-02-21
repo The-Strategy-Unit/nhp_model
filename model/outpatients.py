@@ -5,7 +5,7 @@ Implements the Outpatients model.
 """
 
 from functools import partial
-from typing import Callable
+from typing import Callable, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -45,7 +45,7 @@ class OutpatientsModel(Model):
 
     def _get_data_counts(self, data) -> npt.ArrayLike:
         return (
-            self.data[["attendances", "tele_attendances"]]
+            data[["attendances", "tele_attendances"]]
             .to_numpy()
             .astype(float)
             .transpose()
@@ -54,7 +54,7 @@ class OutpatientsModel(Model):
     def _load_strategies(self):
         data = self.data.set_index("rn")
 
-        self._strategies = {
+        self.strategies = {
             "activity_avoidance": pd.concat(
                 [
                     "followup_reduction_"
@@ -87,12 +87,12 @@ class OutpatientsModel(Model):
         rng = model_run.rng
         data = model_run.data
         params = model_run.run_params["efficiencies"]["op"]
-        strategies = model_run._model._strategies["efficiencies"]
-        p = data["rn"].map(strategies.map(params)).fillna(1)
+        strategies = model_run.model.strategies["efficiencies"]
+        factor = data["rn"].map(strategies.map(params)).fillna(1)
         # create a value for converting attendances into tele attendances for each row
         # the value will be a random binomial value, i.e. we will convert between 0 and attendances
         # into tele attendances
-        tele_conversion = rng.binomial(data["attendances"], p)
+        tele_conversion = rng.binomial(data["attendances"], factor)
         # update the columns, subtracting tc from one, adding tc to the other (we maintain the
         # number of overall attendances)
         data["attendances"] -= tele_conversion
@@ -101,13 +101,34 @@ class OutpatientsModel(Model):
             np.array([-1, 1]) * tele_conversion.sum()
         )
 
-    def _apply_resampling(self, row_samples, data):
+    def apply_resampling(
+        self, row_samples: npt.ArrayLike, data: pd.DataFrame
+    ) -> Tuple[pd.DataFrame, npt.ArrayLike]:
+        """Apply row resampling
+
+        Called from within `model.activity_avoidance.ActivityAvoidance.apply_resampling`
+
+        :param row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
+        values for `data["arrivals"]`
+        :type row_samples: npt.ArrayLike
+        :param data: the data that we want to update
+        :type data: pd.DataFrame
+        :return: the updated data
+        :rtype: Tuple[pd.DataFrame, npt.ArrayLike]
+        """
         data["attendances"] = row_samples[0]
         data["tele_attendances"] = row_samples[1]
         # return the altered data and the amount of admissions/beddays after resampling
         return (data, self._get_data_counts(data))
 
-    def _get_step_counts_dataframe(self, step_counts: dict):
+    def get_step_counts_dataframe(self, step_counts: dict) -> pd.DataFrame:
+        """Convert the step counts dictionary into a `DataFrame`
+
+        :param step_counts: the step counts dictionary
+        :type step_counts: dict
+        :return: the step counts as a `DataFrame`
+        :rtype: pd.DataFrame
+        """
         return (
             pd.DataFrame.from_dict(
                 {

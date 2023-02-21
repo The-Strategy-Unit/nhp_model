@@ -74,7 +74,7 @@ def mock_model():
     mdl._data_path = "data/synthetic"
     # create a mock object for the hsa gams
     hsa_mock = type("mocked_hsa", (object,), {"predict": lambda x: x})
-    mdl._hsa_gams = {(i, j): hsa_mock for i in ["aae_a_a", "aae_b_b"] for j in [1, 2]}
+    mdl.hsa_gams = {(i, j): hsa_mock for i in ["aae_a_a", "aae_b_b"] for j in [1, 2]}
     # create a minimal data object for testing
     mdl.data = pd.DataFrame(
         {
@@ -234,7 +234,7 @@ def test_load_strategies(mock_model):
     # act
     mdl._load_strategies()
     # assert
-    assert {k: v.to_dict() for k, v in mdl._strategies.items()} == expected
+    assert {k: v.to_dict() for k, v in mdl.strategies.items()} == expected
 
 
 def test_get_data_counts(mock_model):
@@ -260,7 +260,7 @@ def test_apply_resampling(mocker, mock_model):
         {"rn": [0, 1, 2, 3], "bedday_rows": [False, False, False, True]}
     )
     # act
-    data, counts = mock_model._apply_resampling(row_samples, data)
+    data, counts = mock_model.apply_resampling(row_samples, data)
     # assert
     assert data["rn"].to_list() == [1, 2, 2, 3, 3, 3]
     assert counts.sum() == 3.0
@@ -278,7 +278,7 @@ def test_get_step_counts_dataframe(mock_model):
     }
 
     # act
-    actual = mock_model._get_step_counts_dataframe(step_counts)
+    actual = mock_model.get_step_counts_dataframe(step_counts)
 
     # assert
     assert actual.to_dict("list") == expected

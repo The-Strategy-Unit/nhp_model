@@ -62,7 +62,7 @@ def mock_model():
     mdl._data_path = "data/synthetic"
     # create a mock object for the hsa gams
     hsa_mock = type("mocked_hsa", (object,), {"predict": lambda x: x})
-    mdl._hsa_gams = {(i, j): hsa_mock for i in ["op_a_a", "op_b_b"] for j in [1, 2]}
+    mdl.hsa_gams = {(i, j): hsa_mock for i in ["op_a_a", "op_b_b"] for j in [1, 2]}
     # create a minimal data object for testing
     mdl.data = pd.DataFrame(
         {
@@ -137,12 +137,12 @@ def test_load_strategies(mock_model):
     # act
     mdl._load_strategies()
     # assert
-    assert mdl._strategies["activity_avoidance"]["strategy"].to_list() == [
+    assert mdl.strategies["activity_avoidance"]["strategy"].to_list() == [
         f"{i}_{j}"
         for i in ["followup_reduction"] + ["consultant_to_consultant_reduction"] * 2
         for j in ["a", "b", "c", "d", "e"]
     ]
-    assert mdl._strategies["activity_avoidance"]["sample_rate"].to_list() == [1] * 15
+    assert mdl.strategies["activity_avoidance"]["sample_rate"].to_list() == [1] * 15
 
 
 def test_convert_to_tele(mock_model):
@@ -161,7 +161,7 @@ def test_convert_to_tele(mock_model):
             "tele_attendances": [5, 10, 0],
         }
     )
-    mr_mock._model._strategies = {
+    mr_mock.model.strategies = {
         "efficiencies": pd.Series({1: "convert_to_tele_a", 2: "convert_to_tele_b"})
     }
     mr_mock.step_counts = {}
@@ -189,7 +189,7 @@ def test_apply_resampling(mocker, mock_model):
         "model.outpatients.OutpatientsModel._get_data_counts", return_value=1
     )
     # act
-    data, counts = mock_model._apply_resampling(row_samples, pd.DataFrame())
+    data, counts = mock_model.apply_resampling(row_samples, pd.DataFrame())
     # assert
     assert data["attendances"].to_list() == [1, 2, 3, 4]
     assert data["tele_attendances"].to_list() == [5, 6, 7, 8]
@@ -213,7 +213,7 @@ def test_get_step_counts_dataframe(mock_model):
     }
 
     # act
-    actual = mock_model._get_step_counts_dataframe(step_counts)
+    actual = mock_model.get_step_counts_dataframe(step_counts)
 
     # assert
     assert actual.to_dict("list") == expected

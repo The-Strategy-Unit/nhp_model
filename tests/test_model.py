@@ -244,8 +244,8 @@ def test_demog_factors_loads_correctly(mocker, mock_model, start_year, end_year)
         b_range = range(21, 31)
         diff = 10
 
-    assert mdl._demog_factors["a"].to_list() == [(i + diff) / i for i in a_range]
-    assert mdl._demog_factors["b"].to_list() == [(i + diff) / i for i in b_range]
+    assert mdl.demog_factors["a"].to_list() == [(i + diff) / i for i in a_range]
+    assert mdl.demog_factors["b"].to_list() == [(i + diff) / i for i in b_range]
 
 
 # _load_hsa_gams()
@@ -258,7 +258,7 @@ def test_load_hsa_gams(mocker, mock_model):
         mock_model._load_hsa_gams()
 
     # assert
-    assert mock_model._hsa_gams == "pkl_load"
+    assert mock_model.hsa_gams == "pkl_load"
     mock_file.assert_called_with("data/synthetic/hsa_gams.pkl", "rb")
 
 

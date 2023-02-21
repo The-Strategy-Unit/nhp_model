@@ -35,7 +35,7 @@ def test_init(mocker, run, rp_call):
     actual = ModelRun(model, run)
 
     # assert
-    assert actual._model == model
+    assert actual.model == model
     assert actual.params == "params"
     assert actual.run_params == {"seed": 1}
     assert actual.rng == "rng"
@@ -124,15 +124,16 @@ def test_patch_run_params(mock_model_run):
 def test_get_step_counts(mock_model_run):
     # arrange
     mr = mock_model_run
+    mr.model = Mock()
     mr.step_counts = "step_counts"
-    mr._model._get_step_counts_dataframe.return_value = "step_counts_df"
+    mr.model.get_step_counts_dataframe.return_value = "step_counts_df"
 
     # act
     actual = mr.get_step_counts()
 
     # assert
     assert actual == "step_counts_df"
-    mr._model._get_step_counts_dataframe.assert_called_once_with("step_counts")
+    mr.model.get_step_counts_dataframe.assert_called_once_with("step_counts")
 
 
 def test_get_model_results(mock_model_run):

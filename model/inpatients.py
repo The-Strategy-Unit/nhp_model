@@ -3,6 +3,7 @@ Inpatients Module
 
 Implements the inpatients model.
 """
+
 import json
 from collections import namedtuple
 from datetime import timedelta
@@ -30,9 +31,12 @@ class InpatientsModel(Model):
     Inherits from the Model class.
     """
 
+    # pylint: disable=too-many-instance-attributes
+
     def __init__(self, params: list, data_path: str) -> None:
         # initialise values for testing purposes
         self.data = None
+        self._data_mask = None
         # call the parent init function
         super().__init__(
             "ip",
@@ -151,34 +155,62 @@ class InpatientsModel(Model):
 
         def load_fn(strategy_type):
             # load the file
-            s = (
+            strats = (
                 self._load_parquet(f"ip_{strategy_type}_strategies")
                 .set_index(["rn"])
                 .rename(columns={f"{strategy_type}_strategy": "strategy"})
             )
             # get the valid set of valid strategies from the params
-            p = self.params["inpatient_factors"][strategy_type].keys()
+            valid_strats = self.params["inpatient_factors"][strategy_type].keys()
             # subset the strategies
-            return s[s.iloc[:, 0].isin(p)]
+            return strats[strats.iloc[:, 0].isin(valid_strats)]
 
-        self._strategies = {
+        self.strategies = {
             "activity_avoidance": load_fn("admission_avoidance"),
             "efficiencies": load_fn("los_reduction"),
         }
 
     def _get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
+        """Get row counts of data
+
+        :param data: the data to get the counts of
+        :type data: pd.DataFrame
+        :return: the counts of the data, required for activity avoidance steps
+        :rtype: npt.ArrayLike
+        """
         return np.array(
             [np.ones_like(data["rn"]), (1 + data["speldur"]).to_numpy()]
         ).astype(float)
 
-    def _apply_resampling(self, row_samples, data):
+    def apply_resampling(
+        self, row_samples: npt.ArrayLike, data: pd.DataFrame
+    ) -> Tuple[pd.DataFrame, npt.ArrayLike]:
+        """Apply row resampling
+
+        Called from within `model.activity_avoidance.ActivityAvoidance.apply_resampling`
+
+        :param row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
+        values for `data["arrivals"]`
+        :type row_samples: npt.ArrayLike
+        :param data: the data that we want to update
+        :type data: pd.DataFrame
+        :return: the updated data
+        :rtype: Tuple[pd.DataFrame, npt.ArrayLike]
+        """
         data = data.loc[data.index.repeat(row_samples[0])].reset_index(drop=True)
         # filter out the "oversampled" rows from the counts
         mask = (~data["bedday_rows"]).to_numpy().astype(float)
         # return the altered data and the amount of admissions/beddays after resampling
         return (data, self._get_data_counts(data) * mask)
 
-    def _get_step_counts_dataframe(self, step_counts: dict):
+    def get_step_counts_dataframe(self, step_counts: dict) -> pd.DataFrame:
+        """Convert the step counts dictionary into a `DataFrame`
+
+        :param step_counts: the step counts dictionary
+        :type step_counts: dict
+        :return: the step counts as a `DataFrame`
+        :rtype: pd.DataFrame
+        """
         return pd.melt(
             pd.DataFrame.from_dict(
                 {
@@ -278,7 +310,6 @@ class InpatientsModel(Model):
         # create the namedtuple type
         result = namedtuple("results", ["pod", "measure", "quarter", "ward_group"])
         if model_run.model_run == -1:
-            # todo: load kh03 data by quarter
             return {
                 result("ip", "day+night", q, k): np.round(v).astype(int)
                 for (q, k), v in self._kh03_data["available"].iteritems()
@@ -339,6 +370,7 @@ class InpatientsModel(Model):
             are returned: the number of theatres available, and the number of four hour sessions.
         :rtype: dict
         """
+        # pylint: disable=too-many-locals
         theatres_params = model_run.run_params["theatres"]
         # create the namedtuple types
         result_u = namedtuple("results", ["pod", "measure", "tretspef"])
@@ -390,12 +422,11 @@ class InpatientsModel(Model):
     def aggregate(self, model_run: ModelRun) -> dict:
         """Aggregate the model results
 
-        Can also be used to aggregate the baseline data by passing in the raw data
+        Can also be used to aggregate the baseline data by passing in a `ModelRun` with
+        the `model_run` argument set `-1`.
 
-        :param model_results: a DataFrame containing the results of a model iteration
-        :type model_results: pandas.DataFrame
-        :param model_run: the current model run
-        :type model_run: int
+        :param model_run: an instance of the `ModelRun` class
+        :type model_run: model.model_run.ModelRun
 
         :returns: a dictionary containing the different aggregations of this data
         :rtype: dict
@@ -466,9 +497,9 @@ class InpatientsModel(Model):
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model
 
-        :param model_results: a DataFrame containing the results of a model iteration
-        :type model_results: pandas.DataFrame
-        :param path_fn: a function that takes the activity type and generates a path where to save the file
+        :param model_run: an instance of the `ModelRun` class
+        :type model_run: model.model_run.ModelRun
+        :param path_fn: a function which takes the activity type and returns a path
         :type path_fn: Callable[[str], str]
         """
         model_results = model_run.get_model_results()
@@ -486,13 +517,23 @@ class InpatientsModel(Model):
 
 
 class InpatientEfficiencies:
+    """Apply the Inpatient Efficiency Strategies"""
+
     def __init__(self, model_run: ModelRun):
         self._model_run = model_run
-        self.data = model_run.data
         self.step_counts = model_run.step_counts
-        self.strategies = model_run._model._strategies["efficiencies"]
         self._select_single_strategy()
         self._generate_losr_df()
+
+    @property
+    def data(self):
+        """get the model runs data"""
+        return self._model_run.data
+
+    @property
+    def strategies(self):
+        """get the efficiencies strategies"""
+        return self._model_run.model.strategies["efficiencies"]
 
     def _select_single_strategy(self):
         rng = self._model_run.rng
@@ -506,6 +547,7 @@ class InpatientEfficiencies:
                 na_action="ignore",
             )
             .fillna("NULL")
+            # .loc[self.data["rn"]]
             .rename(None)
         )
         self.data.set_index(selected_strategy, inplace=True)
@@ -539,15 +581,6 @@ class InpatientEfficiencies:
         Reduces all rows length of stay by sampling from a binomial distribution, using the current
         length of stay as the value for n, and the length of stay reduction factor for that strategy
         as the value for p. This will update the los to be a value between 0 and the original los.
-
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param losr: the Length of Stay rates table created from self._los_reduction()
-        :type losr: pandas.DataFrame
-        :param rng: a random number generator created for each model iteration
-        :type rng: numpy.random.Generator
-        :param step_counts: a dictionary containing the changes to measures for this step
-        :type step_counts: dict
         """
         losr = self.losr
         data = self.data
@@ -676,6 +709,3 @@ class InpatientEfficiencies:
             )
 
         return self
-
-    def apply(self):
-        self._model_run.data = self.data.reset_index(drop=True)

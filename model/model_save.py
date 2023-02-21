@@ -47,41 +47,67 @@ class ModelSave:
         temp_path: str = None,
         save_results: bool = False,
     ) -> None:
-        self._dataset = params["dataset"]
-        self._scenario = params["scenario"]
-        self._create_datetime = params["create_datetime"]
         #
-        self._run_id = f"{self._dataset}__{self._scenario}__{self._create_datetime}"
-        #
-        self._model_runs = params["model_runs"]
         self._params = params
         self._model = None
         #
         self._base_results_path = results_path
-        self._results_path = os.path.join(
+        self._temp_path = temp_path or mkdtemp()
+        #
+        os.makedirs(self._ar_path, exist_ok=True)
+        os.makedirs(self._cf_path, exist_ok=True)
+        #
+        self._save_results = save_results
+
+    @property
+    def _dataset(self):
+        return self._params["dataset"]
+
+    @property
+    def _scenario(self):
+        return self._params["scenario"]
+
+    @property
+    def _create_datetime(self):
+        return self._params["create_datetime"]
+
+    @property
+    def _run_id(self):
+        return f"{self._dataset}__{self._scenario}__{self._create_datetime}"
+
+    @property
+    def _model_runs(self):
+        return self._params["model_runs"]
+
+    @property
+    def _results_path(self):
+        return os.path.join(
             f"dataset={self._dataset}",
             f"scenario={self._scenario}",
             f"create_datetime={self._create_datetime}",
         )
-        self._temp_path = temp_path or mkdtemp()
-        self._ar_path = os.path.join(self._temp_path, "aggregated_results")
-        os.makedirs(self._ar_path, exist_ok=True)
-        self._cf_path = os.path.join(self._temp_path, "change_factors")
-        os.makedirs(self._cf_path, exist_ok=True)
-        #
-        self._item_base = {
+
+    @property
+    def _ar_path(self):
+        return os.path.join(self._temp_path, "aggregated_results")
+
+    @property
+    def _cf_path(self):
+        return os.path.join(self._temp_path, "change_factors")
+
+    @property
+    def _item_base(self):
+        return {
             "id": self._run_id,
             "dataset": self._dataset,
             "scenario": self._scenario,
             "create_datetime": self._create_datetime,
             "model_runs": self._model_runs,
-            "submitted_by": params.get("submitted_by", None),
-            "start_year": params["start_year"],
-            "end_year": params["end_year"],
-            "app_version": params.get("app_version", "0.1"),
+            "submitted_by": self._params.get("submitted_by", None),
+            "start_year": self._params["start_year"],
+            "end_year": self._params["end_year"],
+            "app_version": self._params.get("app_version", "0.1"),
         }
-        #
-        self._save_results = save_results
 
     def set_model(self, model: Model) -> None:
         """Set the current model
@@ -109,34 +135,34 @@ class ModelSave:
         activity_type = model.model_type
         # don't run the model if it's the baseline: just run the aggregate step
         if model_run == -1:
-            mr = ModelRun(model, 0)
+            m_run = ModelRun(model, 0)
         else:
             # run the model
-            mr = model.run(model_run)
+            m_run = model.run(model_run)
             # save results
             if self._save_results:
 
                 def path_fn(activity_type):
-                    p = os.path.join(
+                    path = os.path.join(
                         self._base_results_path,
                         "model_results",
                         f"{activity_type=}",
                         self._results_path,
                         f"{model_run=}",
                     )
-                    os.makedirs(p, exist_ok=True)
-                    return p
+                    os.makedirs(path, exist_ok=True)
+                    return path
 
-                model.save_results(mr, path_fn)
+                model.save_results(m_run, path_fn)
             # save change factors
-            mr.get_step_counts().assign(
+            m_run.get_step_counts().assign(
                 activity_type=activity_type, model_run=model_run
             ).to_parquet(
                 f"{self._cf_path}/{activity_type}_{model_run}.parquet", index=False
             )
 
         # save aggregated results
-        aggregated_results = model.aggregate(mr)
+        aggregated_results = model.aggregate(m_run)
         with open(f"{self._ar_path}/{activity_type}_{model_run}.dill", "wb") as arf:
             dill.dump(aggregated_results, arf)
 
@@ -170,7 +196,7 @@ class ModelSave:
         """
         aggregated_results = {}
         for activity_type in ["aae", "ip", "op"]:
-            aggregated_results[activity_type] = list()
+            aggregated_results[activity_type] = []
             for model_run in range(-1, self._model_runs + 1):
                 file = f"{self._ar_path}/{activity_type}_{model_run}.dill"
                 if not os.path.exists(file):

@@ -5,7 +5,7 @@ Implements the A&E model.
 """
 
 from functools import partial
-from typing import Callable
+from typing import Callable, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -25,7 +25,7 @@ class AaEModel(Model):
     :param data_path: the path to where the data files live
     """
 
-    def __init__(self, params: list, data_path: str) -> None:
+    def __init__(self, params: dict, data_path: str) -> None:
         # initialise values for testing purposes
         self.data = None
         # call the parent init function
@@ -35,15 +35,24 @@ class AaEModel(Model):
         self._load_strategies()
 
     def _update_baseline_data(self) -> None:
+        """modifies the baseline data to include the columns needed for the model"""
         self.data["group"] = np.where(self.data["is_ambulance"], "ambulance", "walk-in")
         self.data["tretspef"] = "Other"
 
-    def _get_data_counts(self, data) -> npt.ArrayLike:
+    def _get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
+        """Get row counts of data
+
+        :param data: the data to get the counts of
+        :type data: pd.DataFrame
+        :return: the counts of the data, required for activity avoidance steps
+        :rtype: npt.ArrayLike
+        """
         return np.array([data["arrivals"]]).astype(float)
 
-    def _load_strategies(self):
+    def _load_strategies(self) -> None:
+        """Loads the activity mitigation strategies"""
         data = self.data.set_index("rn")
-        self._strategies = {
+        self.strategies = {
             "activity_avoidance": pd.concat(
                 [
                     data[data[c]]["hsagrp"].str.replace("aae", n).rename("strategy")
@@ -58,12 +67,33 @@ class AaEModel(Model):
             .assign(sample_rate=1)
         }
 
-    def _apply_resampling(self, row_samples, data):
+    def apply_resampling(
+        self, row_samples: npt.ArrayLike, data: pd.DataFrame
+    ) -> Tuple[pd.DataFrame, npt.ArrayLike]:
+        """Apply row resampling
+
+        Called from within `model.activity_avoidance.ActivityAvoidance.apply_resampling`
+
+        :param row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
+        values for `data["arrivals"]`
+        :type row_samples: npt.ArrayLike
+        :param data: the data that we want to update
+        :type data: pd.DataFrame
+        :return: the updated data
+        :rtype: Tuple[pd.DataFrame, npt.ArrayLike]
+        """
         data["arrivals"] = row_samples[0]
         # return the altered data and the amount of admissions/beddays after resampling
         return (data, self._get_data_counts(data))
 
-    def _get_step_counts_dataframe(self, step_counts: dict):
+    def get_step_counts_dataframe(self, step_counts: dict) -> pd.DataFrame:
+        """Convert the step counts dictionary into a `DataFrame`
+
+        :param step_counts: the step counts dictionary
+        :type step_counts: dict
+        :return: the step counts as a `DataFrame`
+        :rtype: pd.DataFrame
+        """
         return (
             pd.Series({k: v[0] for k, v in step_counts.items()})
             .to_frame("value")
@@ -75,7 +105,7 @@ class AaEModel(Model):
     def _run(self, model_run: ModelRun) -> None:
         """Run the model
 
-        :param model_run: an instance of the ModelRun class
+        :param model_run: an instance of the `ModelRun` class
         :type model_run: model.model_run.ModelRun
         """
         (
@@ -92,12 +122,11 @@ class AaEModel(Model):
     def aggregate(self, model_run: ModelRun) -> dict:
         """Aggregate the model results
 
-        Can also be used to aggregate the baseline data by passing in the raw data
+        Can also be used to aggregate the baseline data by passing in a `ModelRun` with
+        the `model_run` argument set `-1`.
 
-        :param model_results: a DataFrame containing the results of a model iteration
-        :type model_results: pandas.DataFrame
-        :param model_run: the current model run
-        :type model_run: int
+        :param model_run: an instance of the `ModelRun` class
+        :type model_run: model.model_run.ModelRun
 
         :returns: a dictionary containing the different aggregations of this data
         :rtype: dict
@@ -127,8 +156,10 @@ class AaEModel(Model):
         It saves just the `rn` (row number) column and the `arrivals`, with the intention that
         you rejoin to the original data.
 
-        :param model_results: a DataFrame containing the results of a model iteration
+        :param model_run: an instance of the `ModelRun` class
+        :type model_run: model.model_run.ModelRun
         :param path_fn: a function which takes the activity type and returns a path
+        :type path_fn: Callable[[str], str]
         """
         model_run.get_model_results().set_index(["rn"])[["arrivals"]].to_parquet(
             f"{path_fn('aae')}/0.parquet"

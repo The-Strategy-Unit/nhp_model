@@ -27,7 +27,8 @@ def _create_activity_type_gams(
 
     :param pop: a DataFrame containing the population by age/sex
     :type pop: pandas.DataFrame
-    :param path_fn: a fuction that takes a filename and returns a path to that file (for loading datafiles)
+    :param path_fn: a fuction that takes a filename and returns a path to that file (for loading
+    datafiles)
     :type path_fn: Callable
     :param data: a dictionary that will store the loaded data
     :type data: dict
@@ -114,10 +115,10 @@ def run(dataset: str, base_year: str) -> str:
     """
     _, gams, path_fn = create_gams(dataset, base_year)
     # save the gams to disk
-    fn = path_fn("hsa_gams.pkl")
-    with open(fn, "wb") as hsa_pkl:
+    filename = path_fn("hsa_gams.pkl")
+    with open(filename, "wb") as hsa_pkl:
         pickle.dump(gams, hsa_pkl)
-    return fn
+    return filename
 
 
 def main() -> None:
@@ -130,6 +131,7 @@ def main() -> None:
 
 
 def init():
+    """helper to call main"""
     if __name__ == "__main__":
         main()
 

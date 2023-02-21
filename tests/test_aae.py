@@ -64,7 +64,7 @@ def mock_model():
     mdl._data_path = "data/synthetic"
     # create a mock object for the hsa gams
     hsa_mock = type("mocked_hsa", (object,), {"predict": lambda x: x})
-    mdl._hsa_gams = {(i, j): hsa_mock for i in ["aae_a_a", "aae_b_b"] for j in [1, 2]}
+    mdl.hsa_gams = {(i, j): hsa_mock for i in ["aae_a_a", "aae_b_b"] for j in [1, 2]}
     # create a minimal data object for testing
     mdl.data = pd.DataFrame(
         {
@@ -130,7 +130,7 @@ def test_load_strategies(mock_model):
     # act
     mdl._load_strategies()
     # assert
-    assert mdl._strategies["activity_avoidance"]["strategy"].to_list() == [
+    assert mdl.strategies["activity_avoidance"]["strategy"].to_list() == [
         "frequent_attenders_a_a",
         "frequent_attenders_b_b",
         "frequent_attenders_a_a",
@@ -144,7 +144,7 @@ def test_load_strategies(mock_model):
         "low_cost_discharged_a_a",
         "low_cost_discharged_b_b",
     ]
-    assert mdl._strategies["activity_avoidance"]["sample_rate"].to_list() == [1] * 12
+    assert mdl.strategies["activity_avoidance"]["sample_rate"].to_list() == [1] * 12
 
 
 def test_apply_resampling(mocker, mock_model):
@@ -152,7 +152,7 @@ def test_apply_resampling(mocker, mock_model):
     row_samples = np.array([[1, 2, 3, 4]])
     gdc_mock = mocker.patch("model.aae.AaEModel._get_data_counts", return_value=1)
     # act
-    data, counts = mock_model._apply_resampling(row_samples, pd.DataFrame())
+    data, counts = mock_model.apply_resampling(row_samples, pd.DataFrame())
     # assert
     assert data["arrivals"].to_list() == [1, 2, 3, 4]
     assert counts == 1
@@ -170,7 +170,7 @@ def test_get_step_counts_dataframe(mock_model):
     }
 
     # act
-    actual = mock_model._get_step_counts_dataframe(step_counts)
+    actual = mock_model.get_step_counts_dataframe(step_counts)
 
     # assert
     assert actual.to_dict("list") == expected

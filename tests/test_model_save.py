@@ -32,28 +32,17 @@ def _mock_model_save_helper(mock_params, model_save_type):
     """helper to create a mock model save instance"""
     with patch.object(model_save_type, "__init__", lambda s, p, r: None):
         mdl = model_save_type(None, None)
-    mdl._dataset = "dataset"
-    mdl._scenario = "scenario"
-    mdl._create_datetime = "20220101_012345"
-    mdl._run_id = "dataset__scenario__20220101_012345"
-    mdl._model_runs = 2
+
+    mock_params["dataset"] = "dataset"
+    mock_params["scenario"] = "scenario"
+    mock_params["create_datetime"] = "20220101_012345"
+    mock_params["model_runs"] = 2
+
     mdl._params = mock_params
     mdl._model = None
     mdl._base_results_path = "base_results_path"
-    mdl._results_path = "results_path"
     mdl._temp_path = "temp_path"
-    mdl._ar_path = "temp_path/aggregated_results"
-    mdl._cf_path = "temp_path/change_factors"
-    mdl._item_base = {
-        "id": mdl._run_id,
-        "dataset": mdl._dataset,
-        "scenario": mdl._scenario,
-        "create_datetime": mdl._create_datetime,
-        "model_runs": mdl._model_runs,
-        "submitted_by": "username",
-        "start_year": 2018,
-        "end_year": 2020,
-    }
+
     mdl._save_results = True
     return mdl
 
@@ -146,13 +135,14 @@ def test_run_model_baseline(mocker, mock_model_save):
     mock_model_save._model = model
     dill_mock = mocker.patch("dill.dump")
 
+    mocker.patch("os.path.join", wraps=lambda *args: "/".join(args))
     mocker.patch("model.model_save.ModelRun")
     # act
     with patch("builtins.open", mock_open()) as mock_file:
         mock_model_save.run_model(-1)
 
     # assert
-    mock_file.assert_called_with("temp_path/aggregated_results/ip_-1.dill", "wb")
+    mock_file.assert_called_once_with("temp_path/aggregated_results/ip_-1.dill", "wb")
     dill_mock.assert_called_once()
     assert dill_mock.call_args_list[0][0][0] == "aggregated_results"
 
@@ -169,6 +159,8 @@ def test_run_model_dont_save_results(mocker, mock_model_save, mock_change_factor
     mock_model_save._save_results = False
     dill_mock = mocker.patch("dill.dump")
 
+    mocker.patch("os.path.join", wraps=lambda *args: "/".join(args))
+
     # act
     with patch("builtins.open", mock_open()) as mock_file:
         mock_model_save.run_model(0)
@@ -184,7 +176,7 @@ def test_run_model_dont_save_results(mocker, mock_model_save, mock_change_factor
         "temp_path/change_factors/ip_0.parquet", index=False
     )
 
-    mock_file.assert_called_with("temp_path/aggregated_results/ip_0.dill", "wb")
+    mock_file.assert_called_once_with("temp_path/aggregated_results/ip_0.dill", "wb")
     dill_mock.assert_called_once()
     assert dill_mock.call_args_list[0][0][0] == "aggregated_results"
 
@@ -203,6 +195,8 @@ def test_run_model_save_results(mocker, mock_model_save, mock_change_factors):
     mock_model_save._save_results = True
     dill_mock = mocker.patch("dill.dump")
 
+    mocker.patch("os.path.join", wraps=lambda *args: "/".join(args))
+
     # act
     with patch("builtins.open", mock_open()) as mock_file:
         mock_model_save.run_model(0)
@@ -213,11 +207,11 @@ def test_run_model_save_results(mocker, mock_model_save, mock_change_factors):
     assert model.save_results.call_args_list[0][0][0] == model_run
     assert (
         model.save_results.call_args_list[0][0][1]("ip")
-        == "base_results_path/model_results/activity_type='ip'/results_path/model_run=0"
+        == "base_results_path/model_results/activity_type='ip'/dataset=dataset/scenario=scenario/create_datetime=20220101_012345/model_run=0"
     )
 
     os.makedirs.assert_called_once_with(
-        "base_results_path/model_results/activity_type='ip'/results_path/model_run=0",
+        "base_results_path/model_results/activity_type='ip'/dataset=dataset/scenario=scenario/create_datetime=20220101_012345/model_run=0",
         exist_ok=True,
     )
 
@@ -229,7 +223,7 @@ def test_run_model_save_results(mocker, mock_model_save, mock_change_factors):
         "temp_path/change_factors/ip_0.parquet", index=False
     )
 
-    mock_file.assert_called_with("temp_path/aggregated_results/ip_0.dill", "wb")
+    mock_file.assert_called_once_with("temp_path/aggregated_results/ip_0.dill", "wb")
     dill_mock.assert_called_once()
     assert dill_mock.call_args_list[0][0][0] == "aggregated_results"
 
@@ -242,7 +236,6 @@ def test_post_runs(mocker, mock_model_save):
     rmtree_mock = mocker.patch("shutil.rmtree")
     mock_model_save._model = Mock()
     mock_model_save._model.run_params = "run_params"
-    mock_model_save._params = "params"
 
     # act
     with patch("builtins.open", mock_open()) as mock_file:
@@ -258,15 +251,20 @@ def test_post_runs(mocker, mock_model_save):
     )
     #
     assert json_mock.call_count == 2
-    assert json_mock.call_args_list[0][0][0] == "params"
+    assert json_mock.call_args_list[0][0][0] == mock_model_save._params
     assert json_mock.call_args_list[1][0][0] == "run_params"
     #
-    mock_file.call_args_list[0][0] == call(
-        "base_results_path/params/dataset__scenario__20220101_012345.json", "w"
+    assert (
+        mock_file.call_args_list[0][0][0]
+        == "base_results_path/params/dataset__scenario__20220101_012345.json"
     )
-    mock_file.call_args_list[1][0] == call(
-        "base_results_path/run_params/dataset__scenario__20220101_012345.json", "w"
+    assert mock_file.call_args_list[0][0][1] == "w"
+
+    assert (
+        mock_file.call_args_list[1][0][0]
+        == "base_results_path/run_params/dataset__scenario__20220101_012345.json"
     )
+    assert mock_file.call_args_list[1][0][1] == "w"
     #
     rmtree_mock.assert_called_once_with("temp_path")
 
@@ -290,7 +288,6 @@ def test_combine_aggregated_results_files_dont_exist(mocker, mock_model_save):
     mock_model_save._flip_results = Mock(return_value=expected_flipped_results)
     mock_model_save._model = Mock()
     mock_model_save._model.run_params = {"variant": "variants"}
-    mock_model_save._item_base = {"item_base": None}
 
     # act
     with patch("builtins.open", mock_open()) as mock_file:
@@ -319,7 +316,6 @@ def test_combine_aggregated_results(mocker, mock_model_save):
     mock_model_save._flip_results = Mock(return_value=expected_flipped_results)
     mock_model_save._model = Mock()
     mock_model_save._model.run_params = {"variant": "variants"}
-    mock_model_save._item_base = {"item_base": None}
 
     # act
     with patch("builtins.open", mock_open()) as mock_file:
@@ -334,7 +330,7 @@ def test_combine_aggregated_results(mocker, mock_model_save):
         {k: [None] * 4 for k in ["aae", "ip", "op"]}
     )
     assert actual == {
-        "item_base": None,
+        **mock_model_save._item_base,
         "available_aggregations": {
             "aae": ["default"],
             "ip": ["default", "other"],

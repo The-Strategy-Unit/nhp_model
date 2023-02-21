@@ -107,7 +107,7 @@ class Model:
 
         Creates 3 private variables:
 
-          * | `self._demog_factors`: a pandas.DataFrame which has a 1:1 correspondance to the model
+          * | `self.demog_factors`: a pandas.DataFrame which has a 1:1 correspondance to the model
             | data and a column for each of the different population projections available
           * | `self._variants`: a list containing the names of the different population projections
             | available
@@ -126,14 +126,14 @@ class Model:
         )
         demog_factors.set_index(merge_cols, inplace=True)
 
-        self._demog_factors = {
+        self.demog_factors = {
             k: v["demographic_adjustment"] for k, v in demog_factors.groupby("variant")
         }
 
     def _load_hsa_gams(self):
         # load the data that's shared across different model types
         with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
-            self._hsa_gams = pickle.load(hsa_pkl)
+            self.hsa_gams = pickle.load(hsa_pkl)
 
     def _generate_run_params(self):
         """Generate the values for each model run from the params
@@ -166,14 +166,14 @@ class Model:
             return rnorm(rng, *i)  # otherwise
 
         # function to traverse a dictionary until we find the values to generate from
-        def generate_param_values(p, valid_range):
-            if isinstance(p, dict):
-                if "interval" not in p:
+        def generate_param_values(prm, valid_range):
+            if isinstance(prm, dict):
+                if "interval" not in prm:
                     return {
-                        k: generate_param_values(v, valid_range) for k, v in p.items()
+                        k: generate_param_values(v, valid_range) for k, v in prm.items()
                     }
-                p = p["interval"]
-            return [valid_range(gen_value(mr, p)) for mr in range(model_runs)]
+                prm = prm["interval"]
+            return [valid_range(gen_value(mr, prm)) for mr in range(model_runs)]
 
         variants = list(params["demographic_factors"]["variant_probabilities"].keys())
         probabilities = list(
@@ -226,10 +226,10 @@ class Model:
         """
         params = self.run_params
 
-        def get_param_value(p):
-            if isinstance(p, dict):
-                return {k: get_param_value(v) for k, v in p.items()}
-            return p[model_run]
+        def get_param_value(prm):
+            if isinstance(prm, dict):
+                return {k: get_param_value(v) for k, v in prm.items()}
+            return prm[model_run]
 
         return {
             "variant": params["variant"][model_run],
@@ -254,9 +254,19 @@ class Model:
         }
 
     def run(self, model_run: int):
-        mr = ModelRun(self, model_run)
-        self._run(mr)
-        return mr
+        """Run the model
+
+        :param model_run: the model run number
+        :type model_run: int
+        :return: the results of the model run
+        :rtype: ModelRun
+        """
+        m_run = ModelRun(self, model_run)
+        self._run(m_run)
+        return m_run
+
+    def _run(self, model_run: ModelRun):
+        pass
 
     def aggregate(self, model_run: ModelRun):
         """Aggregate the model results
