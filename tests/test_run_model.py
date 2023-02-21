@@ -4,7 +4,9 @@ from collections import namedtuple
 from unittest.mock import Mock, call, patch
 
 import numpy as np
+import pandas as pd
 import pytest
+
 from run_model import debug_run, main, run_model, timeit
 
 
@@ -25,11 +27,20 @@ def test_debug_run(mocker, capsys):
 
     m = Mock()
 
+    mr_mock = Mock()
+    mr_mock.get_step_counts.return_value = pd.DataFrame(
+        {
+            "change_factor": ["a"] * 4 + ["b"] * 4,
+            "strategy": ["-"] * 8,
+            "measure": ["a", "b"] * 4,
+            "value": list(range(8)),
+        }
+    )
     result = namedtuple("result", ["pod", "measure"])
     timeit_mock = mocker.patch(
         "run_model.timeit",
         side_effect=[
-            ("change_factors", "results"),
+            mr_mock,
             {
                 "default": {
                     result("a", "a"): 1,
@@ -43,13 +54,17 @@ def test_debug_run(mocker, capsys):
 
     assert timeit_mock.call_count == 2
     assert timeit_mock.call_args_list[0] == call(m.run, 0)
-    assert timeit_mock.call_args_list[1] == call(m.aggregate, "results", 0)
+    assert timeit_mock.call_args_list[1] == call(m.aggregate, mr_mock)
 
     assert capsys.readouterr().out == "\n".join(
         [
             "running model... aggregating results... ",
             "change factors:",
-            "change_factors",
+            "measure         a   b",
+            "change_factor        ",
+            "a               2   4",
+            "b              10  12",
+            "results        12  16",
             "",
             "aggregated (default) results:",
             "        value",
@@ -58,6 +73,7 @@ def test_debug_run(mocker, capsys):
             "a           1",
             "b           2",
             "c           3",
+            "total       6",
             "",
         ]
     )

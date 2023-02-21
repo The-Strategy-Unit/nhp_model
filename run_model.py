@@ -45,21 +45,25 @@ def debug_run(model: Model, model_run: int) -> None:
     Runs a single model iteration for easier debugging in vscode
     """
     print("running model... ", end="")
-    change_factors, results = timeit(model.run, model_run)
+    mr = timeit(model.run, model_run)
     print("aggregating results... ", end="")
-    agg_results = timeit(model.aggregate, results, model_run)
+    agg_results = timeit(model.aggregate, mr)
     #
     print()
     print("change factors:")
-    print(
-        change_factors.groupby(["change_factor", "measure"], as_index=False)["value"]
+    cf_agg = (
+        (change_factors := mr.get_step_counts())
+        .groupby(["change_factor", "measure"], as_index=False)["value"]
         .sum()
         .pivot(index="change_factor", columns="measure", values="value")
+        .loc[change_factors["change_factor"].unique()]
     )
+    cf_agg.loc["results"] = cf_agg.sum()
+    print(cf_agg)
     #
     print()
     print("aggregated (default) results:")
-    print(
+    agg_res = (
         pd.DataFrame.from_dict(
             [{**k._asdict(), "value": v} for k, v in agg_results["default"].items()]
         )
@@ -68,6 +72,8 @@ def debug_run(model: Model, model_run: int) -> None:
         .pivot(index="pod", columns="measure")
         .fillna(0)
     )
+    agg_res.loc["total"] = agg_res.sum()
+    print(agg_res)
 
 
 def run_model(

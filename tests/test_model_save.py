@@ -32,28 +32,17 @@ def _mock_model_save_helper(mock_params, model_save_type):
     """helper to create a mock model save instance"""
     with patch.object(model_save_type, "__init__", lambda s, p, r: None):
         mdl = model_save_type(None, None)
-    mdl._dataset = "dataset"
-    mdl._scenario = "scenario"
-    mdl._create_datetime = "20220101_012345"
-    mdl._run_id = "dataset__scenario__20220101_012345"
-    mdl._model_runs = 2
+
+    mock_params["dataset"] = "dataset"
+    mock_params["scenario"] = "scenario"
+    mock_params["create_datetime"] = "20220101_012345"
+    mock_params["model_runs"] = 2
+
     mdl._params = mock_params
     mdl._model = None
     mdl._base_results_path = "base_results_path"
-    mdl._results_path = "results_path"
     mdl._temp_path = "temp_path"
-    mdl._ar_path = "temp_path/aggregated_results"
-    mdl._cf_path = "temp_path/change_factors"
-    mdl._item_base = {
-        "id": mdl._run_id,
-        "dataset": mdl._dataset,
-        "scenario": mdl._scenario,
-        "create_datetime": mdl._create_datetime,
-        "model_runs": mdl._model_runs,
-        "submitted_by": "username",
-        "start_year": 2018,
-        "end_year": 2020,
-    }
+
     mdl._save_results = True
     return mdl
 
@@ -139,74 +128,104 @@ def test_set_model(mock_model_save):
 
 def test_run_model_baseline(mocker, mock_model_save):
     """it should just aggregate the baseline data"""
+    # arrange
     model = Mock()
     model.model_type = "ip"
     model.aggregate.return_value = "aggregated_results"
     mock_model_save._model = model
     dill_mock = mocker.patch("dill.dump")
 
+    mocker.patch("os.path.join", wraps=lambda *args: "/".join(args))
+    mocker.patch("model.model_save.ModelRun")
+    # act
     with patch("builtins.open", mock_open()) as mock_file:
         mock_model_save.run_model(-1)
-        mock_file.assert_called_with("temp_path/aggregated_results/ip_-1.dill", "wb")
-        dill_mock.assert_called_once()
-        assert dill_mock.call_args_list[0][0][0] == "aggregated_results"
+
+    # assert
+    mock_file.assert_called_once_with("temp_path/aggregated_results/ip_-1.dill", "wb")
+    dill_mock.assert_called_once()
+    assert dill_mock.call_args_list[0][0][0] == "aggregated_results"
 
 
 def test_run_model_dont_save_results(mocker, mock_model_save, mock_change_factors):
     """it should run the model and aggregate the results, but not save the full results"""  # arrange
+    # arrange
+    model_run = Mock()
     model = Mock()
     model.model_type = "ip"
-    model.run.return_value = (mock_change_factors, "results")
+    model.run.return_value = model_run
     model.aggregate.return_value = "aggregated_results"
     mock_model_save._model = model
     mock_model_save._save_results = False
-    to_parquet_mock = mocker.patch("pandas.DataFrame.to_parquet")
     dill_mock = mocker.patch("dill.dump")
 
+    mocker.patch("os.path.join", wraps=lambda *args: "/".join(args))
+
+    # act
     with patch("builtins.open", mock_open()) as mock_file:
         mock_model_save.run_model(0)
-        model.save_results.assert_not_called()
-        to_parquet_mock.assert_called_once()
-        to_parquet_mock.call_args_list[0][0][
-            0
-        ] == "temp_path/change_factors/ip_0.parquet"
-        mock_file.assert_called_with("temp_path/aggregated_results/ip_0.dill", "wb")
-        dill_mock.assert_called_once()
-        assert dill_mock.call_args_list[0][0][0] == "aggregated_results"
+
+    # assert
+    model.save_results.assert_not_called()
+
+    model_run.get_step_counts.assert_called_once()
+    model_run.get_step_counts().assign.assert_called_with(
+        activity_type="ip", model_run=0
+    )
+    model_run.get_step_counts().assign().to_parquet.assert_called_once_with(
+        "temp_path/change_factors/ip_0.parquet", index=False
+    )
+
+    mock_file.assert_called_once_with("temp_path/aggregated_results/ip_0.dill", "wb")
+    dill_mock.assert_called_once()
+    assert dill_mock.call_args_list[0][0][0] == "aggregated_results"
 
 
 def test_run_model_save_results(mocker, mock_model_save, mock_change_factors):
-    """it should run the model and aggregate the results, saving the full results"""  # arrange
+    """it should run the model and aggregate the results, saving the full results"""
+    # arrange
     mocker.patch("os.path.join", wraps=lambda *args: "/".join(args))
     mocker.patch("os.makedirs")
+    model_run = Mock()
     model = Mock()
     model.model_type = "ip"
-    model.run.return_value = (mock_change_factors, "results")
+    model.run.return_value = model_run
     model.aggregate.return_value = "aggregated_results"
     mock_model_save._model = model
     mock_model_save._save_results = True
-    to_parquet_mock = mocker.patch("pandas.DataFrame.to_parquet")
     dill_mock = mocker.patch("dill.dump")
 
+    mocker.patch("os.path.join", wraps=lambda *args: "/".join(args))
+
+    # act
     with patch("builtins.open", mock_open()) as mock_file:
         mock_model_save.run_model(0)
-        model.save_results.assert_called_once()
-        assert model.save_results.call_args_list[0][0][0] == "results"
-        assert (
-            model.save_results.call_args_list[0][0][1]("ip")
-            == "base_results_path/model_results/activity_type='ip'/results_path/model_run=0"
-        )
-        os.makedirs.assert_called_once_with(
-            "base_results_path/model_results/activity_type='ip'/results_path/model_run=0",
-            exist_ok=True,
-        )
-        to_parquet_mock.assert_called_once()
-        to_parquet_mock.call_args_list[0][0][
-            0
-        ] == "temp_path/change_factors/ip_0.parquet"
-        mock_file.assert_called_with("temp_path/aggregated_results/ip_0.dill", "wb")
-        dill_mock.assert_called_once()
-        assert dill_mock.call_args_list[0][0][0] == "aggregated_results"
+
+    # assert
+    model.save_results.assert_called_once()
+
+    assert model.save_results.call_args_list[0][0][0] == model_run
+    assert (
+        model.save_results.call_args_list[0][0][1]("ip")
+        == "base_results_path/model_results/activity_type='ip'/dataset=dataset/scenario=scenario/create_datetime=20220101_012345/model_run=0"
+    )
+
+    os.makedirs.assert_called_once_with(
+        "base_results_path/model_results/activity_type='ip'/dataset=dataset/scenario=scenario/create_datetime=20220101_012345/model_run=0",
+        exist_ok=True,
+    )
+
+    model_run.get_step_counts.assert_called_once()
+    model_run.get_step_counts().assign.assert_called_with(
+        activity_type="ip", model_run=0
+    )
+    model_run.get_step_counts().assign().to_parquet.assert_called_once_with(
+        "temp_path/change_factors/ip_0.parquet", index=False
+    )
+
+    mock_file.assert_called_once_with("temp_path/aggregated_results/ip_0.dill", "wb")
+    dill_mock.assert_called_once()
+    assert dill_mock.call_args_list[0][0][0] == "aggregated_results"
 
 
 def test_post_runs(mocker, mock_model_save):
@@ -217,35 +236,43 @@ def test_post_runs(mocker, mock_model_save):
     rmtree_mock = mocker.patch("shutil.rmtree")
     mock_model_save._model = Mock()
     mock_model_save._model.run_params = "run_params"
-    mock_model_save._params = "params"
+
+    # act
     with patch("builtins.open", mock_open()) as mock_file:
-        mock_model_save  # act
         mock_model_save.post_runs()
-        # assert
-        assert makedirs_mock.call_count == 2
-        assert makedirs_mock.call_args_list[0] == call(
-            "base_results_path/params", exist_ok=True
-        )
-        assert makedirs_mock.call_args_list[1] == call(
-            "base_results_path/run_params", exist_ok=True
-        )
-        #
-        assert json_mock.call_count == 2
-        assert json_mock.call_args_list[0][0][0] == "params"
-        assert json_mock.call_args_list[1][0][0] == "run_params"
-        #
-        mock_file.call_args_list[0][0] == call(
-            "base_results_path/params/dataset__scenario__20220101_012345.json", "w"
-        )
-        mock_file.call_args_list[1][0] == call(
-            "base_results_path/run_params/dataset__scenario__20220101_012345.json", "w"
-        )
-        #
-        rmtree_mock.assert_called_once_with("temp_path")
+
+    # assert
+    assert makedirs_mock.call_count == 2
+    assert makedirs_mock.call_args_list[0] == call(
+        "base_results_path/params", exist_ok=True
+    )
+    assert makedirs_mock.call_args_list[1] == call(
+        "base_results_path/run_params", exist_ok=True
+    )
+    #
+    assert json_mock.call_count == 2
+    assert json_mock.call_args_list[0][0][0] == mock_model_save._params
+    assert json_mock.call_args_list[1][0][0] == "run_params"
+    #
+    assert (
+        mock_file.call_args_list[0][0][0]
+        == "base_results_path/params/dataset__scenario__20220101_012345.json"
+    )
+    assert mock_file.call_args_list[0][0][1] == "w"
+
+    assert (
+        mock_file.call_args_list[1][0][0]
+        == "base_results_path/run_params/dataset__scenario__20220101_012345.json"
+    )
+    assert mock_file.call_args_list[1][0][1] == "w"
+    #
+    rmtree_mock.assert_called_once_with("temp_path")
 
 
-def test_combine_aggregated_results(mocker, mock_model_save):
+def test_combine_aggregated_results_files_dont_exist(mocker, mock_model_save):
     """it should combine all of the saved aggregated results"""
+    # arrange
+    mocker.patch("os.path.exists", return_value=False)
     dill_load_mock = mocker.patch("dill.load", return_value=None)
     expected_flipped_results = {
         "default": [
@@ -261,27 +288,57 @@ def test_combine_aggregated_results(mocker, mock_model_save):
     mock_model_save._flip_results = Mock(return_value=expected_flipped_results)
     mock_model_save._model = Mock()
     mock_model_save._model.run_params = {"variant": "variants"}
-    mock_model_save._item_base = {"item_base": None}
 
+    # act
+    with patch("builtins.open", mock_open()) as mock_file:
+        mock_model_save._combine_aggregated_results()
+
+    # assert
+    mock_file.assert_not_called()
+
+
+def test_combine_aggregated_results(mocker, mock_model_save):
+    """it should combine all of the saved aggregated results"""
+    # arrange
+    mocker.patch("os.path.exists", return_value=True)
+    dill_load_mock = mocker.patch("dill.load", return_value=None)
+    expected_flipped_results = {
+        "default": [
+            {"pod": "aae_abc", "values": [1, 2, 3]},
+            {"pod": "ip_abc", "values": [4, 5, 6]},
+            {"pod": "op_abc", "values": [7, 8, 9]},
+        ],
+        "other": [
+            {"pod": "ip_abc", "values": [6, 5, 4]},
+            {"pod": "op_abc", "values": [9, 8, 7]},
+        ],
+    }
+    mock_model_save._flip_results = Mock(return_value=expected_flipped_results)
+    mock_model_save._model = Mock()
+    mock_model_save._model.run_params = {"variant": "variants"}
+
+    # act
     with patch("builtins.open", mock_open()) as mock_file:
         actual = mock_model_save._combine_aggregated_results()
-        mock_file.call_args_list[0][0] == call(
-            "temp_path/aggregated_results/aae_-1.json", "rb"
-        )
-        assert dill_load_mock.call_count == (mock_model_save._model_runs + 2) * 3
-        mock_model_save._flip_results.assert_called_once_with(
-            {k: [None] * 4 for k in ["aae", "ip", "op"]}
-        )
-        assert actual == {
-            "item_base": None,
-            "available_aggregations": {
-                "aae": ["default"],
-                "ip": ["default", "other"],
-                "op": ["default", "other"],
-            },
-            "selected_variants": "variants",
-            "results": expected_flipped_results,
-        }
+
+    # assert
+    mock_file.call_args_list[0][0] == call(
+        "temp_path/aggregated_results/aae_-1.json", "rb"
+    )
+    assert dill_load_mock.call_count == (mock_model_save._model_runs + 2) * 3
+    mock_model_save._flip_results.assert_called_once_with(
+        {k: [None] * 4 for k in ["aae", "ip", "op"]}
+    )
+    assert actual == {
+        **mock_model_save._item_base,
+        "available_aggregations": {
+            "aae": ["default"],
+            "ip": ["default", "other"],
+            "op": ["default", "other"],
+        },
+        "selected_variants": "variants",
+        "results": expected_flipped_results,
+    }
 
 
 def test_flip_result():

@@ -4,14 +4,16 @@ Outpatients Module
 Implements the Outpatients model.
 """
 
-import os
 from functools import partial
-from typing import Callable
+from typing import Callable, Tuple
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
+from model.activity_avoidance import ActivityAvoidance
 from model.model import Model
+from model.model_run import ModelRun
 
 
 class OutpatientsModel(Model):
@@ -25,73 +27,53 @@ class OutpatientsModel(Model):
     """
 
     def __init__(self, params: list, data_path: str) -> None:
+        # initialise values for testing purposes
+        self.data = None
         # call the parent init function
         super().__init__("op", params, data_path)
+        self._update_baseline_data()
+        self._baseline_counts = self._get_data_counts(self.data)
+        self._load_strategies()
 
-    def _waiting_list_adjustment(self, data: pd.DataFrame) -> pd.Series:
-        """Create a series of factors for waiting list adjustment.
+    def _update_baseline_data(self) -> None:
+        self.data["group"] = np.where(
+            self.data["has_procedures"],
+            "procedure",
+            np.where(self.data["is_first"], "first", "followup"),
+        )
+        self.data["is_wla"] = True
 
-        A value of 1 will indicate that we want to sample this row at the baseline rate. A value
-        less that 1 will indicate we want to sample that row less often that in the baseline, and
-        a value greater than 1 will indicate that we want to sample that row more often than in the
-        baseline
-
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-
-        :returns: an array of factors, the length of data
-        :rtype: numpy.ndarray
-        """
-        tretspef_n = data.groupby("tretspef").size()
-        wla_param = pd.Series(self.params["waiting_list_adjustment"]["op"])
-        wla = (wla_param / tretspef_n).fillna(0) + 1
-        return wla[data.tretspef].to_numpy()
-
-    def _followup_reduction(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
-        """Followup Appointment Reduction
-
-        Returns the factor values for the Followup Appointment Reduction strategy
-
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-
-        :returns: an array of factors, the length of data
-        :rtype: numpy.ndarray
-        """
-        return self._factor_helper(
-            data, run_params["followup_reduction"], {"has_procedures": 0, "is_first": 0}
+    def _get_data_counts(self, data) -> npt.ArrayLike:
+        return (
+            data[["attendances", "tele_attendances"]]
+            .to_numpy()
+            .astype(float)
+            .transpose()
         )
 
-    def _consultant_to_consultant_reduction(
-        self, data: pd.DataFrame, run_params: dict
-    ) -> np.ndarray:
-        """Consultant to Consultant Referral Reduction
+    def _load_strategies(self):
+        data = self.data.set_index("rn")
 
-
-        Returns the factor values for the Consultant to Consultant Reduction strategy
-
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-
-        :returns: an array of factors, the length of data
-        :rtype: numpy.ndarray
-        """
-        return self._factor_helper(
-            data,
-            run_params["consultant_to_consultant_reduction"],
-            {"is_cons_cons_ref": 1},
-        )
+        self.strategies = {
+            "activity_avoidance": pd.concat(
+                [
+                    "followup_reduction_"
+                    + data[~data["is_first"] & ~data["has_procedures"]]["type"],
+                    "consultant_to_consultant_reduction_"
+                    + data[data["is_cons_cons_ref"]]["type"],
+                ]
+            )
+            .rename("strategy")
+            .to_frame()
+            .assign(sample_rate=1),
+            "efficiencies": pd.concat(
+                ["convert_to_tele_" + data[~data["has_procedures"]]["type"]]
+            ),
+        }
 
     @staticmethod
     def _convert_to_tele(
-        rng: np.random.Generator,
-        data: pd.DataFrame,
-        run_params: dict,
-        step_counts: dict,
+        model_run: ModelRun,
     ) -> None:
         """Convert attendances to tele-attendances
 
@@ -102,197 +84,91 @@ class OutpatientsModel(Model):
         :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
         :type run_params: dict
         """
-        # get the parameters
-        params = run_params["convert_to_tele"]
-        # find locations of rows that didn't have procedures
-        npix = ~data["has_procedures"]
+        rng = model_run.rng
+        data = model_run.data
+        params = model_run.run_params["efficiencies"]["op"]
+        strategies = model_run.model.strategies["efficiencies"]
+        factor = data["rn"].map(strategies.map(params)).fillna(1)
         # create a value for converting attendances into tele attendances for each row
         # the value will be a random binomial value, i.e. we will convert between 0 and attendances
         # into tele attendances
-        tele_conversion = rng.binomial(
-            data.loc[npix, "attendances"], [params[t] for t in data.loc[npix, "type"]]
-        )
+        tele_conversion = rng.binomial(data["attendances"], factor)
         # update the columns, subtracting tc from one, adding tc to the other (we maintain the
         # number of overall attendances)
-        data.loc[npix, "attendances"] -= tele_conversion
-        data.loc[npix, "tele_attendances"] += tele_conversion
-        tele_conversion = tele_conversion.sum()
-        step_counts["convert_to_tele"] = {
-            "attendances": -tele_conversion,
-            "tele_attendances": tele_conversion,
-        }
-
-    @staticmethod
-    def _expat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
-        expat_params = run_params["expat"]["op"]
-        join_cols = ["tretspef"]
-        return data.merge(
-            pd.DataFrame(
-                [{"tretspef": k, "value": v} for k, v in expat_params.items()]
-            ).set_index(join_cols),
-            how="left",
-            left_on=join_cols,
-            right_index=True,
-        )["value"].fillna(1)
-
-    @staticmethod
-    def _repat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
-        repat_local_params = run_params["repat_local"]["op"]
-        repat_nonlocal_params = run_params["repat_nonlocal"]["op"]
-        join_cols = ["tretspef", "is_main_icb"]
-        return data.merge(
-            pd.DataFrame(
-                [
-                    {"tretspef": k1, "is_main_icb": icb, "value": v1}
-                    for (k0, icb) in [
-                        (repat_local_params, True),
-                        (repat_nonlocal_params, False),
-                    ]
-                    for k1, v1 in k0.items()
-                ]
-            ).set_index(join_cols),
-            how="left",
-            left_on=join_cols,
-            right_index=True,
-        )["value"].fillna(1)
-
-    @staticmethod
-    def _baseline_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
-        """Create a series of factors for baseline adjustment.
-
-        A value of 1 will indicate that we want to sample this row at the baseline rate. A value
-        less that 1 will indicate we want to sample that row less often that in the baseline, and
-        a value greater than 1 will indicate that we want to sample that row more often than in the
-        baseline
-
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-
-        :returns: a series of floats indicating how often we want to sample that row
-        :rtype: pandas.Series
-        """
-
-        # create an attendance type series: procedure should overwrite first/followup
-        attend_type = pd.Series("first", index=data.index)
-        attend_type.loc[~data["is_first"]] = "followup"
-        attend_type.loc[data["has_procedures"]] = "procedure"
-
-        # extract the parameters
-        params = run_params["baseline_adjustment"]["op"]
-
-        # get the parameter value for each row
-        return np.array([params[k][t] for (k, t) in zip(attend_type, data["tretspef"])])
-
-    @staticmethod
-    def _step_counts(
-        attendances: pd.Series,
-        tele_attendances: pd.Series,
-        attendances_after: int,
-        tele_attendances_after: int,
-        factors: dict,
-    ) -> dict:
-        cf = {}
-        # convert the attendances/tele_attendances before modelling to a complex number:
-        #   * the "real" part is the attendances count
-        #   * the "imaginary" part is the tele attendances count
-        # this makes it easy to keep track of both values
-        n = (attendances + tele_attendances * 1j).to_numpy()
-        before = ns = n.sum()
-        for k, v in factors.items():
-            n2 = n * v
-            n2s = n2.sum()
-            cf[k] = n2s - ns
-            n, ns = n2, n2s
-
-        attendances_slack = 1 + (attendances_after - ns.real) / (ns.real - before.real)
-        tele_attendances_slack = 1 + (tele_attendances_after - ns.imag) / (
-            ns.imag - before.imag
-        )
-        return {
-            "baseline": {"attendances": before.real, "tele_attendances": before.imag},
-            **{
-                k: {
-                    "attendances": v.real * attendances_slack,
-                    "tele_attendances": v.imag * tele_attendances_slack,
-                }
-                for k, v in cf.items()
-            },
-        }
-
-    def _run(
-        self,
-        rng: np.random.Generator,
-        data: pd.DataFrame,
-        run_params: dict,
-        demo_f: pd.Series,
-        hsa_f: pd.Series,
-    ) -> tuple[dict, pd.DataFrame]:
-        """Run the model
-
-        :param rng: a random number generator created for each model iteration
-        :type rng: numpy.random.Generator
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-        :param demo_f: the demographic adjustment factors
-        :type demo_f: pandas.Series
-        :param hsa_f: the health status adjustment factors
-        :type hsa_f: pandas.Series
-
-        :returns: a tuple containing the change factors DataFrame and the mode results DataFrame
-        :rtype: (dict, pandas.DataFrame)
-        """
-        params = run_params["outpatient_factors"]
-
-        factors = {
-            "health_status_adjustment": hsa_f,
-            "population_factors": demo_f[data["rn"]].to_numpy(),
-            "expatriation": self._expat_adjustment(data, run_params).to_numpy(),
-            "repatriation": self._repat_adjustment(data, run_params).to_numpy(),
-            "baseline_adjustment": self._baseline_adjustment(data, run_params),
-            "waiting_list_adjustment": self._waiting_list_adjustment(data),
-            "followup_reduction": self._followup_reduction(data, params),
-            "consultant_to_consultant_referrals": self._consultant_to_consultant_reduction(
-                data, params
-            ),
-        }
-        reduced_factor = np.prod(list(factors.values()), axis=0)
-
-        new_attendances = rng.poisson(data["attendances"] * reduced_factor)
-        new_tele_attendances = rng.poisson(data["tele_attendances"] * reduced_factor)
-
-        step_counts = self._step_counts(
-            data["attendances"],
-            data["tele_attendances"],
-            new_attendances.sum(),
-            new_tele_attendances.sum(),
-            factors,
+        data["attendances"] -= tele_conversion
+        data["tele_attendances"] += tele_conversion
+        model_run.step_counts[("efficiencies", "convert_to_tele")] = (
+            np.array([-1, 1]) * tele_conversion.sum()
         )
 
-        data["attendances"] = new_attendances
-        data["tele_attendances"] = new_tele_attendances
+    def apply_resampling(
+        self, row_samples: npt.ArrayLike, data: pd.DataFrame
+    ) -> Tuple[pd.DataFrame, npt.ArrayLike]:
+        """Apply row resampling
 
-        # convert attendances to tele attendances
-        self._convert_to_tele(rng, data, params, step_counts)
+        Called from within `model.activity_avoidance.ActivityAvoidance.apply_resampling`
 
-        # return the data
-        change_factors = (
-            pd.DataFrame.from_dict(step_counts, orient="index")
-            .rename_axis("change_factor")
+        :param row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
+        values for `data["arrivals"]`
+        :type row_samples: npt.ArrayLike
+        :param data: the data that we want to update
+        :type data: pd.DataFrame
+        :return: the updated data
+        :rtype: Tuple[pd.DataFrame, npt.ArrayLike]
+        """
+        data["attendances"] = row_samples[0]
+        data["tele_attendances"] = row_samples[1]
+        # return the altered data and the amount of admissions/beddays after resampling
+        return (data, self._get_data_counts(data))
+
+    def get_step_counts_dataframe(self, step_counts: dict) -> pd.DataFrame:
+        """Convert the step counts dictionary into a `DataFrame`
+
+        :param step_counts: the step counts dictionary
+        :type step_counts: dict
+        :return: the step counts as a `DataFrame`
+        :rtype: pd.DataFrame
+        """
+        return (
+            pd.DataFrame.from_dict(
+                {
+                    k: {"attendances": v[0], "tele_attendances": v[1]}
+                    for k, v in step_counts.items()
+                    if k != "convert_to_tele"
+                },
+                orient="index",
+            )
+            .rename_axis(["change_factor", "strategy"])
             .reset_index()
-            .assign(strategy="-")
             .melt(
                 ["change_factor", "strategy"],
                 ["attendances", "tele_attendances"],
                 "measure",
             )
         )
-        return (change_factors, data.drop(["hsagrp"], axis="columns"))
 
-    def aggregate(self, model_results: pd.DataFrame, model_run: int) -> dict:
+    def _run(self, model_run: ModelRun) -> None:
+        """Run the model
+
+        :param model_run: an instance of the ModelRun class
+        :type model_run: model.model_run.ModelRun
+        """
+        (
+            ActivityAvoidance(model_run, self._baseline_counts)
+            .demographic_adjustment()
+            .health_status_adjustment()
+            .expat_adjustment()
+            .repat_adjustment()
+            .waiting_list_adjustment()
+            .baseline_adjustment()
+            .activity_avoidance()
+            .apply_resampling()
+        )
+
+        # convert attendances to tele attendances
+        self._convert_to_tele(model_run)
+
+    def aggregate(self, model_run: ModelRun) -> dict:
         """Aggregate the model results
 
         Can also be used to aggregate the baseline data by passing in the raw data
@@ -305,6 +181,8 @@ class OutpatientsModel(Model):
         :returns: a dictionary containing the different aggregations of this data
         :rtype: dict
         """
+        model_results = model_run.get_model_results()
+
         model_results.loc[model_results["is_first"], "pod"] = "op_first"
         model_results.loc[~model_results["is_first"], "pod"] = "op_follow-up"
         model_results.loc[model_results["has_procedures"], "pod"] = "op_procedure"
@@ -332,9 +210,7 @@ class OutpatientsModel(Model):
             **agg(["sex", "tretspef"]),
         }
 
-    def save_results(
-        self, model_results: pd.DataFrame, path_fn: Callable[[str], str]
-    ) -> None:
+    def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model
 
         This method is used for saving the results of the model run to disk as a parquet file.
@@ -344,6 +220,6 @@ class OutpatientsModel(Model):
         :param model_results: a DataFrame containing the results of a model iteration
         :param path_fn: a function which takes the activity type and returns a path
         """
-        model_results.set_index(["rn"])[["attendances", "tele_attendances"]].to_parquet(
-            f"{path_fn('op')}/0.parquet"
-        )
+        model_run.get_model_results().set_index(["rn"])[
+            ["attendances", "tele_attendances"]
+        ].to_parquet(f"{path_fn('op')}/0.parquet")

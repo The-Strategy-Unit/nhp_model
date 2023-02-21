@@ -67,9 +67,6 @@ def mock_model():
         },
     }
     mdl._data_path = "data/synthetic"
-    # create a mock object for the hsa gams
-    hsa_mock = type("mocked_hsa", (object,), {"predict": lambda x: x})
-    mdl._hsa_gams = {(i, j): hsa_mock for i in ["aae_a_a", "aae_b_b"] for j in [1, 2]}
     # create a minimal data object for testing
     mdl.data = pd.DataFrame(
         {
@@ -141,25 +138,33 @@ def mock_model_results():
 @pytest.mark.parametrize("model_type", ["aae", "ip", "op"])
 def test_model_init_sets_values(mocker, model_type):
     """test model constructor works as expected"""
+    # arrange
     params = {"dataset": "synthetic", "create_datetime": "20220101_012345"}
+    mock_data = pd.DataFrame({"rn": [2, 1], "age": [2, 1]})
 
-    mocker.patch("model.model.Model._load_parquet", return_value={"age": 1})
-    mocker.patch("model.model.Model._load_demog_factors", return_value=None)
-    mocker.patch("model.model.Model._generate_run_params", return_value=None)
+    mocker.patch("model.model.Model._load_parquet", return_value=mock_data)
     mocker.patch("model.model.age_groups", return_value="age_groups")
-    mocker.patch("pickle.load", return_value="load_hsa")
+    mocker.patch("model.model.Model._load_demog_factors")
+    mocker.patch("model.model.Model._load_hsa_gams")
+    mocker.patch("model.model.Model._generate_run_params")
+
     mocker.patch("os.path.join", lambda *args: "/".join(args))
 
-    with patch("builtins.open", mock_open(read_data="data")) as mock_file:
-        mdl = Model(model_type, params, "data")
-        assert mdl.model_type == model_type
-        assert mdl.params == params
-        assert mdl._data_path == "data/synthetic"
-        mock_file.assert_called_with("data/synthetic/hsa_gams.pkl", "rb")
-        assert mdl._hsa_gams == "load_hsa"
-        assert mdl.data == {"age": 1, "age_group": "age_groups"}
-        mdl._load_demog_factors.assert_called_once()
-        mdl._generate_run_params.assert_called_once()
+    # act
+    mdl = Model(model_type, params, "data")
+
+    # assert
+    assert mdl.model_type == model_type
+    assert mdl.params == params
+    assert mdl._data_path == "data/synthetic"
+    assert mdl.data.to_dict(orient="list") == {
+        "rn": [1, 2],
+        "age": [1, 2],
+        "age_group": ["age_groups"] * 2,
+    }
+    mdl._load_demog_factors.assert_called_once()
+    mdl._load_hsa_gams.assert_called_once()
+    mdl._generate_run_params.assert_called_once()
 
 
 def test_model_init_validates_model_type():
@@ -170,18 +175,37 @@ def test_model_init_validates_model_type():
 
 def test_model_init_sets_create_datetime(mocker):
     """it sets the create_datetime item in params if not already set"""
+    # arrange
     params = {"dataset": "synthetic"}
+    mock_data = pd.DataFrame({"rn": [2, 1], "age": [2, 1]})
 
-    mocker.patch("model.model.Model._load_parquet", return_value={"age": 1})
-    mocker.patch("model.model.Model._load_demog_factors", return_value=None)
-    mocker.patch("model.model.Model._generate_run_params", return_value=None)
+    mocker.patch("model.model.Model._load_parquet", return_value=mock_data)
     mocker.patch("model.model.age_groups", return_value="age_groups")
-    mocker.patch("pickle.load", return_value="load_hsa")
+    mocker.patch("model.model.Model._load_demog_factors")
+    mocker.patch("model.model.Model._load_hsa_gams")
+    mocker.patch("model.model.Model._generate_run_params")
+
     mocker.patch("os.path.join", lambda *args: "/".join(args))
 
-    with patch("builtins.open", mock_open(read_data="data")):
-        mdl = Model("aae", params, "data")
-        assert re.match("^\\d{8}_\\d{6}$", mdl.params["create_datetime"])
+    # act
+    mdl = Model("aae", params, "data")
+
+    # assert
+    assert re.match("^\\d{8}_\\d{6}$", mdl.params["create_datetime"])
+
+
+# _load_parquet()
+
+
+def test_load_parquet(mocker, mock_model):
+    """test that load parquet properly loads files"""
+    m = Mock()
+    m.to_pandas.return_value = "data"
+    mocker.patch("pyarrow.parquet.read_pandas", return_value=m)
+    mdl = mock_model
+    assert mdl._load_parquet("ip") == "data"
+    m.expect_called_with_args("data/ip.parquet")
+    m.to_pandas.assert_called_once()
 
 
 # _load_demog_factors()
@@ -220,75 +244,22 @@ def test_demog_factors_loads_correctly(mocker, mock_model, start_year, end_year)
         b_range = range(21, 31)
         diff = 10
 
-    assert mdl._demog_factors.equals(
-        pd.DataFrame(
-            {
-                "a": [(i + diff) / i for i in a_range for _ in [0, 1]],
-                "b": [(i + diff) / i for i in b_range for _ in [0, 1]],
-                "rn": [i + j for i in range(1, 11) for j in [0, 10]],
-            }
-        ).set_index("rn")
-    )
-
-    assert mdl._variants == ["a", "b"]
-    assert mdl._probabilities == [0.6, 0.4]
+    assert mdl.demog_factors["a"].to_list() == [(i + diff) / i for i in a_range]
+    assert mdl.demog_factors["b"].to_list() == [(i + diff) / i for i in b_range]
 
 
-# _health_status_adjustment()
+# _load_hsa_gams()
+def test_load_hsa_gams(mocker, mock_model):
+    # arrange
+    mocker.patch("pickle.load", return_value="pkl_load")
 
+    # act
+    with patch("builtins.open", mock_open(read_data="hsa_gams")) as mock_file:
+        mock_model._load_hsa_gams()
 
-def test_health_status_adjustment(mock_model):
-    """test that the health status adjustment factor is created correctly"""
-    mdl = mock_model
-    mdl.params["life_expectancy"] = {
-        "f": [1.1, 1.0, 0.9],
-        "m": [0.8, 0.7, 0.6],
-        "min_age": 50,
-        "max_age": 52,
-    }
-    mdl.data.age += 48
-    run_params = {"health_status_adjustment": 0.8}
-    expected = [
-        # sex = 1, age = [49,53)
-        1.0,
-        49.36 / 50.0,
-        50.44 / 51.0,
-        51.52 / 52.0,
-        1.0,
-        # sex = 2, age = [49,53)
-        1.0,
-        49.12 / 50.0,
-        50.20 / 51.0,
-        51.28 / 52.0,
-        1.0,
-    ] * 2
-    actual = mdl._health_status_adjustment(mdl.data, run_params)
-    assert list(actual) == expected
-
-
-# _load_parquet()
-
-
-def test_load_parquet(mocker, mock_model):
-    """test that load parquet properly loads files"""
-    m = Mock()
-    m.to_pandas.return_value = "data"
-    mocker.patch("pyarrow.parquet.read_pandas", return_value=m)
-    mdl = mock_model
-    assert mdl._load_parquet("ip") == "data"
-    m.expect_called_with_args("data/ip.parquet")
-    m.to_pandas.assert_called_once()
-
-
-# _factor_helper()
-
-
-def test_factor_helper(mock_model):
-    """test that _factor_helper returns the correct values"""
-    mdl = mock_model
-    actual = mdl._factor_helper(mdl.data, {"a": 0.9}, {"sex": 1}).tolist()
-    expected = ([0.9, 1.0, 0.9, 1.0, 0.9] + [1.0] * 5) * 2
-    assert actual == expected
+    # assert
+    assert mock_model.hsa_gams == "pkl_load"
+    mock_file.assert_called_with("data/synthetic/hsa_gams.pkl", "rb")
 
 
 # _generate_run_params()
@@ -361,6 +332,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                     "change_utilisation": {"a": 1.02, "b": 1.03},
                     "change_availability": 1.04,
                 },
+                "waiting_list_adjustment": "waiting_list_adjustment",
             },
         ),
         (
@@ -397,6 +369,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                     "change_utilisation": {"a": 65, "b": 68},
                     "change_availability": 71,
                 },
+                "waiting_list_adjustment": "waiting_list_adjustment",
             },
         ),
     ],
@@ -417,22 +390,16 @@ def test_get_run_params(mock_model, mock_run_params, model_run, expected_run_par
 
 def test_run(mocker, mock_model):
     """test run calls the _run method correctly"""
-    run_params = {"seed": 1, "variant": "a"}
+    # arrange
+    mr_mock = mocker.patch("model.model.ModelRun", return_value="model_run")
     mdl = mock_model
-    mdl.data = Mock()
-    mdl.data.copy.return_value = "data"
-    mdl._demog_factors = {"a": "demog_factors"}
-    mocker.patch("numpy.random.default_rng", return_value="rng")
-    mocker.patch("model.model.Model._get_run_params", return_value=run_params)
-    mocker.patch(
-        "model.model.Model._health_status_adjustment", return_value="hsa_factors"
-    )
-    mocker.patch("model.model.Model._run", return_value="model run results")
-    assert mdl.run(0) == "model run results"
-    mdl._health_status_adjustment.assert_called_once_with("data", run_params)
-    mdl._run.assert_called_once_with(
-        "rng", "data", run_params, "demog_factors", "hsa_factors"
-    )
+    mdl._run = Mock()
+    # act
+    actual = mdl.run(0)
+    # assert
+    assert actual == "model_run"
+    mr_mock.assert_called_once_with(mdl, 0)
+    mdl._run.assert_called_once_with("model_run")
 
 
 # _create_agg()

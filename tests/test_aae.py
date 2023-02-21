@@ -64,7 +64,7 @@ def mock_model():
     mdl._data_path = "data/synthetic"
     # create a mock object for the hsa gams
     hsa_mock = type("mocked_hsa", (object,), {"predict": lambda x: x})
-    mdl._hsa_gams = {(i, j): hsa_mock for i in ["aae_a_a", "aae_b_b"] for j in [1, 2]}
+    mdl.hsa_gams = {(i, j): hsa_mock for i in ["aae_a_a", "aae_b_b"] for j in [1, 2]}
     # create a minimal data object for testing
     mdl.data = pd.DataFrame(
         {
@@ -82,139 +82,128 @@ def mock_model():
 
 def test_init_calls_super_init(mocker):
     """test that the model calls the super method"""
-    mocker.patch("model.aae.super")
-    AaEModel("params", "data_path")
-    # no asserts to perform, so long as this method doesn't fail
-
-
-def test_low_cost_discharged(mock_model):
-    """test that it calls factor helper"""
-    mdl = mock_model
-    mdl._factor_helper = Mock(return_value="low cost discharged")
-    assert (
-        mdl._low_cost_discharged("data", {"low_cost_discharged": "lcd"})
-        == "low cost discharged"
-    )
-    mdl._factor_helper.assert_called_once_with(
-        "data", "lcd", {"is_low_cost_referred_or_discharged": 1}
-    )
-
-
-def test_left_before_seen(mock_model):
-    """test that it calls factor helper"""
-    mdl = mock_model
-    mdl._factor_helper = Mock(return_value="left before seen")
-    assert (
-        mdl._left_before_seen("data", {"left_before_seen": "lbs"}) == "left before seen"
-    )
-    mdl._factor_helper.assert_called_once_with(
-        "data", "lbs", {"is_left_before_treatment": 1}
-    )
-
-
-def test_frequent_attenders(mock_model):
-    """test that is calls factor helper"""
-    mdl = mock_model
-    mdl._factor_helper = Mock(return_value="frequent attenders")
-    assert (
-        mdl._frequent_attenders("data", {"frequent_attenders": "fa"})
-        == "frequent attenders"
-    )
-    mdl._factor_helper.assert_called_once_with(
-        "data", "fa", {"is_frequent_attender": 1}
-    )
-
-
-def test_expat_adjustment():
-    """ "test that it returns the right parameters"""
     # arrange
-    data = pd.DataFrame({"is_ambulance": [True, False]})
-    run_params = {"expat": {"aae": {"ambulance": 0.8}}}
+    super_mock = mocker.patch("model.aae.super")
+    ubd_mock = mocker.patch("model.aae.AaEModel._update_baseline_data")
+    gdc_mock = mocker.patch("model.aae.AaEModel._get_data_counts", return_value=1)
+    lst_mock = mocker.patch("model.aae.AaEModel._load_strategies")
     # act
-    actual = AaEModel._expat_adjustment(data, run_params)
+    mdl = AaEModel("params", "data_path")
     # assert
-    assert actual.tolist() == [0.8, 1.0]
+    super_mock.assert_called_once()
+    ubd_mock.assert_called_once()
+    gdc_mock.assert_called_once_with(None)
+    lst_mock.assert_called_once()
+    assert mdl._baseline_counts == 1
 
 
-def test_repat_adjustment():
-    """test that it returns the right parameters"""
+def test_update_baseline_data(mock_model):
     # arrange
-    data = pd.DataFrame(
-        {
-            "is_ambulance": [True, False] * 2,
-            "is_main_icb": [i for i in [True, False] for _ in range(2)],
-        }
+    mdl = mock_model
+    mdl.data["is_ambulance"] = [True] * 10 + [False] * 10
+    # act
+    mdl._update_baseline_data()
+    # assert
+    assert mdl.data["group"].to_list() == ["ambulance"] * 10 + ["walk-in"] * 10
+    assert mdl.data["tretspef"].to_list() == ["Other"] * 20
+
+
+def test_get_data_counts(mock_model):
+    # arrange
+    mdl = mock_model
+    data = mdl.data
+    data["arrivals"] = list(range(1, 21))
+    # act
+    actual = mdl._get_data_counts(data)
+    # assert
+    assert actual.tolist() == [[float(i) for i in range(1, 21)]]
+
+
+def test_load_strategies(mock_model):
+    # arrange
+    mdl = mock_model
+    mdl.data["is_frequent_attender"] = [False] * 0 + [True] * 4 + [False] * 16
+    mdl.data["is_left_before_treatment"] = [False] * 4 + [True] * 4 + [False] * 12
+    mdl.data["is_low_cost_referred_or_discharged"] = (
+        [False] * 12 + [True] * 4 + [False] * 4
     )
-    run_params = {
-        "repat_local": {"aae": {"ambulance": 1.1}},
-        "repat_nonlocal": {"aae": {"ambulance": 1.3}},
+    # act
+    mdl._load_strategies()
+    # assert
+    assert mdl.strategies["activity_avoidance"]["strategy"].to_list() == [
+        "frequent_attenders_a_a",
+        "frequent_attenders_b_b",
+        "frequent_attenders_a_a",
+        "frequent_attenders_b_b",
+        "left_before_seen_a_a",
+        "left_before_seen_b_b",
+        "left_before_seen_a_a",
+        "left_before_seen_b_b",
+        "low_cost_discharged_a_a",
+        "low_cost_discharged_b_b",
+        "low_cost_discharged_a_a",
+        "low_cost_discharged_b_b",
+    ]
+    assert mdl.strategies["activity_avoidance"]["sample_rate"].to_list() == [1] * 12
+
+
+def test_apply_resampling(mocker, mock_model):
+    # arrange
+    row_samples = np.array([[1, 2, 3, 4]])
+    gdc_mock = mocker.patch("model.aae.AaEModel._get_data_counts", return_value=1)
+    # act
+    data, counts = mock_model.apply_resampling(row_samples, pd.DataFrame())
+    # assert
+    assert data["arrivals"].to_list() == [1, 2, 3, 4]
+    assert counts == 1
+    gdc_mock.assert_called_once()
+
+
+def test_get_step_counts_dataframe(mock_model):
+    # arrange
+    step_counts = {("a", "-"): [1], ("b", "-"): [2]}
+    expected = {
+        "change_factor": ["a", "b"],
+        "strategy": ["-", "-"],
+        "measure": ["arrivals", "arrivals"],
+        "value": [1, 2],
     }
+
     # act
-    actual = AaEModel._repat_adjustment(data, run_params)
+    actual = mock_model.get_step_counts_dataframe(step_counts)
+
     # assert
-    assert actual.tolist() == [1.1, 1.0, 1.3, 1.0]
+    assert actual.to_dict("list") == expected
 
 
-def test_baseline_adjustment():
-    """test that it returns the right parameters"""
-    # arrange
-    data = pd.DataFrame({"rn": list(range(2)), "is_ambulance": [True, False]})
-    run_params = {"baseline_adjustment": {"aae": {"ambulance": 1, "walk-in": 2}}}
-    # act
-    actual = AaEModel._baseline_adjustment(data, run_params)
-    # assert
-    assert actual.tolist() == [1, 2]
-
-
-def test_step_counts(mock_model):
-    """test that it estimates the step counts correctly"""
-    # arrange
-    mdl = mock_model
-    arrivals = pd.Series([1, 2, 3])
-    arrivals_after = 15
-    factors = {"a": [0.5, 0.75, 0.875], "b": [1.0, 1.5, 2.0]}
-    # act
-    actual = mdl._step_counts(arrivals, arrivals_after, factors)
-    # assert
-    assert actual == {"baseline": 6, "a": -6.1875, "b": 15.1875}
-
-
-def test_run(mock_model):
+def test_run(mocker, mock_model):
     """test that it runs the model steps"""
     # arrange
     mdl = mock_model
-    rng = Mock()
-    rng.poisson.return_value = np.array([7, 8])
-    mdl._step_counts = Mock(return_value={"a": 1, "b": 2})
-    mdl._low_cost_discharged = Mock(return_value=[5, 6])
-    mdl._left_before_seen = Mock(return_value=[7, 8])
-    mdl._frequent_attenders = Mock(return_value=[9, 10])
-    mdl._expat_adjustment = Mock(return_value=pd.Series([11, 12]))
-    mdl._repat_adjustment = Mock(return_value=pd.Series([13, 14]))
-    mdl._baseline_adjustment = Mock(return_value=pd.Series([15, 16]))
-    data = pd.DataFrame({"rn": [1, 2], "hsagrp": [3, 4], "arrivals": [5, 6]})
-    run_params = {"aae_factors": "aae_factors"}
+    mdl._baseline_counts = 1
+
+    rr_mock = Mock()
+    m = mocker.patch("model.aae.ActivityAvoidance", return_value=rr_mock)
+    rr_mock.demographic_adjustment.return_value = rr_mock
+    rr_mock.health_status_adjustment.return_value = rr_mock
+    rr_mock.expat_adjustment.return_value = rr_mock
+    rr_mock.repat_adjustment.return_value = rr_mock
+    rr_mock.baseline_adjustment.return_value = rr_mock
+    rr_mock.activity_avoidance.return_value = rr_mock
+    rr_mock.apply_resampling.return_value = rr_mock
+
     # act
-    change_factors, model_results = mdl._run(
-        rng, data, run_params, pd.Series({1: 1, 2: 2}), [3, 4]
-    )
+    mdl._run("model_run")
+
     # assert
-    assert change_factors.to_dict("list") == {
-        "change_factor": ["a", "b"],
-        "strategy": ["-"] * 2,
-        "measure": ["arrivals"] * 2,
-        "value": [1, 2],
-    }
-    assert model_results.to_dict("list") == {"rn": [1, 2], "arrivals": [7, 8]}
-    rng.poisson.assert_called_once()
-    assert rng.poisson.call_args_list[0][0][0].to_list() == [10135125, 61931520]
-    mdl._low_cost_discharged.assert_called_once()
-    mdl._left_before_seen.assert_called_once()
-    mdl._frequent_attenders.assert_called_once()
-    mdl._expat_adjustment.assert_called_once()
-    mdl._repat_adjustment.assert_called_once()
-    mdl._baseline_adjustment.assert_called_once()
-    mdl._step_counts.assert_called_once()
+    m.assert_called_once_with("model_run", 1)
+    rr_mock.demographic_adjustment.assert_called_once()
+    rr_mock.health_status_adjustment.assert_called_once()
+    rr_mock.expat_adjustment.assert_called_once()
+    rr_mock.repat_adjustment.assert_called_once()
+    rr_mock.baseline_adjustment.assert_called_once()
+    rr_mock.activity_avoidance.assert_called_once()
+    rr_mock.apply_resampling.assert_called_once()
 
 
 def test_aggregate(mock_model):
@@ -226,7 +215,9 @@ def test_aggregate(mock_model):
 
     mdl = mock_model
     mdl._create_agg = Mock(wraps=create_agg_stub)
-    model_results = pd.DataFrame(
+
+    mr_mock = Mock()
+    mr_mock.get_model_results.return_value = pd.DataFrame(
         {
             "sitetret": ["trust"] * 4,
             "age_group": [1] * 4,
@@ -237,7 +228,7 @@ def test_aggregate(mock_model):
         }
     )
     # act
-    results = mdl.aggregate(model_results, 1)
+    results = mdl.aggregate(mr_mock)
     # assert
     assert mdl._create_agg.call_count == 2
     assert results == {"default": 1, "sex+age_group": 1}
@@ -260,7 +251,9 @@ def test_save_results(mocker, mock_model):
     """test that it correctly saves the results"""
     path_fn = lambda x: x
 
+    mr_mock = Mock()
+    mr_mock.get_model_results.return_value = pd.DataFrame({"rn": [0], "arrivals": [1]})
+
     to_parquet_mock = mocker.patch("pandas.DataFrame.to_parquet")
-    results = pd.DataFrame({"rn": [0], "arrivals": [1]})
-    mock_model.save_results(results, path_fn)
+    mock_model.save_results(mr_mock, path_fn)
     to_parquet_mock.assert_called_once_with("aae/0.parquet")

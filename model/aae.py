@@ -4,14 +4,16 @@ Accident and Emergency Module
 Implements the A&E model.
 """
 
-import os
 from functools import partial
-from typing import Callable
+from typing import Callable, Tuple
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
+from model.activity_avoidance import ActivityAvoidance
 from model.model import Model
+from model.model_run import ModelRun
 
 
 class AaEModel(Model):
@@ -23,210 +25,114 @@ class AaEModel(Model):
     :param data_path: the path to where the data files live
     """
 
-    def __init__(self, params: list, data_path: str) -> None:
+    def __init__(self, params: dict, data_path: str) -> None:
+        # initialise values for testing purposes
+        self.data = None
         # call the parent init function
         super().__init__("aae", params, data_path)
+        self._update_baseline_data()
+        self._baseline_counts = self._get_data_counts(self.data)
+        self._load_strategies()
 
-    def _low_cost_discharged(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
-        """Low Cost Discharge Reduction
+    def _update_baseline_data(self) -> None:
+        """modifies the baseline data to include the columns needed for the model"""
+        self.data["group"] = np.where(self.data["is_ambulance"], "ambulance", "walk-in")
+        self.data["tretspef"] = "Other"
 
-        Returns the factor values for the Low Cost Discharge Reduction strategy
+    def _get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
+        """Get row counts of data
 
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-
-        :returns: an array of factors, the length of data
-        :rtype: numpy.ndarray
+        :param data: the data to get the counts of
+        :type data: pd.DataFrame
+        :return: the counts of the data, required for activity avoidance steps
+        :rtype: npt.ArrayLike
         """
-        return self._factor_helper(
-            data,
-            run_params["low_cost_discharged"],
-            {"is_low_cost_referred_or_discharged": 1},
-        )
+        return np.array([data["arrivals"]]).astype(float)
 
-    def _left_before_seen(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
-        """Left Before Seen Reduction
-
-        Returns the factor values for the Left Before Seen Reduction strategy
-
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-
-        :returns: an array of factors, the length of data
-        :rtype: numpy.ndarray
-        """
-        return self._factor_helper(
-            data, run_params["left_before_seen"], {"is_left_before_treatment": 1}
-        )
-
-    def _frequent_attenders(self, data: pd.DataFrame, run_params: dict) -> np.ndarray:
-        """Frequent Attenders Reduction
-
-        Returns the factor values for the Frequent Attenders Reduction strategy
-
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-
-        :returns: an array of factors, the length of data
-        :rtype: numpy.ndarray
-        """
-        return self._factor_helper(
-            data, run_params["frequent_attenders"], {"is_frequent_attender": 1}
-        )
-
-    @staticmethod
-    def _expat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
-        expat_params = run_params["expat"]["aae"]
-        join_cols = ["is_ambulance"]
-        return data.merge(
-            pd.DataFrame(
+    def _load_strategies(self) -> None:
+        """Loads the activity mitigation strategies"""
+        data = self.data.set_index("rn")
+        self.strategies = {
+            "activity_avoidance": pd.concat(
                 [
-                    {"is_ambulance": k == "ambulance", "value": v}
-                    for k, v in expat_params.items()
-                ]
-            ).set_index(join_cols),
-            how="left",
-            left_on=join_cols,
-            right_index=True,
-        )["value"].fillna(1)
-
-    @staticmethod
-    def _repat_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
-        repat_local_params = run_params["repat_local"]["aae"]
-        repat_nonlocal_params = run_params["repat_nonlocal"]["aae"]
-        join_cols = ["is_ambulance", "is_main_icb"]
-        return data.merge(
-            pd.DataFrame(
-                [
-                    {"is_ambulance": k1 == "ambulance", "is_main_icb": icb, "value": v1}
-                    for (k0, icb) in [
-                        (repat_local_params, True),
-                        (repat_nonlocal_params, False),
+                    data[data[c]]["hsagrp"].str.replace("aae", n).rename("strategy")
+                    for (c, n) in [
+                        ("is_frequent_attender", "frequent_attenders"),
+                        ("is_left_before_treatment", "left_before_seen"),
+                        ("is_low_cost_referred_or_discharged", "low_cost_discharged"),
                     ]
-                    for k1, v1 in k0.items()
                 ]
-            ).set_index(join_cols),
-            how="left",
-            left_on=join_cols,
-            right_index=True,
-        )["value"].fillna(1)
+            )
+            .to_frame()
+            .assign(sample_rate=1)
+        }
 
-    @staticmethod
-    def _baseline_adjustment(data: pd.DataFrame, run_params: dict) -> pd.Series:
-        """Create a series of factors for baseline adjustment.
+    def apply_resampling(
+        self, row_samples: npt.ArrayLike, data: pd.DataFrame
+    ) -> Tuple[pd.DataFrame, npt.ArrayLike]:
+        """Apply row resampling
 
-        A value of 1 will indicate that we want to sample this row at the baseline rate. A value
-        less that 1 will indicate we want to sample that row less often that in the baseline, and
-        a value greater than 1 will indicate that we want to sample that row more often than in the
-        baseline
+        Called from within `model.activity_avoidance.ActivityAvoidance.apply_resampling`
 
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-
-        :returns: a series of floats indicating how often we want to sample that row
-        :rtype: pandas.Series
+        :param row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
+        values for `data["arrivals"]`
+        :type row_samples: npt.ArrayLike
+        :param data: the data that we want to update
+        :type data: pd.DataFrame
+        :return: the updated data
+        :rtype: Tuple[pd.DataFrame, npt.ArrayLike]
         """
+        data["arrivals"] = row_samples[0]
+        # return the altered data and the amount of admissions/beddays after resampling
+        return (data, self._get_data_counts(data))
 
-        # extract the parameters
-        params = run_params["baseline_adjustment"]["aae"]
+    def get_step_counts_dataframe(self, step_counts: dict) -> pd.DataFrame:
+        """Convert the step counts dictionary into a `DataFrame`
 
-        # get the parameter value for each row
-        return np.array(
-            [params["ambulance" if k else "walk-in"] for k in data["is_ambulance"]]
+        :param step_counts: the step counts dictionary
+        :type step_counts: dict
+        :return: the step counts as a `DataFrame`
+        :rtype: pd.DataFrame
+        """
+        return (
+            pd.Series({k: v[0] for k, v in step_counts.items()})
+            .to_frame("value")
+            .rename_axis(["change_factor", "strategy"])
+            .reset_index()
+            .assign(measure="arrivals")
         )
 
-    @staticmethod
-    def _step_counts(arrivals: pd.Series, arrivals_after: float, factors: dict) -> dict:
-        cf = {}
-        # as each row has a different weight attached to it, we need to use the factors
-        # applied to each row individually
-        n = arrivals
-        arrivals_before = ns = n.sum()
-        for k, v in factors.items():
-            n2 = n * v
-            n2s = n2.sum()
-            cf[k] = n2s - ns
-            n, ns = n2, n2s
-
-        slack = 1 + (arrivals_after - ns) / (ns - arrivals_before)
-        return {"baseline": arrivals_before, **{k: v * slack for k, v in cf.items()}}
-
-    def _run(
-        self,
-        rng: np.random.Generator,
-        data: pd.DataFrame,
-        run_params: dict,
-        demo_f: pd.Series,
-        hsa_f: pd.Series,
-    ) -> tuple[dict, pd.DataFrame]:
+    def _run(self, model_run: ModelRun) -> None:
         """Run the model
 
-        :param rng: a random number generator created for each model iteration
-        :type rng: numpy.random.Generator
-        :param data: the DataFrame that we are updating
-        :type data: pandas.DataFrame
-        :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
-        :type run_params: dict
-        :param demo_f: the demographic adjustment factors
-        :type demo_f: pandas.Series
-        :param hsa_f: the health status adjustment factors
-        :type hsa_f: pandas.Series
-
-        :returns: a tuple containing the change factors DataFrame and the mode results DataFrame
-        :rtype: (dict, pandas.DataFrame)
+        :param model_run: an instance of the `ModelRun` class
+        :type model_run: model.model_run.ModelRun
         """
-        params = run_params["aae_factors"]
-
-        # get the factors
-        factors = {
-            "health_status_adjustment": hsa_f,
-            "population_factors": demo_f[data["rn"]].to_numpy(),
-            "expatriation": self._expat_adjustment(data, run_params).to_numpy(),
-            "repatriation": self._repat_adjustment(data, run_params).to_numpy(),
-            "baseline_adjustment": self._baseline_adjustment(data, run_params),
-            "low_cost_dischaged": self._low_cost_discharged(data, params),
-            "left_before_seen": self._left_before_seen(data, params),
-            "frequent_attenders": self._frequent_attenders(data, params),
-        }
-        reduced_factor = np.prod(list(factors.values()), axis=0)
-        arrivals_after = rng.poisson(data["arrivals"] * reduced_factor)
-
-        # return the data
-        change_factors = (
-            pd.Series(
-                self._step_counts(data["arrivals"], arrivals_after.sum(), factors)
-            )
-            .to_frame("value")
-            .reset_index()
-            .rename(columns={"index": "change_factor"})
-            .assign(strategy="-", measure="arrivals")[
-                ["change_factor", "strategy", "measure", "value"]
-            ]
+        (
+            ActivityAvoidance(model_run, self._baseline_counts)
+            .demographic_adjustment()
+            .health_status_adjustment()
+            .expat_adjustment()
+            .repat_adjustment()
+            .baseline_adjustment()
+            .activity_avoidance()
+            .apply_resampling()
         )
-        data["arrivals"] = arrivals_after
-        return (change_factors, data.drop(["hsagrp"], axis="columns"))
 
-    def aggregate(self, model_results: pd.DataFrame, model_run: int) -> dict:
+    def aggregate(self, model_run: ModelRun) -> dict:
         """Aggregate the model results
 
-        Can also be used to aggregate the baseline data by passing in the raw data
+        Can also be used to aggregate the baseline data by passing in a `ModelRun` with
+        the `model_run` argument set `-1`.
 
-        :param model_results: a DataFrame containing the results of a model iteration
-        :type model_results: pandas.DataFrame
-        :param model_run: the current model run
-        :type model_run: int
+        :param model_run: an instance of the `ModelRun` class
+        :type model_run: model.model_run.ModelRun
 
         :returns: a dictionary containing the different aggregations of this data
         :rtype: dict
         """
+        model_results = model_run.get_model_results()
+
         model_results["pod"] = "aae_type-" + model_results["aedepttype"]
         model_results["measure"] = "walk-in"
         model_results.loc[model_results["is_ambulance"], "measure"] = "ambulance"
@@ -243,18 +149,18 @@ class AaEModel(Model):
         agg = partial(self._create_agg, model_results)
         return {**agg(), **agg(["sex", "age_group"])}
 
-    def save_results(
-        self, model_results: pd.DataFrame, path_fn: Callable[[str], str]
-    ) -> None:
+    def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model
 
         This method is used for saving the results of the model run to disk as a parquet file.
         It saves just the `rn` (row number) column and the `arrivals`, with the intention that
         you rejoin to the original data.
 
-        :param model_results: a DataFrame containing the results of a model iteration
+        :param model_run: an instance of the `ModelRun` class
+        :type model_run: model.model_run.ModelRun
         :param path_fn: a function which takes the activity type and returns a path
+        :type path_fn: Callable[[str], str]
         """
-        model_results.set_index(["rn"])[["arrivals"]].to_parquet(
+        model_run.get_model_results().set_index(["rn"])[["arrivals"]].to_parquet(
             f"{path_fn('aae')}/0.parquet"
         )
