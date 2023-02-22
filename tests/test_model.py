@@ -394,12 +394,47 @@ def test_run(mocker, mock_model):
     mr_mock = mocker.patch("model.model.ModelRun", return_value="model_run")
     mdl = mock_model
     mdl._run = Mock()
+
+    mdl._baseline_counts = 1
+    mdl._data_mask = "data mask"
+
+    rr_mock = mocker.patch("model.model.ActivityAvoidance")
+    rr_mock.return_value = rr_mock
+    rr_mock.demographic_adjustment.return_value = rr_mock
+    rr_mock.health_status_adjustment.return_value = rr_mock
+    rr_mock.expat_adjustment.return_value = rr_mock
+    rr_mock.repat_adjustment.return_value = rr_mock
+    rr_mock.waiting_list_adjustment.return_value = rr_mock
+    rr_mock.baseline_adjustment.return_value = rr_mock
+    rr_mock.non_demographic_adjustment.return_value = rr_mock
+    rr_mock.activity_avoidance.return_value = rr_mock
+    rr_mock.apply_resampling.return_value = rr_mock
+
     # act
     actual = mdl.run(0)
+
     # assert
     assert actual == "model_run"
+
+    rr_mock.assert_called_once_with("model_run", 1, row_mask="data mask")
+    rr_mock.demographic_adjustment.assert_called_once()
+    rr_mock.health_status_adjustment.assert_called_once()
+    rr_mock.expat_adjustment.assert_called_once()
+    rr_mock.repat_adjustment.assert_called_once()
+    rr_mock.waiting_list_adjustment.assert_called_once()
+    rr_mock.baseline_adjustment.assert_called_once()
+    rr_mock.non_demographic_adjustment.assert_called_once()
+    rr_mock.activity_avoidance.assert_called_once()
+    rr_mock.apply_resampling.assert_called_once()
+
     mr_mock.assert_called_once_with(mdl, 0)
     mdl._run.assert_called_once_with("model_run")
+
+
+def test__run(mock_model):
+    """test the _run method"""
+    # it does nothing, test is purely for coverage purposes
+    mock_model._run(None)
 
 
 # _create_agg()

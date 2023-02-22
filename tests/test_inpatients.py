@@ -288,20 +288,6 @@ def test_run(mocker, mock_model):
     """test that it runs the model steps"""
 
     mdl = mock_model
-    mdl._baseline_counts = 1
-    mdl._data_mask = "data mask"
-
-    rr_mock = mocker.patch("model.inpatients.ActivityAvoidance")
-    rr_mock.return_value = rr_mock
-    rr_mock.demographic_adjustment.return_value = rr_mock
-    rr_mock.health_status_adjustment.return_value = rr_mock
-    rr_mock.expat_adjustment.return_value = rr_mock
-    rr_mock.repat_adjustment.return_value = rr_mock
-    rr_mock.waiting_list_adjustment.return_value = rr_mock
-    rr_mock.baseline_adjustment.return_value = rr_mock
-    rr_mock.non_demographic_adjustment.return_value = rr_mock
-    rr_mock.activity_avoidance.return_value = rr_mock
-    rr_mock.apply_resampling.return_value = rr_mock
 
     aa_mock = mocker.patch("model.inpatients.InpatientEfficiencies")
     aa_mock.return_value = aa_mock
@@ -314,17 +300,6 @@ def test_run(mocker, mock_model):
     mdl._run("model_run")
 
     # assert
-    rr_mock.assert_called_once_with("model_run", 1, row_mask="data mask")
-    rr_mock.demographic_adjustment.assert_called_once()
-    rr_mock.health_status_adjustment.assert_called_once()
-    rr_mock.expat_adjustment.assert_called_once()
-    rr_mock.repat_adjustment.assert_called_once()
-    rr_mock.waiting_list_adjustment.assert_called_once()
-    rr_mock.baseline_adjustment.assert_called_once()
-    rr_mock.non_demographic_adjustment.assert_called_once()
-    rr_mock.activity_avoidance.assert_called_once()
-    rr_mock.apply_resampling.assert_called_once()
-
     aa_mock.assert_called_once_with("model_run")
     aa_mock.losr_all.assert_called_once()
     aa_mock.losr_aec.assert_called_once()

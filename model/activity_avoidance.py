@@ -41,7 +41,7 @@ class ActivityAvoidance:
         self,
         model_run: ModelRun,
         counts: npt.ArrayLike,
-        row_mask: npt.ArrayLike = np.array([1.0]),
+        row_mask: npt.ArrayLike,
     ) -> None:
         self._model_run = model_run
 
@@ -142,24 +142,26 @@ class ActivityAvoidance:
 
     def expat_adjustment(self):
         """perform the expatriation adjustment"""
-        expat_params = self.run_params["expat"][self._activity_type]
-        factor = pd.concat(
-            {k: pd.Series(v, name="expat") for k, v in expat_params.items()}
-        )
+        if not (params := self.run_params["expat"][self._activity_type]):
+            return self
+
+        factor = pd.concat({k: pd.Series(v, name="expat") for k, v in params.items()})
         return self._update(factor, ["group", "tretspef"])
 
     def repat_adjustment(self):
         """perform the repatriation adjustment"""
-        factor = pd.concat(
-            {
-                (is_main_icb, k): pd.Series(v, name="repat")
-                for (is_main_icb, repat_type) in [
-                    (1, "repat_local"),
-                    (0, "repat_nonlocal"),
-                ]
-                for k, v in self.run_params[repat_type][self._activity_type].items()
-            }
-        )
+        params = {
+            (is_main_icb, k): pd.Series(v, name="repat")
+            for (is_main_icb, repat_type) in [
+                (1, "repat_local"),
+                (0, "repat_nonlocal"),
+            ]
+            for k, v in self.run_params[repat_type][self._activity_type].items()
+        }
+        if not params:
+            return self
+
+        factor = pd.concat(params)
         return self._update(factor, ["is_main_icb", "group", "tretspef"])
 
     def baseline_adjustment(self):
@@ -170,13 +172,11 @@ class ActivityAvoidance:
         a value greater than 1 will indicate that we want to sample that row more often than in the
         baseline.
         """
+        if not (params := self.run_params["baseline_adjustment"][self._activity_type]):
+            return self
+
         factor = pd.concat(
-            {
-                k: pd.Series(v, name="baseline_adjustment")
-                for k, v in self.run_params["baseline_adjustment"][
-                    self._activity_type
-                ].items()
-            }
+            {k: pd.Series(v, name="baseline_adjustment") for k, v in params.items()}
         )
         return self._update(factor, ["group", "tretspef"])
 
@@ -188,10 +188,15 @@ class ActivityAvoidance:
         a value greater than 1 will indicate that we want to sample that row more often than in the
         baseline.
         """
+        activity_type = self._activity_type
+        if activity_type == "aae":
+            return self
+
+        if not (params := self.run_params["waiting_list_adjustment"][activity_type]):
+            return self
+
         tretspef_n = self.data["tretspef"].value_counts()
-        wla_param = pd.Series(
-            self.run_params["waiting_list_adjustment"][self._activity_type]
-        )
+        wla_param = pd.Series(params)
         factor = (wla_param / tretspef_n).fillna(0) + 1
 
         # update the index to include "True" for the is_wla field
@@ -202,10 +207,14 @@ class ActivityAvoidance:
 
     def non_demographic_adjustment(self):
         """perform the non-demographic adjustment"""
+        if self._activity_type != "ip":
+            return self
+
+        if not (params := self.run_params["non-demographic_adjustment"]):
+            return self
+
         factor = (
-            pd.DataFrame.from_dict(
-                self.run_params["non-demographic_adjustment"], orient="index"
-            )
+            pd.DataFrame.from_dict(params, orient="index")
             .reset_index()
             .rename(columns={"index": "group"})
             .melt(["group"], var_name="age_group")
@@ -216,15 +225,13 @@ class ActivityAvoidance:
 
     def activity_avoidance(self) -> dict:
         """perform the activity avoidance (strategies)"""
+        # if there are no items in params for activity_avoidance then exit
+        if not (params := self.run_params["activity_avoidance"][self._activity_type]):
+            return self
+
         rng = self._model_run.rng
 
         strategies = self.strategies
-
-        params = self.run_params["activity_avoidance"][self._activity_type]
-
-        # if there are no items in params for activity_avoidance then exit
-        if not params:
-            return self
 
         params = pd.Series(params, name="aaf")
 
