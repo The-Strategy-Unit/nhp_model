@@ -11,7 +11,6 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from model.activity_avoidance import ActivityAvoidance
 from model.model import Model
 from model.model_run import ModelRun
 
@@ -29,6 +28,7 @@ class OutpatientsModel(Model):
     def __init__(self, params: list, data_path: str) -> None:
         # initialise values for testing purposes
         self.data = None
+        self._data_mask = np.array([1.0])
         # call the parent init function
         super().__init__("op", params, data_path)
         self._update_baseline_data()
@@ -153,19 +153,6 @@ class OutpatientsModel(Model):
         :param model_run: an instance of the ModelRun class
         :type model_run: model.model_run.ModelRun
         """
-        (
-            ActivityAvoidance(model_run, self._baseline_counts)
-            .demographic_adjustment()
-            .health_status_adjustment()
-            .expat_adjustment()
-            .repat_adjustment()
-            .waiting_list_adjustment()
-            .baseline_adjustment()
-            .activity_avoidance()
-            .apply_resampling()
-        )
-
-        # convert attendances to tele attendances
         self._convert_to_tele(model_run)
 
     def aggregate(self, model_run: ModelRun) -> dict:

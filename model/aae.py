@@ -11,7 +11,6 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from model.activity_avoidance import ActivityAvoidance
 from model.model import Model
 from model.model_run import ModelRun
 
@@ -28,6 +27,7 @@ class AaEModel(Model):
     def __init__(self, params: dict, data_path: str) -> None:
         # initialise values for testing purposes
         self.data = None
+        self._data_mask = np.array([1.0])
         # call the parent init function
         super().__init__("aae", params, data_path)
         self._update_baseline_data()
@@ -100,23 +100,6 @@ class AaEModel(Model):
             .rename_axis(["change_factor", "strategy"])
             .reset_index()
             .assign(measure="arrivals")
-        )
-
-    def _run(self, model_run: ModelRun) -> None:
-        """Run the model
-
-        :param model_run: an instance of the `ModelRun` class
-        :type model_run: model.model_run.ModelRun
-        """
-        (
-            ActivityAvoidance(model_run, self._baseline_counts)
-            .demographic_adjustment()
-            .health_status_adjustment()
-            .expat_adjustment()
-            .repat_adjustment()
-            .baseline_adjustment()
-            .activity_avoidance()
-            .apply_resampling()
         )
 
     def aggregate(self, model_run: ModelRun) -> dict:

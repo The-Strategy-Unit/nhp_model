@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
+from model.activity_avoidance import ActivityAvoidance
 from model.helpers import age_groups, inrange, rnorm
 from model.model_run import ModelRun
 
@@ -262,6 +263,21 @@ class Model:
         :rtype: ModelRun
         """
         m_run = ModelRun(self, model_run)
+
+        (
+            ActivityAvoidance(m_run, self._baseline_counts, row_mask=self._data_mask)
+            .demographic_adjustment()
+            .health_status_adjustment()
+            .expat_adjustment()
+            .repat_adjustment()
+            .waiting_list_adjustment()
+            .baseline_adjustment()
+            .non_demographic_adjustment()
+            .activity_avoidance()
+            # call apply_resampling last, as this is what actually alters the data
+            .apply_resampling()
+        )
+
         self._run(m_run)
         return m_run
 

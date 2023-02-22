@@ -14,7 +14,6 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from model.activity_avoidance import ActivityAvoidance
 from model.helpers import inrange
 from model.model import Model
 from model.model_run import ModelRun
@@ -36,7 +35,7 @@ class InpatientsModel(Model):
     def __init__(self, params: list, data_path: str) -> None:
         # initialise values for testing purposes
         self.data = None
-        self._data_mask = None
+        self._data_mask = np.array([1.0])
         # call the parent init function
         super().__init__(
             "ip",
@@ -232,23 +231,6 @@ class InpatientsModel(Model):
         :param model_run: an instance of the ModelRun class
         :type model_run: model.model_run.ModelRun
         """
-
-        (
-            ActivityAvoidance(
-                model_run, self._baseline_counts, row_mask=self._data_mask
-            )
-            .demographic_adjustment()
-            .health_status_adjustment()
-            .expat_adjustment()
-            .repat_adjustment()
-            .waiting_list_adjustment()
-            .baseline_adjustment()
-            .non_demographic_adjustment()
-            .activity_avoidance()
-            # call apply_resampling last, as this is what actually alters the data
-            .apply_resampling()
-        )
-
         (
             InpatientEfficiencies(model_run)
             .losr_all()
