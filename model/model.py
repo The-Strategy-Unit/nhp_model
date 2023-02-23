@@ -201,9 +201,8 @@ class Model:
                     ("repat_nonlocal", inrange_1_5),
                     ("baseline_adjustment", inrange_0_5),
                     ("non-demographic_adjustment", inrange_0_5),
-                    ("inpatient_factors", inrange_0_1),
-                    ("outpatient_factors", inrange_0_1),
-                    ("aae_factors", inrange_0_1),
+                    ("activity_avoidance", inrange_0_1),
+                    ("efficiencies", inrange_0_1),
                     ("theatres", inrange_0_5),
                 ]
             },
@@ -248,9 +247,8 @@ class Model:
                     "repat_nonlocal",
                     "baseline_adjustment",
                     "non-demographic_adjustment",
-                    "inpatient_factors",
-                    "outpatient_factors",
-                    "aae_factors",
+                    "activity_avoidance",
+                    "efficiencies",
                     "bed_occupancy",
                     "theatres",
                 ]

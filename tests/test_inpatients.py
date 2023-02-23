@@ -215,9 +215,9 @@ def test_load_strategies(mock_model):
     """test that the method returns a dataframe"""
     # arrange
     mdl = mock_model
-    mdl.params["inpatient_factors"] = {
-        "admission_avoidance": {"a": 1, "b": 2},
-        "los_reduction": {"b": 3, "c": 4},
+    mdl.params = {
+        "activity_avoidance": {"ip": {"a": 1, "b": 2}},
+        "efficiencies": {"ip": {"b": 3, "c": 4}},
     }
 
     mdl._load_parquet = Mock()
@@ -509,7 +509,7 @@ def test_aggregate(mock_model):
     # arrange
     def create_agg_stub(model_results, cols=None):
         name = "+".join(cols) if cols else "default"
-        return {name: 1}
+        return {name: model_results.to_dict(orient="list")}
 
     mdl = mock_model
     mdl._create_agg = Mock(wraps=create_agg_stub)
@@ -536,19 +536,116 @@ def test_aggregate(mock_model):
             "bedday_rows": [False] * 12 + [True] * 12,
         }
     )
+
+    expected_mr = {
+        "sitetret": [
+            "trust",
+            "trust",
+            "trust",
+            "trust",
+            "trust",
+            "trust",
+            "trust",
+            "trust",
+            "trust",
+            "trust",
+            "trust",
+            "trust",
+            "trust",
+            "trust",
+            "trust",
+            "trust",
+        ],
+        "age_group": [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4],
+        "sex": [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4],
+        "admimeth": [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4],
+        "group": [
+            "elective",
+            "non-elective",
+            "maternity",
+            "elective",
+            "non-elective",
+            "maternity",
+            "elective",
+            "non-elective",
+            "maternity",
+            "elective",
+            "non-elective",
+            "elective",
+            "non-elective",
+            "maternity",
+            "elective",
+            "non-elective",
+        ],
+        "classpat": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "-1",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+        ],
+        "mainspef": [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4],
+        "tretspef": [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4],
+        "measure": [
+            "admissions",
+            "admissions",
+            "admissions",
+            "admissions",
+            "admissions",
+            "attendances",
+            "procedures",
+            "procedures",
+            "procedures",
+            "procedures",
+            "procedures",
+            "beddays",
+            "beddays",
+            "beddays",
+            "beddays",
+            "beddays",
+        ],
+        "value": [2, 2, 2, 2, 2, 2, 0, 2, 0, 2, 0, 8, 10, 12, 14, 16],
+        "pod": [
+            "ip_elective_admission",
+            "ip_elective_daycase",
+            "ip_elective_daycase",
+            "ip_elective_admission",
+            "ip_non-elective_admission",
+            "op_procedure",
+            "ip_elective_admission",
+            "ip_elective_daycase",
+            "ip_elective_daycase",
+            "ip_elective_admission",
+            "ip_non-elective_admission",
+            "ip_elective_admission",
+            "ip_elective_daycase",
+            "ip_elective_daycase",
+            "ip_elective_admission",
+            "ip_non-elective_admission",
+        ],
+    }
+
     # act
-    results = mdl.aggregate(mr_mock)
+    (agg, results) = mdl._aggregate(mr_mock)
+
     # assert
-    assert mdl._create_agg.call_count == 3
+    assert agg() == {"default": expected_mr}
     assert results == {
-        "default": 1,
-        "sex+age_group": 1,
-        "sex+tretspef": 1,
+        "sex+tretspef": expected_mr,
         "bed_occupancy": 2,
         "theatres_available": 3,
     }
-    mdl._bed_occupancy.assert_called_once()
-    mdl._theatres_available.assert_called_once()
 
 
 def test_save_results(mocker, mock_model):

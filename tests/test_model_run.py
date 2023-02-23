@@ -61,13 +61,6 @@ def test_patch_run_params(mock_model_run):
             "aae": {"ambulance": 3, "walk-in": 4},
         },
         "baseline_adjustment": {"aae": {"ambulance": 5, "walk-in": 6}},
-        "inpatient_factors": {"admission_avoidance": 7, "los_reduction": 8},
-        "aae_factors": {"a": {"a": 9, "b": 10}, "b": {"a": 11, "b": 12}},
-        "outpatient_factors": {
-            "a": {"a": 13, "b": 14},
-            "b": {"a": 15, "b": 16},
-            "convert_to_tele": {"a": 17, "b": 18},
-        },
     }
 
     # act
@@ -101,22 +94,6 @@ def test_patch_run_params(mock_model_run):
         },
         "baseline_adjustment": {
             "aae": {"ambulance": {"Other": 5}, "walk-in": {"Other": 6}}
-        },
-        "inpatient_factors": {"admission_avoidance": 7, "los_reduction": 8},
-        "aae_factors": {"a": {"a": 9, "b": 10}, "b": {"a": 11, "b": 12}},
-        "outpatient_factors": {
-            "a": {"a": 13, "b": 14},
-            "b": {"a": 15, "b": 16},
-            "convert_to_tele": {"a": 17, "b": 18},
-        },
-        "activity_avoidance": {
-            "ip": 7,
-            "aae": {"a_a": 9, "a_b": 10, "b_a": 11, "b_b": 12},
-            "op": {"a_a": 13, "a_b": 14, "b_a": 15, "b_b": 16},
-        },
-        "efficiencies": {
-            "ip": 8,
-            "op": {"convert_to_tele_a": 17, "convert_to_tele_b": 18},
         },
     }
 

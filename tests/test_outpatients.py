@@ -238,10 +238,11 @@ def test_aggregate(mock_model):
     # arrange
     def create_agg_stub(model_results, cols=None):
         name = "+".join(cols) if cols else "default"
-        return {name: 1}
+        return {name: model_results.to_dict(orient="list")}
 
     mdl = mock_model
     mdl._create_agg = Mock(wraps=create_agg_stub)
+
     mr_mock = Mock()
     mr_mock.get_model_results.return_value = pd.DataFrame(
         {
@@ -256,27 +257,25 @@ def test_aggregate(mock_model):
             "sex": [1, 1, 1, 1],
         }
     )
+
+    expected_mr = {
+        "pod": [
+            k for k in ["op_first", "op_follow-up", "op_procedure"] for _ in [0, 1]
+        ],
+        "sitetret": ["trust"] * 6,
+        "measure": ["attendances", "tele_attendances"] * 3,
+        "sex": [1] * 6,
+        "age_group": [1] * 6,
+        "tretspef": [1] * 6,
+        "value": [5, 9, 7, 11, 14, 22],
+    }
+
     # act
-    results = mdl.aggregate(mr_mock)
+    (agg, results) = mdl._aggregate(mr_mock)
+
     # assert
-    assert mdl._create_agg.call_count == 3
-    assert results == {"default": 1, "sex+age_group": 1, "sex+tretspef": 1}
-    mr_call = pd.DataFrame(
-        {
-            "pod": [
-                k for k in ["op_first", "op_follow-up", "op_procedure"] for _ in [0, 1]
-            ],
-            "sitetret": ["trust"] * 6,
-            "measure": ["attendances", "tele_attendances"] * 3,
-            "sex": [1] * 6,
-            "age_group": [1] * 6,
-            "tretspef": [1] * 6,
-            "value": [5, 9, 7, 11, 14, 22],
-        }
-    )
-    assert mdl._create_agg.call_args_list[0][0][0].equals(mr_call)
-    assert mdl._create_agg.call_args_list[1][0][0].equals(mr_call)
-    assert mdl._create_agg.call_args_list[2][0][0].equals(mr_call)
+    assert agg() == {"default": expected_mr}
+    assert results == {"sex+tretspef": expected_mr}
 
 
 def test_save_results(mocker, mock_model):
