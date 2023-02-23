@@ -155,7 +155,7 @@ class OutpatientsModel(Model):
         """
         self._convert_to_tele(model_run)
 
-    def aggregate(self, model_run: ModelRun) -> dict:
+    def _aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
         """Aggregate the model results
 
         Can also be used to aggregate the baseline data by passing in the raw data
@@ -191,11 +191,7 @@ class OutpatientsModel(Model):
         )
 
         agg = partial(self._create_agg, model_results)
-        return {
-            **agg(),
-            **agg(["sex", "age_group"]),
-            **agg(["sex", "tretspef"]),
-        }
+        return (agg, { **agg(["sex", "tretspef"]) })
 
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model

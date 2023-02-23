@@ -401,7 +401,7 @@ class InpatientsModel(Model):
             result_a("ip_theatres", "theatres"): new_theatres,
         }
 
-    def aggregate(self, model_run: ModelRun) -> dict:
+    def _aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
         """Aggregate the model results
 
         Can also be used to aggregate the baseline data by passing in a `ModelRun` with
@@ -468,13 +468,14 @@ class InpatientsModel(Model):
         )
 
         agg = partial(self._create_agg, model_results)
-        return {
-            **agg(),
-            **agg(["sex", "age_group"]),
-            **agg(["sex", "tretspef"]),
-            "bed_occupancy": bed_occupancy,
-            "theatres_available": theatres_available,
-        }
+        return (
+            agg,
+            {
+                **agg(["sex", "tretspef"]),
+                "bed_occupancy": bed_occupancy,
+                "theatres_available": theatres_available,
+            },
+        )
 
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model

@@ -13,6 +13,7 @@ import pickle
 from collections import namedtuple
 from datetime import datetime
 from functools import partial
+from typing import Callable, Tuple
 
 import numpy as np
 import pandas as pd
@@ -80,6 +81,9 @@ class Model:
         self._load_hsa_gams()
         # generate the run parameters
         self._generate_run_params()
+        # initialise items
+        self._baseline_counts = None
+        self._data_mask = np.array([1.0])
 
     def _load_parquet(self, file: str, *args: list[str]) -> pd.DataFrame:
         """Load a parquet file
@@ -265,7 +269,7 @@ class Model:
         m_run = ModelRun(self, model_run)
 
         (
-            ActivityAvoidance(m_run, self._baseline_counts, row_mask=self._data_mask)
+            ActivityAvoidance(m_run, self._baseline_counts, self._data_mask)
             .demographic_adjustment()
             .health_status_adjustment()
             .expat_adjustment()
@@ -284,7 +288,7 @@ class Model:
     def _run(self, model_run: ModelRun):
         pass
 
-    def aggregate(self, model_run: ModelRun):
+    def aggregate(self, model_run: ModelRun) -> dict:
         """Aggregate the model results
 
         Can also be used to aggregate the baseline data by passing in the raw data
@@ -297,7 +301,12 @@ class Model:
         :returns: a dictionary containing the different aggregations of this data
         :rtype: dict
         """
-        # implemeneted by the concrete class
+        # pylint: disable=assignment-from-no-return
+        agg, aggregates = self._aggregate(model_run)
+        return {**agg(), **agg(["sex", "age_group"]), **aggregates}
+
+    def _aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
+        pass
 
     @staticmethod
     def _create_agg(model_results, cols=None, name=None, include_measure=True):

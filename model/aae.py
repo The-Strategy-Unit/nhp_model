@@ -102,7 +102,7 @@ class AaEModel(Model):
             .assign(measure="arrivals")
         )
 
-    def aggregate(self, model_run: ModelRun) -> dict:
+    def _aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
         """Aggregate the model results
 
         Can also be used to aggregate the baseline data by passing in a `ModelRun` with
@@ -130,7 +130,7 @@ class AaEModel(Model):
         ).agg({"value": "sum"})
 
         agg = partial(self._create_agg, model_results)
-        return {**agg(), **agg(["sex", "age_group"])}
+        return (agg, {})
 
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model

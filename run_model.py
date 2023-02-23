@@ -45,14 +45,14 @@ def debug_run(model: Model, model_run: int) -> None:
     Runs a single model iteration for easier debugging in vscode
     """
     print("running model... ", end="")
-    mr = timeit(model.run, model_run)
+    m_run = timeit(model.run, model_run)
     print("aggregating results... ", end="")
-    agg_results = timeit(model.aggregate, mr)
+    agg_results = timeit(model.aggregate, m_run)
     #
     print()
     print("change factors:")
     cf_agg = (
-        (change_factors := mr.get_step_counts())
+        (change_factors := m_run.get_step_counts())
         .groupby(["change_factor", "measure"], as_index=False)["value"]
         .sum()
         .pivot(index="change_factor", columns="measure", values="value")
@@ -239,6 +239,7 @@ def main() -> None:
 
 
 def init():
+    """method for calling main"""
     if __name__ == "__main__":
         main()
 
