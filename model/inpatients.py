@@ -152,21 +152,24 @@ class InpatientsModel(Model):
     def _load_strategies(self) -> None:
         """Load a set of strategies"""
 
-        def load_fn(strategy_type):
+        def load_fn(name, strategy_type):
             # load the file
-            strats = (
-                self._load_parquet(f"ip_{strategy_type}_strategies")
-                .set_index(["rn"])
-                .rename(columns={f"{strategy_type}_strategy": "strategy"})
+            strats = self._load_parquet(f"ip_{strategy_type}_strategies").set_index(
+                ["rn"]
             )
             # get the valid set of valid strategies from the params
-            valid_strats = self.params["inpatient_factors"][strategy_type].keys()
+            valid_strats = self.params[name]["ip"].keys()
             # subset the strategies
-            return strats[strats.iloc[:, 0].isin(valid_strats)]
+            return strats[strats.iloc[:, 0].isin(valid_strats)].rename(
+                columns={strats.columns[0]: "strategy"}
+            )
 
         self.strategies = {
-            "activity_avoidance": load_fn("admission_avoidance"),
-            "efficiencies": load_fn("los_reduction"),
+            k: load_fn(k, v)
+            for k, v in [
+                ("activity_avoidance", "admission_avoidance"),
+                ("efficiencies", "los_reduction"),
+            ]
         }
 
     def _get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
@@ -536,7 +539,7 @@ class InpatientEfficiencies:
         self.data.set_index(selected_strategy, inplace=True)
 
     def _generate_losr_df(self):
-        params = self._model_run.params["inpatient_factors"]["los_reduction"]
+        params = self._model_run.params["efficiencies"]["ip"]
         run_params = self._model_run.run_params["efficiencies"]["ip"]
         losr = pd.DataFrame.from_dict(params, orient="index")
         losr["losr_f"] = [run_params[i] for i in losr.index]

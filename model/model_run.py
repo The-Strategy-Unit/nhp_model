@@ -50,33 +50,6 @@ class ModelRun:
             k: {"Other": v} for k, v in run_params["baseline_adjustment"]["aae"].items()
         }
 
-        run_params["activity_avoidance"] = {
-            "ip": run_params["inpatient_factors"]["admission_avoidance"]
-        }
-
-        run_params["activity_avoidance"]["aae"] = {
-            f"{k0}_{k1}": v1
-            for k0, v0 in run_params["aae_factors"].items()
-            for k1, v1 in v0.items()
-        }
-
-        run_params["activity_avoidance"]["op"] = {
-            f"{k0}_{k1}": v1
-            for k0, v0 in run_params["outpatient_factors"].items()
-            for k1, v1 in v0.items()
-            if k0 != "convert_to_tele"
-        }
-
-        run_params["efficiencies"] = {
-            "ip": run_params["inpatient_factors"]["los_reduction"],
-            "op": {
-                f"convert_to_tele_{k1}": v1
-                for k1, v1 in run_params["outpatient_factors"][
-                    "convert_to_tele"
-                ].items()
-            },
-        }
-
     def get_step_counts(self):
         """get the step counts of a model run"""
         return self.model.get_step_counts_dataframe(self.step_counts)

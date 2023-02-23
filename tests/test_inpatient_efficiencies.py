@@ -78,8 +78,8 @@ def test_generate_losr_df(mock_ipe):
     m = mock_ipe
 
     m._model_run.params = {
-        "inpatient_factors": {
-            "los_reduction": {
+        "efficiencies": {
+            "ip": {
                 "a": {"type": "1", "interval": [1, 3]},
                 "b": {"type": "1", "interval": [2, 4]},
                 "c": {"type": "2", "other": 1, "interval": [3, 5]},

@@ -39,23 +39,20 @@ def mock_model():
             "a": {"a_a": [1, 1.2], "a_b": [1, 1.2]},
             "b": {"b_a": [1, 1.2], "b_b": [1, 1.2]},
         },
-        "inpatient_factors": {
-            "admission_avoidance": {
+        "activity_avoidance": {
+            "ip": {
                 "a_a": {"interval": [0.4, 0.6]},
                 "a_b": {"interval": [0.4, 0.6]},
             },
-            "los_reduction": {
+            "op": {"a_a": {"interval": [0.4, 0.6]}, "a_b": {"interval": [0.4, 0.6]}},
+            "aae": {"a_a": {"interval": [0.4, 0.6]}, "a_b": {"interval": [0.4, 0.6]}},
+        },
+        "efficiencies": {
+            "ip": {
                 "b_a": {"interval": [0.4, 0.6]},
                 "b_b": {"interval": [0.4, 0.6]},
             },
-        },
-        "outpatient_factors": {
-            "a": {"a_a": {"interval": [0.4, 0.6]}, "a_b": {"interval": [0.4, 0.6]}},
-            "b": {"b_a": {"interval": [0.4, 0.6]}, "b_b": {"interval": [0.4, 0.6]}},
-        },
-        "aae_factors": {
-            "a": {"a_a": {"interval": [0.4, 0.6]}, "a_b": {"interval": [0.4, 0.6]}},
-            "b": {"b_a": {"interval": [0.4, 0.6]}, "b_b": {"interval": [0.4, 0.6]}},
+            "op": {"b_a": {"interval": [0.4, 0.6]}, "b_b": {"interval": [0.4, 0.6]}},
         },
         "bed_occupancy": {
             "a": {"a": [0.4, 0.6], "b": 0.7},
@@ -95,25 +92,22 @@ def mock_run_params():
             "a": {"a_a": [1.1, 16, 17, 18], "a_b": [1.1, 19, 20, 21]},
             "b": {"b_a": [1.1, 22, 23, 24], "b_b": [1.1, 25, 26, 27]},
         },
-        "inpatient_factors": {
-            "admission_avoidance": {"a_a": [0.5, 28, 29, 30], "a_b": [0.5, 31, 32, 33]},
-            "los_reduction": {"b_a": [0.5, 34, 35, 36], "b_b": [0.5, 37, 38, 39]},
+        "activity_avoidance": {
+            "ip": {"a_a": [0.5, 28, 29, 30], "a_b": [0.5, 31, 32, 33]},
+            "op": {"a_a": [0.5, 34, 35, 36], "a_b": [0.5, 37, 38, 39]},
+            "aae": {"a_a": [0.5, 40, 41, 42], "a_b": [0.5, 43, 44, 45]},
         },
-        "outpatient_factors": {
-            "a": {"a_a": [0.5, 40, 41, 42], "a_b": [0.5, 43, 44, 45]},
-            "b": {"b_a": [0.5, 46, 47, 48], "b_b": [0.5, 49, 50, 51]},
-        },
-        "aae_factors": {
-            "a": {"a_a": [0.5, 52, 53, 54], "a_b": [0.5, 55, 56, 57]},
-            "b": {"b_a": [0.5, 58, 59, 60], "b_b": [0.5, 61, 62, 63]},
-        },
-        "bed_occupancy": {
-            "a": {"a": [0.5, 73, 74, 75], "b": [0.7, 0.7, 0.7, 0.7]},
-            "b": {"a": [0.5, 76, 77, 78], "b": [0.8, 0.8, 0.8, 0.8]},
+        "efficiencies": {
+            "ip": {"b_a": [0.5, 46, 47, 48], "b_b": [0.5, 49, 50, 51]},
+            "op": {"b_a": [0.5, 52, 53, 54], "b_b": [0.5, 55, 56, 57]},
         },
         "theatres": {
-            "change_utilisation": {"a": [1.02, 64, 65, 66], "b": [1.03, 67, 68, 69]},
-            "change_availability": [1.04, 70, 71, 72],
+            "change_utilisation": {"a": [1.02, 58, 59, 60], "b": [1.03, 61, 62, 63]},
+            "change_availability": [1.04, 64, 65, 66],
+        },
+        "bed_occupancy": {
+            "a": {"a": [0.5, 67, 68, 69], "b": [0.7, 0.7, 0.7, 0.7]},
+            "b": {"a": [0.5, 70, 71, 72], "b": [0.8, 0.8, 0.8, 0.8]},
         },
     }
 
@@ -312,17 +306,14 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "repat_local": {"ip": {"elective": {"Other": 1.1}}},
                 "repat_nonlocal": {"ip": {"elective": {"Other": 1.4}}},
                 "baseline_adjustment": {"ip": {"elective": {"Other": 1.6}}},
-                "inpatient_factors": {
-                    "admission_avoidance": {"a_a": 0.5, "a_b": 0.5},
-                    "los_reduction": {"b_a": 0.5, "b_b": 0.5},
+                "activity_avoidance": {
+                    "ip": {"a_a": 0.5, "a_b": 0.5},
+                    "op": {"a_a": 0.5, "a_b": 0.5},
+                    "aae": {"a_a": 0.5, "a_b": 0.5},
                 },
-                "outpatient_factors": {
-                    "a": {"a_a": 0.5, "a_b": 0.5},
-                    "b": {"b_a": 0.5, "b_b": 0.5},
-                },
-                "aae_factors": {
-                    "a": {"a_a": 0.5, "a_b": 0.5},
-                    "b": {"b_a": 0.5, "b_b": 0.5},
+                "efficiencies": {
+                    "ip": {"b_a": 0.5, "b_b": 0.5},
+                    "op": {"b_a": 0.5, "b_b": 0.5},
                 },
                 "bed_occupancy": {
                     "a": {"a": 0.5, "b": 0.7},
@@ -349,25 +340,22 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "repat_local": {"ip": {"elective": {"Other": 8}}},
                 "repat_nonlocal": {"ip": {"elective": {"Other": 11}}},
                 "baseline_adjustment": {"ip": {"elective": {"Other": 14}}},
-                "inpatient_factors": {
-                    "admission_avoidance": {"a_a": 29, "a_b": 32},
-                    "los_reduction": {"b_a": 35, "b_b": 38},
+                "activity_avoidance": {
+                    "ip": {"a_a": 29, "a_b": 32},
+                    "op": {"a_a": 35, "a_b": 38},
+                    "aae": {"a_a": 41, "a_b": 44},
                 },
-                "outpatient_factors": {
-                    "a": {"a_a": 41, "a_b": 44},
-                    "b": {"b_a": 47, "b_b": 50},
-                },
-                "aae_factors": {
-                    "a": {"a_a": 53, "a_b": 56},
-                    "b": {"b_a": 59, "b_b": 62},
-                },
-                "bed_occupancy": {
-                    "a": {"a": 74, "b": 0.7},
-                    "b": {"a": 77, "b": 0.8},
+                "efficiencies": {
+                    "ip": {"b_a": 47, "b_b": 50},
+                    "op": {"b_a": 53, "b_b": 56},
                 },
                 "theatres": {
-                    "change_utilisation": {"a": 65, "b": 68},
-                    "change_availability": 71,
+                    "change_utilisation": {"a": 59, "b": 62},
+                    "change_availability": 65,
+                },
+                "bed_occupancy": {
+                    "a": {"a": 68, "b": 0.7},
+                    "b": {"a": 71, "b": 0.8},
                 },
                 "waiting_list_adjustment": "waiting_list_adjustment",
             },
@@ -416,7 +404,7 @@ def test_run(mocker, mock_model):
     # assert
     assert actual == "model_run"
 
-    rr_mock.assert_called_once_with("model_run", 1, row_mask="data mask")
+    rr_mock.assert_called_once_with("model_run", 1, "data mask")
     rr_mock.demographic_adjustment.assert_called_once()
     rr_mock.health_status_adjustment.assert_called_once()
     rr_mock.expat_adjustment.assert_called_once()
@@ -435,6 +423,33 @@ def test__run(mock_model):
     """test the _run method"""
     # it does nothing, test is purely for coverage purposes
     mock_model._run(None)
+
+
+# aggregate()
+
+
+def test_aggregate(mock_model):
+    """test the _run method"""
+    # arrange
+    def mock_agg(cols=None):
+        name = "+".join(cols) if cols else "default"
+        return {name: name}
+
+    mock_aggregates = {"results": "results"}
+    mock_model._aggregate = Mock(return_value=(mock_agg, mock_aggregates))
+
+    # act
+    results = mock_model.aggregate("model_run")
+
+    # assert
+    assert results == {i: i for i in ["default", "sex+age_group", "results"]}
+    mock_model._aggregate.assert_called_once_with("model_run")
+
+
+def test__aggregate(mock_model):
+    """test the _run method"""
+    # it does nothing, test is purely for coverage purposes
+    mock_model._aggregate(None)
 
 
 # _create_agg()
