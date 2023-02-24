@@ -33,64 +33,27 @@ class InpatientsModel(Model):
     # pylint: disable=too-many-instance-attributes
 
     def __init__(self, params: list, data_path: str) -> None:
-        # initialise values for testing purposes
-        self.data = None
-        self._data_mask = np.array([1.0])
         # call the parent init function
         super().__init__(
             "ip",
             params,
             data_path,
-            columns_to_load=[
-                "rn",
-                "sitetret",
-                "speldur",
-                "age",
-                "sex",
-                "admimeth",
-                "admigroup",
-                "classpat",
-                "mainspef",
-                "tretspef",
-                "hsagrp",
-                "has_procedure",
-                "is_main_icb",
-                "admidate",
-            ],
         )
-        # load the strategies, store each strategy file as a separate entry in a dictionary
-        self._load_strategies()
         # load the theatres data
         self._load_theatres_data()
         # load the kh03 data
         self._load_kh03_data()
-        #
-        self._update_baseline_data()
-        # make sure to create the counts after oversampling (handled in update baseline data)
-        self._baseline_counts = self._get_data_counts(self.data)
 
-    def _update_baseline_data(self):
-        self.data = self.data.assign(is_wla=lambda x: x.admimeth == "11").rename(
-            columns={"admigroup": "group"}
-        )
-        self._union_bedday_rows()
+    def _get_data_mask(self) -> npt.ArrayLike:
+        """get the data mask
 
-    def _union_bedday_rows(self) -> None:
-        """Oversample the rows that are admitted in the prior financial year to simulate those
-        who were discharged in the next financial year.
+        Some data is oversampled for modelling purposes, but should not be included in any counts.
+        This method get's the appropriate data mask for the data
+
+        :return: a boolean array the length of the data
+        :rtype: npt.ArrayLike
         """
-        start_year = self.params["start_year"]
-        pre_rows = self.data[
-            pd.to_datetime(self.data.admidate) < pd.to_datetime(f"{start_year}-04-01")
-        ].copy()
-        pre_rows.admidate += timedelta(days=365)
-        # add column to indicate whether this is a row used for bedday calculations
-        pre_rows["bedday_rows"] = True
-        self.data["bedday_rows"] = False
-        # append these rows of data to the actual data
-        self.data = pd.concat([self.data, pre_rows]).reset_index(drop=True)
-        # create a row mask for use when counting rows
-        self._data_mask = ~self.data["bedday_rows"].to_numpy()
+        return ~self.data["bedday_rows"].to_numpy()
 
     def _load_kh03_data(self):
         # load the kh03 data
@@ -152,24 +115,20 @@ class InpatientsModel(Model):
     def _load_strategies(self) -> None:
         """Load a set of strategies"""
 
-        def load_fn(name, strategy_type):
+        def load_fn(strategy_type):
             # load the file
             strats = self._load_parquet(f"ip_{strategy_type}_strategies").set_index(
                 ["rn"]
             )
             # get the valid set of valid strategies from the params
-            valid_strats = self.params[name]["ip"].keys()
+            valid_strats = self.params[strategy_type]["ip"].keys()
             # subset the strategies
             return strats[strats.iloc[:, 0].isin(valid_strats)].rename(
                 columns={strats.columns[0]: "strategy"}
             )
 
         self.strategies = {
-            k: load_fn(k, v)
-            for k, v in [
-                ("activity_avoidance", "admission_avoidance"),
-                ("efficiencies", "los_reduction"),
-            ]
+            k: load_fn(k) for k in ["activity_avoidance", "efficiencies"]
         }
 
     def _get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:

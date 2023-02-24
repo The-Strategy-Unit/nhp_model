@@ -96,49 +96,26 @@ def test_init_calls_super_init(mocker):
     """test that the model calls the super method and loads the strategies"""
     # arrange
     super_mock = mocker.patch("model.inpatients.super")
-    mocker.patch("model.inpatients.InpatientsModel._load_strategies")
     mocker.patch("model.inpatients.InpatientsModel._load_theatres_data")
     mocker.patch("model.inpatients.InpatientsModel._load_kh03_data")
-    mocker.patch("model.inpatients.InpatientsModel._update_baseline_data")
-    mocker.patch("model.inpatients.InpatientsModel._get_data_counts", return_value=1)
     # act
     mdl = InpatientsModel("params", "data_path")
     # assert
     super_mock.assert_called_once()
-    mdl._load_strategies.assert_called_once()
     mdl._load_theatres_data.assert_called_once()
     mdl._load_kh03_data.assert_called_once()
-    mdl._update_baseline_data.assert_called_once()
-    mdl._get_data_counts.assert_called_once()
-    assert mdl._baseline_counts == 1
 
 
-def test_update_baseline_data(mock_model):
+def test_get_data_mask(mock_model):
     # arrange
-    mdl = mock_model
-    mdl.data = pd.DataFrame({"admimeth": ["11", "12", "21"]})
-    mdl._union_bedday_rows = Mock()
-    # act
-    mdl._update_baseline_data()
-    # assert
-    assert mdl.data["is_wla"].to_list() == [True, False, False]
-    mdl._union_bedday_rows.assert_called_once()
+    expected = [True] * 3 + [False] * 2
+    mock_model.data = pd.DataFrame({"bedday_rows": [not i for i in expected]})
 
-
-def test_union_beddays(mock_model):
-    """test that it appends rows"""
-    # arrange
-    mdl = mock_model
-    year = mdl.params["start_year"]
-    # we need dates before the start of the financial year, and during it
-    mdl.data["admidate"] = [
-        datetime(year, 1 + m, 1) for m in range(10) for _ in range(2)
-    ]
     # act
-    mdl._union_bedday_rows()
+    actual = mock_model._get_data_mask()
+
     # assert
-    assert len(mdl.data.index) == 26
-    assert sum(mdl.data["bedday_rows"]) == 6
+    assert actual.tolist() == expected
 
 
 def test_load_kh03_data(mocker, mock_model):

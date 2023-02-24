@@ -84,28 +84,10 @@ def test_init_calls_super_init(mocker):
     """test that the model calls the super method"""
     # arrange
     super_mock = mocker.patch("model.aae.super")
-    ubd_mock = mocker.patch("model.aae.AaEModel._update_baseline_data")
-    gdc_mock = mocker.patch("model.aae.AaEModel._get_data_counts", return_value=1)
-    lst_mock = mocker.patch("model.aae.AaEModel._load_strategies")
     # act
-    mdl = AaEModel("params", "data_path")
+    AaEModel("params", "data_path")
     # assert
     super_mock.assert_called_once()
-    ubd_mock.assert_called_once()
-    gdc_mock.assert_called_once_with(None)
-    lst_mock.assert_called_once()
-    assert mdl._baseline_counts == 1
-
-
-def test_update_baseline_data(mock_model):
-    # arrange
-    mdl = mock_model
-    mdl.data["is_ambulance"] = [True] * 10 + [False] * 10
-    # act
-    mdl._update_baseline_data()
-    # assert
-    assert mdl.data["group"].to_list() == ["ambulance"] * 10 + ["walk-in"] * 10
-    assert mdl.data["tretspef"].to_list() == ["Other"] * 20
 
 
 def test_get_data_counts(mock_model):

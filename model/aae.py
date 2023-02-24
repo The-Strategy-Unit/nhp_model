@@ -25,20 +25,9 @@ class AaEModel(Model):
     """
 
     def __init__(self, params: dict, data_path: str) -> None:
-        # initialise values for testing purposes
-        self.data = None
-        self._data_mask = np.array([1.0])
         # call the parent init function
         super().__init__("aae", params, data_path)
-        self._update_baseline_data()
-        self._baseline_counts = self._get_data_counts(self.data)
-        self._load_strategies()
-
-    def _update_baseline_data(self) -> None:
-        """modifies the baseline data to include the columns needed for the model"""
-        self.data["group"] = np.where(self.data["is_ambulance"], "ambulance", "walk-in")
-        self.data["tretspef"] = "Other"
-
+        
     def _get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
         """Get row counts of data
 

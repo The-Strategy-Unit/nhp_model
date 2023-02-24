@@ -16,6 +16,7 @@ from functools import partial
 from typing import Callable, Tuple
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import pyarrow.parquet as pq
 
@@ -77,13 +78,16 @@ class Model:
             "rn"
         )
         self.data["age_group"] = age_groups(self.data["age"])
+        self._load_strategies()
         self._load_demog_factors()
         self._load_hsa_gams()
         # generate the run parameters
         self._generate_run_params()
-        # initialise items
-        self._baseline_counts = None
-        self._data_mask = np.array([1.0])
+        # get the data mask
+        self._data_mask = self._get_data_mask()
+        # make sure to create the counts after oversampling (handled in update baseline data)
+        # pylint: disable=assignment-from-no-return
+        self._baseline_counts = self._get_data_counts(self.data)
 
     def _load_parquet(self, file: str, *args: list[str]) -> pd.DataFrame:
         """Load a parquet file
@@ -103,6 +107,10 @@ class Model:
         return pq.read_pandas(
             os.path.join(self._data_path, f"{file}.parquet"), *args
         ).to_pandas()
+
+    def _load_strategies(self) -> None:
+        """Load a set of strategies"""
+        # to be implemented by the concrete classes
 
     def _load_demog_factors(self) -> None:
         """Load the demographic factors
@@ -255,6 +263,12 @@ class Model:
             },
             "waiting_list_adjustment": params["waiting_list_adjustment"],
         }
+
+    def _get_data_counts(self, data) -> npt.ArrayLike:
+        pass
+
+    def _get_data_mask(self) -> npt.ArrayLike:
+        return np.array([1.0])
 
     def run(self, model_run: int):
         """Run the model
