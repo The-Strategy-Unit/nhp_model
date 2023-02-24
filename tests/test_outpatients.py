@@ -82,35 +82,10 @@ def test_init_calls_super_init(mocker):
     """test that the model calls the super method"""
     # arrange
     super_mock = mocker.patch("model.outpatients.super")
-    ubd_mock = mocker.patch("model.outpatients.OutpatientsModel._update_baseline_data")
-    gdc_mock = mocker.patch(
-        "model.outpatients.OutpatientsModel._get_data_counts", return_value=1
-    )
-    lst_mock = mocker.patch("model.outpatients.OutpatientsModel._load_strategies")
     # act
-    mdl = OutpatientsModel("params", "data_path")
+    OutpatientsModel("params", "data_path")
     # assert
     super_mock.assert_called_once()
-    ubd_mock.assert_called_once()
-    gdc_mock.assert_called_once_with(None)
-    lst_mock.assert_called_once()
-    assert mdl._baseline_counts == 1
-
-
-def test_update_baseline_data(mock_model):
-    # arrange
-    mdl = mock_model
-    mdl.data["has_procedures"] = [True] * 10 + [False] * 10
-    mdl.data["is_first"] = ([True] * 5 + [False] * 5) * 2
-    # act
-    mdl._update_baseline_data()
-    # assert
-    assert (
-        mdl.data["group"].to_list()
-        == ["procedure"] * 10 + ["first"] * 5 + ["followup"] * 5
-    )
-    assert mdl.data["is_wla"].to_list() == [True] * 20
-
 
 def test_get_data_counts(mock_model):
     # arrange

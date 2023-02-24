@@ -138,9 +138,12 @@ def test_model_init_sets_values(mocker, model_type):
 
     mocker.patch("model.model.Model._load_parquet", return_value=mock_data)
     mocker.patch("model.model.age_groups", return_value="age_groups")
+    mocker.patch("model.model.Model._load_strategies")
     mocker.patch("model.model.Model._load_demog_factors")
     mocker.patch("model.model.Model._load_hsa_gams")
     mocker.patch("model.model.Model._generate_run_params")
+    mocker.patch("model.model.Model._get_data_mask", return_value="data_mask")
+    mocker.patch("model.model.Model._get_data_counts", return_value="data_counts")
 
     mocker.patch("os.path.join", lambda *args: "/".join(args))
 
@@ -159,6 +162,10 @@ def test_model_init_sets_values(mocker, model_type):
     mdl._load_demog_factors.assert_called_once()
     mdl._load_hsa_gams.assert_called_once()
     mdl._generate_run_params.assert_called_once()
+    mdl._load_strategies.assert_called_once()
+    assert mdl._data_mask == "data_mask"
+    assert mdl._baseline_counts == "data_counts"
+    mdl._get_data_counts.call_args_list[0][0][0].equals(mdl.data)
 
 
 def test_model_init_validates_model_type():
