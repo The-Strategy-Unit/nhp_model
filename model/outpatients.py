@@ -26,22 +26,8 @@ class OutpatientsModel(Model):
     """
 
     def __init__(self, params: list, data_path: str) -> None:
-        # initialise values for testing purposes
-        self.data = None
-        self._data_mask = np.array([1.0])
         # call the parent init function
         super().__init__("op", params, data_path)
-        self._update_baseline_data()
-        self._baseline_counts = self._get_data_counts(self.data)
-        self._load_strategies()
-
-    def _update_baseline_data(self) -> None:
-        self.data["group"] = np.where(
-            self.data["has_procedures"],
-            "procedure",
-            np.where(self.data["is_first"], "first", "followup"),
-        )
-        self.data["is_wla"] = True
 
     def _get_data_counts(self, data) -> npt.ArrayLike:
         return (

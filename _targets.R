@@ -32,7 +32,7 @@ all_providers <- list(
 
 # ensure the folders have been created to store the data
 purrr::walk(c(all_providers, "synthetic"), \(.x) {
-  d <- file.path("data", .x)
+  d <- file.path("data", paste(.x, collapse = "_"))
   if (!dir.exists(d)) {
     dir.create(d)
   }
@@ -55,13 +55,6 @@ list(
   )),
   tar_target(providers, all_providers),
   # targets ----
-  # create paths
-  tar_target(
-    folders,
-    create_data_folder(providers),
-    pattern = map(providers)
-  ),
-  tar_target(folder_synthetic, create_data_folder("synthetic")),
   # sql data
   tar_target(
     reference_data,

@@ -71,7 +71,7 @@ extract_op_sample_data <- function(start_date, end_date, ...) {
       sitetret = paste0("RXX0", sample(1:3, dplyr::n(), TRUE)),
       is_main_icb = rbinom(dplyr::n(), 1, main_icb_rate)
     ) |>
-    mutate(
+    dplyr::mutate(
       rn = dplyr::row_number(),
       .before = tidyselect::everything()
     )
@@ -205,7 +205,13 @@ aggregate_op_data <- function(data, ...) {
     dplyr::mutate(
       rn = dplyr::row_number(),
       dplyr::across("attendances", as.integer),
-      dplyr::across(tidyselect::matches("^(i|ha)s\\_"), as.logical)
+      dplyr::across(tidyselect::matches("^(i|ha)s\\_"), as.logical),
+      group = dplyr::case_when(
+        .data$has_procedures ~ "procedure",
+        .data$is_first ~ "first",
+        TRUE ~ "followup"
+      ),
+      is_wla = TRUE
     ) |>
     dplyr::relocate("rn", .before = everything()) |>
     tidyr::drop_na()

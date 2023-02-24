@@ -74,7 +74,7 @@ extract_aae_sample_data <- function(start_date, end_date, ...) {
       sitetret = paste0("RXX0", sample(1:3, dplyr::n(), TRUE)),
       is_main_icb = rbinom(dplyr::n(), 1, main_icb_rate)
     ) |>
-    mutate(
+    dplyr::mutate(
       rn = dplyr::row_number(),
       .before = tidyselect::everything()
     )
@@ -150,7 +150,9 @@ aggregate_aae_data <- function(data, ...) {
     dplyr::mutate(
       rn = dplyr::row_number(),
       dplyr::across("arrivals", as.integer),
-      dplyr::across(tidyselect::matches("^(i|ha)s\\_"), as.logical)
+      dplyr::across(tidyselect::matches("^(i|ha)s\\_"), as.logical),
+      group = ifelse(.data$is_ambulance, "ambulance", "walk-in"),
+      tretspef = "Other"
     ) |>
     dplyr::relocate("rn", .before = tidyselect::everything()) |>
     tidyr::drop_na()

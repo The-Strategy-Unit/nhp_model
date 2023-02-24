@@ -73,7 +73,7 @@ extract_ip_sample_data <- function(start_date, end_date, ...) {
   n_rows <- tbl_inpatients |>
     dplyr::count(.data$PROCODE3) |>
     dplyr::collect() |>
-    dplyr::pull(n) |>
+    dplyr::pull(.data$n) |>
     median() |>
     round()
 
@@ -200,7 +200,8 @@ create_ip_data <- function(inpatients, specialties) {
         "Least deprived 10%"
       ),
       dplyr::across(c("age", "sex"), as.integer),
-      admigroup = dplyr::case_when(
+      is_wla = .data$admimeth == "11",
+      group = dplyr::case_when(
         stringr::str_starts(.data$admimeth, "1") ~ "elective",
         stringr::str_starts(.data$admimeth, "3") ~ "maternity",
         TRUE ~ "non-elective"
@@ -208,7 +209,7 @@ create_ip_data <- function(inpatients, specialties) {
       # handle case of maternity: make tretspef always Other (Medical)
       dplyr::across(
         "tretspef",
-        ~ ifelse(.data$admigroup == "maternity", "Other (Medical)", .x)
+        ~ ifelse(.data$group == "maternity", "Other (Medical)", .x)
       )
     ) |>
     dplyr::select(-"procode3", -"fyear", -"icb22cdh") |>
@@ -250,6 +251,24 @@ create_ip_synth_from_data <- function(data) {
     })()
 }
 
+union_bed_days_rows <- function(start_date) {
+  force(start_date)
+
+  function(data) {
+    dplyr::bind_rows(
+      .id = "bedday_rows",
+      "FALSE" = data,
+      "TRUE" = data |>
+        dplyr::filter(.data$admidate < start_date) |>
+        dplyr::mutate(
+          dplyr::across(dplyr::ends_with("date"), lubridate::`%m+%`, lubridate::years(1))
+        )
+    ) |>
+      dplyr::mutate(dplyr::across("bedday_rows", as.logical)) |>
+      dplyr::relocate("bedday_rows", .after = dplyr::everything())
+  }
+}
+
 save_ip_data <- function(data, strategies, name, path) {
   ip_fn <- file.path(path, name, "ip.parquet")
 
@@ -266,17 +285,13 @@ save_ip_data <- function(data, strategies, name, path) {
     ) |>
     arrow::write_parquet(ip_fn)
 
-  # for the los reduction strategy NULL is replaced for elective/non-elective ordinary admissions
-  # but not for daycases or maternity admissions
-  null_strats <- data |>
+  # for los reduction we have the general los reduction for all elective/non-elective rows inpatient
+  general_los_reduction <- data |>
+    dplyr::filter(.data$classpat == "1", .data$group %in% c("elective", "non-elective")) |>
     dplyr::transmute(
       .data$rn,
-      strategy = dplyr::case_when(
-        .data$admigroup == "maternity" ~ "NULL",
-        .data$classpat != "1" ~ "NULL",
-        TRUE ~ paste0("general_los_reduction_", .data$admigroup)
-      ),
-      sample_rate = 1
+      strategy_type = "los reduction",
+      strategy = paste0("general_los_reduction_", .data$group)
     )
 
   strategies_to_remove <- dplyr::bind_rows(
@@ -298,23 +313,21 @@ save_ip_data <- function(data, strategies, name, path) {
   strategies_fns <- strategies |>
     dplyr::anti_join(strategies_to_remove, by = c("rn", "strategy")) |>
     tidyr::drop_na("strategy_type") |>
+    dplyr::bind_rows(general_los_reduction) |>
     dplyr::group_nest(.data$strategy_type) |>
     dplyr::mutate(
-      dplyr::across("strategy_type", stringr::str_replace, " ", "_")
+      dplyr::across(
+        "strategy_type",
+        forcats::fct_recode,
+        "activity_avoidance" = "admission avoidance",
+        "efficiencies" = "los reduction"
+      )
     ) |>
     purrr::pmap_chr(\(strategy_type, data) {
-      t <- paste0(strategy_type, "_strategy")
       fn <- file.path(path, name, glue::glue("ip_{strategy_type}_strategies.parquet"))
 
-      ns <- null_strats
-      if (strategy_type != "los_reduction") {
-        ns$strategy <- "NULL"
-      }
-
       data |>
-        dplyr::bind_rows(ns) |>
         dplyr::arrange(.data$strategy, .data$rn) |>
-        dplyr::rename({{ t }} := "strategy") |> # nolint
         arrow::write_parquet(fn)
 
       fn
@@ -337,9 +350,13 @@ create_ip_extract <- function(start_date,
   inpatients <- strategies <- NULL # for lint
   c(inpatients, strategies) %<-% extract_fn(start_date, end_date, providers)
 
+  # partially apply the function
+  ubdr <- union_bed_days_rows(start_date)
+
   inpatients |>
     create_ip_data(specialties) |>
     synth_fn() |>
+    ubdr() |>
     save_ip_data(strategies, name, path)
 }
 
