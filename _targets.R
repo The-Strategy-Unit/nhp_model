@@ -14,6 +14,30 @@ tar_option_set(
   )
 )
 
+all_providers <- list(
+  "RA9",
+  "RD8",
+  "RGP",
+  "RGR",
+  "RH5", # "RBA" is merged in with this activity
+  "RH8", # was "RBZ",
+  "RHW",
+  "RN5",
+  "RNQ",
+  "RX1",
+  "RXC",
+  c("RXN", "RTX"),
+  "RYJ"
+)
+
+# ensure the folders have been created to store the data
+purrr::walk(c(all_providers, "synthetic"), \(.x) {
+  d <- file.path("data", .x)
+  if (!dir.exists(d)) {
+    dir.create(d)
+  }
+})
+
 # load all of the R scripts in the data_extraction directory
 purrr::walk(fs::dir_ls("data_extraction", glob = "*.R"), source)
 
@@ -29,22 +53,15 @@ list(
     "100", "101", "110", "120", "130", "140", "160", "300", "320", "330", "400",
     "410", "430", "502"
   )),
-  tar_target(providers, list(
-    "RA9",
-    "RD8",
-    "RGP",
-    "RGR",
-    "RH5", # "RBA" is merged in with this activity
-    "RH8", # was "RBZ",
-    "RHW",
-    "RN5",
-    "RNQ",
-    "RX1",
-    "RXC",
-    c("RXN", "RTX"),
-    "RYJ"
-  )),
+  tar_target(providers, all_providers),
   # targets ----
+  # create paths
+  tar_target(
+    folders,
+    create_data_folder(providers),
+    pattern = map(providers)
+  ),
+  tar_target(folder_synthetic, create_data_folder("synthetic")),
   # sql data
   tar_target(
     reference_data,
