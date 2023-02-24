@@ -9,6 +9,11 @@
       "group": "build",
       "problemMatcher": [],
       "label": "R: Run Targets"
+    },
+    {
+      "type": "shell",
+      "label": "Run Code Coverage",
+      "command": "conda activate nhp && pytest --cov=. tests/ --ignore=tests --cov-report xml:coverage.xml --cov-report term"
     }
   ]
 }
