@@ -38,22 +38,6 @@ class InpatientsModel(Model):
             "ip",
             params,
             data_path,
-            columns_to_load=[
-                "rn",
-                "sitetret",
-                "speldur",
-                "age",
-                "sex",
-                "admimeth",
-                "admigroup",
-                "classpat",
-                "mainspef",
-                "tretspef",
-                "hsagrp",
-                "has_procedure",
-                "is_main_icb",
-                "admidate",
-            ],
         )
         # load the theatres data
         self._load_theatres_data()
