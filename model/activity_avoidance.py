@@ -101,6 +101,12 @@ class ActivityAvoidance:
         self._update_step_counts((step, group or "-"))
         return self
 
+    def _update_rn(self, factor: pd.Series, group: str):
+        self._row_counts *= self.data["rn"].map(factor).fillna(1).to_numpy()
+
+        self._update_step_counts(("activity_avoidance", group))
+        return self
+
     def _update_step_counts(self, step: Tuple[str, str]) -> None:
         new_sum = (self._row_counts * self._row_mask).sum(axis=1)
         self.step_counts[step] = new_sum - self._sum
@@ -246,11 +252,7 @@ class ActivityAvoidance:
         )
 
         for k in strategies_grouped.index.levels[0]:
-            self._update(
-                strategies_grouped[k, slice(None)].rename(k),
-                ["rn"],
-                group="activity_avoidance",
-            )
+            self._update_rn(strategies_grouped[k, slice(None)], k)
 
         return self
 
