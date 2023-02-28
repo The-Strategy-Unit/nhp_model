@@ -387,10 +387,8 @@ class InpatientsModel(Model):
                     "sitetret",
                     "age_group",
                     "sex",
-                    "admimeth",
                     "group",
                     "classpat",
-                    "mainspef",
                     "tretspef",
                 ],
                 # as_index = False
