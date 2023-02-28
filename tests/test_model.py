@@ -252,15 +252,45 @@ def test_demog_factors_loads_correctly(mocker, mock_model, start_year, end_year)
 # _load_hsa_gams()
 def test_load_hsa_gams(mocker, mock_model):
     # arrange
+    mdl = mock_model
     mocker.patch("pickle.load", return_value="pkl_load")
+    mdl._generate_hsa_activity_ages = Mock(return_value="precomputed_activity_ages")
 
     # act
     with patch("builtins.open", mock_open(read_data="hsa_gams")) as mock_file:
-        mock_model._load_hsa_gams()
+        mdl._load_hsa_gams()
 
     # assert
-    assert mock_model.hsa_gams == "pkl_load"
+    assert mdl.hsa_gams == "pkl_load"
     mock_file.assert_called_with("data/synthetic/hsa_gams.pkl", "rb")
+
+    assert mdl.hsa_precomputed_activity_ages == "precomputed_activity_ages"
+    mdl._generate_hsa_activity_ages.assert_called_once()
+
+
+# _generate_hsa_activity_ages()
+def test_generate_hsa_activity_ages(mock_model):
+    # arrange
+    mdl = mock_model
+    mdl.params = {
+        "life_expectancy": {
+            "m": [1, 2, 3],
+            "f": [4, 5, 6],
+            "min_age": 50,
+            "max_age": 52,
+        }
+    }
+    hsa_mock = type("mocked_hsa", (object,), {"predict": lambda x: x})
+    mdl.hsa_gams = {(h, s): hsa_mock for h in ["a", "b"] for s in [1, 2]}
+
+    # act
+    actual = mdl._generate_hsa_activity_ages()
+
+    # assert
+    assert actual.to_dict("list") == {
+        "activity_age": [50, 50, 51, 51, 52, 52, 50, 50, 51, 51, 52, 52],
+        "life_expectancy": [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6],
+    }
 
 
 # _generate_run_params()

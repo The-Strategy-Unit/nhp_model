@@ -117,31 +117,40 @@ def test_demographic_adjustment(mocker, mock_activity_avoidance):
 def test_health_status_adjustment(mocker, mock_activity_avoidance):
     # arrange
     aa_mock = mock_activity_avoidance
-    aa_mock._model_run.params = {
-        "life_expectancy": {
-            "f": [1.1, 1.0, 0.9],
-            "m": [0.8, 0.7, 0.6],
-            "min_age": 50,
-            "max_age": 52,
+
+    aa_mock._model_run.run_params = {"health_status_adjustment": 2}
+
+    activity_age = 1 / (np.arange(0, 12) + 1)
+
+    aa_mock._model_run.model.hsa_precomputed_activity_ages = pd.DataFrame(
+        {
+            "hsagrp": (["a"] * 3 + ["b"] * 3) * 2,
+            "sex": [1] * 6 + [2] * 6,
+            "age": [50, 51, 52] * 4,
+            "life_expectancy": [1, 2, 3] * 2 + [-1, -2, -3] * 2,
+            "activity_age": activity_age,
         }
-    }
-    aa_mock._model_run.run_params = {"health_status_adjustment": 0.8}
+    ).set_index(["hsagrp", "sex", "age"])
 
     hsa_mock = type("mocked_hsa", (object,), {"predict": lambda x: x.to_numpy()})
     aa_mock._model_run.model.hsa_gams = {
         (i, j): hsa_mock for i in ["a", "b"] for j in [1, 2]
     }
 
-    expected = [
-        # sex = 1, age = [49,53)
-        49.36 / 50.0,
-        50.44 / 51.0,
-        51.52 / 52.0,
-        # sex = 2, age = [49,53)
-        49.12 / 50.0,
-        50.20 / 51.0,
-        51.28 / 52.0,
-    ] * 2
+    expected = {
+        ("a", 1, 50): 48.0,
+        ("a", 1, 51): 94.0,
+        ("a", 1, 52): 138.0,
+        ("a", 2, 50): 364.0,
+        ("a", 2, 51): 440.0,
+        ("a", 2, 52): 522.0,
+        ("b", 1, 50): 192.0,
+        ("b", 1, 51): 235.0,
+        ("b", 1, 52): 276.0,
+        ("b", 2, 50): 520.0,
+        ("b", 2, 51): 605.0,
+        ("b", 2, 52): 696.0,
+    }
 
     keys = list(zip(["a"] * 6 + ["b"] * 6, ([1] * 3 + [2] * 3) * 2, [50, 51, 52] * 4))
 
@@ -155,7 +164,7 @@ def test_health_status_adjustment(mocker, mock_activity_avoidance):
     # assert
     assert actual == "update"
     f, cols = u_mock.call_args_list[0][0]
-    assert f.to_dict() == {k: v for k, v in zip(keys, expected)}
+    assert f.to_dict() == expected
     assert f.name == "health_status_adjustment"
     assert cols == ["hsagrp", "sex", "age"]
 
@@ -528,21 +537,21 @@ def test_activity_avoidance_no_params(mocker, mock_activity_avoidance):
         (
             [1] * 9,
             [
-                ("a", [1 / 8] * 1, True),
-                ("b", [2 / 8] * 2, True),
-                ("c", [3 / 8] * 3, True),
-                ("d", [4 / 8] * 2, True),
-                ("e", [5 / 8] * 1, True),
+                ([1 / 8] * 1, "a"),
+                ([2 / 8] * 2, "b"),
+                ([3 / 8] * 3, "c"),
+                ([4 / 8] * 2, "d"),
+                ([5 / 8] * 1, "e"),
             ],
         ),
         (
             [0] * 9,
             [
-                ("a", [1] * 1, True),
-                ("b", [1] * 2, True),
-                ("c", [1] * 3, True),
-                ("d", [1] * 2, True),
-                ("e", [1] * 1, True),
+                ([1] * 1, "a"),
+                ([1] * 2, "b"),
+                ([1] * 3, "c"),
+                ([1] * 2, "d"),
+                ([1] * 1, "e"),
             ],
         ),
     ],
@@ -572,15 +581,13 @@ def test_activity_avoidance(mocker, mock_activity_avoidance, binomial_rv, expect
     }
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+        "model.activity_avoidance.ActivityAvoidance._update_rn",
+        return_value="update_rn",
     )
 
     # act
     actual = aa_mock.activity_avoidance()
-    call_args = [
-        (i[0][0].name, i[0][0].to_list(), i[0][1] == ["rn"])
-        for i in u_mock.call_args_list
-    ]
+    call_args = [(i[0][0].to_list(), i[0][1]) for i in u_mock.call_args_list]
 
     # assert
     assert actual == aa_mock

@@ -148,11 +148,14 @@ class Model:
         with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
             self.hsa_gams = pickle.load(hsa_pkl)
 
+        self.hsa_precomputed_activity_ages = self._generate_hsa_activity_ages()
+
+    def _generate_hsa_activity_ages(self):
         # precompute the table for the health status adjustment steps
         lep = self.params["life_expectancy"]
         ages = np.arange(lep["min_age"], lep["max_age"] + 1)
 
-        self.hsa_precomputed_activity_ages = (
+        return (
             pd.concat(
                 [
                     pd.DataFrame(
