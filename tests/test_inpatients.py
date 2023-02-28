@@ -297,7 +297,7 @@ def test_bedday_summary(mock_model):
     )
     data = pd.DataFrame(
         {
-            "admidate": [f"2022-04-0{d}" for d in range(6)] * 2,
+            "admidate": [f"2022-04-0{d}" for d in range(1, 7)] * 2,
             "speldur": list(range(6)) * 2,
             "mainspef": ["a", "b", "c"] * 4,
             "classpat": (["1"] * 5 + ["2"]) * 2,

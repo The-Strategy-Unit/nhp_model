@@ -216,13 +216,17 @@ class InpatientsModel(Model):
         """
         return (
             data.query("(speldur > 0) & (classpat == '1')")
+            .groupby(["admidate", "speldur", "mainspef"], as_index=False)
+            .size()
+            .rename(columns={"size": "nx"})
             .assign(day_n=lambda x: x.speldur.apply(np.arange))
             .explode("day_n")
-            .groupby(["admidate", "day_n", "mainspef"], as_index=False)
+            .groupby(["admidate", "day_n", "mainspef", "nx"], as_index=False)
             .size()
             .assign(
                 date=lambda x: pd.to_datetime(x.admidate)
-                + pd.to_timedelta(x.day_n, unit="d")
+                + pd.to_timedelta(x.day_n, unit="d"),
+                size=lambda x: x["nx"] * x["size"],
             )
             .merge(self._ward_groups, left_on="mainspef", right_index=True)
             .groupby(["date", "ward_type", "ward_group"], as_index=False)
