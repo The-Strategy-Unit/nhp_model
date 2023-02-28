@@ -53,8 +53,7 @@ def test_init(mocker):
     assert actual._row_mask.tolist() == [2]
 
 
-@pytest.mark.parametrize("group, expected", [(None, ("f", "-")), ("a", ("a", "f"))])
-def test_update(mocker, mock_activity_avoidance, group, expected):
+def test_update(mocker, mock_activity_avoidance):
     # arrange
     aa_mock = mock_activity_avoidance
 
@@ -68,10 +67,32 @@ def test_update(mocker, mock_activity_avoidance, group, expected):
     )
 
     # act
-    actual = aa_mock._update(factor, ["a"], group)
+    actual = aa_mock._update(factor, ["a"])
 
     # assert
-    usc_mock.assert_called_once_with(expected)
+    usc_mock.assert_called_once_with(("f", "-"))
+    assert aa_mock._row_counts.tolist() == [3, 8, 15, 6]
+    assert actual == aa_mock
+
+
+def test_update_rn(mocker, mock_activity_avoidance):
+    # arrange
+    aa_mock = mock_activity_avoidance
+
+    aa_mock._row_counts = np.array([3.0, 4.0, 5.0, 6.0])
+    aa_mock._model_run.data = pd.DataFrame({"rn": [1, 2, 3, 4]})
+
+    factor = pd.Series([1.0, 2.0, 3.0], index=[1, 2, 3], name="f")
+
+    usc_mock = mocker.patch(
+        "model.activity_avoidance.ActivityAvoidance._update_step_counts"
+    )
+
+    # act
+    actual = aa_mock._update_rn(factor, "a")
+
+    # assert
+    usc_mock.assert_called_once_with(("activity_avoidance", "a"))
     assert aa_mock._row_counts.tolist() == [3, 8, 15, 6]
     assert actual == aa_mock
 

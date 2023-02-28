@@ -86,7 +86,7 @@ class ActivityAvoidance:
         """get the current model runs data"""
         return self._model_run.data
 
-    def _update(self, factor: pd.Series, cols: List[str], group=None):
+    def _update(self, factor: pd.Series, cols: List[str]):
         step = factor.name
 
         self._row_counts *= (
@@ -95,10 +95,7 @@ class ActivityAvoidance:
             .to_numpy()
         )
 
-        if group is not None:
-            step, group = group, step
-
-        self._update_step_counts((step, group or "-"))
+        self._update_step_counts((step, "-"))
         return self
 
     def _update_rn(self, factor: pd.Series, group: str):
