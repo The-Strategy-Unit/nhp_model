@@ -148,6 +148,37 @@ class Model:
         with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
             self.hsa_gams = pickle.load(hsa_pkl)
 
+        # precompute the table for the health status adjustment steps
+        lep = self.params["life_expectancy"]
+        ages = np.arange(lep["min_age"], lep["max_age"] + 1)
+
+        self.hsa_precomputed_activity_ages = (
+            pd.concat(
+                [
+                    pd.DataFrame(
+                        {
+                            "hsagrp": h,
+                            "sex": int(s),
+                            "age": ages,
+                            "activity_age": g.predict(ages),
+                        }
+                    )
+                    for (h, s), g in self.hsa_gams.items()
+                ]
+            )
+            .merge(
+                pd.concat(
+                    {
+                        si: pd.Series(lep[ss], index=ages, name="life_expectancy")
+                        for (si, ss) in [(1, "m"), (2, "f")]
+                    }
+                ),
+                left_on=["sex", "age"],
+                right_index=True,
+            )
+            .set_index(["hsagrp", "sex", "age"])
+        )
+
     def _generate_run_params(self):
         """Generate the values for each model run from the params
 
