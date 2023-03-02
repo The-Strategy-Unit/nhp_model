@@ -4,6 +4,8 @@ Provides a simple class which holds all of the data required for a model run
 """
 import numpy as np
 
+from model.activity_avoidance import ActivityAvoidance
+
 
 class ModelRun:
     """Model Run
@@ -24,7 +26,10 @@ class ModelRun:
         self.step_counts = {}
 
         # data is mutated, so is not a property
-        self.data = model.data
+        self.data = model.data.copy()
+
+        # run the model
+        self._run()
 
     @property
     def params(self):
@@ -50,9 +55,50 @@ class ModelRun:
             k: {"Other": v} for k, v in run_params["baseline_adjustment"]["aae"].items()
         }
 
+    def _run(self):
+        if self.model_run == -1:
+            return self
+
+        (
+            ActivityAvoidance(self)
+            .demographic_adjustment()
+            .health_status_adjustment()
+            .expat_adjustment()
+            .repat_adjustment()
+            .waiting_list_adjustment()
+            .baseline_adjustment()
+            .non_demographic_adjustment()
+            .activity_avoidance()
+            # call apply_resampling last, as this is what actually alters the data
+            .apply_resampling()
+        )
+
+        self.model.efficiencies(self)
+
+    def get_aggregate_results(self) -> dict:
+        """Aggregate the model results
+
+        Can also be used to aggregate the baseline data by passing in the raw data
+
+        :param model_results: a DataFrame containing the results of a model iteration
+        :type model_results: pandas.DataFrame
+        :param model_run: the current model run
+        :type model_run: int
+
+        :returns: a dictionary containing the different aggregations of this data
+        :rtype: dict
+        """
+        # pylint: disable=assignment-from-no-return
+        agg, aggregates = self.model.aggregate(self)
+        step_counts = self.get_step_counts()
+        return {**agg(), **agg(["sex", "age_group"]), **aggregates, **step_counts}
+
     def get_step_counts(self):
         """get the step counts of a model run"""
-        return self.model.get_step_counts_dataframe(self.step_counts)
+        if not self.step_counts:
+            return {}
+
+        return {"step_counts": self.model.get_step_counts_dataframe(self.step_counts)}
 
     def get_model_results(self):
         """get the model results of a model run"""

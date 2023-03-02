@@ -10,7 +10,6 @@ method.
 
 import os
 import pickle
-from collections import namedtuple
 from datetime import datetime
 from functools import partial
 from typing import Callable, Tuple
@@ -20,7 +19,6 @@ import numpy.typing as npt
 import pandas as pd
 import pyarrow.parquet as pq
 
-from model.activity_avoidance import ActivityAvoidance
 from model.helpers import age_groups, inrange, rnorm
 from model.model_run import ModelRun
 
@@ -83,11 +81,9 @@ class Model:
         self._load_hsa_gams()
         # generate the run parameters
         self._generate_run_params()
-        # get the data mask
-        self._data_mask = self._get_data_mask()
-        # make sure to create the counts after oversampling (handled in update baseline data)
-        # pylint: disable=assignment-from-no-return
-        self._baseline_counts = self._get_data_counts(self.data)
+        # get the data mask and baseline counts
+        self.data_mask = self._get_data_mask()
+        self.baseline_counts = self._get_data_counts(self.data)
 
     def _load_parquet(self, file: str, *args: list[str]) -> pd.DataFrame:
         """Load a parquet file
@@ -304,56 +300,6 @@ class Model:
     def _get_data_mask(self) -> npt.ArrayLike:
         return np.array([1.0])
 
-    def run(self, model_run: int):
-        """Run the model
-
-        :param model_run: the model run number
-        :type model_run: int
-        :return: the results of the model run
-        :rtype: ModelRun
-        """
-        m_run = ModelRun(self, model_run)
-
-        (
-            ActivityAvoidance(m_run, self._baseline_counts, self._data_mask)
-            .demographic_adjustment()
-            .health_status_adjustment()
-            .expat_adjustment()
-            .repat_adjustment()
-            .waiting_list_adjustment()
-            .baseline_adjustment()
-            .non_demographic_adjustment()
-            .activity_avoidance()
-            # call apply_resampling last, as this is what actually alters the data
-            .apply_resampling()
-        )
-
-        self._run(m_run)
-        return m_run
-
-    def _run(self, model_run: ModelRun):
-        pass
-
-    def aggregate(self, model_run: ModelRun) -> dict:
-        """Aggregate the model results
-
-        Can also be used to aggregate the baseline data by passing in the raw data
-
-        :param model_results: a DataFrame containing the results of a model iteration
-        :type model_results: pandas.DataFrame
-        :param model_run: the current model run
-        :type model_run: int
-
-        :returns: a dictionary containing the different aggregations of this data
-        :rtype: dict
-        """
-        # pylint: disable=assignment-from-no-return
-        agg, aggregates = self._aggregate(model_run)
-        return {**agg(), **agg(["sex", "age_group"]), **aggregates}
-
-    def _aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
-        pass
-
     @staticmethod
     def _create_agg(model_results, cols=None, name=None, include_measure=True):
         """Create an aggregation
@@ -381,8 +327,11 @@ class Model:
             + (["measure"] if include_measure else [])
             + (cols if cols else [])
         )
-        result = namedtuple("results", cols)
+
         agg = model_results.groupby(cols)["value"].sum()
         agg.index.names = agg.index.names[:-1] + ["measure"]
 
-        return {name: {result(*k): v for k, v in agg.iteritems()}}
+        return {name: {frozenset(zip(cols, k)): v for k, v in agg.iteritems()}}
+
+    def go(self, model_run):
+        return ModelRun(self, model_run).get_aggregate_results()

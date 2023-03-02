@@ -8,8 +8,6 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from model.model_run import ModelRun
-
 
 class ActivityAvoidance:
     """Activity Avoidance
@@ -29,24 +27,12 @@ class ActivityAvoidance:
     :param model_run: the model run object, which contains all of the required values to run the
     model.
     :type model_run: ModelRun
-    :param counts: the baseline counts we need to keep track of.
-    :type counts: npt.ArrayLike
-    :param row_mask: an array the length of the data which either contains a value of 1 (if that
-    row should be included in counts) or 0 (if that row should now be included in counts). Only
-    required by inpatients, where rows are oversampled. Defaults to a singleton value of 1.0.
-    :type row_mask: npt.ArrayLike
     """
 
-    def __init__(
-        self,
-        model_run: ModelRun,
-        counts: npt.ArrayLike,
-        row_mask: npt.ArrayLike,
-    ) -> None:
+    def __init__(self, model_run) -> None:
         self._model_run = model_run
 
-        self._row_counts = counts.copy()
-        self._row_mask = row_mask.astype(float)
+        self._row_counts = self._model_run.model.baseline_counts.copy()
         # initialise step counts
         self._sum = 0.0
         self.step_counts = model_run.step_counts
@@ -85,6 +71,10 @@ class ActivityAvoidance:
     def data(self):
         """get the current model runs data"""
         return self._model_run.data
+
+    @property
+    def _row_mask(self):
+        return self._model_run.model.data_mask
 
     def _update(self, factor: pd.Series, cols: List[str]):
         step = factor.name

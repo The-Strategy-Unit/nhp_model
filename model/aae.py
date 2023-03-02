@@ -27,7 +27,7 @@ class AaEModel(Model):
     def __init__(self, params: dict, data_path: str) -> None:
         # call the parent init function
         super().__init__("aae", params, data_path)
-        
+
     def _get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
         """Get row counts of data
 
@@ -83,15 +83,23 @@ class AaEModel(Model):
         :return: the step counts as a `DataFrame`
         :rtype: pd.DataFrame
         """
-        return (
-            pd.Series({k: v[0] for k, v in step_counts.items()})
-            .to_frame("value")
-            .rename_axis(["change_factor", "strategy"])
-            .reset_index()
-            .assign(measure="arrivals")
-        )
+        return {
+            frozenset(
+                {
+                    ("activity_type", "ip"),
+                    ("change_factor", k0),
+                    ("strategy", k1),
+                    ("measure", k2),
+                }
+            ): v
+            for (k0, k1), vs in step_counts.items()
+            for (k2, v) in zip(["arrivals"], vs)
+        }
 
-    def _aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
+    def efficiencies(self, model_run: ModelRun) -> None:
+        pass
+
+    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
         """Aggregate the model results
 
         Can also be used to aggregate the baseline data by passing in a `ModelRun` with

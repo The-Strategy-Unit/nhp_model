@@ -115,25 +115,20 @@ class OutpatientsModel(Model):
         :return: the step counts as a `DataFrame`
         :rtype: pd.DataFrame
         """
-        return (
-            pd.DataFrame.from_dict(
+        return {
+            frozenset(
                 {
-                    k: {"attendances": v[0], "tele_attendances": v[1]}
-                    for k, v in step_counts.items()
-                    if k != "convert_to_tele"
-                },
-                orient="index",
-            )
-            .rename_axis(["change_factor", "strategy"])
-            .reset_index()
-            .melt(
-                ["change_factor", "strategy"],
-                ["attendances", "tele_attendances"],
-                "measure",
-            )
-        )
+                    ("activity_type", "ip"),
+                    ("change_factor", k0),
+                    ("strategy", k1),
+                    ("measure", k2),
+                }
+            ): v
+            for (k0, k1), vs in step_counts.items()
+            for (k2, v) in zip(["attendances", "tele_attendances"], vs)
+        }
 
-    def _run(self, model_run: ModelRun) -> None:
+    def efficiencies(self, model_run: ModelRun) -> None:
         """Run the model
 
         :param model_run: an instance of the ModelRun class
@@ -141,7 +136,7 @@ class OutpatientsModel(Model):
         """
         self._convert_to_tele(model_run)
 
-    def _aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
+    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
         """Aggregate the model results
 
         Can also be used to aggregate the baseline data by passing in the raw data
@@ -177,7 +172,7 @@ class OutpatientsModel(Model):
         )
 
         agg = partial(self._create_agg, model_results)
-        return (agg, { **agg(["sex", "tretspef"]) })
+        return (agg, {**agg(["sex", "tretspef"])})
 
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model
