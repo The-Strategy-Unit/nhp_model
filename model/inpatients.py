@@ -178,7 +178,7 @@ class InpatientsModel(Model):
                     ("strategy", k1),
                     ("measure", k2),
                 }
-            ): v
+            ): float(v)
             for (k0, k1), vs in step_counts.items()
             for (k2, v) in zip(["admissions", "beddays"], vs)
         }
@@ -262,7 +262,7 @@ class InpatientsModel(Model):
 
         if model_run.model_run == -1:
             return {
-                create_dict_key(*k): np.round(v).astype(int)
+                create_dict_key(*k): np.round(v).astype(int).tolist()
                 for k, v in self._kh03_data["available"].iteritems()
             }
 
@@ -301,7 +301,7 @@ class InpatientsModel(Model):
 
         # return the results
         return {
-            create_dict_key(*k): np.round(v).astype(int)
+            create_dict_key(*k): np.round(v).astype(int).tolist()
             for k, v in beddays_results.items()
         }
 

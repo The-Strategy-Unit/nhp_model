@@ -123,7 +123,7 @@ class OutpatientsModel(Model):
                     ("strategy", k1),
                     ("measure", k2),
                 }
-            ): v
+            ): float(v)
             for (k0, k1), vs in step_counts.items()
             for (k2, v) in zip(["attendances", "tele_attendances"], vs)
         }
