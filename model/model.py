@@ -331,7 +331,7 @@ class Model:
         agg = model_results.groupby(cols)["value"].sum()
         agg.index.names = agg.index.names[:-1] + ["measure"]
 
-        return {name: {frozenset(zip(cols, k)): v for k, v in agg.iteritems()}}
+        return {name: {frozenset(zip(cols, k)): v for k, v in agg.items()}}
 
     def go(self, model_run):
         return ModelRun(self, model_run).get_aggregate_results()

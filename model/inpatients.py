@@ -263,7 +263,7 @@ class InpatientsModel(Model):
         if model_run.model_run == -1:
             return {
                 create_dict_key(*k): np.round(v).astype(int).tolist()
-                for k, v in self._kh03_data["available"].iteritems()
+                for k, v in self._kh03_data["available"].items()
             }
 
         target_bed_occupancy_rates = pd.Series(bed_occupancy_params["day+night"])
@@ -335,7 +335,7 @@ class InpatientsModel(Model):
                         ("tretspef", k),
                     }
                 ): v
-                for k, v in fhs_baseline.iteritems()
+                for k, v in fhs_baseline.items()
             }
 
         # sum the amount of procedures, by specialty,
@@ -358,7 +358,7 @@ class InpatientsModel(Model):
                     ["ip_theatres", "four_hour_sessions", k],
                 )
             ): v
-            for k, v in fhs_future.iteritems()
+            for k, v in fhs_future.items()
         }
 
     def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
