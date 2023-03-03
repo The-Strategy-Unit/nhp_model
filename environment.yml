@@ -3,11 +3,10 @@ channels:
   - conda-forge
 dependencies:
   - python=3.10.6
-  - azure-batch=11.0.*
   - azure-cosmos=4.2.*
+  - azure-identity=1.12.*
   - azure-storage-blob=12.9.*
   - azure-storage-file-datalake=12.5.*
-  - dill=0.3.*
   - numpy=1.22.*
   - pandas=1.4.*
   - pyarrow=6.0.*
