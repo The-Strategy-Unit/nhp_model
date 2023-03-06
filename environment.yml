@@ -12,8 +12,6 @@ dependencies:
   - pandas=1.5.*
   - pyarrow=11.0.*
   - pygam=0.8.*
-  - python-dotenv=1.0.*
-  - tqdm=4.64.*
   # dev dependencies
   - black=23.1.*
   - coverage=7.2.*
