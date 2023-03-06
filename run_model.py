@@ -53,11 +53,12 @@ def debug_run(model_type: Model, params: dict, path: str, model_run: int) -> Non
     step_counts = pd.DataFrame(
         [{**dict(k), "value": v} for k, v, in agg_results["step_counts"].items()]
     ).drop(columns=["strategy", "activity_type"])
+    cf_values = step_counts["change_factor"].unique() # pylint: disable=unsubscriptable-object
     step_counts = (
         step_counts.groupby(["change_factor", "measure"], as_index=False)
         .sum()
         .pivot(index="change_factor", columns="measure")
-        .loc[step_counts["change_factor"].unique()]
+        .loc[cf_values]
     )
     step_counts.loc["total"] = step_counts.sum()
     print(step_counts)
