@@ -4,6 +4,7 @@ channels:
 dependencies:
   - python=3.11.*
   - azure-cosmos=4.3.*
+  - azure-keyvault-secrets=4.6.*
   - azure-identity=1.12.*
   - azure-storage-blob=12.15.*
   - azure-storage-file-datalake=12.10.*
