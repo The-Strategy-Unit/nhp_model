@@ -87,6 +87,7 @@ def test_init_calls_super_init(mocker):
     # assert
     super_mock.assert_called_once()
 
+
 def test_get_data_counts(mock_model):
     # arrange
     mdl = mock_model
@@ -176,25 +177,48 @@ def test_get_step_counts_dataframe(mock_model):
     # arrange
     step_counts = {("a", "-"): [1, 2], ("b", "-"): [3, 4]}
     expected = {
-        "change_factor": ["a", "b", "a", "b"],
-        "strategy": ["-", "-", "-", "-"],
-        "measure": [
-            "attendances",
-            "attendances",
-            "tele_attendances",
-            "tele_attendances",
-        ],
-        "value": [1, 3, 2, 4],
+        frozenset(
+            {
+                ("change_factor", "a"),
+                ("measure", "attendances"),
+                ("activity_type", "ip"),
+                ("strategy", "-"),
+            }
+        ): 1.0,
+        frozenset(
+            {
+                ("change_factor", "a"),
+                ("measure", "tele_attendances"),
+                ("activity_type", "ip"),
+                ("strategy", "-"),
+            }
+        ): 2.0,
+        frozenset(
+            {
+                ("measure", "attendances"),
+                ("strategy", "-"),
+                ("activity_type", "ip"),
+                ("change_factor", "b"),
+            }
+        ): 3.0,
+        frozenset(
+            {
+                ("measure", "tele_attendances"),
+                ("strategy", "-"),
+                ("activity_type", "ip"),
+                ("change_factor", "b"),
+            }
+        ): 4.0,
     }
 
     # act
     actual = mock_model.get_step_counts_dataframe(step_counts)
 
     # assert
-    assert actual.to_dict("list") == expected
+    assert actual == expected
 
 
-def test_run(mocker, mock_model):
+def test_efficiencies(mock_model):
     """test that it runs the model steps"""
     # arrange
     mdl = mock_model
@@ -202,7 +226,7 @@ def test_run(mocker, mock_model):
     mdl._convert_to_tele = Mock()
 
     # act
-    mdl._run("model_run")
+    mdl.efficiencies("model_run")
 
     # assert
     mdl._convert_to_tele.assert_called_once_with("model_run")
@@ -210,6 +234,7 @@ def test_run(mocker, mock_model):
 
 def test_aggregate(mock_model):
     """test that it aggregates the results correctly"""
+
     # arrange
     def create_agg_stub(model_results, cols=None):
         name = "+".join(cols) if cols else "default"
@@ -246,7 +271,7 @@ def test_aggregate(mock_model):
     }
 
     # act
-    (agg, results) = mdl._aggregate(mr_mock)
+    (agg, results) = mdl.aggregate(mr_mock)
 
     # assert
     assert agg() == {"default": expected_mr}

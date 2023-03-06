@@ -163,8 +163,8 @@ def test_model_init_sets_values(mocker, model_type):
     mdl._load_hsa_gams.assert_called_once()
     mdl._generate_run_params.assert_called_once()
     mdl._load_strategies.assert_called_once()
-    assert mdl._data_mask == "data_mask"
-    assert mdl._baseline_counts == "data_counts"
+    assert mdl.data_mask == "data_mask"
+    assert mdl.baseline_counts == "data_counts"
     mdl._get_data_counts.call_args_list[0][0][0].equals(mdl.data)
 
 
@@ -410,85 +410,6 @@ def test_get_run_params(mock_model, mock_run_params, model_run, expected_run_par
     assert actual == expected_run_params
 
 
-# run()
-
-
-def test_run(mocker, mock_model):
-    """test run calls the _run method correctly"""
-    # arrange
-    mr_mock = mocker.patch("model.model.ModelRun", return_value="model_run")
-    mdl = mock_model
-    mdl._run = Mock()
-
-    mdl._baseline_counts = 1
-    mdl._data_mask = "data mask"
-
-    rr_mock = mocker.patch("model.model.ActivityAvoidance")
-    rr_mock.return_value = rr_mock
-    rr_mock.demographic_adjustment.return_value = rr_mock
-    rr_mock.health_status_adjustment.return_value = rr_mock
-    rr_mock.expat_adjustment.return_value = rr_mock
-    rr_mock.repat_adjustment.return_value = rr_mock
-    rr_mock.waiting_list_adjustment.return_value = rr_mock
-    rr_mock.baseline_adjustment.return_value = rr_mock
-    rr_mock.non_demographic_adjustment.return_value = rr_mock
-    rr_mock.activity_avoidance.return_value = rr_mock
-    rr_mock.apply_resampling.return_value = rr_mock
-
-    # act
-    actual = mdl.run(0)
-
-    # assert
-    assert actual == "model_run"
-
-    rr_mock.assert_called_once_with("model_run", 1, "data mask")
-    rr_mock.demographic_adjustment.assert_called_once()
-    rr_mock.health_status_adjustment.assert_called_once()
-    rr_mock.expat_adjustment.assert_called_once()
-    rr_mock.repat_adjustment.assert_called_once()
-    rr_mock.waiting_list_adjustment.assert_called_once()
-    rr_mock.baseline_adjustment.assert_called_once()
-    rr_mock.non_demographic_adjustment.assert_called_once()
-    rr_mock.activity_avoidance.assert_called_once()
-    rr_mock.apply_resampling.assert_called_once()
-
-    mr_mock.assert_called_once_with(mdl, 0)
-    mdl._run.assert_called_once_with("model_run")
-
-
-def test__run(mock_model):
-    """test the _run method"""
-    # it does nothing, test is purely for coverage purposes
-    mock_model._run(None)
-
-
-# aggregate()
-
-
-def test_aggregate(mock_model):
-    """test the _run method"""
-    # arrange
-    def mock_agg(cols=None):
-        name = "+".join(cols) if cols else "default"
-        return {name: name}
-
-    mock_aggregates = {"results": "results"}
-    mock_model._aggregate = Mock(return_value=(mock_agg, mock_aggregates))
-
-    # act
-    results = mock_model.aggregate("model_run")
-
-    # assert
-    assert results == {i: i for i in ["default", "sex+age_group", "results"]}
-    mock_model._aggregate.assert_called_once_with("model_run")
-
-
-def test__aggregate(mock_model):
-    """test the _run method"""
-    # it does nothing, test is purely for coverage purposes
-    mock_model._aggregate(None)
-
-
 # _create_agg()
 
 
@@ -499,14 +420,14 @@ def test__aggregate(mock_model):
             None,
             None,
             True,
-            lambda r: {
+            {
                 "default": {
-                    r("trust", 0, 0): 4,
-                    r("trust", 0, 1): 6,
-                    r("trust", 1, 0): 12,
-                    r("trust", 1, 1): 14,
-                    r("trust", 2, 0): 20,
-                    r("trust", 2, 1): 22,
+                    frozenset({("pod", 0), ("measure", 0), ("sitetret", "trust")}): 4,
+                    frozenset({("pod", 0), ("sitetret", "trust"), ("measure", 1)}): 6,
+                    frozenset({("pod", 1), ("measure", 0), ("sitetret", "trust")}): 12,
+                    frozenset({("pod", 1), ("sitetret", "trust"), ("measure", 1)}): 14,
+                    frozenset({("pod", 2), ("sitetret", "trust"), ("measure", 0)}): 20,
+                    frozenset({("pod", 2), ("sitetret", "trust"), ("measure", 1)}): 22,
                 }
             },
         ),
@@ -514,14 +435,14 @@ def test__aggregate(mock_model):
             None,
             "thing",
             True,
-            lambda r: {
+            {
                 "thing": {
-                    r("trust", 0, 0): 4,
-                    r("trust", 0, 1): 6,
-                    r("trust", 1, 0): 12,
-                    r("trust", 1, 1): 14,
-                    r("trust", 2, 0): 20,
-                    r("trust", 2, 1): 22,
+                    frozenset({("sitetret", "trust"), ("measure", 0), ("pod", 0)}): 4,
+                    frozenset({("sitetret", "trust"), ("measure", 1), ("pod", 0)}): 6,
+                    frozenset({("pod", 1), ("sitetret", "trust"), ("measure", 0)}): 12,
+                    frozenset({("pod", 1), ("sitetret", "trust"), ("measure", 1)}): 14,
+                    frozenset({("pod", 2), ("sitetret", "trust"), ("measure", 0)}): 20,
+                    frozenset({("pod", 2), ("sitetret", "trust"), ("measure", 1)}): 22,
                 }
             },
         ),
@@ -529,20 +450,44 @@ def test__aggregate(mock_model):
             ["col1"],
             None,
             True,
-            lambda r: {
+            {
                 "col1": {
-                    r("trust", 0, 0, 0): 1,
-                    r("trust", 0, 0, 1): 3,
-                    r("trust", 0, 1, 0): 2,
-                    r("trust", 0, 1, 1): 4,
-                    r("trust", 1, 0, 0): 5,
-                    r("trust", 1, 0, 1): 7,
-                    r("trust", 1, 1, 0): 6,
-                    r("trust", 1, 1, 1): 8,
-                    r("trust", 2, 0, 0): 9,
-                    r("trust", 2, 0, 1): 11,
-                    r("trust", 2, 1, 0): 10,
-                    r("trust", 2, 1, 1): 12,
+                    frozenset(
+                        {("measure", 0), ("col1", 0), ("sitetret", "trust"), ("pod", 0)}
+                    ): 1,
+                    frozenset(
+                        {("col1", 1), ("measure", 0), ("sitetret", "trust"), ("pod", 0)}
+                    ): 3,
+                    frozenset(
+                        {("col1", 0), ("measure", 1), ("sitetret", "trust"), ("pod", 0)}
+                    ): 2,
+                    frozenset(
+                        {("col1", 1), ("measure", 1), ("sitetret", "trust"), ("pod", 0)}
+                    ): 4,
+                    frozenset(
+                        {("pod", 1), ("measure", 0), ("col1", 0), ("sitetret", "trust")}
+                    ): 5,
+                    frozenset(
+                        {("pod", 1), ("measure", 0), ("sitetret", "trust"), ("col1", 1)}
+                    ): 7,
+                    frozenset(
+                        {("pod", 1), ("col1", 0), ("measure", 1), ("sitetret", "trust")}
+                    ): 6,
+                    frozenset(
+                        {("pod", 1), ("measure", 1), ("sitetret", "trust"), ("col1", 1)}
+                    ): 8,
+                    frozenset(
+                        {("pod", 2), ("measure", 0), ("col1", 0), ("sitetret", "trust")}
+                    ): 9,
+                    frozenset(
+                        {("pod", 2), ("measure", 0), ("sitetret", "trust"), ("col1", 1)}
+                    ): 11,
+                    frozenset(
+                        {("col1", 0), ("pod", 2), ("measure", 1), ("sitetret", "trust")}
+                    ): 10,
+                    frozenset(
+                        {("pod", 2), ("measure", 1), ("sitetret", "trust"), ("col1", 1)}
+                    ): 12,
                 }
             },
         ),
@@ -550,17 +495,35 @@ def test__aggregate(mock_model):
             ["col1", "col2"],
             None,
             False,
-            lambda r: {
+            {
                 "col1+col2": {
-                    r("trust", 0, 0, 0): 3,
-                    r("trust", 0, 1, 0): 3,
-                    r("trust", 0, 1, 1): 4,
-                    r("trust", 1, 0, 0): 11,
-                    r("trust", 1, 1, 0): 7,
-                    r("trust", 1, 1, 1): 8,
-                    r("trust", 2, 0, 0): 19,
-                    r("trust", 2, 1, 0): 11,
-                    r("trust", 2, 1, 1): 12,
+                    frozenset(
+                        {("col1", 0), ("pod", 0), ("sitetret", "trust"), ("col2", 0)}
+                    ): 3,
+                    frozenset(
+                        {("col1", 1), ("pod", 0), ("sitetret", "trust"), ("col2", 0)}
+                    ): 3,
+                    frozenset(
+                        {("col1", 1), ("pod", 0), ("sitetret", "trust"), ("col2", 1)}
+                    ): 4,
+                    frozenset(
+                        {("col1", 0), ("col2", 0), ("sitetret", "trust"), ("pod", 1)}
+                    ): 11,
+                    frozenset(
+                        {("col1", 1), ("col2", 0), ("sitetret", "trust"), ("pod", 1)}
+                    ): 7,
+                    frozenset(
+                        {("col1", 1), ("sitetret", "trust"), ("pod", 1), ("col2", 1)}
+                    ): 8,
+                    frozenset(
+                        {("col1", 0), ("sitetret", "trust"), ("col2", 0), ("pod", 2)}
+                    ): 19,
+                    frozenset(
+                        {("col1", 1), ("sitetret", "trust"), ("col2", 0), ("pod", 2)}
+                    ): 11,
+                    frozenset(
+                        {("col1", 1), ("sitetret", "trust"), ("pod", 2), ("col2", 1)}
+                    ): 12,
                 }
             },
         ),
@@ -572,4 +535,19 @@ def test_create_agg(
     """test that it aggregates the data correctly"""
     actual = mock_model._create_agg(mock_model_results, cols, name, include_measure)
     cols = ["sitetret", "pod"] + (["measure"] if include_measure else []) + (cols or [])
-    assert actual == expected(namedtuple("results", cols))
+    assert actual == expected
+
+
+def test_go(mocker, mock_model):
+    """test the go method"""
+    # arrange
+    mdl = mock_model
+    mr_mock = Mock()
+    mocker.patch("model.model.ModelRun", return_value=mr_mock)
+    mr_mock.get_aggregate_results.return_value = "aggregate_results"
+
+    # act
+    actual = mdl.go(0)
+
+    # assert
+    assert actual == "aggregate_results"

@@ -333,5 +333,15 @@ class Model:
 
         return {name: {frozenset(zip(cols, k)): v for k, v in agg.items()}}
 
-    def go(self, model_run):
+    # pylint: disable=invalid-name
+    def go(self, model_run: int) -> dict:
+        """Run the model and get the aggregated results
+
+        Needed for running in a multiprocessing pool as you need a serializable method.
+
+        :param model_run: the model run number we want to run
+        :type model_run: _type_
+        :return: the aggregated model results
+        :rtype: dictionary
+        """
         return ModelRun(self, model_run).get_aggregate_results()

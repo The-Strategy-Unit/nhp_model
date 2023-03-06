@@ -25,6 +25,8 @@ def test_init(mocker):
     model_run = Mock()
     model_run.data = "data"
     model_run.model.model_type = "ip"
+    model_run.model.baseline_counts = pd.Series([1])
+    model_run.model.data_mask = [2]
     model_run.params = "params"
     model_run.run_params = "run_params"
     model_run.step_counts = "step_counts"
@@ -37,7 +39,7 @@ def test_init(mocker):
     )
 
     # act
-    actual = ActivityAvoidance(model_run, np.array([1]), np.array([2]))
+    actual = ActivityAvoidance(model_run)
 
     # assert
     assert actual.data == "data"
@@ -50,7 +52,7 @@ def test_init(mocker):
     assert actual.strategies == "activity_avoidance"
     usc_mock.assert_called_once_with(("baseline", "-"))
     assert actual._row_counts.tolist() == [1]
-    assert actual._row_mask.tolist() == [2]
+    assert actual._row_mask == [2]
 
 
 def test_update(mocker, mock_activity_avoidance):
@@ -100,10 +102,10 @@ def test_update_rn(mocker, mock_activity_avoidance):
 def test_update_step_counts(mock_activity_avoidance):
     # arrange
     aa_mock = mock_activity_avoidance
+    aa_mock._model_run.model.data_mask = np.array([1.0, 1.0, 1.0, 0.0])
 
     aa_mock._sum = np.array([3.0, 0.0])
     aa_mock._row_counts = np.array([[3.0, 4.0, 5.0, 6.0], [1.0, 2.0, 3.0, 4.0]])
-    aa_mock._row_mask = np.array([1.0, 1.0, 1.0, 0.0])
     aa_mock.step_counts = {}
 
     # act
