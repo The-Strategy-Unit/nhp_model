@@ -11,7 +11,6 @@
       "program": "run_model.py",
       "args": [
         "sample_params.json",
-        "--debug",
         "--type=ip"
       ],
       "console": "integratedTerminal"
@@ -23,7 +22,6 @@
       "program": "run_model.py",
       "args": [
         "sample_params.json",
-        "--debug",
         "--type=op"
       ],
       "console": "integratedTerminal"
@@ -35,50 +33,7 @@
       "program": "run_model.py",
       "args": [
         "sample_params.json",
-        "--debug",
         "--type=aae"
-      ],
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "Run All Principal Projections (local save)",
-      "type": "python",
-      "request": "launch",
-      "program": "run_model.py",
-      "args": [
-        "sample_params.json",
-        "--temp-results-path=results/temp",
-        "-b=1",
-        "-c=1"
-      ],
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "Run All Models (parallel/local save)",
-      "type": "python",
-      "request": "launch",
-      "program": "run_model.py",
-      "args": [
-        "sample_params.json",
-        "--run-start=-1",
-        "--model-runs=258",
-        "--run-postruns",
-        "-b=8"
-      ],
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "Run All Models (parallel/cosmos save)",
-      "type": "python",
-      "request": "launch",
-      "program": "run_model.py",
-      "args": [
-        "sample_params.json",
-        "--save-type=cosmos",
-        "--run-start=-1",
-        "--model-runs=258",
-        "--run-postruns",
-        "-b=16"
       ],
       "console": "integratedTerminal"
     }
