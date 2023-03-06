@@ -1,7 +1,10 @@
+#!/opt/conda/bin/python
 """Run the model inside of the docker container"""
 
 import argparse
+import hashlib as hl
 import json
+import logging
 import os
 import uuid
 from collections import defaultdict
@@ -10,11 +13,12 @@ from typing import Any
 
 import numpy as np
 from azure.cosmos import CosmosClient
-from azure.identity import ManagedIdentityCredential
+from azure.identity import DefaultAzureCredential
+from azure.keyvault.secrets import SecretClient
 from azure.storage.blob import BlobServiceClient
 from azure.storage.filedatalake import DataLakeServiceClient
-from tqdm.auto import tqdm
 
+import config
 from model.aae import AaEModel
 from model.inpatients import InpatientsModel
 from model.model import Model
@@ -33,16 +37,28 @@ def load_params(storage_account: str, filename: str, credential: Any) -> dict:
     :return: _description_
     :rtype: dict
     """
+    logging.info("downloading params")
     container = BlobServiceClient(
         account_url=f"https://{storage_account}.blob.core.windows.net",
         credential=credential,
     ).get_container_client("queue")
 
     params_content = container.download_blob(filename).readall()
-    return json.loads(params_content)
+
+    app_version = config.APP_VERSION
+
+    # generate an id using sha256 hash of the params combined with the app version
+    run_id = hl.sha256(params_content + app_version.encode()).hexdigest()
+
+    # convert to a dictionary, insert the id and app version
+    params = json.loads(params_content)
+    params["id"] = run_id
+    params["app_version"] = app_version
+
+    return params
 
 
-def get_data(storage_account: str, version: str, dataset: str, credential: Any) -> None:
+def get_data(storage_account: str, dataset: str, credential: Any) -> None:
     """_summary_
 
     :param storage_account: _description_
@@ -57,99 +73,60 @@ def get_data(storage_account: str, version: str, dataset: str, credential: Any) 
     if os.path.exists(f"/app/data/{dataset}"):
         return
 
+    logging.info("downloading data")
     fs_client = DataLakeServiceClient(
         account_url=f"https://{storage_account}.dfs.core.windows.net",
         credential=credential,
     ).get_file_system_client("data")
 
+    version = config.DATA_VERSION
     directory_path = f"{version}/{dataset}"
 
     paths = [p.name for p in fs_client.get_paths(directory_path)]
 
-    os.makedirs(f"/app/data/tmp/{dataset}", exist_ok=True)
+    os.makedirs(f"/app/data/{dataset}", exist_ok=True)
 
     for filename in paths:
-        local_name = "/app/data/tmp" + filename.removeprefix(version)
+        logging.info(" * %s", filename)
+        local_name = "/app/data" + filename.removeprefix(version)
         with open(local_name, "wb") as local_file:
             file_client = fs_client.get_file_client(filename)
             local_file.write(file_client.download_file().readall())
 
 
-def run(model_type: Model, params: dict, path: str) -> dict:
-    """Run the model iterations
-
-    Runs the model for all of the model iterations, returning the aggregated results
-
-    :param model_type: the type of model that we want to run
-    :type model_type: Model
-    :param params: the parameters to run the model with
-    :type params: dict
-    :param path: where the data is stored
-    :type path: str
-    :return: a dictionary containing the aggregated results
-    :rtype: dict
-    """
-    model = model_type(params, path)
-
-    model_runs = list(range(-1, model.params["model_runs"] + 1))
-
-    cpus = os.cpu_count()
-    batch_size = 16
-
-    with Pool(cpus) as pool:
-        results = list(
-            tqdm(
-                pool.imap(model.go, model_runs, chunksize=batch_size),
-                f"Running {model.__class__.__name__[:-5].rjust(11)} model",  # pylint: disable=protected-access
-                total=len(model_runs),
-            )
-        )
-
-    return results
-
-
-def upload_to_cosmos(params: dict, results: dict) -> None:
+def upload_to_cosmos(params: dict, results: dict, credential: Any) -> None:
     """_summary_
 
     :param params: _description_
     :type params: dict
     :param results: _description_
     :type results: dict
+    :param credential: _description_
+    :type credential: Any
     """
-    cosmos_client = CosmosClient(
-        os.environ["COSMOS_ENDPOINT"], os.environ["COSMOS_KEY"]
-    )
-    cosmos_db = cosmos_client.get_database_client(os.environ["COSMOS_DB"])
+    logging.info("uploading results to cosmos")
+
+    kyv_client = SecretClient(config.KEYVAULT_ENDPOINT, credential)
+    cosmos_key = kyv_client.get_secret("cosmos-key").value
+
+    cosmos_client = CosmosClient(config.COSMOS_ENDPOINT, cosmos_key)
+    cosmos_db = cosmos_client.get_database_client(config.COSMOS_DB)
 
     model_run_container = cosmos_db.get_container_client("model_runs")
     results_container = cosmos_db.get_container_client("model_results")
 
-    params["id"] = str(uuid.uuid4())
-    params["app_version"] = "dev"  # TODO: build into the container build process?
-
-    for key, value in results.items():
-        if key != "step_counts":
-            for v in value:
-                [lwr, median, upr] = np.quantile(v["model_runs"], [0.05, 0.5, 0.95])
-                v["lwr_ci"] = lwr
-                v["median"] = median
-                v["upr_ci"] = upr
-
-                if not key in ["default", "bed_occupancy", "theatres_available"]:
-                    v.pop("model_runs")
-                else:
-                    v["model_runs"] = [int(i) for i in v["model_runs"]]
-
-                v["baseline"] = int(v["baseline"])
-                v["principal"] = int(v["principal"])
-
-        item = {
-            "id": str(uuid.uuid4()),
-            "model_run_id": params["id"],
-            "aggregation": key,
-            "values": value,
-        }
-        results_container.create_item(item)
+    for agg_type, values in results.items():
+        # this fixes the results for upload
+        for agg_type, values in results.items():
+            split_model_runs_out(agg_type, values)
+        results_container.create_item(
+            {
+                "id": str(uuid.uuid4()),
+                "model_run_id": params["id"],
+                "aggregation": agg_type,
+                "values": values,
+            }
+        )
 
     model_run_container.create_item(params)
 
@@ -178,54 +155,103 @@ def combine_results(results: list) -> dict:
                     else:
                         combined_results[agg_type][key][i] += value
     # now we can convert this to the results we want
-    return {
+    combined_results = {
         k0: [
             {**dict(k1), "baseline": v1[0], "principal": v1[1], "model_runs": v1[2:]}
             for k1, v1 in v0.items()
         ]
         for k0, v0 in combined_results.items()
     }
+    # finally we split the model runs out, this function modifies values in place
+    for agg_type, values in combined_results.items():
+        split_model_runs_out(agg_type, values)
+
+    return combined_results
 
 
-def update_step_counts(results: dict) -> None:
-    """updates the step counts item in results
+def split_model_runs_out(agg_type: str, results: dict) -> None:
+    """updates a single result so the baseline and principal runs are split out
+    and summary statistics are generated
 
-    Modifies the results object in place. The step counts needs to be restructured to remove the
-    "baseline" item from non-baseline steps, and remove the model run items from the "baseline"
-    step.
+    :param agg_type: which aggregate type are we using
+    :type key: string
+    :param results: the results for this aggregation
+    :type results: dict
     """
-    step_counts = results.pop("step_counts")
-    for i in step_counts:
-        if i["strategy"] == "-":
-            i.pop("strategy")
-        if i["change_factor"] != "baseline":
-            i.pop("baseline")
+    for result in results:
+        if agg_type == "step_counts":
+            if result["strategy"] == "-":
+                result.pop("strategy")
+            if result["change_factor"] != "baseline":
+                result.pop("baseline")
+            else:
+                result["baseline"] = result.pop("principal")
+                result.pop("model_runs")
+            return
+
+        [lwr, median, upr] = np.quantile(result["model_runs"], [0.05, 0.5, 0.95])
+        result["lwr_ci"] = lwr
+        result["median"] = median
+        result["upr_ci"] = upr
+
+        if not agg_type in ["default", "bed_occupancy", "theatres_available"]:
+            result.pop("model_runs")
         else:
-            i["baseline"] = i.pop("principal")
-            i.pop("model_runs")
-    results["step_counts"] = step_counts
+            result["model_runs"] = [int(i) for i in result["model_runs"]]
+
+        result["baseline"] = int(result["baseline"])
+        result["principal"] = int(result["principal"])
+
+
+def run(model_type: Model, params: dict, path: str) -> dict:
+    """Run the model iterations
+
+    Runs the model for all of the model iterations, returning the aggregated results
+
+    :param model_type: the type of model that we want to run
+    :type model_type: Model
+    :param params: the parameters to run the model with
+    :type params: dict
+    :param path: where the data is stored
+    :type path: str
+    :return: a dictionary containing the aggregated results
+    :rtype: dict
+    """
+    model_class = model_type.__name__[:-5]  # pylint: disable=protected-access
+    logging.info("%s", model_class)
+    logging.info(" * instantiating")
+    model = model_type(params, path)
+    logging.info(" * running")
+
+    model_runs = list(range(-1, model.params["model_runs"] + 1))
+
+    cpus = os.cpu_count()
+    batch_size = 16
+
+    with Pool(cpus) as pool:
+        results = list(pool.imap(model.go, model_runs, chunksize=batch_size))
+    logging.info(" * finished")
+
+    return results
 
 
 def main(param_filename):
     """the main method"""
 
-    storage_account = os.environ["STORAGE_ACCOUNT"]
+    storage_account = config.STORAGE_ACCOUNT
 
-    data_version = "v0.2.0"  # update as required, but bake into container
-
-    # we can either pass the storage account key in via an enivornment variable
-    # or we could use a managed identity (when running in Azure)
-    if not (credential := os.environ.get("STORAGE_KEY", None)):
-        credential = ManagedIdentityCredential()
+    credential = DefaultAzureCredential()
 
     params = load_params(storage_account, param_filename, credential)
-    get_data(storage_account, data_version, params["dataset"], credential)
+    get_data(storage_account, params["dataset"], credential)
 
     model_types = [InpatientsModel, OutpatientsModel, AaEModel]
 
     results = combine_results([run(m, params, "data") for m in model_types])
 
-    upload_to_cosmos(params, results)
+    upload_to_cosmos(params, results, credential)
+
+    logging.info("complete")
 
 
 if __name__ == "__main__":
@@ -235,4 +261,15 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+
+    logging.basicConfig(
+        format="%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s",
+        level=logging.INFO,
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    logging.getLogger("azure.storage.common.storageclient").setLevel(logging.WARNING)
+    logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
+        logging.WARNING
+    )
+
     main(args.params_file)
