@@ -57,7 +57,7 @@ class ModelRun:
 
     def _run(self):
         if self.model_run == -1:
-            return self
+            return
 
         (
             ActivityAvoidance(self)

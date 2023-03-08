@@ -1,7 +1,6 @@
 """test inpatients model"""
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
+# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring,unnecessary-lambda-assignment
 
-from datetime import datetime, timedelta
 from unittest.mock import Mock, call, mock_open, patch
 
 import numpy as np
@@ -15,8 +14,8 @@ from model.inpatients import InpatientsModel
 @pytest.fixture
 def mock_model():
     """create a mock Model instance"""
-    with patch.object(InpatientsModel, "__init__", lambda s, p, d: None):
-        mdl = InpatientsModel(None, None)
+    with patch.object(InpatientsModel, "__init__", lambda s, p, d, h, r: None):
+        mdl = InpatientsModel(None, None, None, None)
     mdl.model_type = "ip"
     mdl.params = {
         "dataset": "synthetic",
@@ -99,7 +98,7 @@ def test_init_calls_super_init(mocker):
     mocker.patch("model.inpatients.InpatientsModel._load_theatres_data")
     mocker.patch("model.inpatients.InpatientsModel._load_kh03_data")
     # act
-    mdl = InpatientsModel("params", "data_path")
+    mdl = InpatientsModel("params", "data_path", "hsa", "run_params")
     # assert
     super_mock.assert_called_once()
     mdl._load_theatres_data.assert_called_once()

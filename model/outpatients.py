@@ -5,7 +5,7 @@ Implements the Outpatients model.
 """
 
 from functools import partial
-from typing import Callable, Tuple
+from typing import Any, Callable, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -25,9 +25,11 @@ class OutpatientsModel(Model):
     :param data_path: the path to where the data files live
     """
 
-    def __init__(self, params: list, data_path: str) -> None:
+    def __init__(
+        self, params: dict, data_path: str, hsa: Any, run_params: dict
+    ) -> None:
         # call the parent init function
-        super().__init__("op", params, data_path)
+        super().__init__("op", params, data_path, hsa, run_params)
 
     def _get_data_counts(self, data) -> npt.ArrayLike:
         return (
@@ -118,7 +120,7 @@ class OutpatientsModel(Model):
         return {
             frozenset(
                 {
-                    ("activity_type", "ip"),
+                    ("activity_type", "op"),
                     ("change_factor", k0),
                     ("strategy", k1),
                     ("measure", k2),

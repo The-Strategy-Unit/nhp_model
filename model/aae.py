@@ -5,7 +5,7 @@ Implements the A&E model.
 """
 
 from functools import partial
-from typing import Callable, Tuple
+from typing import Any, Callable, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -24,9 +24,11 @@ class AaEModel(Model):
     :param data_path: the path to where the data files live
     """
 
-    def __init__(self, params: dict, data_path: str) -> None:
+    def __init__(
+        self, params: dict, data_path: str, hsa: Any, run_params: dict = None
+    ) -> None:
         # call the parent init function
-        super().__init__("aae", params, data_path)
+        super().__init__("aae", params, data_path, hsa, run_params)
 
     def _get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
         """Get row counts of data
@@ -86,7 +88,7 @@ class AaEModel(Model):
         return {
             frozenset(
                 {
-                    ("activity_type", "ip"),
+                    ("activity_type", "aae"),
                     ("change_factor", k0),
                     ("strategy", k1),
                     ("measure", k2),

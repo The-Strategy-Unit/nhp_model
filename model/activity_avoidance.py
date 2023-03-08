@@ -5,7 +5,6 @@ Methods for handling row resampling"""
 from typing import List, Tuple
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 
 
@@ -58,9 +57,9 @@ class ActivityAvoidance:
         return self._model_run.model.demog_factors
 
     @property
-    def hsa_gams(self):
+    def hsa(self):
         """get the health status adjustment GAMs for the model"""
-        return self._model_run.model.hsa_gams
+        return self._model_run.model.hsa
 
     @property
     def strategies(self):
@@ -106,33 +105,10 @@ class ActivityAvoidance:
 
     def health_status_adjustment(self):
         """perform the health status adjustment"""
-        precomputed_activity_ages = self._model_run.model.hsa_precomputed_activity_ages
-
-        ages = precomputed_activity_ages.index.levels[2]
-
-        adjusted_age = precomputed_activity_ages.index.get_level_values(2)
-        life_expectancy = (
-            precomputed_activity_ages["life_expectancy"]
-            * self.run_params["health_status_adjustment"]
+        return self._update(
+            self.hsa.run(self.run_params["health_status_adjustment"]),
+            ["hsagrp", "sex", "age"],
         )
-
-        adjusted_age -= life_expectancy
-
-        # use the hsa gam's to predict with the adjusted age and the actual age to calculate the
-        # health status adjustment factor
-        factor = pd.concat(
-            {
-                (h, s): pd.Series(
-                    g.predict(adjusted_age.loc[h, int(s), slice(None)]),
-                    name="health_status_adjustment",
-                    index=ages,
-                )
-                for (h, s), g in self.hsa_gams.items()
-            }
-        ).rename_axis(["hsagrp", "sex", "age"])
-        factor /= precomputed_activity_ages["activity_age"]
-
-        return self._update(factor, ["hsagrp", "sex", "age"])
 
     def expat_adjustment(self):
         """perform the expatriation adjustment"""

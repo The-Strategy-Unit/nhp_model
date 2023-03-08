@@ -104,10 +104,12 @@ def test_debug_run(mocker, capsys):
             },
         ],
     )
-    debug_run(m, "params", "data", 0)
+    debug_run(m, "params", "run_params", "data", "hsa", 0)
 
     assert timeit_mock.call_count == 3
-    assert timeit_mock.call_args_list[0] == call(m, "params", "data")
+    assert timeit_mock.call_args_list[0] == call(
+        m, "params", "data", "hsa", "run_params"
+    )
     # assert timeit_mock.call_args_list[1] == call(m.aggregate, mr_mock)
     assert timeit_mock.call_args_list[2] == call(mr_mock.get_aggregate_results)
 
@@ -145,8 +147,16 @@ def test_main_debug_runs_model(mocker, activity_type, model_class):
     args.data_path = "data"
     args.model_run = 0
     args.params_file = "params.json"
+    params = {"dataset": "synthetic", "life_expectancy": "life_expectancy"}
     mocker.patch("run_model._run_model_argparser", return_value=args)
-    mocker.patch("run_model.load_params", return_value="params")
+    ldp_mock = mocker.patch("run_model.load_params", return_value=params)
+    grp_mock = mocker.patch(
+        "model.model.Model.generate_run_params", return_value="run_params"
+    )
+    hsa_mock = mocker.patch(
+        "run_model.HealthStatusAdjustmentInterpolated",
+        return_value="hsa",
+    )
 
     debug_mock = mocker.patch("run_model.debug_run")
 
@@ -154,7 +164,12 @@ def test_main_debug_runs_model(mocker, activity_type, model_class):
     main()
 
     # assert
-    debug_mock.assert_called_once_with(model_class, "params", "data", 0)
+    debug_mock.assert_called_once_with(
+        model_class, params, "run_params", "data", "hsa", 0
+    )
+    ldp_mock.assert_called_once_with("params.json")
+    grp_mock.assert_called_once_with(params)
+    hsa_mock.assert_called_once_with("data/synthetic", "life_expectancy")
 
 
 def test_init(mocker):

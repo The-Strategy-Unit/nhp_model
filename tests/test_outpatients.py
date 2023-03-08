@@ -14,8 +14,8 @@ from model.outpatients import OutpatientsModel
 @pytest.fixture
 def mock_model():
     """create a mock Model instance"""
-    with patch.object(OutpatientsModel, "__init__", lambda s, p, d: None):
-        mdl = OutpatientsModel(None, None)
+    with patch.object(OutpatientsModel, "__init__", lambda s, p, d, h, r: None):
+        mdl = OutpatientsModel(None, None, None, None)
     mdl.model_type = "op"
     mdl.params = {
         "dataset": "synthetic",
@@ -83,7 +83,7 @@ def test_init_calls_super_init(mocker):
     # arrange
     super_mock = mocker.patch("model.outpatients.super")
     # act
-    OutpatientsModel("params", "data_path")
+    OutpatientsModel("params", "data_path", "hsa", "run_params")
     # assert
     super_mock.assert_called_once()
 
@@ -181,7 +181,7 @@ def test_get_step_counts_dataframe(mock_model):
             {
                 ("change_factor", "a"),
                 ("measure", "attendances"),
-                ("activity_type", "ip"),
+                ("activity_type", "op"),
                 ("strategy", "-"),
             }
         ): 1.0,
@@ -189,7 +189,7 @@ def test_get_step_counts_dataframe(mock_model):
             {
                 ("change_factor", "a"),
                 ("measure", "tele_attendances"),
-                ("activity_type", "ip"),
+                ("activity_type", "op"),
                 ("strategy", "-"),
             }
         ): 2.0,
@@ -197,7 +197,7 @@ def test_get_step_counts_dataframe(mock_model):
             {
                 ("measure", "attendances"),
                 ("strategy", "-"),
-                ("activity_type", "ip"),
+                ("activity_type", "op"),
                 ("change_factor", "b"),
             }
         ): 3.0,
@@ -205,7 +205,7 @@ def test_get_step_counts_dataframe(mock_model):
             {
                 ("measure", "tele_attendances"),
                 ("strategy", "-"),
-                ("activity_type", "ip"),
+                ("activity_type", "op"),
                 ("change_factor", "b"),
             }
         ): 4.0,

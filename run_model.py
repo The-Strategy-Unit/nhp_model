@@ -20,6 +20,7 @@ from typing import Any, Callable
 import pandas as pd
 
 from model.aae import AaEModel
+from model.health_status_adjustment import HealthStatusAdjustmentInterpolated
 from model.helpers import load_params
 from model.inpatients import InpatientsModel
 from model.model import Model
@@ -37,12 +38,19 @@ def timeit(func: Callable, *args) -> Any:
     return results
 
 
-def debug_run(model_type: Model, params: dict, path: str, model_run: int) -> None:
+def debug_run(
+    model_type: Model,
+    params: dict,
+    run_params: dict,
+    path: str,
+    hsa: Any,
+    model_run: int,
+) -> None:
     """
     Runs a single model iteration for easier debugging in vscode
     """
     print("initialising model...  ", end="")
-    model = timeit(model_type, params, path)
+    model = timeit(model_type, params, path, hsa, run_params)
     print("running model...       ", end="")
     m_run = timeit(ModelRun, model, model_run)
     print("aggregating results... ", end="")
@@ -53,7 +61,8 @@ def debug_run(model_type: Model, params: dict, path: str, model_run: int) -> Non
     step_counts = pd.DataFrame(
         [{**dict(k), "value": v} for k, v, in agg_results["step_counts"].items()]
     ).drop(columns=["strategy", "activity_type"])
-    cf_values = step_counts["change_factor"].unique() # pylint: disable=unsubscriptable-object
+    # pylint: disable=unsubscriptable-object
+    cf_values = step_counts["change_factor"].unique()
     step_counts = (
         step_counts.groupby(["change_factor", "measure"], as_index=False)
         .sum()
@@ -105,14 +114,22 @@ def main() -> None:
 
     # Grab the Arguments
     args = _run_model_argparser()
-    # define the models to run
-    models = {"aae": AaEModel, "ip": InpatientsModel, "op": OutpatientsModel}
-    if args.type != "all":
-        models = {args.type: models[args.type]}
+    # define the model to run
+    match args.type:
+        case "aae":
+            model = AaEModel
+        case "ip":
+            model = InpatientsModel
+        case "op":
+            model = OutpatientsModel
     #
     params = load_params(args.params_file)
+    run_params = Model.generate_run_params(params)
+    hsa = HealthStatusAdjustmentInterpolated(
+        f"{args.data_path}/{params['dataset']}", params["life_expectancy"]
+    )
 
-    debug_run(models[args.type], params, args.data_path, args.model_run)
+    debug_run(model, params, run_params, args.data_path, hsa, args.model_run)
 
 
 def init():

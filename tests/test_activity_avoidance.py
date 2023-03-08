@@ -14,8 +14,8 @@ from model.activity_avoidance import ActivityAvoidance
 @pytest.fixture
 def mock_activity_avoidance():
     """create a mock Model instance"""
-    with patch.object(ActivityAvoidance, "__init__", lambda m, c, r: None):
-        mdl = ActivityAvoidance(None, None)
+    with patch.object(ActivityAvoidance, "__init__", lambda m, c: None):
+        mdl = ActivityAvoidance(None)
     mdl._model_run = Mock()
     return mdl
 
@@ -31,7 +31,7 @@ def test_init(mocker):
     model_run.run_params = "run_params"
     model_run.step_counts = "step_counts"
     model_run.model.demog_factors = "demog_factors"
-    model_run.model.hsa_gams = "hsa_gams"
+    model_run.model.hsa = "hsa"
     model_run.model.strategies = {"activity_avoidance": "activity_avoidance"}
 
     usc_mock = mocker.patch(
@@ -48,7 +48,7 @@ def test_init(mocker):
     assert actual.run_params == "run_params"
     assert actual.step_counts == "step_counts"
     assert actual.demog_factors == "demog_factors"
-    assert actual.hsa_gams == "hsa_gams"
+    assert actual.hsa == "hsa"
     assert actual.strategies == "activity_avoidance"
     usc_mock.assert_called_once_with(("baseline", "-"))
     assert actual._row_counts.tolist() == [1]
@@ -140,42 +140,9 @@ def test_demographic_adjustment(mocker, mock_activity_avoidance):
 def test_health_status_adjustment(mocker, mock_activity_avoidance):
     # arrange
     aa_mock = mock_activity_avoidance
-
     aa_mock._model_run.run_params = {"health_status_adjustment": 2}
 
-    activity_age = 1 / (np.arange(0, 12) + 1)
-
-    aa_mock._model_run.model.hsa_precomputed_activity_ages = pd.DataFrame(
-        {
-            "hsagrp": (["a"] * 3 + ["b"] * 3) * 2,
-            "sex": [1] * 6 + [2] * 6,
-            "age": [50, 51, 52] * 4,
-            "life_expectancy": [1, 2, 3] * 2 + [-1, -2, -3] * 2,
-            "activity_age": activity_age,
-        }
-    ).set_index(["hsagrp", "sex", "age"])
-
-    hsa_mock = type("mocked_hsa", (object,), {"predict": lambda x: x.to_numpy()})
-    aa_mock._model_run.model.hsa_gams = {
-        (i, j): hsa_mock for i in ["a", "b"] for j in [1, 2]
-    }
-
-    expected = {
-        ("a", 1, 50): 48.0,
-        ("a", 1, 51): 94.0,
-        ("a", 1, 52): 138.0,
-        ("a", 2, 50): 364.0,
-        ("a", 2, 51): 440.0,
-        ("a", 2, 52): 522.0,
-        ("b", 1, 50): 192.0,
-        ("b", 1, 51): 235.0,
-        ("b", 1, 52): 276.0,
-        ("b", 2, 50): 520.0,
-        ("b", 2, 51): 605.0,
-        ("b", 2, 52): 696.0,
-    }
-
-    keys = list(zip(["a"] * 6 + ["b"] * 6, ([1] * 3 + [2] * 3) * 2, [50, 51, 52] * 4))
+    aa_mock._model_run.model.hsa.run.return_value = "hsa"
 
     u_mock = mocker.patch(
         "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
@@ -186,10 +153,8 @@ def test_health_status_adjustment(mocker, mock_activity_avoidance):
 
     # assert
     assert actual == "update"
-    f, cols = u_mock.call_args_list[0][0]
-    assert f.to_dict() == expected
-    assert f.name == "health_status_adjustment"
-    assert cols == ["hsagrp", "sex", "age"]
+    aa_mock.hsa.run.assert_called_once_with(2)
+    u_mock.assert_called_once_with("hsa", ["hsagrp", "sex", "age"])
 
 
 def test_expat_adjustment_no_params(mocker, mock_activity_avoidance):
@@ -614,10 +579,10 @@ def test_activity_avoidance(mocker, mock_activity_avoidance, binomial_rv, expect
 
     # assert
     assert actual == aa_mock
-    call_args == expected
+    assert call_args == expected
 
 
-def test_apply_resampling(mocker, mock_activity_avoidance):
+def test_apply_resampling(mock_activity_avoidance):
     # arrange
     aa_mock = mock_activity_avoidance
 
