@@ -9,10 +9,9 @@ method.
 """
 
 import os
-import pickle
 from datetime import datetime
 from functools import partial
-from typing import Callable, Tuple
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -57,7 +56,8 @@ class Model:
         model_type: str,
         params: dict,
         data_path: str,
-        columns_to_load: list[str] = None,
+        hsa: Any,
+        run_params: dict = None,
     ) -> None:
         valid_model_types = ["aae", "ip", "op"]
         assert (
@@ -72,20 +72,19 @@ class Model:
         # store the path where the data is stored and the results are stored
         self._data_path = os.path.join(data_path, self.params["dataset"])
         # load the data. we only need some of the columns for the model, so just load what we need
-        self.data = self._load_parquet(self.model_type, columns_to_load).sort_values(
-            "rn"
-        )
+        self.data = self._load_parquet(self.model_type).sort_values("rn")
         self.data["age_group"] = age_groups(self.data["age"])
         self._load_strategies()
         self._load_demog_factors()
-        self._load_hsa_gams()
-        # generate the run parameters
-        self._generate_run_params()
+        self.hsa = hsa
+        # generate the run parameters if they haven't been passed in
+        self.run_params = run_params or self.generate_run_params(params)
         # get the data mask and baseline counts
         self.data_mask = self._get_data_mask()
+        # pylint: disable=assignment-from-no-return
         self.baseline_counts = self._get_data_counts(self.data)
 
-    def _load_parquet(self, file: str, *args: list[str]) -> pd.DataFrame:
+    def _load_parquet(self, file: str) -> pd.DataFrame:
         """Load a parquet file
 
         Helper method for loading a parquet file into a pandas DataFrame.
@@ -101,7 +100,7 @@ class Model:
         :rtype: pandas.DataFrame
         """
         return pq.read_pandas(
-            os.path.join(self._data_path, f"{file}.parquet"), *args
+            os.path.join(self._data_path, f"{file}.parquet")
         ).to_pandas()
 
     def _load_strategies(self) -> None:
@@ -139,46 +138,8 @@ class Model:
             k: v["demographic_adjustment"] for k, v in demog_factors.groupby("variant")
         }
 
-    def _load_hsa_gams(self):
-        # load the data that's shared across different model types
-        with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
-            self.hsa_gams = pickle.load(hsa_pkl)
-
-        self.hsa_precomputed_activity_ages = self._generate_hsa_activity_ages()
-
-    def _generate_hsa_activity_ages(self):
-        # precompute the table for the health status adjustment steps
-        lep = self.params["life_expectancy"]
-        ages = np.arange(lep["min_age"], lep["max_age"] + 1)
-
-        return (
-            pd.concat(
-                [
-                    pd.DataFrame(
-                        {
-                            "hsagrp": h,
-                            "sex": int(s),
-                            "age": ages,
-                            "activity_age": g.predict(ages),
-                        }
-                    )
-                    for (h, s), g in self.hsa_gams.items()
-                ]
-            )
-            .merge(
-                pd.concat(
-                    {
-                        si: pd.Series(lep[ss], index=ages, name="life_expectancy")
-                        for (si, ss) in [(1, "m"), (2, "f")]
-                    }
-                ),
-                left_on=["sex", "age"],
-                right_index=True,
-            )
-            .set_index(["hsagrp", "sex", "age"])
-        )
-
-    def _generate_run_params(self):
+    @staticmethod
+    def generate_run_params(params):
         """Generate the values for each model run from the params
 
         Our parameters are given as intervals, this will generate a single value for each model run,
@@ -187,8 +148,6 @@ class Model:
 
         This method saves the values to self.run_params
         """
-        params = self.params
-
         # the principal projection will have run number 0. all other runs start indexing from 1
         rng = np.random.default_rng(params["seed"])
         model_runs = params["model_runs"] + 1  # add 1 for the principal
@@ -222,7 +181,7 @@ class Model:
         probabilities = list(
             params["demographic_factors"]["variant_probabilities"].values()
         )
-        self.run_params = {
+        return {
             "variant": [variants[np.argmax(probabilities)]]
             + rng.choice(variants, model_runs - 1, p=probabilities).tolist(),
             "seeds": rng.integers(0, 65535, model_runs).tolist(),

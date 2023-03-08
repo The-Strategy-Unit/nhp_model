@@ -6,7 +6,7 @@ Implements the inpatients model.
 
 import json
 from functools import partial
-from typing import Callable, Tuple
+from typing import Any, Callable, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -30,13 +30,11 @@ class InpatientsModel(Model):
 
     # pylint: disable=too-many-instance-attributes
 
-    def __init__(self, params: list, data_path: str) -> None:
+    def __init__(
+        self, params: dict, data_path: str, hsa: Any, run_params: dict = None
+    ) -> None:
         # call the parent init function
-        super().__init__(
-            "ip",
-            params,
-            data_path,
-        )
+        super().__init__("ip", params, data_path, hsa, run_params)
         # load the theatres data
         self._load_theatres_data()
         # load the kh03 data

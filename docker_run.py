@@ -20,6 +20,10 @@ from azure.storage.filedatalake import DataLakeServiceClient
 
 import config
 from model.aae import AaEModel
+from model.health_status_adjustment import (
+    HealthStatusAdjustment,
+    HealthStatusAdjustmentInterpolated,
+)
 from model.inpatients import InpatientsModel
 from model.model import Model
 from model.outpatients import OutpatientsModel
@@ -116,9 +120,6 @@ def upload_to_cosmos(params: dict, results: dict, credential: Any) -> None:
     results_container = cosmos_db.get_container_client("model_results")
 
     for agg_type, values in results.items():
-        # this fixes the results for upload
-        for agg_type, values in results.items():
-            split_model_runs_out(agg_type, values)
         results_container.create_item(
             {
                 "id": str(uuid.uuid4()),
@@ -203,7 +204,9 @@ def split_model_runs_out(agg_type: str, results: dict) -> None:
         result["principal"] = int(result["principal"])
 
 
-def run(model_type: Model, params: dict, path: str) -> dict:
+def run_model(
+    model_type: Model, params: dict, path: str, hsa: Any, run_params: dict
+) -> dict:
     """Run the model iterations
 
     Runs the model for all of the model iterations, returning the aggregated results
@@ -220,7 +223,7 @@ def run(model_type: Model, params: dict, path: str) -> dict:
     model_class = model_type.__name__[:-5]  # pylint: disable=protected-access
     logging.info("%s", model_class)
     logging.info(" * instantiating")
-    model = model_type(params, path)
+    model = model_type(params, path, hsa, run_params)
     logging.info(" * running")
 
     model_runs = list(range(-1, model.params["model_runs"] + 1))
@@ -235,32 +238,33 @@ def run(model_type: Model, params: dict, path: str) -> dict:
     return results
 
 
-def main(param_filename):
-    """the main method"""
-
-    storage_account = config.STORAGE_ACCOUNT
-
-    credential = DefaultAzureCredential()
-
-    params = load_params(storage_account, param_filename, credential)
-    get_data(storage_account, params["dataset"], credential)
-
+def run(params: dict, data_path: str, hsa_type: Any):
     model_types = [InpatientsModel, OutpatientsModel, AaEModel]
+    run_params = Model.generate_run_params(params)
 
-    results = combine_results([run(m, params, "data") for m in model_types])
+    hsa = hsa_type(f"{data_path}/{params['dataset']}", params["life_expectancy"])
 
-    upload_to_cosmos(params, results, credential)
-
-    logging.info("complete")
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "params_file", help="Name of the parameters file stored in Azure"
+    return combine_results(
+        [run_model(m, params, data_path, hsa, run_params) for m in model_types]
     )
 
+
+def main():
+    """the main method"""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "params_file",
+        help="Name of the parameters file stored in Azure",
+    )
+    parser.add_argument("--hsa-type", default="gams", choices=["gams", "interpolated"])
+
     args = parser.parse_args()
+
+    HsaType = (
+        HealthStatusAdjustment
+        if args.hsa_type == "gams"
+        else HealthStatusAdjustmentInterpolated
+    )
 
     logging.basicConfig(
         format="%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s",
@@ -272,4 +276,24 @@ if __name__ == "__main__":
         logging.WARNING
     )
 
-    main(args.params_file)
+    storage_account = config.STORAGE_ACCOUNT
+
+    credential = DefaultAzureCredential()
+
+    params = load_params(storage_account, args.params_file, credential)
+    get_data(storage_account, params["dataset"], credential)
+
+    results = run(params, "data", HsaType)
+
+    upload_to_cosmos(params, results, credential)
+
+    logging.info("complete")
+
+
+def init():
+    """method for calling main"""
+    if __name__ == "__main__":
+        main()
+
+
+init()

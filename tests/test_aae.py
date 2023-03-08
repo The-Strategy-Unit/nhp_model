@@ -1,7 +1,7 @@
 """test a&e model"""
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
+# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring,unnecessary-lambda-assignment
 
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pandas as pd
@@ -14,8 +14,8 @@ from model.aae import AaEModel
 @pytest.fixture
 def mock_model():
     """create a mock Model instance"""
-    with patch.object(AaEModel, "__init__", lambda s, p, d: None):
-        mdl = AaEModel(None, None)
+    with patch.object(AaEModel, "__init__", lambda s, p, d, h, r: None):
+        mdl = AaEModel(None, None, None, None)
     mdl.model_type = "aae"
     mdl.params = {
         "dataset": "synthetic",
@@ -85,7 +85,7 @@ def test_init_calls_super_init(mocker):
     # arrange
     super_mock = mocker.patch("model.aae.super")
     # act
-    AaEModel("params", "data_path")
+    AaEModel("params", "data_path", "hsa", "run_params")
     # assert
     super_mock.assert_called_once()
 
@@ -150,7 +150,7 @@ def test_get_step_counts_dataframe(mock_model):
                 ("measure", "arrivals"),
                 ("strategy", "-"),
                 ("change_factor", "a"),
-                ("activity_type", "ip"),
+                ("activity_type", "aae"),
             }
         ): 1.0,
         frozenset(
@@ -158,7 +158,7 @@ def test_get_step_counts_dataframe(mock_model):
                 ("measure", "arrivals"),
                 ("strategy", "-"),
                 ("change_factor", "b"),
-                ("activity_type", "ip"),
+                ("activity_type", "aae"),
             }
         ): 2.0,
     }

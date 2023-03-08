@@ -2,8 +2,7 @@
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
 
 import re
-from collections import namedtuple
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pandas as pd
@@ -114,6 +113,7 @@ def mock_run_params():
 
 @pytest.fixture
 def mock_model_results():
+    """creates mock of model results object"""
     return pd.DataFrame(
         {
             "pod": [i for i in range(3) for _ in range(4)],
@@ -140,15 +140,14 @@ def test_model_init_sets_values(mocker, model_type):
     mocker.patch("model.model.age_groups", return_value="age_groups")
     mocker.patch("model.model.Model._load_strategies")
     mocker.patch("model.model.Model._load_demog_factors")
-    mocker.patch("model.model.Model._load_hsa_gams")
-    mocker.patch("model.model.Model._generate_run_params")
+    mocker.patch("model.model.Model.generate_run_params")
     mocker.patch("model.model.Model._get_data_mask", return_value="data_mask")
     mocker.patch("model.model.Model._get_data_counts", return_value="data_counts")
 
     mocker.patch("os.path.join", lambda *args: "/".join(args))
 
     # act
-    mdl = Model(model_type, params, "data")
+    mdl = Model(model_type, params, "data", "hsa", "run_params")
 
     # assert
     assert mdl.model_type == model_type
@@ -159,19 +158,44 @@ def test_model_init_sets_values(mocker, model_type):
         "age": [1, 2],
         "age_group": ["age_groups"] * 2,
     }
-    mdl._load_demog_factors.assert_called_once()
-    mdl._load_hsa_gams.assert_called_once()
-    mdl._generate_run_params.assert_called_once()
     mdl._load_strategies.assert_called_once()
+    mdl._load_demog_factors.assert_called_once()
+    assert mdl.hsa == "hsa"
+    mdl.generate_run_params.assert_not_called()
+    assert mdl.run_params == "run_params"
     assert mdl.data_mask == "data_mask"
     assert mdl.baseline_counts == "data_counts"
     mdl._get_data_counts.call_args_list[0][0][0].equals(mdl.data)
 
 
+def test_model_init_calls_generate_run_params(mocker):
+    """test model constructor works as expected"""
+    # arrange
+    params = {"dataset": "synthetic", "create_datetime": "20220101_012345"}
+    mock_data = pd.DataFrame({"rn": [2, 1], "age": [2, 1]})
+
+    mocker.patch("model.model.Model._load_parquet", return_value=mock_data)
+    mocker.patch("model.model.age_groups", return_value="age_groups")
+    mocker.patch("model.model.Model._load_strategies")
+    mocker.patch("model.model.Model._load_demog_factors")
+    mocker.patch("model.model.Model.generate_run_params", return_value="generated")
+    mocker.patch("model.model.Model._get_data_mask", return_value="data_mask")
+    mocker.patch("model.model.Model._get_data_counts", return_value="data_counts")
+
+    mocker.patch("os.path.join", lambda *args: "/".join(args))
+
+    # act
+    mdl = Model("aae", params, "data", "hsa")
+
+    # assert
+    mdl.generate_run_params.assert_called_once()
+    assert mdl.run_params == "generated"
+
+
 def test_model_init_validates_model_type():
     """it raises an exception if an invalid model_type is passed"""
     with pytest.raises(AssertionError):
-        Model("", None, None)
+        Model("", None, None, None, None)
 
 
 def test_model_init_sets_create_datetime(mocker):
@@ -183,13 +207,12 @@ def test_model_init_sets_create_datetime(mocker):
     mocker.patch("model.model.Model._load_parquet", return_value=mock_data)
     mocker.patch("model.model.age_groups", return_value="age_groups")
     mocker.patch("model.model.Model._load_demog_factors")
-    mocker.patch("model.model.Model._load_hsa_gams")
-    mocker.patch("model.model.Model._generate_run_params")
+    mocker.patch("model.model.Model.generate_run_params")
 
     mocker.patch("os.path.join", lambda *args: "/".join(args))
 
     # act
-    mdl = Model("aae", params, "data")
+    mdl = Model("aae", params, "data", "run_params")
 
     # assert
     assert re.match("^\\d{8}_\\d{6}$", mdl.params["create_datetime"])
@@ -249,50 +272,6 @@ def test_demog_factors_loads_correctly(mocker, mock_model, start_year, end_year)
     assert mdl.demog_factors["b"].to_list() == [(i + diff) / i for i in b_range]
 
 
-# _load_hsa_gams()
-def test_load_hsa_gams(mocker, mock_model):
-    # arrange
-    mdl = mock_model
-    mocker.patch("pickle.load", return_value="pkl_load")
-    mdl._generate_hsa_activity_ages = Mock(return_value="precomputed_activity_ages")
-
-    # act
-    with patch("builtins.open", mock_open(read_data="hsa_gams")) as mock_file:
-        mdl._load_hsa_gams()
-
-    # assert
-    assert mdl.hsa_gams == "pkl_load"
-    mock_file.assert_called_with("data/synthetic/hsa_gams.pkl", "rb")
-
-    assert mdl.hsa_precomputed_activity_ages == "precomputed_activity_ages"
-    mdl._generate_hsa_activity_ages.assert_called_once()
-
-
-# _generate_hsa_activity_ages()
-def test_generate_hsa_activity_ages(mock_model):
-    # arrange
-    mdl = mock_model
-    mdl.params = {
-        "life_expectancy": {
-            "m": [1, 2, 3],
-            "f": [4, 5, 6],
-            "min_age": 50,
-            "max_age": 52,
-        }
-    }
-    hsa_mock = type("mocked_hsa", (object,), {"predict": lambda x: x})
-    mdl.hsa_gams = {(h, s): hsa_mock for h in ["a", "b"] for s in [1, 2]}
-
-    # act
-    actual = mdl._generate_hsa_activity_ages()
-
-    # assert
-    assert actual.to_dict("list") == {
-        "activity_age": [50, 50, 51, 51, 52, 52, 50, 50, 51, 51, 52, 52],
-        "life_expectancy": [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6],
-    }
-
-
 # _generate_run_params()
 
 
@@ -318,9 +297,10 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
     mdl._probabilities = [0.6, 0.4]
 
     # act
-    mdl._generate_run_params()
+    actual = mdl.generate_run_params(mdl.params)
+
     # assert
-    assert mdl.run_params == mock_run_params
+    assert actual == mock_run_params
 
 
 # _get_run_params()
