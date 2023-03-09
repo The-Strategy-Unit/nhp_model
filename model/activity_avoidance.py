@@ -86,7 +86,7 @@ class ActivityAvoidance:
         """get the current model runs data"""
         return self._model_run.data
 
-    def _update(self, factor: pd.Series, cols: List[str], group=None):
+    def _update(self, factor: pd.Series, cols: List[str]):
         step = factor.name
 
         self._row_counts *= (
@@ -95,10 +95,13 @@ class ActivityAvoidance:
             .to_numpy()
         )
 
-        if group is not None:
-            step, group = group, step
+        self._update_step_counts((step, "-"))
+        return self
 
-        self._update_step_counts((step, group or "-"))
+    def _update_rn(self, factor: pd.Series, group: str):
+        self._row_counts *= self.data["rn"].map(factor).fillna(1).to_numpy()
+
+        self._update_step_counts(("activity_avoidance", group))
         return self
 
     def _update_step_counts(self, step: Tuple[str, str]) -> None:
@@ -113,31 +116,32 @@ class ActivityAvoidance:
 
     def health_status_adjustment(self):
         """perform the health status adjustment"""
-        # convert the arrays from the life expectancy paramerters into a data frame
-        lep = self.params["life_expectancy"]
-        ages = np.tile(np.arange(lep["min_age"], lep["max_age"] + 1), 2)
-        sexs = np.repeat([1, 2], len(ages) // 2)
-        lex = pd.DataFrame({"age": ages, "sex": sexs, "ex": lep["m"] + lep["f"]})
-        # adjust the life expectancy column using the health status adjustment parameter
-        lex["ex"] *= self.run_params["health_status_adjustment"]
-        # caclulate the adjusted age
-        lex["adjusted_age"] = lex["age"] - lex["ex"]
+        precomputed_activity_ages = self._model_run.model.hsa_precomputed_activity_ages
 
-        lex.set_index("sex", inplace=True)
+        ages = precomputed_activity_ages.index.levels[2]
+
+        adjusted_age = precomputed_activity_ages.index.get_level_values(2)
+        life_expectancy = (
+            precomputed_activity_ages["life_expectancy"]
+            * self.run_params["health_status_adjustment"]
+        )
+
+        adjusted_age -= life_expectancy
 
         # use the hsa gam's to predict with the adjusted age and the actual age to calculate the
         # health status adjustment factor
         factor = pd.concat(
             {
                 (h, s): pd.Series(
-                    g.predict(lex.loc[int(s), "adjusted_age"])
-                    / g.predict(lex.loc[int(s), "age"]),
+                    g.predict(adjusted_age.loc[h, int(s), slice(None)]),
                     name="health_status_adjustment",
-                    index=lex.loc[int(s), "age"],
+                    index=ages,
                 )
                 for (h, s), g in self.hsa_gams.items()
             }
-        )
+        ).rename_axis(["hsagrp", "sex", "age"])
+        factor /= precomputed_activity_ages["activity_age"]
+
         return self._update(factor, ["hsagrp", "sex", "age"])
 
     def expat_adjustment(self):
@@ -245,11 +249,7 @@ class ActivityAvoidance:
         )
 
         for k in strategies_grouped.index.levels[0]:
-            self._update(
-                strategies_grouped[k, slice(None)].rename(k),
-                ["rn"],
-                group="activity_avoidance",
-            )
+            self._update_rn(strategies_grouped[k, slice(None)], k)
 
         return self
 

@@ -297,7 +297,7 @@ def test_bedday_summary(mock_model):
     )
     data = pd.DataFrame(
         {
-            "admidate": [f"2022-04-0{d}" for d in range(6)] * 2,
+            "admidate": [f"2022-04-0{d}" for d in range(1, 7)] * 2,
             "speldur": list(range(6)) * 2,
             "mainspef": ["a", "b", "c"] * 4,
             "classpat": (["1"] * 5 + ["2"]) * 2,
@@ -502,10 +502,8 @@ def test_aggregate(mock_model):
             "sitetret": ["trust"] * 24,
             "age_group": xs * 2,
             "sex": xs * 2,
-            "admimeth": xs * 2,
             "group": ["elective", "non-elective", "maternity"] * 8,
             "classpat": ["1", "2", "3", "4", "5", "-1"] * 4,
-            "mainspef": xs * 2,
             "tretspef": xs * 2,
             "rn": [1] * 24,
             "has_procedure": [0, 1] * 12,
@@ -535,7 +533,6 @@ def test_aggregate(mock_model):
         ],
         "age_group": [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4],
         "sex": [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4],
-        "admimeth": [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4],
         "group": [
             "elective",
             "non-elective",
@@ -572,7 +569,6 @@ def test_aggregate(mock_model):
             "4",
             "5",
         ],
-        "mainspef": [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4],
         "tretspef": [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4],
         "measure": [
             "admissions",
