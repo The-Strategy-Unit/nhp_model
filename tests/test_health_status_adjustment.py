@@ -196,7 +196,6 @@ def mock_hsa_gam():
     hsa_mock = type("mocked_hsa", (object,), {"predict": lambda x: x})
     hsa._gams = {(h, s): hsa_mock for h in ["a", "b"] for s in [1, 2]}
 
-    hsa._activity_table_path = "/tmp/hsa_activity_table.csv"
     hsa._all_ages = np.arange(0, 3)
     hsa._ages = [1, 2]
 
@@ -220,8 +219,9 @@ def test_hsa_gam_init(mocker):
     super_mock.assert_called_once_with("data/synthetic", "life_expectancy")
 
 
-def test_hsa_gam_generate_activity_table(mock_hsa_gam):
+def test_hsa_gam_generate_activity_table(mock_hsa_gam, tmp_path):
     # arrange
+    mock_hsa_gam._activity_table_path = f"{tmp_path}/hsa_activity_table.csv"
 
     # act
     mock_hsa_gam._generate_activity_table()
