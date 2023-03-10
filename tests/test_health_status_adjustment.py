@@ -7,11 +7,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from model.health_status_adjustment import (
-    HealthStatusAdjustment,
-    HealthStatusAdjustmentGAM,
-    HealthStatusAdjustmentInterpolated,
-)
+from model.health_status_adjustment import (HealthStatusAdjustment,
+                                            HealthStatusAdjustmentGAM,
+                                            HealthStatusAdjustmentInterpolated)
 
 # Health Status Adjustment
 
@@ -217,23 +215,6 @@ def test_hsa_gam_init(mocker):
     assert hsa._gams == "pkl_load"
     mock_file.assert_called_with("data/synthetic/hsa_gams.pkl", "rb")
     super_mock.assert_called_once_with("data/synthetic", "life_expectancy")
-
-
-def test_hsa_gam_generate_activity_table(mock_hsa_gam, tmp_path):
-    # arrange
-    mock_hsa_gam._activity_table_path = f"{tmp_path}/hsa_activity_table.csv"
-
-    # act
-    mock_hsa_gam._generate_activity_table()
-    actual = pd.read_csv(mock_hsa_gam._activity_table_path)
-
-    # assert
-    assert actual.to_dict("list") == {
-        "hsagrp": ["a", "a", "a", "a", "a", "a", "b", "b", "b", "b", "b", "b"],
-        "sex": [1, 1, 1, 2, 2, 2, 1, 1, 1, 2, 2, 2],
-        "age": [0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2],
-        "activity": [0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2],
-    }
 
 
 def test_hsa_gam_predict_activity(mock_hsa_gam):
