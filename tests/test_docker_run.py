@@ -4,7 +4,10 @@
 from unittest.mock import Mock, call, mock_open, patch
 
 import config
-from docker_run import _upload_to_cosmos, get_data, load_params
+from docker_run import _upload_to_cosmos, get_data, load_params, run
+from model.aae import AaEModel
+from model.inpatients import InpatientsModel
+from model.outpatients import OutpatientsModel
 
 config.STORAGE_ACCOUNT = "sa"
 config.APP_VERSION = "dev"
@@ -177,6 +180,36 @@ def test_upload_to_cosmos(mocker):
             {"id": 1},
         ),
     ]
+
+
+def test_run(mocker):
+    # arrange
+    grp_m = mocker.patch(
+        "docker_run.Model.generate_run_params", return_value="run_params"
+    )
+    hsa_m = mocker.patch(
+        "docker_run.HealthStatusAdjustmentInterpolated", return_value="hsa"
+    )
+
+    rm_m = mocker.patch("docker_run._run_model", side_effect=["ip", "op", "aae"])
+    cr_m = mocker.patch("docker_run._combine_results", return_value="results")
+
+    params = {"id": 1, "dataset": "synthetic", "life_expectancy": "le"}
+    # act
+    actual = run(params, "data")
+
+    # assert
+    assert actual == "results"
+
+    grp_m.assert_called_once_with(params)
+    hsa_m.assert_called_once_with("data/synthetic", "le")
+
+    assert rm_m.call_args_list == [
+        call(m, params, "data", "hsa", "run_params")
+        for m in [InpatientsModel, OutpatientsModel, AaEModel]
+    ]
+
+    cr_m.assert_called_once_with(["ip", "op", "aae"])
 
 
 def test_init(mocker):
