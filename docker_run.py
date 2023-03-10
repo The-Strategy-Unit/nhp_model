@@ -39,18 +39,17 @@ def load_params(filename: str) -> dict:
     :rtype: dict
     """
     if os.path.exists(f"queue/{filename}"):
-        from model.helpers import load_params
+        with open(f"queue/{filename}", "rb") as params_file:
+            params_content = params_file.read()
+    else:
+        logging.info("downloading params")
 
-        return load_params(f"queue/{filename}")
+        container = BlobServiceClient(
+            account_url=f"https://{config.STORAGE_ACCOUNT}.blob.core.windows.net",
+            credential=DefaultAzureCredential(),
+        ).get_container_client("queue")
 
-    logging.info("downloading params")
-
-    container = BlobServiceClient(
-        account_url=f"https://{config.STORAGE_ACCOUNT}.blob.core.windows.net",
-        credential=DefaultAzureCredential(),
-    ).get_container_client("queue")
-
-    params_content = container.download_blob(filename).readall()
+        params_content = container.download_blob(filename).readall()
 
     app_version = config.APP_VERSION
 
