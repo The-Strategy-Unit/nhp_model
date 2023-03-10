@@ -11,6 +11,7 @@ dependencies:
   - fastparquet=2023.2.*
   - numpy=1.23.*
   - pandas=1.5.*
+  - python-dotenv=1.0.*
   # dev dependencies
   - black=23.1.*
   - coverage=7.2.*
