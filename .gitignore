@@ -47,9 +47,6 @@ po/*~
 rsconnect/
 .Rproj.user
 
-# ignore config files
-config*.py
-
 # ignore test/data/results folders
 test/
 data/
