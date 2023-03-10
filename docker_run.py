@@ -228,7 +228,7 @@ def _run_model(
     model = model_type(params, path, hsa, run_params)
     logging.info(" * running")
 
-    model_runs = list(range(-1, model.params["model_runs"] + 1))
+    model_runs = list(range(-1, params["model_runs"] + 1))
 
     cpus = os.cpu_count()
     batch_size = 16
