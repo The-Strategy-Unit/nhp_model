@@ -4,7 +4,7 @@
 from unittest.mock import Mock, call, mock_open, patch
 
 import config
-from docker_run import _upload_to_cosmos, get_data, load_params, run
+from docker_run import _run_model, _upload_to_cosmos, get_data, load_params, run
 from model.aae import AaEModel
 from model.inpatients import InpatientsModel
 from model.outpatients import OutpatientsModel
@@ -180,6 +180,27 @@ def test_upload_to_cosmos(mocker):
             {"id": 1},
         ),
     ]
+
+
+def test_run_model(mocker):
+    # arrange
+    model_m = Mock()
+    model_m.__name__ = "InpatientsModel"
+
+    params = {"model_runs": 2}
+    mocker.patch("os.cpu_count", return_value=2)
+
+    pool_mock = mocker.patch("docker_run.Pool")
+    pool_ctm = pool_mock.return_value.__enter__.return_value
+    pool_ctm.name = "pool"
+    pool_ctm.imap = Mock(wraps=lambda f, i, **kwargs: map(f, i))
+
+    # act
+    actual = _run_model(model_m, params, "data", "hsa", "run_params")
+
+    # assert
+    pool_ctm.imap.assert_called_once_with(model_m().go, [-1, 0, 1, 2], chunksize=16)
+    assert actual == [model_m().go()] * 4
 
 
 def test_run(mocker):
