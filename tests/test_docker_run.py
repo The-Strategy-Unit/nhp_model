@@ -177,3 +177,17 @@ def test_upload_to_cosmos(mocker):
             {"id": 1},
         ),
     ]
+
+
+def test_init(mocker):
+    """it should run the main method if __name__ is __main__"""
+    import docker_run as r
+
+    main_mock = mocker.patch("docker_run.main")
+
+    r.init()  # should't call main
+    main_mock.assert_not_called()
+
+    with patch.object(r, "__name__", "__main__"):
+        r.init()  # should call main
+        main_mock.assert_called_once()
