@@ -214,7 +214,7 @@ def test_run(mocker):
 
 def test_init(mocker):
     """it should run the main method if __name__ is __main__"""
-    import docker_run as r
+    import docker_run as r  # pylint: disable=import-outside-toplevel
 
     main_mock = mocker.patch("docker_run.main")
 
