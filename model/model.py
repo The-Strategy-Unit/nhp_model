@@ -16,7 +16,6 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import pyarrow.parquet as pq
 
 from model.helpers import age_groups, inrange, rnorm
 from model.model_run import ModelRun
@@ -99,9 +98,7 @@ class Model:
         :returns: the contents of the file
         :rtype: pandas.DataFrame
         """
-        return pq.read_pandas(
-            os.path.join(self._data_path, f"{file}.parquet")
-        ).to_pandas()
+        return pd.read_parquet(os.path.join(self._data_path, f"{file}.parquet"))
 
     def _load_strategies(self) -> None:
         """Load a set of strategies"""

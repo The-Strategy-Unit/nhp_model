@@ -8,10 +8,9 @@ dependencies:
   - azure-identity=1.12.*
   - azure-storage-blob=12.15.*
   - azure-storage-file-datalake=12.10.*
+  - fastparquet=2023.2.*
   - numpy=1.23.*
   - pandas=1.5.*
-  - pyarrow=11.0.*
-  - pygam=0.8.*
   # dev dependencies
   - black=23.1.*
   - coverage=7.2.*
@@ -28,6 +27,7 @@ dependencies:
   - nbconvert-pandoc=7.2.*
   - nbformat=5.7.*
   - notebook=6.5.*
+  - pygam=0.8.*
   - pyjanitor=0.23.*
   - pylint=2.16.*
   - pytest=7.2.*

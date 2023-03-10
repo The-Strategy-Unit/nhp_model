@@ -20,16 +20,13 @@ from azure.storage.filedatalake import DataLakeServiceClient
 
 import config
 from model.aae import AaEModel
-from model.health_status_adjustment import (
-    HealthStatusAdjustment,
-    HealthStatusAdjustmentInterpolated,
-)
+from model.health_status_adjustment import HealthStatusAdjustmentInterpolated
 from model.inpatients import InpatientsModel
 from model.model import Model
 from model.outpatients import OutpatientsModel
 
 
-def load_params(storage_account: str, filename: str, credential: Any) -> dict:
+def load_params(filename: str) -> dict:
     """_summary_
 
     :param storage_account: _description_
@@ -41,10 +38,16 @@ def load_params(storage_account: str, filename: str, credential: Any) -> dict:
     :return: _description_
     :rtype: dict
     """
+    if os.path.exists(f"queue/{filename}"):
+        from model.helpers import load_params
+
+        return load_params(f"queue/{filename}")
+
     logging.info("downloading params")
+
     container = BlobServiceClient(
-        account_url=f"https://{storage_account}.blob.core.windows.net",
-        credential=credential,
+        account_url=f"https://{config.STORAGE_ACCOUNT}.blob.core.windows.net",
+        credential=DefaultAzureCredential(),
     ).get_container_client("queue")
 
     params_content = container.download_blob(filename).readall()
@@ -62,7 +65,7 @@ def load_params(storage_account: str, filename: str, credential: Any) -> dict:
     return params
 
 
-def get_data(storage_account: str, dataset: str, credential: Any) -> None:
+def get_data(dataset: str) -> None:
     """_summary_
 
     :param storage_account: _description_
@@ -74,13 +77,13 @@ def get_data(storage_account: str, dataset: str, credential: Any) -> None:
     :param credential: _description_
     :type credential: Any
     """
-    if os.path.exists(f"/app/data/{dataset}"):
+    if os.path.exists(f"data/{dataset}"):
         return
 
     logging.info("downloading data")
     fs_client = DataLakeServiceClient(
-        account_url=f"https://{storage_account}.dfs.core.windows.net",
-        credential=credential,
+        account_url=f"https://{config.STORAGE_ACCOUNT}.dfs.core.windows.net",
+        credential=DefaultAzureCredential(),
     ).get_file_system_client("data")
 
     version = config.DATA_VERSION
@@ -88,17 +91,17 @@ def get_data(storage_account: str, dataset: str, credential: Any) -> None:
 
     paths = [p.name for p in fs_client.get_paths(directory_path)]
 
-    os.makedirs(f"/app/data/{dataset}", exist_ok=True)
+    os.makedirs(f"data/{dataset}", exist_ok=True)
 
     for filename in paths:
         logging.info(" * %s", filename)
-        local_name = "/app/data" + filename.removeprefix(version)
+        local_name = "data" + filename.removeprefix(version)
         with open(local_name, "wb") as local_file:
             file_client = fs_client.get_file_client(filename)
             local_file.write(file_client.download_file().readall())
 
 
-def upload_to_cosmos(params: dict, results: dict, credential: Any) -> None:
+def upload_to_cosmos(params: dict, results: dict) -> None:
     """_summary_
 
     :param params: _description_
@@ -110,7 +113,7 @@ def upload_to_cosmos(params: dict, results: dict, credential: Any) -> None:
     """
     logging.info("uploading results to cosmos")
 
-    kyv_client = SecretClient(config.KEYVAULT_ENDPOINT, credential)
+    kyv_client = SecretClient(config.KEYVAULT_ENDPOINT, DefaultAzureCredential())
     cosmos_key = kyv_client.get_secret("cosmos-key").value
 
     cosmos_client = CosmosClient(config.COSMOS_ENDPOINT, cosmos_key)
@@ -254,17 +257,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "params_file",
+        nargs="?",
+        default="sample_params.json",
         help="Name of the parameters file stored in Azure",
     )
-    parser.add_argument("--hsa-type", default="gams", choices=["gams", "interpolated"])
+    parser.add_argument("--skip-upload-to-cosmos", action="store_true")
 
     args = parser.parse_args()
-
-    HsaType = (
-        HealthStatusAdjustment
-        if args.hsa_type == "gams"
-        else HealthStatusAdjustmentInterpolated
-    )
 
     logging.basicConfig(
         format="%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s",
@@ -276,16 +275,13 @@ def main():
         logging.WARNING
     )
 
-    storage_account = config.STORAGE_ACCOUNT
+    params = load_params(args.params_file)
+    get_data(params["dataset"])
 
-    credential = DefaultAzureCredential()
+    results = run(params, "data", HealthStatusAdjustmentInterpolated)
 
-    params = load_params(storage_account, args.params_file, credential)
-    get_data(storage_account, params["dataset"], credential)
-
-    results = run(params, "data", HsaType)
-
-    upload_to_cosmos(params, results, credential)
+    if not args.skip_upload_to_cosmos:
+        upload_to_cosmos(params, results)
 
     logging.info("complete")
 

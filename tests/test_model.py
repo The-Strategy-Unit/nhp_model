@@ -223,13 +223,16 @@ def test_model_init_sets_create_datetime(mocker):
 
 def test_load_parquet(mocker, mock_model):
     """test that load parquet properly loads files"""
-    m = Mock()
-    m.to_pandas.return_value = "data"
-    mocker.patch("pyarrow.parquet.read_pandas", return_value=m)
+    # arrange
+    m = mocker.patch("pandas.read_parquet", return_value="read_parquet")
     mdl = mock_model
-    assert mdl._load_parquet("ip") == "data"
+
+    # act
+    actual = mdl._load_parquet("ip")
+
+    # assert
+    assert actual == "read_parquet"
     m.expect_called_with_args("data/ip.parquet")
-    m.to_pandas.assert_called_once()
 
 
 # _load_demog_factors()
