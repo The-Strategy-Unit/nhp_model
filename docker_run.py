@@ -90,7 +90,7 @@ def get_data(dataset: str) -> None:
 
     paths = [p.name for p in fs_client.get_paths(directory_path)]
 
-    os.makedirs(f"data/{dataset}", exist_ok=True)
+    os.makedirs(f"data/{dataset}")
 
     for filename in paths:
         logging.info(" * %s", filename)
@@ -100,7 +100,7 @@ def get_data(dataset: str) -> None:
             local_file.write(file_client.download_file().readall())
 
 
-def upload_to_cosmos(params: dict, results: dict) -> None:
+def _upload_to_cosmos(params: dict, results: dict) -> None:
     """_summary_
 
     :param params: _description_
@@ -134,7 +134,7 @@ def upload_to_cosmos(params: dict, results: dict) -> None:
     model_run_container.create_item(params)
 
 
-def combine_results(results: list) -> dict:
+def _combine_results(results: list) -> dict:
     """Combine the results into a single dictionary
 
     When we run the models we have an array containing 3 items [inpatients, outpatient, a&e].
@@ -167,12 +167,12 @@ def combine_results(results: list) -> dict:
     }
     # finally we split the model runs out, this function modifies values in place
     for agg_type, values in combined_results.items():
-        split_model_runs_out(agg_type, values)
+        _split_model_runs_out(agg_type, values)
 
     return combined_results
 
 
-def split_model_runs_out(agg_type: str, results: dict) -> None:
+def _split_model_runs_out(agg_type: str, results: dict) -> None:
     """updates a single result so the baseline and principal runs are split out
     and summary statistics are generated
 
@@ -206,7 +206,7 @@ def split_model_runs_out(agg_type: str, results: dict) -> None:
         result["principal"] = int(result["principal"])
 
 
-def run_model(
+def _run_model(
     model_type: Model, params: dict, path: str, hsa: Any, run_params: dict
 ) -> dict:
     """Run the model iterations
@@ -240,14 +240,27 @@ def run_model(
     return results
 
 
-def run(params: dict, data_path: str, hsa_type: Any):
+def run(params: dict, data_path: str) -> dict:
+    """Run the model
+
+    runs all 3 model types, aggregates and combines the results
+
+    :param params: the parameters to use for this model run
+    :type params: dict
+    :param data_path: where the data is stored
+    :type data_path: str
+    :return: the results of running the model
+    :rtype: _type_
+    """
     model_types = [InpatientsModel, OutpatientsModel, AaEModel]
     run_params = Model.generate_run_params(params)
 
-    hsa = hsa_type(f"{data_path}/{params['dataset']}", params["life_expectancy"])
+    hsa = HealthStatusAdjustmentInterpolated(
+        f"{data_path}/{params['dataset']}", params["life_expectancy"]
+    )
 
-    return combine_results(
-        [run_model(m, params, data_path, hsa, run_params) for m in model_types]
+    return _combine_results(
+        [_run_model(m, params, data_path, hsa, run_params) for m in model_types]
     )
 
 
@@ -277,10 +290,10 @@ def main():
     params = load_params(args.params_file)
     get_data(params["dataset"])
 
-    results = run(params, "data", HealthStatusAdjustmentInterpolated)
+    results = run(params, "data")
 
     if not args.skip_upload_to_cosmos:
-        upload_to_cosmos(params, results)
+        _upload_to_cosmos(params, results)
 
     logging.info("complete")
 
