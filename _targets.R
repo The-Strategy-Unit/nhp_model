@@ -180,6 +180,11 @@ list(
     format = "file"
   ),
   tar_target(
+    py_gam_file_path,
+    "model/hsa_gams.py",
+    format = "file"
+  ),
+  tar_target(
     gams_file_paths,
     callr::r(
       \(fn, p, ...) fn(p),
@@ -189,7 +194,8 @@ list(
         ip_data,
         op_data,
         aae_data,
-        demographic_factors
+        demographic_factors,
+        py_gam_file_path
       )
     ),
     pattern = map(providers, ip_data, op_data, aae_data, demographic_factors)
@@ -210,7 +216,8 @@ list(
         ip_synth_data,
         op_synth_data,
         aae_synth_data,
-        demographic_factors_synthetic
+        demographic_factors_synthetic,
+        py_gam_file_path
       )
     ),
     format = "file"
