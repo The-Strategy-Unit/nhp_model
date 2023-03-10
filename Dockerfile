@@ -10,4 +10,13 @@ COPY model /opt/model
 COPY docker_run.py /opt
 COPY config.py /opt
 
+USER root
+RUN mkdir -p data && \
+  chown $MAMBA_USER:$MAMBA_USER data && \
+  chmod a+w data && \
+  mkdir -p queue && \
+  chown $MAMBA_USER:$MAMBA_USER queue && \
+  chmod a+w data
+USER $MAMBA_USER
+
 ENTRYPOINT [ "./docker_run.py" ]
