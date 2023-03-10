@@ -45,7 +45,7 @@ purrr::walk(fs::dir_ls("data_extraction", glob = "*.R"), source)
 list(
   # variables ----
   # these may need to be update as required
-  tar_target(data_version, "v0.2.0"),
+  tar_target(data_version, "dev"),
   tar_target(start_date, ymd("20180401")),
   # default end_date to be 1 year (-1 day) after the start date
   tar_target(end_date, start_date %m+% years(1) %m-% days(1)),
@@ -263,6 +263,10 @@ list(
       demographic_factors_synthetic,
       gams,
       gams_synthetic,
+      # bit of a cheat, the gams only returns a single file name (of the pkl object)
+      # add in the hsa_activity_table.csv files
+      stringr::str_replace(gams, "_gams.pkl", "_activity_table.csv"),
+      stringr::str_replace(gams_synthetic, "_gams.pkl", "_activity_table.csv"),
       kh03_save,
       kh03_synthetic,
       theatres,
