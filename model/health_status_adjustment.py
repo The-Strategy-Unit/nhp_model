@@ -70,16 +70,6 @@ class HealthStatusAdjustmentGAM(HealthStatusAdjustment):
 
         super().__init__(data_path, life_expectancy)
 
-    def _generate_activity_table(self):
-        pd.concat(
-            {
-                k: pd.Series(
-                    g.predict(self._all_ages), index=self._all_ages, name="activity"
-                )
-                for k, g in self._gams.items()
-            }
-        ).rename_axis(["hsagrp", "sex", "age"]).to_csv(self._activity_table_path)
-
     def _predict_activity(self, adjusted_ages):
         return pd.concat(
             {

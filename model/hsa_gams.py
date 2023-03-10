@@ -9,8 +9,8 @@ import pickle
 import sys
 from typing import Callable
 
+import numpy as np
 import pandas as pd
-import pyarrow.parquet as pq
 from janitor import complete  # pylint: disable=unused-import
 from pygam import GAM
 
@@ -39,7 +39,7 @@ def _create_activity_type_gams(
     :param ignored_hsagrps: an array containing any hsa groups that need to be ignored
     :type ignored_hsagrps: [str]
     """
-    dfr = pq.read_pandas(path_fn(f"{activity_type}.parquet")).to_pandas()
+    dfr = pd.read_parquet(path_fn(f"{activity_type}.parquet"))
     if ignored_hsagrps is not None:
         dfr = dfr[~dfr["hsagrp"].isin(ignored_hsagrps)]
     dfr = dfr[dfr["age"] >= 18]
@@ -63,6 +63,16 @@ def _create_activity_type_gams(
         )
 
 
+def _generate_activity_table(filename, gams):
+    all_ages = np.arange(0, 101)
+    pd.concat(
+        {
+            k: pd.Series(g.predict(all_ages), index=all_ages, name="activity")
+            for k, g in gams.items()
+        }
+    ).rename_axis(["hsagrp", "sex", "age"]).to_csv(filename)
+
+
 def create_gams(dataset: str, base_year: str) -> None:
     """Create GAMs for a dataset
 
@@ -71,6 +81,7 @@ def create_gams(dataset: str, base_year: str) -> None:
     :param base_year: the base year to produce the gams from
     :type base_year: str
     """
+
     # create a helper function for paths
     def path_fn(filename):
         return os.path.join("data", dataset, filename)
@@ -98,6 +109,9 @@ def create_gams(dataset: str, base_year: str) -> None:
         _create_activity_type_gams(
             pop, path_fn, data, gams, activity_type, ignored_hsagrps
         )
+
+    #
+    _generate_activity_table(path_fn("hsa_activity_table.csv"), gams)
 
     return (pd.concat(data), gams, path_fn)
 
