@@ -3,8 +3,19 @@
 
 from unittest.mock import Mock, call, mock_open, patch
 
+import pytest
+
 import config
-from docker_run import _run_model, _upload_to_cosmos, get_data, load_params, run
+from docker_run import (
+    _combine_results,
+    _run_model,
+    _split_model_runs_out,
+    _upload_to_cosmos,
+    get_data,
+    load_params,
+    main,
+    run,
+)
 from model.aae import AaEModel
 from model.inpatients import InpatientsModel
 from model.outpatients import OutpatientsModel
@@ -182,6 +193,296 @@ def test_upload_to_cosmos(mocker):
     ]
 
 
+def test_combine_results(mocker):
+    # arrange
+    m = mocker.patch("docker_run._split_model_runs_out")
+    results = [
+        [
+            {
+                **{
+                    k: {
+                        frozenset({("measure", "a"), ("pod", "a")}): 1 + i * 4 + j * 20,
+                        frozenset({("measure", "a"), ("pod", "b")}): 2 + i * 4 + j * 20,
+                        frozenset({("measure", "b"), ("pod", "a")}): 3 + i * 4 + j * 20,
+                        frozenset({("measure", "b"), ("pod", "b")}): 4 + i * 4 + j * 20,
+                    }
+                    for k, i in [
+                        ("a", 0),
+                        ("b", 1),
+                        ("c", 2),
+                        ("d", 3),
+                    ]
+                },
+                "step_counts": {
+                    frozenset(
+                        {
+                            ("change_factor", "baseline"),
+                            ("strategy", "-"),
+                        }
+                    ): [0, 1],
+                    frozenset(
+                        {
+                            ("change_factor", "a"),
+                            ("strategy", "a"),
+                        }
+                    ): [2 + j, 3 + j],
+                },
+            }
+            for j in range(4)
+        ],
+        [{"a": {frozenset({("measure", "a"), ("pod", "a")}): 100}}],
+    ]
+    expected = {
+        "a": [
+            {
+                "pod": "a",
+                "measure": "a",
+                "baseline": 101,
+                "principal": 21,
+                "model_runs": [41, 61],
+            },
+            {
+                "pod": "b",
+                "measure": "a",
+                "baseline": 2,
+                "principal": 22,
+                "model_runs": [42, 62],
+            },
+            {
+                "pod": "a",
+                "measure": "b",
+                "baseline": 3,
+                "principal": 23,
+                "model_runs": [43, 63],
+            },
+            {
+                "pod": "b",
+                "measure": "b",
+                "baseline": 4,
+                "principal": 24,
+                "model_runs": [44, 64],
+            },
+        ],
+        "b": [
+            {
+                "pod": "a",
+                "measure": "a",
+                "baseline": 5,
+                "principal": 25,
+                "model_runs": [45, 65],
+            },
+            {
+                "pod": "b",
+                "measure": "a",
+                "baseline": 6,
+                "principal": 26,
+                "model_runs": [46, 66],
+            },
+            {
+                "pod": "a",
+                "measure": "b",
+                "baseline": 7,
+                "principal": 27,
+                "model_runs": [47, 67],
+            },
+            {
+                "pod": "b",
+                "measure": "b",
+                "baseline": 8,
+                "principal": 28,
+                "model_runs": [48, 68],
+            },
+        ],
+        "c": [
+            {
+                "pod": "a",
+                "measure": "a",
+                "baseline": 9,
+                "principal": 29,
+                "model_runs": [49, 69],
+            },
+            {
+                "pod": "b",
+                "measure": "a",
+                "baseline": 10,
+                "principal": 30,
+                "model_runs": [50, 70],
+            },
+            {
+                "pod": "a",
+                "measure": "b",
+                "baseline": 11,
+                "principal": 31,
+                "model_runs": [51, 71],
+            },
+            {
+                "pod": "b",
+                "measure": "b",
+                "baseline": 12,
+                "principal": 32,
+                "model_runs": [52, 72],
+            },
+        ],
+        "d": [
+            {
+                "pod": "a",
+                "measure": "a",
+                "baseline": 13,
+                "principal": 33,
+                "model_runs": [53, 73],
+            },
+            {
+                "pod": "b",
+                "measure": "a",
+                "baseline": 14,
+                "principal": 34,
+                "model_runs": [54, 74],
+            },
+            {
+                "pod": "a",
+                "measure": "b",
+                "baseline": 15,
+                "principal": 35,
+                "model_runs": [55, 75],
+            },
+            {
+                "pod": "b",
+                "measure": "b",
+                "baseline": 16,
+                "principal": 36,
+                "model_runs": [56, 76],
+            },
+        ],
+        "step_counts": [
+            {
+                "change_factor": "baseline",
+                "strategy": "-",
+                "baseline": [0, 1],
+                "principal": [0, 1],
+                "model_runs": [[0, 1], [0, 1]],
+            },
+            {
+                "change_factor": "a",
+                "strategy": "a",
+                "baseline": [2, 3],
+                "principal": [3, 4],
+                "model_runs": [[4, 5], [5, 6]],
+            },
+        ],
+    }
+
+    # act
+    actual = _combine_results(results)
+
+    # assert
+    assert actual == expected
+    m.call_args_list == [call(k, v) for k, v in expected.items()]
+
+
+@pytest.mark.parametrize(
+    "agg_type",
+    [
+        "default",
+        "bed_occupancy",
+        "theatres_available",
+    ],
+)
+def test_split_model_runs_out_default(agg_type):
+    # arrange
+    results = [
+        {
+            "pod": "a",
+            "measure": "a",
+            "baseline": 1,
+            "principal": 2,
+            "model_runs": list(range(101)),
+        }
+    ]
+    expected = [
+        {
+            "pod": "a",
+            "measure": "a",
+            "baseline": 1,
+            "principal": 2,
+            "model_runs": list(range(101)),
+            "lwr_ci": 5.0,
+            "median": 50.0,
+            "upr_ci": 95.0,
+        }
+    ]
+
+    # act
+    _split_model_runs_out(agg_type, results)
+
+    # assert
+    assert results == expected
+
+
+def test_split_model_runs_out_other():
+    # arrange
+    results = [
+        {
+            "pod": "a",
+            "measure": "a",
+            "baseline": 1,
+            "principal": 2,
+            "model_runs": list(range(101)),
+        }
+    ]
+    expected = [
+        {
+            "pod": "a",
+            "measure": "a",
+            "baseline": 1,
+            "principal": 2,
+            "lwr_ci": 5.0,
+            "median": 50.0,
+            "upr_ci": 95.0,
+        }
+    ]
+
+    # act
+    _split_model_runs_out("other", results)
+
+    # assert
+    assert results == expected
+
+
+def test_split_model_runs_out_step_counts():
+    # arrange
+    results = [
+        {
+            "change_factor": "baseline",
+            "strategy": "-",
+            "baseline": [0, 1],
+            "principal": [0, 1],
+            "model_runs": [[0, 1], [0, 1]],
+        },
+        {
+            "change_factor": "a",
+            "strategy": "a",
+            "baseline": [2, 3],
+            "principal": [3, 4],
+            "model_runs": [[4, 5], [5, 6]],
+        },
+    ]
+    expected = [
+        {"change_factor": "baseline", "baseline": [0, 1]},
+        {
+            "change_factor": "a",
+            "strategy": "a",
+            "principal": [3, 4],
+            "model_runs": [[4, 5], [5, 6]],
+        },
+    ]
+
+    # act
+    _split_model_runs_out("step_counts", results)
+
+    # assert
+    assert results == expected
+
+
 def test_run_model(mocker):
     # arrange
     model_m = Mock()
@@ -231,6 +532,48 @@ def test_run(mocker):
     ]
 
     cr_m.assert_called_once_with(["ip", "op", "aae"])
+
+
+@pytest.mark.parametrize("skip_upload", [True, False])
+def test_main(mocker, skip_upload):
+    # arrange
+    args = Mock()
+    args.params_file = "params.json"
+    args.skip_upload_to_cosmos = skip_upload
+
+    mocker.patch("argparse.ArgumentParser", return_value=args)
+    args.parse_args.return_value = args
+
+    params = {"dataset": "synthetic"}
+
+    lp_m = mocker.patch("docker_run.load_params", return_value=params)
+    gd_m = mocker.patch("docker_run.get_data")
+    ru_m = mocker.patch("docker_run.run", return_value="results")
+    uc_m = mocker.patch("docker_run._upload_to_cosmos")
+
+    # act
+    main()
+
+    # assert
+    assert args.add_argument.call_args_list == [
+        call(
+            "params_file",
+            nargs="?",
+            default="sample_params.json",
+            help="Name of the parameters file stored in Azure",
+        ),
+        call("--skip-upload-to-cosmos", action="store_true"),
+    ]
+    args.parse_args.assert_called_once()
+
+    lp_m.assert_called_once_with("params.json")
+    gd_m.assert_called_once_with("synthetic")
+    ru_m.assert_called_once_with(params, "data")
+
+    if skip_upload:
+        uc_m.assert_not_called()
+    else:
+        uc_m.assert_called_once_with(params, "results")
 
 
 def test_init(mocker):

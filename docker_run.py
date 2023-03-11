@@ -190,7 +190,7 @@ def _split_model_runs_out(agg_type: str, results: dict) -> None:
             else:
                 result["baseline"] = result.pop("principal")
                 result.pop("model_runs")
-            return
+            continue
 
         [lwr, median, upr] = np.quantile(result["model_runs"], [0.05, 0.5, 0.95])
         result["lwr_ci"] = lwr
