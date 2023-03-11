@@ -6,12 +6,12 @@ import dotenv
 
 dotenv.load_dotenv()
 
-APP_VERSION = os.environ["APP_VERSION"]
-DATA_VERSION = os.environ["DATA_VERSION"]
+APP_VERSION = os.environ.get("APP_VERSION", "dev")
+DATA_VERSION = os.environ.get("DATA_VERSION", "dev")
 
-STORAGE_ACCOUNT = os.environ["STORAGE_ACCOUNT"]
+STORAGE_ACCOUNT = os.environ.get("STORAGE_ACCOUNT", None)
 
-KEYVAULT_ENDPOINT = os.environ["KEYVAULT_ENDPOINT"]
+KEYVAULT_ENDPOINT = os.environ.get("KEYVAULT_ENDPOINT", None)
 
-COSMOS_ENDPOINT = os.environ["COSMOS_ENDPOINT"]
-COSMOS_DB = os.environ["COSMOS_DB"]
+COSMOS_ENDPOINT = os.environ.get("COSMOS_ENDPOINT", None)
+COSMOS_DB = os.environ.get("COSMOS_DB", None)
