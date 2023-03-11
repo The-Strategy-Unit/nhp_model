@@ -1,5 +1,5 @@
 """test model"""
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
+# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring
 
 import re
 from unittest.mock import Mock, patch
@@ -391,6 +391,54 @@ def test_get_run_params(mock_model, mock_run_params, model_run, expected_run_par
     actual = mdl._get_run_params(model_run)
     # assert
     assert actual == expected_run_params
+
+
+# _convert_step_counts()
+
+
+def test_convert_step_counts(mock_model):
+    # arrange
+    step_counts = {("a", "-"): [1, 2], ("b", "-"): [3, 4]}
+    expected = {
+        frozenset(
+            {
+                ("change_factor", "a"),
+                ("activity_type", "aae"),
+                ("strategy", "-"),
+                ("measure", "admissions"),
+            }
+        ): 1.0,
+        frozenset(
+            {
+                ("change_factor", "a"),
+                ("activity_type", "aae"),
+                ("strategy", "-"),
+                ("measure", "beddays"),
+            }
+        ): 2.0,
+        frozenset(
+            {
+                ("measure", "admissions"),
+                ("activity_type", "aae"),
+                ("strategy", "-"),
+                ("change_factor", "b"),
+            }
+        ): 3.0,
+        frozenset(
+            {
+                ("measure", "beddays"),
+                ("activity_type", "aae"),
+                ("strategy", "-"),
+                ("change_factor", "b"),
+            }
+        ): 4.0,
+    }
+
+    # act
+    actual = mock_model._convert_step_counts(step_counts, ["admissions", "beddays"])
+
+    # assert
+    assert actual == expected
 
 
 # _create_agg()

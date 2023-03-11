@@ -243,49 +243,19 @@ def test_apply_resampling(mocker, mock_model):
     gdc_mock.assert_called_once()
 
 
-def test_get_step_counts_dataframe(mock_model):
+def test_convert_step_counts(mocker, mock_model):
     # arrange
-    step_counts = {("a", "-"): [1, 2], ("b", "-"): [3, 4]}
-    expected = {
-        frozenset(
-            {
-                ("measure", "admissions"),
-                ("strategy", "-"),
-                ("change_factor", "a"),
-                ("activity_type", "ip"),
-            }
-        ): 1.0,
-        frozenset(
-            {
-                ("measure", "beddays"),
-                ("strategy", "-"),
-                ("change_factor", "a"),
-                ("activity_type", "ip"),
-            }
-        ): 2.0,
-        frozenset(
-            {
-                ("change_factor", "b"),
-                ("strategy", "-"),
-                ("activity_type", "ip"),
-                ("measure", "admissions"),
-            }
-        ): 3.0,
-        frozenset(
-            {
-                ("change_factor", "b"),
-                ("measure", "beddays"),
-                ("strategy", "-"),
-                ("activity_type", "ip"),
-            }
-        ): 4.0,
-    }
+    m = mocker.patch(
+        "model.outpatients.Model._convert_step_counts",
+        return_value="convert_step_counts",
+    )
 
     # act
-    actual = mock_model.get_step_counts_dataframe(step_counts)
+    actual = mock_model.convert_step_counts("step_counts")
 
     # assert
-    assert actual == expected
+    assert actual == "convert_step_counts"
+    m.assert_called_once_with("step_counts", ["admissions", "beddays"])
 
 
 def test_efficiencies(mocker, mock_model):

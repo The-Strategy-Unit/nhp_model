@@ -98,7 +98,7 @@ class ModelRun:
         if not self.step_counts:
             return {}
 
-        return {"step_counts": self.model.get_step_counts_dataframe(self.step_counts)}
+        return {"step_counts": self.model.convert_step_counts(self.step_counts)}
 
     def get_model_results(self):
         """get the model results of a model run"""

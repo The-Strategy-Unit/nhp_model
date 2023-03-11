@@ -109,29 +109,20 @@ class OutpatientsModel(Model):
         # return the altered data and the amount of admissions/beddays after resampling
         return (data, self._get_data_counts(data))
 
-    def get_step_counts_dataframe(self, step_counts: dict) -> pd.DataFrame:
-        """Convert the step counts dictionary into a `DataFrame`
+    def convert_step_counts(self, step_counts: dict) -> pd.DataFrame:
+        """Convert the step counts
 
         :param step_counts: the step counts dictionary
         :type step_counts: dict
-        :return: the step counts as a `DataFrame`
-        :rtype: pd.DataFrame
+        :return: the step counts for uploading
+        :rtype: dict
         """
-        return {
-            frozenset(
-                {
-                    ("activity_type", "op"),
-                    ("change_factor", k0),
-                    ("strategy", k1),
-                    ("measure", k2),
-                }
-            ): float(v)
-            for (k0, k1), vs in step_counts.items()
-            for (k2, v) in zip(["attendances", "tele_attendances"], vs)
-        }
+        return Model._convert_step_counts(
+            step_counts, ["attendances", "tele_attendances"]
+        )
 
     def efficiencies(self, model_run: ModelRun) -> None:
-        """Run the model
+        """Run the efficiencies steps of the model
 
         :param model_run: an instance of the ModelRun class
         :type model_run: model.model_run.ModelRun

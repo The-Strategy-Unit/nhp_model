@@ -141,7 +141,7 @@ def test_apply_resampling(mocker, mock_model):
     gdc_mock.assert_called_once()
 
 
-def test_get_step_counts_dataframe(mock_model):
+def test_convert_step_counts(mock_model):
     # arrange
     step_counts = {("a", "-"): [1], ("b", "-"): [2]}
     expected = {
@@ -164,7 +164,7 @@ def test_get_step_counts_dataframe(mock_model):
     }
 
     # act
-    actual = mock_model.get_step_counts_dataframe(step_counts)
+    actual = mock_model.convert_step_counts(step_counts)
 
     # assert
     assert actual == expected
