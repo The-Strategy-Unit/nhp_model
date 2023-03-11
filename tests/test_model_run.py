@@ -194,7 +194,7 @@ def test_get_step_counts(mock_model_run, step_counts, expected):
     mr.step_counts = step_counts
     mr.model = Mock()
     mr.step_counts = step_counts
-    mr.model.get_step_counts_dataframe.return_value = "step_counts"
+    mr.model.convert_step_counts.return_value = "step_counts"
 
     # act
     actual = mr.get_step_counts()
@@ -203,9 +203,9 @@ def test_get_step_counts(mock_model_run, step_counts, expected):
     assert actual == expected
 
     if step_counts:
-        mr.model.get_step_counts_dataframe.assert_called_once_with({1})
+        mr.model.convert_step_counts.assert_called_once_with({1})
     else:
-        mr.model.get_step_counts_dataframe.assert_not_called()
+        mr.model.convert_step_counts.assert_not_called()
 
 
 def test_get_model_results(mock_model_run):

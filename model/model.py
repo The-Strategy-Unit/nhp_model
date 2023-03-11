@@ -257,6 +257,30 @@ class Model:
         return np.array([1.0])
 
     @staticmethod
+    def _convert_step_counts(step_counts: dict, names: list) -> dict:
+        """Convert the step counts
+
+        :param step_counts: the step counts dictionary
+        :type step_counts: dict
+        :param names: the names of the items in the step counts
+        :type names: list
+        :return: the step counts for uploading
+        :rtype: dict
+        """
+        return {
+            frozenset(
+                {
+                    ("activity_type", "aae"),
+                    ("change_factor", k0),
+                    ("strategy", k1),
+                    ("measure", k2),
+                }
+            ): float(v)
+            for (k0, k1), vs in step_counts.items()
+            for (k2, v) in zip(names, vs)
+        }
+
+    @staticmethod
     def _create_agg(model_results, cols=None, name=None, include_measure=True):
         """Create an aggregation
 

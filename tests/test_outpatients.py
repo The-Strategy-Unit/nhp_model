@@ -1,5 +1,5 @@
 """test outpatients model"""
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
+# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring
 
 from unittest.mock import Mock, mock_open, patch
 
@@ -173,49 +173,19 @@ def test_apply_resampling(mocker, mock_model):
     gdc_mock.assert_called_once()
 
 
-def test_get_step_counts_dataframe(mock_model):
+def test_convert_step_counts(mocker, mock_model):
     # arrange
-    step_counts = {("a", "-"): [1, 2], ("b", "-"): [3, 4]}
-    expected = {
-        frozenset(
-            {
-                ("change_factor", "a"),
-                ("measure", "attendances"),
-                ("activity_type", "op"),
-                ("strategy", "-"),
-            }
-        ): 1.0,
-        frozenset(
-            {
-                ("change_factor", "a"),
-                ("measure", "tele_attendances"),
-                ("activity_type", "op"),
-                ("strategy", "-"),
-            }
-        ): 2.0,
-        frozenset(
-            {
-                ("measure", "attendances"),
-                ("strategy", "-"),
-                ("activity_type", "op"),
-                ("change_factor", "b"),
-            }
-        ): 3.0,
-        frozenset(
-            {
-                ("measure", "tele_attendances"),
-                ("strategy", "-"),
-                ("activity_type", "op"),
-                ("change_factor", "b"),
-            }
-        ): 4.0,
-    }
+    m = mocker.patch(
+        "model.outpatients.Model._convert_step_counts",
+        return_value="convert_step_counts",
+    )
 
     # act
-    actual = mock_model.get_step_counts_dataframe(step_counts)
+    actual = mock_model.convert_step_counts("step_counts")
 
     # assert
-    assert actual == expected
+    assert actual == "convert_step_counts"
+    m.assert_called_once_with("step_counts", ["attendances", "tele_attendances"])
 
 
 def test_efficiencies(mock_model):
