@@ -1,0 +1,31 @@
+on: [push]
+name: Build_Container
+
+jobs:
+    build-and-deploy:
+        runs-on: ubuntu-latest
+        steps:
+        # checkout the repo
+        - name: 'Checkout GitHub Action'
+          uses: actions/checkout@main
+          
+        - name: 'Login via Azure CLI'
+          uses: azure/login@v1
+          with:
+            creds: ${{ secrets.AZURE_CREDENTIALS }}
+        
+        - name: 'Build and push image'
+          uses: azure/docker-login@v1
+          with:
+            login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+            username: ${{ secrets.REGISTRY_USERNAME }}
+            password: ${{ secrets.REGISTRY_PASSWORD }}
+        - run: |
+            docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:dev \
+              --build-arg app_version=dev \
+              --build-arg data_version=dev \
+              --build-arg storage_account=${{ secrets.NHP_STORAGE_ACCOUNT }} \
+              --build-arg keyvault_endpoint=${{ secrets.NHP_KEYVAULT_ENDPOINT }} \
+              --build-arg cosmos_endpoint=${{ secrets.NHP_COSMOS_ENDPOINT }} \
+              --build-arg cosmos_db=dev
+            docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:dev
