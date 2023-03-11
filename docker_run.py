@@ -27,15 +27,14 @@ from model.outpatients import OutpatientsModel
 
 
 def load_params(filename: str) -> dict:
-    """_summary_
+    """Load model parameters
 
-    :param storage_account: _description_
-    :type storage_account: str
-    :param filename: _description_
+    if the file exists in the local folder `queue/`, then we will load the file from there.
+    otherwise, the file will be downloaded from blob storage
+
+    :param filename: the name of the parameter file to load
     :type filename: str
-    :param credential: _description_
-    :type credential: Any
-    :return: _description_
+    :return: the parameters to use for a model run
     :rtype: dict
     """
     if os.path.exists(f"queue/{filename}"):
@@ -65,16 +64,13 @@ def load_params(filename: str) -> dict:
 
 
 def get_data(dataset: str) -> None:
-    """_summary_
+    """Get the data to run the model
 
-    :param storage_account: _description_
-    :type storage_account: str
-    :param version: _description_
-    :type version: str
-    :param dataset: _description_
+    if the data exists locally in the folder `data/`, then this function does nothing.
+    otherwise, it will download the data from Azure Data Lake storage
+
+    :param dataset: the name of the dataset that we are loading
     :type dataset: str
-    :param credential: _description_
-    :type credential: Any
     """
     if os.path.exists(f"data/{dataset}"):
         return
@@ -101,14 +97,12 @@ def get_data(dataset: str) -> None:
 
 
 def _upload_to_cosmos(params: dict, results: dict) -> None:
-    """_summary_
+    """upload the model results to cosmos db
 
-    :param params: _description_
+    :param params: the parameters used for this model run
     :type params: dict
-    :param results: _description_
+    :param results: the results of the model run
     :type results: dict
-    :param credential: _description_
-    :type credential: Any
     """
     logging.info("uploading results to cosmos")
 
@@ -219,6 +213,10 @@ def _run_model(
     :type params: dict
     :param path: where the data is stored
     :type path: str
+    :param hsa: an instance of the HealthStatusAdjustment class
+    :type hsa: HealthStatusAdjustment
+    :param run_params: the generated run parameters for the model run
+    :type run_params: dict
     :return: a dictionary containing the aggregated results
     :rtype: dict
     """
@@ -250,7 +248,7 @@ def run(params: dict, data_path: str) -> dict:
     :param data_path: where the data is stored
     :type data_path: str
     :return: the results of running the model
-    :rtype: _type_
+    :rtype: dict
     """
     model_types = [InpatientsModel, OutpatientsModel, AaEModel]
     run_params = Model.generate_run_params(params)
