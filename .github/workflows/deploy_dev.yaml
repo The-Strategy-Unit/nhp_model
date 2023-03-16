@@ -1,0 +1,15 @@
+on:
+  push:
+    branches:
+      - main
+
+name: Deploy Dev
+
+jobs:
+  deploy-dev:
+    uses: ./.github/workflows/build_container.yaml
+    with:
+      app-version: dev 
+      data-version: dev
+      cosmos-db: dev
+    secrets: inherit
