@@ -1,31 +1,53 @@
-on: [push]
-name: Build_Container
+on:
+  workflow_call:
+    inputs:
+      app-version:
+        required: true
+        type: string  
+      data-version:
+        required: true
+        type: string  
+      cosmos-db:
+        required: true
+        type: string
+    secrets:
+      AZURE_CREDENTIALS:
+        required: true
+      REGISTRY_USERNAME:
+        required: true
+      REGISTRY_PASSWORD:
+        required: true
+      NHP_STORAGE_ACCOUNT:
+        required: true
+      NHP_KEYVAULT_ENDPOINT:
+        required: true
+      NHP_COSMOS_ENDPOINT:
+        required: true
 
 jobs:
-    build-and-deploy:
-        runs-on: ubuntu-latest
-        steps:
-        # checkout the repo
-        - name: 'Checkout GitHub Action'
-          uses: actions/checkout@main
-          
-        - name: 'Login via Azure CLI'
-          uses: azure/login@v1
-          with:
-            creds: ${{ secrets.AZURE_CREDENTIALS }}
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@main
         
-        - name: 'Build and push image'
-          uses: azure/docker-login@v1
-          with:
-            login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-            username: ${{ secrets.REGISTRY_USERNAME }}
-            password: ${{ secrets.REGISTRY_PASSWORD }}
-        - run: |
-            docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:dev \
-              --build-arg app_version=dev \
-              --build-arg data_version=dev \
-              --build-arg storage_account=${{ secrets.NHP_STORAGE_ACCOUNT }} \
-              --build-arg keyvault_endpoint=${{ secrets.NHP_KEYVAULT_ENDPOINT }} \
-              --build-arg cosmos_endpoint=${{ secrets.NHP_COSMOS_ENDPOINT }} \
-              --build-arg cosmos_db=dev
-            docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:dev
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: 'Build and push image'
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - run: |
+          docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.app-version }} \
+            --build-arg app_version=${{ inputs.app-version }} \
+            --build-arg data_version=${{ inputs.data-version }} \
+            --build-arg storage_account=${{ secrets.NHP_STORAGE_ACCOUNT }} \
+            --build-arg keyvault_endpoint=${{ secrets.NHP_KEYVAULT_ENDPOINT }} \
+            --build-arg cosmos_endpoint=${{ secrets.NHP_COSMOS_ENDPOINT }} \
+            --build-arg cosmos_db=${{ inputs.cosmos-db }}
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.app-version }}
