@@ -1,5 +1,5 @@
 """test outpatients model"""
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
+# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring
 
 from unittest.mock import Mock, mock_open, patch
 
@@ -14,8 +14,8 @@ from model.outpatients import OutpatientsModel
 @pytest.fixture
 def mock_model():
     """create a mock Model instance"""
-    with patch.object(OutpatientsModel, "__init__", lambda s, p, d: None):
-        mdl = OutpatientsModel(None, None)
+    with patch.object(OutpatientsModel, "__init__", lambda s, p, d, h, r: None):
+        mdl = OutpatientsModel(None, None, None, None)
     mdl.model_type = "op"
     mdl.params = {
         "dataset": "synthetic",
@@ -83,9 +83,10 @@ def test_init_calls_super_init(mocker):
     # arrange
     super_mock = mocker.patch("model.outpatients.super")
     # act
-    OutpatientsModel("params", "data_path")
+    OutpatientsModel("params", "data_path", "hsa", "run_params")
     # assert
     super_mock.assert_called_once()
+
 
 def test_get_data_counts(mock_model):
     # arrange
@@ -172,29 +173,22 @@ def test_apply_resampling(mocker, mock_model):
     gdc_mock.assert_called_once()
 
 
-def test_get_step_counts_dataframe(mock_model):
+def test_convert_step_counts(mocker, mock_model):
     # arrange
-    step_counts = {("a", "-"): [1, 2], ("b", "-"): [3, 4]}
-    expected = {
-        "change_factor": ["a", "b", "a", "b"],
-        "strategy": ["-", "-", "-", "-"],
-        "measure": [
-            "attendances",
-            "attendances",
-            "tele_attendances",
-            "tele_attendances",
-        ],
-        "value": [1, 3, 2, 4],
-    }
+    m = mocker.patch(
+        "model.outpatients.Model._convert_step_counts",
+        return_value="convert_step_counts",
+    )
 
     # act
-    actual = mock_model.get_step_counts_dataframe(step_counts)
+    actual = mock_model.convert_step_counts("step_counts")
 
     # assert
-    assert actual.to_dict("list") == expected
+    assert actual == "convert_step_counts"
+    m.assert_called_once_with("step_counts", ["attendances", "tele_attendances"])
 
 
-def test_run(mocker, mock_model):
+def test_efficiencies(mock_model):
     """test that it runs the model steps"""
     # arrange
     mdl = mock_model
@@ -202,7 +196,7 @@ def test_run(mocker, mock_model):
     mdl._convert_to_tele = Mock()
 
     # act
-    mdl._run("model_run")
+    mdl.efficiencies("model_run")
 
     # assert
     mdl._convert_to_tele.assert_called_once_with("model_run")
@@ -210,6 +204,7 @@ def test_run(mocker, mock_model):
 
 def test_aggregate(mock_model):
     """test that it aggregates the results correctly"""
+
     # arrange
     def create_agg_stub(model_results, cols=None):
         name = "+".join(cols) if cols else "default"
@@ -246,7 +241,7 @@ def test_aggregate(mock_model):
     }
 
     # act
-    (agg, results) = mdl._aggregate(mr_mock)
+    (agg, results) = mdl.aggregate(mr_mock)
 
     # assert
     assert agg() == {"default": expected_mr}

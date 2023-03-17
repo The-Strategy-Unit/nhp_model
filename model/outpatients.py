@@ -5,7 +5,7 @@ Implements the Outpatients model.
 """
 
 from functools import partial
-from typing import Callable, Tuple
+from typing import Any, Callable, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -25,9 +25,11 @@ class OutpatientsModel(Model):
     :param data_path: the path to where the data files live
     """
 
-    def __init__(self, params: list, data_path: str) -> None:
+    def __init__(
+        self, params: dict, data_path: str, hsa: Any, run_params: dict
+    ) -> None:
         # call the parent init function
-        super().__init__("op", params, data_path)
+        super().__init__("op", params, data_path, hsa, run_params)
 
     def _get_data_counts(self, data) -> npt.ArrayLike:
         return (
@@ -107,41 +109,27 @@ class OutpatientsModel(Model):
         # return the altered data and the amount of admissions/beddays after resampling
         return (data, self._get_data_counts(data))
 
-    def get_step_counts_dataframe(self, step_counts: dict) -> pd.DataFrame:
-        """Convert the step counts dictionary into a `DataFrame`
+    def convert_step_counts(self, step_counts: dict) -> pd.DataFrame:
+        """Convert the step counts
 
         :param step_counts: the step counts dictionary
         :type step_counts: dict
-        :return: the step counts as a `DataFrame`
-        :rtype: pd.DataFrame
+        :return: the step counts for uploading
+        :rtype: dict
         """
-        return (
-            pd.DataFrame.from_dict(
-                {
-                    k: {"attendances": v[0], "tele_attendances": v[1]}
-                    for k, v in step_counts.items()
-                    if k != "convert_to_tele"
-                },
-                orient="index",
-            )
-            .rename_axis(["change_factor", "strategy"])
-            .reset_index()
-            .melt(
-                ["change_factor", "strategy"],
-                ["attendances", "tele_attendances"],
-                "measure",
-            )
+        return Model._convert_step_counts(
+            step_counts, ["attendances", "tele_attendances"]
         )
 
-    def _run(self, model_run: ModelRun) -> None:
-        """Run the model
+    def efficiencies(self, model_run: ModelRun) -> None:
+        """Run the efficiencies steps of the model
 
         :param model_run: an instance of the ModelRun class
         :type model_run: model.model_run.ModelRun
         """
         self._convert_to_tele(model_run)
 
-    def _aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
+    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
         """Aggregate the model results
 
         Can also be used to aggregate the baseline data by passing in the raw data
@@ -177,7 +165,7 @@ class OutpatientsModel(Model):
         )
 
         agg = partial(self._create_agg, model_results)
-        return (agg, { **agg(["sex", "tretspef"]) })
+        return (agg, {**agg(["sex", "tretspef"])})
 
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model

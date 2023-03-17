@@ -1,7 +1,6 @@
 """test inpatients model"""
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
+# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring,unnecessary-lambda-assignment
 
-from datetime import datetime, timedelta
 from unittest.mock import Mock, call, mock_open, patch
 
 import numpy as np
@@ -15,8 +14,8 @@ from model.inpatients import InpatientsModel
 @pytest.fixture
 def mock_model():
     """create a mock Model instance"""
-    with patch.object(InpatientsModel, "__init__", lambda s, p, d: None):
-        mdl = InpatientsModel(None, None)
+    with patch.object(InpatientsModel, "__init__", lambda s, p, d, h, r: None):
+        mdl = InpatientsModel(None, None, None, None)
     mdl.model_type = "ip"
     mdl.params = {
         "dataset": "synthetic",
@@ -99,7 +98,7 @@ def test_init_calls_super_init(mocker):
     mocker.patch("model.inpatients.InpatientsModel._load_theatres_data")
     mocker.patch("model.inpatients.InpatientsModel._load_kh03_data")
     # act
-    mdl = InpatientsModel("params", "data_path")
+    mdl = InpatientsModel("params", "data_path", "hsa", "run_params")
     # assert
     super_mock.assert_called_once()
     mdl._load_theatres_data.assert_called_once()
@@ -244,44 +243,42 @@ def test_apply_resampling(mocker, mock_model):
     gdc_mock.assert_called_once()
 
 
-def test_get_step_counts_dataframe(mock_model):
+def test_convert_step_counts(mocker, mock_model):
     # arrange
-    step_counts = {("a", "-"): [1, 2], ("b", "-"): [3, 4]}
-    expected = {
-        "change_factor": ["a", "b", "a", "b"],
-        "strategy": ["-", "-", "-", "-"],
-        "measure": ["admissions", "admissions", "beddays", "beddays"],
-        "value": [1, 3, 2, 4],
-    }
+    m = mocker.patch(
+        "model.outpatients.Model._convert_step_counts",
+        return_value="convert_step_counts",
+    )
 
     # act
-    actual = mock_model.get_step_counts_dataframe(step_counts)
+    actual = mock_model.convert_step_counts("step_counts")
 
     # assert
-    assert actual.to_dict("list") == expected
+    assert actual == "convert_step_counts"
+    m.assert_called_once_with("step_counts", ["admissions", "beddays"])
 
 
-def test_run(mocker, mock_model):
+def test_efficiencies(mocker, mock_model):
     """test that it runs the model steps"""
 
     mdl = mock_model
 
-    aa_mock = mocker.patch("model.inpatients.InpatientEfficiencies")
-    aa_mock.return_value = aa_mock
-    aa_mock.losr_all.return_value = aa_mock
-    aa_mock.losr_aec.return_value = aa_mock
-    aa_mock.losr_preop.return_value = aa_mock
-    aa_mock.losr_bads.return_value = aa_mock
+    mock = mocker.patch("model.inpatients.InpatientEfficiencies")
+    mock.return_value = mock
+    mock.losr_all.return_value = mock
+    mock.losr_aec.return_value = mock
+    mock.losr_preop.return_value = mock
+    mock.losr_bads.return_value = mock
 
     # act
-    mdl._run("model_run")
+    mdl.efficiencies("model_run")
 
     # assert
-    aa_mock.assert_called_once_with("model_run")
-    aa_mock.losr_all.assert_called_once()
-    aa_mock.losr_aec.assert_called_once()
-    aa_mock.losr_preop.assert_called_once()
-    aa_mock.losr_bads.assert_called_once()
+    mock.assert_called_once_with("model_run")
+    mock.losr_all.assert_called_once()
+    mock.losr_aec.assert_called_once()
+    mock.losr_preop.assert_called_once()
+    mock.losr_bads.assert_called_once()
 
 
 def test_bedday_summary(mock_model):
@@ -353,18 +350,62 @@ def test_bed_occupancy(mock_model):
         }
     )
 
+    expected = {
+        frozenset(
+            {
+                ("ward_group", "A"),
+                ("pod", "ip"),
+                ("measure", "day+night"),
+                ("quarter", "q1"),
+            }
+        ): 13,
+        frozenset(
+            {
+                ("ward_group", "B"),
+                ("pod", "ip"),
+                ("measure", "day+night"),
+                ("quarter", "q1"),
+            }
+        ): 91,
+        frozenset(
+            {
+                ("ward_group", "C"),
+                ("pod", "ip"),
+                ("measure", "day+night"),
+                ("quarter", "q1"),
+            }
+        ): 0,
+        frozenset(
+            {
+                ("quarter", "q2"),
+                ("pod", "ip"),
+                ("measure", "day+night"),
+                ("ward_group", "A"),
+            }
+        ): 27,
+        frozenset(
+            {
+                ("ward_group", "B"),
+                ("quarter", "q2"),
+                ("pod", "ip"),
+                ("measure", "day+night"),
+            }
+        ): 183,
+        frozenset(
+            {
+                ("ward_group", "C"),
+                ("quarter", "q2"),
+                ("pod", "ip"),
+                ("measure", "day+night"),
+            }
+        ): 0,
+    }
+
     # act
     actual = mdl._bed_occupancy("model_results", mr_mock)
 
     # assert
-    assert {tuple(k): v for k, v in actual.items()} == {
-        ("ip", "day+night", "q1", "A"): 13,
-        ("ip", "day+night", "q1", "B"): 91,
-        ("ip", "day+night", "q1", "C"): 0,
-        ("ip", "day+night", "q2", "A"): 27,
-        ("ip", "day+night", "q2", "B"): 183,
-        ("ip", "day+night", "q2", "C"): 0,
-    }
+    assert actual == expected
     mdl._bedday_summary.assert_called_once_with("model_results", 2018)
 
 
@@ -388,16 +429,46 @@ def test_bed_occupancy_baseline(mock_model):
             [(q, k) for q in ["q1", "q2"] for k in ["A", "B"]]
         ),
     )
+    expected = {
+        frozenset(
+            {
+                ("pod", "ip"),
+                ("measure", "day+night"),
+                ("quarter", "q1"),
+                ("ward_group", "A"),
+            }
+        ): 10,
+        frozenset(
+            {
+                ("pod", "ip"),
+                ("measure", "day+night"),
+                ("quarter", "q1"),
+                ("ward_group", "B"),
+            }
+        ): 50,
+        frozenset(
+            {
+                ("pod", "ip"),
+                ("measure", "day+night"),
+                ("quarter", "q2"),
+                ("ward_group", "A"),
+            }
+        ): 20,
+        frozenset(
+            {
+                ("pod", "ip"),
+                ("measure", "day+night"),
+                ("quarter", "q2"),
+                ("ward_group", "B"),
+            }
+        ): 100,
+    }
+
     # act
     actual = mock_model._bed_occupancy("model_results", mr_mock)
 
     # assert
-    assert {tuple(k): v for k, v in actual.items()} == {
-        ("ip", "day+night", "q1", "A"): 10,
-        ("ip", "day+night", "q1", "B"): 50,
-        ("ip", "day+night", "q2", "A"): 20,
-        ("ip", "day+night", "q2", "B"): 100,
-    }
+    assert actual == expected
 
 
 def test_theatres_available(mock_model):
@@ -437,16 +508,35 @@ def test_theatres_available(mock_model):
     # this makes the results nicer numbers
     model_results["value"] *= 3
 
+    expected = {
+        frozenset(
+            {
+                ("tretspef", "100"),
+                ("measure", "four_hour_sessions"),
+                ("pod", "ip_theatres"),
+            }
+        ): 450.0,
+        frozenset(
+            {
+                ("tretspef", "110"),
+                ("measure", "four_hour_sessions"),
+                ("pod", "ip_theatres"),
+            }
+        ): 1800.0,
+        frozenset(
+            {
+                ("tretspef", "Other (Surgical)"),
+                ("measure", "four_hour_sessions"),
+                ("pod", "ip_theatres"),
+            }
+        ): 3780.0,
+    }
+
     # act
     actual = mdl._theatres_available(model_results, mr_mock)
 
     # assert
-    assert {tuple(k): v for k, v in actual.items()} == {
-        ("ip_theatres", "four_hour_sessions", "100"): 450.0,
-        ("ip_theatres", "four_hour_sessions", "110"): 1800.0,
-        ("ip_theatres", "four_hour_sessions", "Other (Surgical)"): 3780.0,
-        ("ip_theatres", "theatres"): 4.41,
-    }
+    assert actual == expected
 
 
 def test_theatres_available_baseline(mock_model):
@@ -469,20 +559,40 @@ def test_theatres_available_baseline(mock_model):
         ),
     }
 
+    expected = {
+        frozenset(
+            {
+                ("tretspef", "100"),
+                ("measure", "four_hour_sessions"),
+                ("pod", "ip_theatres"),
+            }
+        ): 100,
+        frozenset(
+            {
+                ("measure", "four_hour_sessions"),
+                ("tretspef", "110"),
+                ("pod", "ip_theatres"),
+            }
+        ): 200,
+        frozenset(
+            {
+                ("tretspef", "Other (Surgical)"),
+                ("measure", "four_hour_sessions"),
+                ("pod", "ip_theatres"),
+            }
+        ): 300,
+    }
+
     # act
-    theatres_available = mock_model._theatres_available(None, mr_mock)
+    actual = mock_model._theatres_available(None, mr_mock)
 
     # assert
-    assert {tuple(k): v for k, v in theatres_available.items()} == {
-        ("ip_theatres", "four_hour_sessions", "100"): 100,
-        ("ip_theatres", "four_hour_sessions", "110"): 200,
-        ("ip_theatres", "four_hour_sessions", "Other (Surgical)"): 300,
-        ("ip_theatres", "theatres"): 10,
-    }
+    assert actual == expected
 
 
 def test_aggregate(mock_model):
     """test that it aggregates the results correctly"""
+
     # arrange
     def create_agg_stub(model_results, cols=None):
         name = "+".join(cols) if cols else "default"
@@ -610,7 +720,7 @@ def test_aggregate(mock_model):
     }
 
     # act
-    (agg, results) = mdl._aggregate(mr_mock)
+    (agg, results) = mdl.aggregate(mr_mock)
 
     # assert
     assert agg() == {"default": expected_mr}

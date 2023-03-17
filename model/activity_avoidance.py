@@ -5,10 +5,7 @@ Methods for handling row resampling"""
 from typing import List, Tuple
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
-
-from model.model_run import ModelRun
 
 
 class ActivityAvoidance:
@@ -29,24 +26,12 @@ class ActivityAvoidance:
     :param model_run: the model run object, which contains all of the required values to run the
     model.
     :type model_run: ModelRun
-    :param counts: the baseline counts we need to keep track of.
-    :type counts: npt.ArrayLike
-    :param row_mask: an array the length of the data which either contains a value of 1 (if that
-    row should be included in counts) or 0 (if that row should now be included in counts). Only
-    required by inpatients, where rows are oversampled. Defaults to a singleton value of 1.0.
-    :type row_mask: npt.ArrayLike
     """
 
-    def __init__(
-        self,
-        model_run: ModelRun,
-        counts: npt.ArrayLike,
-        row_mask: npt.ArrayLike,
-    ) -> None:
+    def __init__(self, model_run) -> None:
         self._model_run = model_run
 
-        self._row_counts = counts.copy()
-        self._row_mask = row_mask.astype(float)
+        self._row_counts = self._model_run.model.baseline_counts.copy()
         # initialise step counts
         self._sum = 0.0
         self.step_counts = model_run.step_counts
@@ -72,9 +57,9 @@ class ActivityAvoidance:
         return self._model_run.model.demog_factors
 
     @property
-    def hsa_gams(self):
+    def hsa(self):
         """get the health status adjustment GAMs for the model"""
-        return self._model_run.model.hsa_gams
+        return self._model_run.model.hsa
 
     @property
     def strategies(self):
@@ -85,6 +70,10 @@ class ActivityAvoidance:
     def data(self):
         """get the current model runs data"""
         return self._model_run.data
+
+    @property
+    def _row_mask(self):
+        return self._model_run.model.data_mask
 
     def _update(self, factor: pd.Series, cols: List[str]):
         step = factor.name
@@ -116,33 +105,10 @@ class ActivityAvoidance:
 
     def health_status_adjustment(self):
         """perform the health status adjustment"""
-        precomputed_activity_ages = self._model_run.model.hsa_precomputed_activity_ages
-
-        ages = precomputed_activity_ages.index.levels[2]
-
-        adjusted_age = precomputed_activity_ages.index.get_level_values(2)
-        life_expectancy = (
-            precomputed_activity_ages["life_expectancy"]
-            * self.run_params["health_status_adjustment"]
+        return self._update(
+            self.hsa.run(self.run_params["health_status_adjustment"]),
+            ["hsagrp", "sex", "age"],
         )
-
-        adjusted_age -= life_expectancy
-
-        # use the hsa gam's to predict with the adjusted age and the actual age to calculate the
-        # health status adjustment factor
-        factor = pd.concat(
-            {
-                (h, s): pd.Series(
-                    g.predict(adjusted_age.loc[h, int(s), slice(None)]),
-                    name="health_status_adjustment",
-                    index=ages,
-                )
-                for (h, s), g in self.hsa_gams.items()
-            }
-        ).rename_axis(["hsagrp", "sex", "age"])
-        factor /= precomputed_activity_ages["activity_age"]
-
-        return self._update(factor, ["hsagrp", "sex", "age"])
 
     def expat_adjustment(self):
         """perform the expatriation adjustment"""

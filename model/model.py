@@ -9,18 +9,14 @@ method.
 """
 
 import os
-import pickle
-from collections import namedtuple
 from datetime import datetime
 from functools import partial
-from typing import Callable, Tuple
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import pyarrow.parquet as pq
 
-from model.activity_avoidance import ActivityAvoidance
 from model.helpers import age_groups, inrange, rnorm
 from model.model_run import ModelRun
 
@@ -59,7 +55,8 @@ class Model:
         model_type: str,
         params: dict,
         data_path: str,
-        columns_to_load: list[str] = None,
+        hsa: Any,
+        run_params: dict = None,
     ) -> None:
         valid_model_types = ["aae", "ip", "op"]
         assert (
@@ -74,22 +71,19 @@ class Model:
         # store the path where the data is stored and the results are stored
         self._data_path = os.path.join(data_path, self.params["dataset"])
         # load the data. we only need some of the columns for the model, so just load what we need
-        self.data = self._load_parquet(self.model_type, columns_to_load).sort_values(
-            "rn"
-        )
+        self.data = self._load_parquet(self.model_type).sort_values("rn")
         self.data["age_group"] = age_groups(self.data["age"])
         self._load_strategies()
         self._load_demog_factors()
-        self._load_hsa_gams()
-        # generate the run parameters
-        self._generate_run_params()
-        # get the data mask
-        self._data_mask = self._get_data_mask()
-        # make sure to create the counts after oversampling (handled in update baseline data)
+        self.hsa = hsa
+        # generate the run parameters if they haven't been passed in
+        self.run_params = run_params or self.generate_run_params(params)
+        # get the data mask and baseline counts
+        self.data_mask = self._get_data_mask()
         # pylint: disable=assignment-from-no-return
-        self._baseline_counts = self._get_data_counts(self.data)
+        self.baseline_counts = self._get_data_counts(self.data)
 
-    def _load_parquet(self, file: str, *args: list[str]) -> pd.DataFrame:
+    def _load_parquet(self, file: str) -> pd.DataFrame:
         """Load a parquet file
 
         Helper method for loading a parquet file into a pandas DataFrame.
@@ -104,9 +98,7 @@ class Model:
         :returns: the contents of the file
         :rtype: pandas.DataFrame
         """
-        return pq.read_pandas(
-            os.path.join(self._data_path, f"{file}.parquet"), *args
-        ).to_pandas()
+        return pd.read_parquet(os.path.join(self._data_path, f"{file}.parquet"))
 
     def _load_strategies(self) -> None:
         """Load a set of strategies"""
@@ -143,46 +135,8 @@ class Model:
             k: v["demographic_adjustment"] for k, v in demog_factors.groupby("variant")
         }
 
-    def _load_hsa_gams(self):
-        # load the data that's shared across different model types
-        with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
-            self.hsa_gams = pickle.load(hsa_pkl)
-
-        self.hsa_precomputed_activity_ages = self._generate_hsa_activity_ages()
-
-    def _generate_hsa_activity_ages(self):
-        # precompute the table for the health status adjustment steps
-        lep = self.params["life_expectancy"]
-        ages = np.arange(lep["min_age"], lep["max_age"] + 1)
-
-        return (
-            pd.concat(
-                [
-                    pd.DataFrame(
-                        {
-                            "hsagrp": h,
-                            "sex": int(s),
-                            "age": ages,
-                            "activity_age": g.predict(ages),
-                        }
-                    )
-                    for (h, s), g in self.hsa_gams.items()
-                ]
-            )
-            .merge(
-                pd.concat(
-                    {
-                        si: pd.Series(lep[ss], index=ages, name="life_expectancy")
-                        for (si, ss) in [(1, "m"), (2, "f")]
-                    }
-                ),
-                left_on=["sex", "age"],
-                right_index=True,
-            )
-            .set_index(["hsagrp", "sex", "age"])
-        )
-
-    def _generate_run_params(self):
+    @staticmethod
+    def generate_run_params(params):
         """Generate the values for each model run from the params
 
         Our parameters are given as intervals, this will generate a single value for each model run,
@@ -191,8 +145,6 @@ class Model:
 
         This method saves the values to self.run_params
         """
-        params = self.params
-
         # the principal projection will have run number 0. all other runs start indexing from 1
         rng = np.random.default_rng(params["seed"])
         model_runs = params["model_runs"] + 1  # add 1 for the principal
@@ -226,7 +178,7 @@ class Model:
         probabilities = list(
             params["demographic_factors"]["variant_probabilities"].values()
         )
-        self.run_params = {
+        return {
             "variant": [variants[np.argmax(probabilities)]]
             + rng.choice(variants, model_runs - 1, p=probabilities).tolist(),
             "seeds": rng.integers(0, 65535, model_runs).tolist(),
@@ -304,55 +256,29 @@ class Model:
     def _get_data_mask(self) -> npt.ArrayLike:
         return np.array([1.0])
 
-    def run(self, model_run: int):
-        """Run the model
+    @staticmethod
+    def _convert_step_counts(step_counts: dict, names: list) -> dict:
+        """Convert the step counts
 
-        :param model_run: the model run number
-        :type model_run: int
-        :return: the results of the model run
-        :rtype: ModelRun
-        """
-        m_run = ModelRun(self, model_run)
-
-        (
-            ActivityAvoidance(m_run, self._baseline_counts, self._data_mask)
-            .demographic_adjustment()
-            .health_status_adjustment()
-            .expat_adjustment()
-            .repat_adjustment()
-            .waiting_list_adjustment()
-            .baseline_adjustment()
-            .non_demographic_adjustment()
-            .activity_avoidance()
-            # call apply_resampling last, as this is what actually alters the data
-            .apply_resampling()
-        )
-
-        self._run(m_run)
-        return m_run
-
-    def _run(self, model_run: ModelRun):
-        pass
-
-    def aggregate(self, model_run: ModelRun) -> dict:
-        """Aggregate the model results
-
-        Can also be used to aggregate the baseline data by passing in the raw data
-
-        :param model_results: a DataFrame containing the results of a model iteration
-        :type model_results: pandas.DataFrame
-        :param model_run: the current model run
-        :type model_run: int
-
-        :returns: a dictionary containing the different aggregations of this data
+        :param step_counts: the step counts dictionary
+        :type step_counts: dict
+        :param names: the names of the items in the step counts
+        :type names: list
+        :return: the step counts for uploading
         :rtype: dict
         """
-        # pylint: disable=assignment-from-no-return
-        agg, aggregates = self._aggregate(model_run)
-        return {**agg(), **agg(["sex", "age_group"]), **aggregates}
-
-    def _aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
-        pass
+        return {
+            frozenset(
+                {
+                    ("activity_type", "aae"),
+                    ("change_factor", k0),
+                    ("strategy", k1),
+                    ("measure", k2),
+                }
+            ): float(v)
+            for (k0, k1), vs in step_counts.items()
+            for (k2, v) in zip(names, vs)
+        }
 
     @staticmethod
     def _create_agg(model_results, cols=None, name=None, include_measure=True):
@@ -381,8 +307,21 @@ class Model:
             + (["measure"] if include_measure else [])
             + (cols if cols else [])
         )
-        result = namedtuple("results", cols)
+
         agg = model_results.groupby(cols)["value"].sum()
         agg.index.names = agg.index.names[:-1] + ["measure"]
 
-        return {name: {result(*k): v for k, v in agg.iteritems()}}
+        return {name: {frozenset(zip(cols, k)): v for k, v in agg.items()}}
+
+    # pylint: disable=invalid-name
+    def go(self, model_run: int) -> dict:
+        """Run the model and get the aggregated results
+
+        Needed for running in a multiprocessing pool as you need a serializable method.
+
+        :param model_run: the model run number we want to run
+        :type model_run: _type_
+        :return: the aggregated model results
+        :rtype: dictionary
+        """
+        return ModelRun(self, model_run).get_aggregate_results()

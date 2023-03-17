@@ -8,25 +8,33 @@ from unittest.mock import Mock, mock_open, patch
 import numpy as np
 import pandas as pd
 import pytest
-from model.hsa_gams import _create_activity_type_gams, create_gams, init, main, run
+
+from model.hsa_gams import (
+    _create_activity_type_gams,
+    _generate_activity_table,
+    create_gams,
+    init,
+    main,
+    run,
+)
 
 
 def test_create_activity_type_gams(mocker):
     """it creates the gams for the given activity type"""
     # arrange
-    read_pandas_mock = Mock()
-    mocker.patch("pyarrow.parquet.read_pandas", return_value=read_pandas_mock)
-    read_pandas_mock.to_pandas.return_value = pd.DataFrame(
+    data = pd.DataFrame(
         {
             "age": [17, 18, 50, 90, 91] * 6,
             "sex": [1] * 15 + [2] * 15,
             "hsagrp": (["a"] * 5 + ["b"] * 5 + ["c"] * 5) * 2,
         }
     )
+    mocker.patch("pandas.read_parquet", return_value=data)
+
     gam_mock = Mock()
     mocker.patch("model.hsa_gams.GAM", return_value=gam_mock)
     gam_mock.gridsearch.return_value = "GAM"
-    #
+
     pop = pd.DataFrame(
         {
             "age": list(range(100)) * 2,
@@ -37,8 +45,10 @@ def test_create_activity_type_gams(mocker):
     path_fn = Mock()
     data = {}
     gams = {}
+
     # act
     _create_activity_type_gams(pop, path_fn, data, gams, "test", ["c"])
+
     # assert
     assert data["test"].activity_rate.to_list() == [
         1 / (i + 1 + j) if i in [18, 50, 90] else 0
@@ -65,8 +75,11 @@ def test_create_gams(mocker):
     catg_mock = mocker.patch("model.hsa_gams._create_activity_type_gams")
     mocker.patch("pandas.concat", return_value="data")
     pop_expected = pd.DataFrame({"sex": [1, 1], "age": [89, 90], "base_year": [1, 5]})
+    gat_mock = mocker.patch("model.hsa_gams._generate_activity_table")
+
     # act
     data, gams, path_fn = create_gams("test", "2020")
+
     # assert
     read_csv_mock.assert_called_once_with(
         os.path.join("data", "test", "demographic_factors.csv")
@@ -80,12 +93,36 @@ def test_create_gams(mocker):
         assert i[0][1] == path_fn
         assert i[0][2] == {}
         assert i[0][3] == {}
+
     catg_mock.call_args_list[0][0][4] == "ip"
     catg_mock.call_args_list[0][0][5] == ["birth", "maternity", "paeds"]
     catg_mock.call_args_list[1][0][4] == "op"
     catg_mock.call_args_list[1][0][5] == None
     catg_mock.call_args_list[2][0][4] == "aae"
     catg_mock.call_args_list[2][0][5] == None
+
+    gat_mock.assert_called_once_with(
+        os.path.join("data", "test", "hsa_activity_table.csv"), {}
+    )
+
+
+def test_hsa_gam_generate_activity_table(tmp_path):
+    # arrange
+    hsa_mock = type("mocked_hsa", (object,), {"predict": lambda x: x})
+    gams = {(h, s): hsa_mock for h in ["a", "b"] for s in [1, 2]}
+    filename = f"{tmp_path}/hsa_activity_table.csv"
+
+    # act
+    _generate_activity_table(filename, gams)
+    actual = pd.read_csv(filename)
+
+    # assert
+    assert actual.to_dict("list") == {
+        "hsagrp": ["a"] * 202 + ["b"] * 202,
+        "sex": ([1] * 101 + [2] * 101) * 2,
+        "age": list(range(0, 101)) * 4,
+        "activity": list(range(0, 101)) * 4,
+    }
 
 
 def test_run(mocker):

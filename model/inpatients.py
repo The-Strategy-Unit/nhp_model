@@ -5,10 +5,8 @@ Implements the inpatients model.
 """
 
 import json
-from collections import namedtuple
-from datetime import timedelta
 from functools import partial
-from typing import Callable, Tuple
+from typing import Any, Callable, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -32,13 +30,11 @@ class InpatientsModel(Model):
 
     # pylint: disable=too-many-instance-attributes
 
-    def __init__(self, params: list, data_path: str) -> None:
+    def __init__(
+        self, params: dict, data_path: str, hsa: Any, run_params: dict = None
+    ) -> None:
         # call the parent init function
-        super().__init__(
-            "ip",
-            params,
-            data_path,
-        )
+        super().__init__("ip", params, data_path, hsa, run_params)
         # load the theatres data
         self._load_theatres_data()
         # load the kh03 data
@@ -164,31 +160,18 @@ class InpatientsModel(Model):
         # return the altered data and the amount of admissions/beddays after resampling
         return (data, self._get_data_counts(data) * mask)
 
-    def get_step_counts_dataframe(self, step_counts: dict) -> pd.DataFrame:
-        """Convert the step counts dictionary into a `DataFrame`
+    def convert_step_counts(self, step_counts: dict) -> pd.DataFrame:
+        """Convert the step counts
 
         :param step_counts: the step counts dictionary
         :type step_counts: dict
-        :return: the step counts as a `DataFrame`
-        :rtype: pd.DataFrame
+        :return: the step counts for uploading
+        :rtype: dict
         """
-        return pd.melt(
-            pd.DataFrame.from_dict(
-                {
-                    k: {"admissions": v[0], "beddays": v[1]}
-                    for k, v in step_counts.items()
-                },
-                "index",
-            )
-            .rename_axis(["change_factor", "strategy"])
-            .reset_index(),
-            ["change_factor", "strategy"],
-            ["admissions", "beddays"],
-            "measure",
-        )
+        return Model._convert_step_counts(step_counts, ["admissions", "beddays"])
 
-    def _run(self, model_run: ModelRun) -> None:
-        """Run the model
+    def efficiencies(self, model_run: ModelRun) -> None:
+        """Run the efficiencies steps of the model
 
         :param model_run: an instance of the ModelRun class
         :type model_run: model.model_run.ModelRun
@@ -238,9 +221,7 @@ class InpatientsModel(Model):
             .assign(quarter=lambda x: x.quarter.astype(str).str[4:].str.lower())
         )
 
-    def _bed_occupancy(
-        self, data: pd.DataFrame, model_run: ModelRun
-    ) -> dict[namedtuple, int]:
+    def _bed_occupancy(self, data: pd.DataFrame, model_run: ModelRun) -> dict:
         """Calculate bed occupancy
 
         :param data: the baseline data, or the model results
@@ -255,12 +236,21 @@ class InpatientsModel(Model):
         :rtype: dict
         """
         bed_occupancy_params = model_run.run_params["bed_occupancy"]
-        # create the namedtuple type
-        result = namedtuple("results", ["pod", "measure", "quarter", "ward_group"])
+
+        def create_dict_key(quarter, ward_group):
+            return frozenset(
+                {
+                    ("pod", "ip"),
+                    ("measure", "day+night"),
+                    ("quarter", quarter),
+                    ("ward_group", ward_group),
+                }
+            )
+
         if model_run.model_run == -1:
             return {
-                result("ip", "day+night", q, k): np.round(v).astype(int)
-                for (q, k), v in self._kh03_data["available"].iteritems()
+                create_dict_key(*k): np.round(v).astype(int).tolist()
+                for k, v in self._kh03_data["available"].items()
             }
 
         target_bed_occupancy_rates = pd.Series(bed_occupancy_params["day+night"])
@@ -298,13 +288,13 @@ class InpatientsModel(Model):
 
         # return the results
         return {
-            result("ip", "day+night", p, s): np.round(v).astype(int)
-            for (p, s), v in beddays_results.items()
+            create_dict_key(*k): np.round(v).astype(int).tolist()
+            for k, v in beddays_results.items()
         }
 
     def _theatres_available(
         self, model_results: pd.DataFrame, model_run: Model
-    ) -> dict[namedtuple, int]:
+    ) -> dict:
         """Calculate the theatres available
 
         :param model_results: a DataFrame containing the results of a model iteration
@@ -319,27 +309,21 @@ class InpatientsModel(Model):
         :rtype: dict
         """
         # pylint: disable=too-many-locals
-        theatres_params = model_run.run_params["theatres"]
         # create the namedtuple types
-        result_u = namedtuple("results", ["pod", "measure", "tretspef"])
-        result_a = namedtuple("results", ["pod", "measure"])
 
         fhs_baseline = self._theatres_data["four_hour_sessions"]
-        theatres = self._theatres_data["theatres"]
 
         if model_run.model_run == -1:
             return {
-                **{
-                    result_u("ip_theatres", "four_hour_sessions", k): v
-                    for k, v in fhs_baseline.iteritems()
-                },
-                result_a("ip_theatres", "theatres"): theatres,
+                frozenset(
+                    {
+                        ("pod", "ip_theatres"),
+                        ("measure", "four_hour_sessions"),
+                        ("tretspef", k),
+                    }
+                ): v
+                for k, v in fhs_baseline.items()
             }
-
-        change_availability = theatres_params["change_availability"]
-        change_utilisation = pd.Series(
-            theatres_params["change_utilisation"], name="change_utilisation"
-        )
 
         # sum the amount of procedures, by specialty,
         # then keep only the ones which appear in fhs_baseline
@@ -351,23 +335,20 @@ class InpatientsModel(Model):
         future = future[future.index.isin(fhs_baseline.index)]
 
         baseline = self._procedures_baseline
-        theatre_spells_baseline = self._theatre_spells_baseline
 
         fhs_future = (future / baseline * fhs_baseline).dropna()
-        theatre_spells_future = fhs_future / change_utilisation
 
-        theatre_spells_change = theatre_spells_future.sum() / theatre_spells_baseline
-
-        new_theatres = theatres * theatre_spells_change / change_availability
         return {
-            **{
-                result_u("ip_theatres", "four_hour_sessions", k): v
-                for k, v in fhs_future.iteritems()
-            },
-            result_a("ip_theatres", "theatres"): new_theatres,
+            frozenset(
+                zip(
+                    ["pod", "measure", "tretspef"],
+                    ["ip_theatres", "four_hour_sessions", k],
+                )
+            ): v
+            for k, v in fhs_future.items()
         }
 
-    def _aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
+    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
         """Aggregate the model results
 
         Can also be used to aggregate the baseline data by passing in a `ModelRun` with

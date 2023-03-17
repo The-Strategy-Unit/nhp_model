@@ -5,7 +5,7 @@ Implements the A&E model.
 """
 
 from functools import partial
-from typing import Callable, Tuple
+from typing import Any, Callable, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -24,10 +24,12 @@ class AaEModel(Model):
     :param data_path: the path to where the data files live
     """
 
-    def __init__(self, params: dict, data_path: str) -> None:
+    def __init__(
+        self, params: dict, data_path: str, hsa: Any, run_params: dict = None
+    ) -> None:
         # call the parent init function
-        super().__init__("aae", params, data_path)
-        
+        super().__init__("aae", params, data_path, hsa, run_params)
+
     def _get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
         """Get row counts of data
 
@@ -75,23 +77,26 @@ class AaEModel(Model):
         # return the altered data and the amount of admissions/beddays after resampling
         return (data, self._get_data_counts(data))
 
-    def get_step_counts_dataframe(self, step_counts: dict) -> pd.DataFrame:
-        """Convert the step counts dictionary into a `DataFrame`
+    def convert_step_counts(self, step_counts: dict) -> dict:
+        """Convert the step counts
 
         :param step_counts: the step counts dictionary
         :type step_counts: dict
-        :return: the step counts as a `DataFrame`
-        :rtype: pd.DataFrame
+        :return: the step counts for uploading
+        :rtype: dict
         """
-        return (
-            pd.Series({k: v[0] for k, v in step_counts.items()})
-            .to_frame("value")
-            .rename_axis(["change_factor", "strategy"])
-            .reset_index()
-            .assign(measure="arrivals")
-        )
+        return Model._convert_step_counts(step_counts, ["arrivals"])
 
-    def _aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
+    def efficiencies(self, model_run: ModelRun) -> None:
+        """Run the efficiencies steps of the model
+
+        :param model_run: an instance of the ModelRun class
+        :type model_run: model.model_run.ModelRun
+        """
+
+        # A&E doesn't have any efficiencies steps
+
+    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
         """Aggregate the model results
 
         Can also be used to aggregate the baseline data by passing in a `ModelRun` with

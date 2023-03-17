@@ -45,7 +45,7 @@ purrr::walk(fs::dir_ls("data_extraction", glob = "*.R"), source)
 list(
   # variables ----
   # these may need to be update as required
-  tar_target(data_version, "v0.2.0"),
+  tar_target(data_version, "dev"),
   tar_target(start_date, ymd("20180401")),
   # default end_date to be 1 year (-1 day) after the start date
   tar_target(end_date, start_date %m+% years(1) %m-% days(1)),
@@ -180,6 +180,11 @@ list(
     format = "file"
   ),
   tar_target(
+    py_gam_file_path,
+    "model/hsa_gams.py",
+    format = "file"
+  ),
+  tar_target(
     gams_file_paths,
     callr::r(
       \(fn, p, ...) fn(p),
@@ -189,7 +194,8 @@ list(
         ip_data,
         op_data,
         aae_data,
-        demographic_factors
+        demographic_factors,
+        py_gam_file_path
       )
     ),
     pattern = map(providers, ip_data, op_data, aae_data, demographic_factors)
@@ -210,7 +216,8 @@ list(
         ip_synth_data,
         op_synth_data,
         aae_synth_data,
-        demographic_factors_synthetic
+        demographic_factors_synthetic,
+        py_gam_file_path
       )
     ),
     format = "file"
@@ -256,6 +263,10 @@ list(
       demographic_factors_synthetic,
       gams,
       gams_synthetic,
+      # bit of a cheat, the gams only returns a single file name (of the pkl object)
+      # add in the hsa_activity_table.csv files
+      stringr::str_replace(gams, "_gams.pkl", "_activity_table.csv"),
+      stringr::str_replace(gams_synthetic, "_gams.pkl", "_activity_table.csv"),
       kh03_save,
       kh03_synthetic,
       theatres,
