@@ -10,6 +10,10 @@ on:
       cosmos-db:
         required: true
         type: string
+      latest:
+        required: false
+        default: false
+        type: boolean
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -42,7 +46,9 @@ jobs:
           login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
-      - run: |
+
+      - name: 'Build and push image'   
+        run: |
           docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.app-version }} \
             --build-arg app_version=${{ inputs.app-version }} \
             --build-arg data_version=${{ inputs.data-version }} \
@@ -50,4 +56,10 @@ jobs:
             --build-arg keyvault_endpoint=${{ secrets.NHP_KEYVAULT_ENDPOINT }} \
             --build-arg cosmos_endpoint=${{ secrets.NHP_COSMOS_ENDPOINT }} \
             --build-arg cosmos_db=${{ inputs.cosmos-db }}
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.app-version }}
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.app-version }
+          
+      - name: 'Push latest'
+        if: ${{ inputs.latest }}
+        run: |
+          docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.app-version } ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
