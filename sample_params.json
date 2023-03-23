@@ -9,8 +9,6 @@
   "create_datetime": "20220101_000000",
   "demographic_factors": {
     "file": "demographic_factors.csv",
-    "start_year": 2018,
-    "end_year": 2038,
     "variant_probabilities": {
       "principal_proj": 0.40,
       "var_proj_10_year_migration": 0.15,
