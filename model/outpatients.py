@@ -76,7 +76,7 @@ class OutpatientsModel(Model):
         data = model_run.data
         params = model_run.run_params["efficiencies"]["op"]
         strategies = model_run.model.strategies["efficiencies"]
-        factor = data["rn"].map(strategies.map(params)).fillna(1)
+        factor = data["rn"].map(strategies.map(params)).fillna(0)
         # create a value for converting attendances into tele attendances for each row
         # the value will be a random binomial value, i.e. we will convert between 0 and attendances
         # into tele attendances
