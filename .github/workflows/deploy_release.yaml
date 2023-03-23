@@ -3,7 +3,7 @@ on:
     tags:
       - 'v*.*.*'
 
-name: Deploy Dev
+name: Deploy Production
 
 jobs:
   deploy-production:
@@ -11,6 +11,7 @@ jobs:
     uses: ./.github/workflows/build_container.yaml
     with:
       app-version: ${{github.ref_name}} 
-      data-version: ${{env.data_version}}
+      data-version: ${{vars.data_version}}
       cosmos-db: production
+      latest: true
     secrets: inherit
