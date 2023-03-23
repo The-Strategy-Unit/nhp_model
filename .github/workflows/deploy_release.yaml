@@ -1,0 +1,17 @@
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+name: Deploy Production
+
+jobs:
+  deploy-production:
+  
+    uses: ./.github/workflows/build_container.yaml
+    with:
+      app-version: ${{github.ref_name}} 
+      data-version: ${{vars.data_version}}
+      cosmos-db: production
+      latest: true
+    secrets: inherit
