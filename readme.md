@@ -50,3 +50,7 @@ You then simply pass in the version of the data that you wish to download:
 # Linux
 ./download_data.sh v0.2.0
 ```
+
+## Deployment
+
+The model is deployed to Azure Container Registry on pull requests, tagging the container as `nhp_model:dev`, and on releases its deployed to `nhp_model:v0.*.*` and `nhp_model:latest`.
