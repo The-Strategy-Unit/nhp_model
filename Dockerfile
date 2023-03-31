@@ -15,6 +15,7 @@ ENV KEYVAULT_ENDPOINT=$keyvault_endpoint
 ENV COSMOS_ENDPOINT=$cosmos_endpoint
 ENV COSMOS_DB=$cosmos_db
 
+WORKDIR /opt
 # create data / queue folders, make sure the user has access to write into these folders
 USER root
 RUN mkdir -p data && \
@@ -34,7 +35,6 @@ RUN awk 'NR==1,/# dev dependencies/' /tmp/environment.yml | \
   micromamba clean --all --yes
 
 # copy the app code
-WORKDIR /opt
 COPY model /opt/model
 COPY docker_run.py /opt
 COPY config.py /opt
