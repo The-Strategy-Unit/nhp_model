@@ -135,7 +135,7 @@ def test_get_data_gets_data_from_blob(mocker):
     mock.get_file_system_client.assert_called_once_with("data")
     mock.get_paths.assert_called_once_with("dev/synthetic")
 
-    mkdir_m.assert_called_once_with("data/synthetic")
+    mkdir_m.assert_called_once_with("data/synthetic", exist_ok=True)
 
     assert mock.get_file_client.call_args_list == [call(str(i)) for i in files]
     assert mock.download_file.call_args_list == [call() for _ in files]
