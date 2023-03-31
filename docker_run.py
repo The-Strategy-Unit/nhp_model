@@ -86,7 +86,7 @@ def get_data(dataset: str) -> None:
 
     paths = [p.name for p in fs_client.get_paths(directory_path)]
 
-    os.makedirs(f"data/{dataset}")
+    os.makedirs(f"data/{dataset}", exist_ok=True)
 
     for filename in paths:
         logging.info(" * %s", filename)
