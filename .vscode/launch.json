@@ -10,7 +10,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "sample_params.json",
+        "queue/sample_params.json",
         "--type=ip"
       ],
       "console": "integratedTerminal"
@@ -21,7 +21,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "sample_params.json",
+        "queue/sample_params.json",
         "--type=op"
       ],
       "console": "integratedTerminal"
@@ -32,7 +32,7 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "sample_params.json",
+        "queue/sample_params.json",
         "--type=aae"
       ],
       "console": "integratedTerminal"
