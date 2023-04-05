@@ -13,7 +13,7 @@
     {
       "type": "shell",
       "label": "Run Code Coverage",
-      "command": "conda activate nhp && pytest --cov=. tests/ --ignore=tests --cov-report xml:coverage.xml --cov-report term"
+      "command": "${command:python.interpreterPath} -m pytest --cov=. tests/ --ignore=tests --cov-report xml:coverage.xml --cov-report term"
     }
   ]
 }
