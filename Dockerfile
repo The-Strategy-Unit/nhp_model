@@ -4,16 +4,10 @@ FROM mambaorg/micromamba:1.3.1-alpine
 ARG app_version
 ARG data_version
 ARG storage_account
-ARG keyvault_endpoint
-ARG cosmos_endpoint
-ARG cosmos_db
 
 ENV APP_VERSION=$app_version
 ENV DATA_VERSION=$data_version
 ENV STORAGE_ACCOUNT=$storage_account
-ENV KEYVAULT_ENDPOINT=$keyvault_endpoint
-ENV COSMOS_ENDPOINT=$cosmos_endpoint
-ENV COSMOS_DB=$cosmos_db
 
 WORKDIR /opt
 # create data / queue folders, make sure the user has access to write into these folders
@@ -36,6 +30,7 @@ RUN awk 'NR==1,/# dev dependencies/' /tmp/environment.yml | \
 
 # copy the app code
 COPY model /opt/model
+COPY run_model.py /opt
 COPY docker_run.py /opt
 COPY config.py /opt
 
