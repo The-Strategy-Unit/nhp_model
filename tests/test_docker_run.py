@@ -16,28 +16,6 @@ config.COSMOS_ENDPOINT = "cosmos_endpoint"
 config.COSMOS_DB = "cosmos_db"
 
 
-def test_load_params_skips_if_file_exists(mocker):
-    # arrange
-    expected = {
-        "dataset": "synthetic",
-        "id": "3d7a84337922277b8e6205011cbc168c1a008aa746c8c13e07031b01d42acfc7",
-        "app_version": "dev",
-    }
-
-    path_m = mocker.patch("os.path.exists", return_value=True)
-
-    # act
-    with patch(
-        "builtins.open", mock_open(read_data='{"dataset": "synthetic"}'.encode())
-    ) as mock_file:
-        actual = load_params("filename")
-
-    # assert
-    assert actual == expected
-    path_m.assert_called_once_with("queue/filename")
-    assert mock_file.call_args == call("queue/filename", "rb")
-
-
 def test_load_params_from_blob_storage(mocker):
     # arrange
     expected = {
@@ -72,17 +50,6 @@ def test_load_params_from_blob_storage(mocker):
     mock.get_container_client.assert_called_once_with("queue")
     mock.download_blob.assert_called_once_with("filename")
     mock.readall.assert_called_once()
-
-
-def test_get_data_does_nothing_if_data_exists(mocker):
-    # arrange
-    path_m = mocker.patch("os.path.exists", return_value=True)
-
-    # act
-    get_data("synthetic")
-
-    # assert
-    path_m.assert_called_once_with("data/synthetic")
 
 
 def test_get_data_gets_data_from_blob(mocker):
@@ -143,7 +110,7 @@ def test_upload_results(mocker):
         _upload_results("filename")
 
     # assert
-    mock_file.assert_called_once_with("results/filename", "rb")
+    mock_file.assert_called_once_with("results/dev/filename", "rb")
     bsc_m.assert_called_once_with(
         account_url="https://sa.blob.core.windows.net", credential="cred"
     )

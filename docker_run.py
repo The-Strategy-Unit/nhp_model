@@ -27,18 +27,14 @@ def load_params(filename: str) -> dict:
     :return: the parameters to use for a model run
     :rtype: dict
     """
-    if os.path.exists(f"queue/{filename}"):
-        with open(f"queue/{filename}", "rb") as params_file:
-            params_content = params_file.read()
-    else:
-        logging.info("downloading params: %s", filename)
+    logging.info("downloading params: %s", filename)
 
-        container = BlobServiceClient(
-            account_url=f"https://{config.STORAGE_ACCOUNT}.blob.core.windows.net",
-            credential=DefaultAzureCredential(),
-        ).get_container_client("queue")
+    container = BlobServiceClient(
+        account_url=f"https://{config.STORAGE_ACCOUNT}.blob.core.windows.net",
+        credential=DefaultAzureCredential(),
+    ).get_container_client("queue")
 
-        params_content = container.download_blob(filename).readall()
+    params_content = container.download_blob(filename).readall()
 
     app_version = config.APP_VERSION
 
@@ -62,9 +58,6 @@ def get_data(dataset: str) -> None:
     :param dataset: the name of the dataset that we are loading
     :type dataset: str
     """
-    if os.path.exists(f"data/{dataset}"):
-        return
-
     logging.info("downloading data")
     fs_client = DataLakeServiceClient(
         account_url=f"https://{config.STORAGE_ACCOUNT}.dfs.core.windows.net",
@@ -93,7 +86,7 @@ def _upload_results(results_file: str) -> None:
         credential=DefaultAzureCredential(),
     ).get_container_client("results")
 
-    with open(f"results/{results_file}", "rb") as file:
+    with open(f"results/{config.APP_VERSION}/{results_file}", "rb") as file:
         container.upload_blob(f"{results_file}.gz", gzip.compress(file.read()))
 
 
