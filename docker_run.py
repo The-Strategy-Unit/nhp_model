@@ -3,7 +3,6 @@
 
 import argparse
 import gzip
-import hashlib as hl
 import json
 import logging
 import os
@@ -36,17 +35,7 @@ def load_params(filename: str) -> dict:
 
     params_content = container.download_blob(filename).readall()
 
-    app_version = config.APP_VERSION
-
-    # generate an id using sha256 hash of the params combined with the app version
-    run_id = hl.sha256(params_content + app_version.encode()).hexdigest()
-
-    # convert to a dictionary, insert the id and app version
-    params = json.loads(params_content)
-    params["id"] = run_id
-    params["app_version"] = app_version
-
-    return params
+    return json.loads(params_content)
 
 
 def get_data(dataset: str) -> None:

@@ -11,18 +11,11 @@ from docker_run import _upload_results, get_data, load_params, main
 config.STORAGE_ACCOUNT = "sa"
 config.APP_VERSION = "dev"
 config.DATA_VERSION = "dev"
-config.KEYVAULT_ENDPOINT = "keyvault_endpoint"
-config.COSMOS_ENDPOINT = "cosmos_endpoint"
-config.COSMOS_DB = "cosmos_db"
 
 
 def test_load_params_from_blob_storage(mocker):
     # arrange
-    expected = {
-        "dataset": "synthetic",
-        "id": "3d7a84337922277b8e6205011cbc168c1a008aa746c8c13e07031b01d42acfc7",
-        "app_version": "dev",
-    }
+    expected = {"dataset": "synthetic"}
 
     path_m = mocker.patch("os.path.exists", return_value=False)
 
