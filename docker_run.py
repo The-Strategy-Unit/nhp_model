@@ -2,6 +2,7 @@
 """Run the model inside of the docker container"""
 
 import argparse
+import gzip
 import hashlib as hl
 import json
 import logging
@@ -92,8 +93,8 @@ def _upload_results(results_file: str) -> None:
         credential=DefaultAzureCredential(),
     ).get_container_client("results")
 
-    with open(results_file, "rb") as file:
-        container.upload_blob(results_file, file)
+    with open(f"results/{results_file}", "rb") as file:
+        container.upload_blob(f"{results_file}.gz", gzip.compress(file.read()))
 
 
 def main():
@@ -117,7 +118,6 @@ def main():
     logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
         logging.WARNING
     )
-
 
     logging.info("running model for: %s", args.params_file)
 

@@ -180,10 +180,9 @@ def run_all(params: dict, data_path: str) -> dict:
 
     results["population_variants"] = run_params["variant"]
 
-    encoded_results = json.dumps(results).encode("utf-8")
-    filename = f"{params['id']}.json.gz"
-    with gzip.open(f"results/{filename}", "w") as file:
-        file.write(encoded_results)
+    filename = f"{params['id']}.json"
+    with open(f"results/{filename}", "w", encoding="utf-8") as file:
+        json.dump(results, file)
 
     return filename
 

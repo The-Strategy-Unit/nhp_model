@@ -358,12 +358,14 @@ def test_run_all(mocker):
 
     params = {"id": 1, "dataset": "synthetic", "life_expectancy": "le"}
 
+    jd_m = mocker.patch("json.dump")
+
     # act
-    with patch("gzip.open", mock_open()) as mock_file:
+    with patch("builtins.open", mock_open()) as mock_file:
         actual = run_all(params, "data")
 
     # assert
-    assert actual == "1.json.gz"
+    assert actual == "1.json"
 
     grp_m.assert_called_once_with(params)
     hsa_m.assert_called_once_with("data/synthetic", "le")
@@ -375,9 +377,9 @@ def test_run_all(mocker):
 
     cr_m.assert_called_once_with(["ip", "op", "aae"])
 
-    mock_file.assert_called_once_with("results/1.json.gz", "w")
-    mock_file().write.called_once_with(
-        '{"results": "results", "population_variants": "variants"}'.encode()
+    mock_file.assert_called_once_with("results/1.json", "w", encoding="utf-8")
+    jd_m.assert_called_once_with(
+        {"results": "results", "population_variants": "variants"}, mock_file()
     )
 
 

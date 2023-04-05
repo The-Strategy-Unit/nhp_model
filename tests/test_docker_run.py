@@ -136,19 +136,20 @@ def test_upload_results(mocker):
     # arrange
     bsc_m = mocker.patch("docker_run.BlobServiceClient")
     mocker.patch("docker_run.DefaultAzureCredential", return_value="cred")
+    mocker.patch("gzip.compress", return_value="gzdata")
 
     # act
-    with patch("builtins.open", mock_open()) as mock_file:
+    with patch("builtins.open", mock_open(read_data="data")) as mock_file:
         _upload_results("filename")
 
     # assert
-    mock_file.assert_called_once_with("filename", "rb")
+    mock_file.assert_called_once_with("results/filename", "rb")
     bsc_m.assert_called_once_with(
         account_url="https://sa.blob.core.windows.net", credential="cred"
     )
     bsc_m().get_container_client.assert_called_once_with("results")
     bsc_m().get_container_client().upload_blob.assert_called_once_with(
-        "filename", mock_file()
+        "filename.gz", "gzdata"
     )
 
 
