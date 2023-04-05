@@ -376,7 +376,7 @@ def test_combine_results(mocker):
 
     # assert
     assert actual == expected
-    m.call_args_list == [call(k, v) for k, v in expected.items()]
+    assert m.call_args_list == [call(k, v) for k, v in expected.items()]
 
 
 @pytest.mark.parametrize(
