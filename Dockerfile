@@ -36,6 +36,7 @@ RUN awk 'NR==1,/# dev dependencies/' /tmp/environment.yml | \
 
 # copy the app code
 COPY model /opt/model
+COPY run_model.py /opt
 COPY docker_run.py /opt
 COPY config.py /opt
 

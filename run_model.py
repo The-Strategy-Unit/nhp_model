@@ -14,9 +14,16 @@ will run a single run of the inpatients model, returning the results to display.
 """
 
 import argparse
+import gzip
+import json
+import logging
+import os
 import time
+from collections import defaultdict
+from multiprocessing import Pool
 from typing import Any, Callable
 
+import numpy as np
 import pandas as pd
 
 from model.aae import AaEModel
@@ -38,19 +45,162 @@ def timeit(func: Callable, *args) -> Any:
     return results
 
 
-def debug_run(
-    model_type: Model,
-    params: dict,
-    run_params: dict,
-    path: str,
-    hsa: Any,
-    model_run: int,
+def _combine_results(results: list) -> dict:
+    """Combine the results into a single dictionary
+
+    When we run the models we have an array containing 3 items [inpatients, outpatient, a&e].
+    Each of which contains one item for each model run, which is a dictionary.
+
+    :param results: the results of running the models
+    :type results: list
+    :return: combined model results
+    :rtype: dict
+    """
+    # results are a list containing each model runs aggregations
+    # the aggregations are dicts of dicts
+    combined_results = defaultdict(lambda: defaultdict(lambda: [0] * len(results[0])))
+    # first, we need to invert the [{{}}] to {{[]}}
+    for model_result in results:
+        for i, res in enumerate(model_result):
+            for agg_type, agg_values in res.items():
+                for key, value in agg_values.items():
+                    if agg_type == "step_counts":
+                        combined_results[agg_type][key][i] = value
+                    else:
+                        combined_results[agg_type][key][i] += value
+    # now we can convert this to the results we want
+    combined_results = {
+        k0: [
+            {**dict(k1), "baseline": v1[0], "principal": v1[1], "model_runs": v1[2:]}
+            for k1, v1 in v0.items()
+        ]
+        for k0, v0 in combined_results.items()
+    }
+    # finally we split the model runs out, this function modifies values in place
+    for agg_type, values in combined_results.items():
+        _split_model_runs_out(agg_type, values)
+
+    return combined_results
+
+
+def _split_model_runs_out(agg_type: str, results: dict) -> None:
+    """updates a single result so the baseline and principal runs are split out
+    and summary statistics are generated
+
+    :param agg_type: which aggregate type are we using
+    :type key: string
+    :param results: the results for this aggregation
+    :type results: dict
+    """
+    for result in results:
+        if agg_type == "step_counts":
+            if result["strategy"] == "-":
+                result.pop("strategy")
+            if result["change_factor"] != "baseline":
+                result.pop("baseline")
+            else:
+                result["baseline"] = result.pop("principal")
+                result.pop("model_runs")
+            continue
+
+        [lwr, median, upr] = np.quantile(result["model_runs"], [0.05, 0.5, 0.95])
+        result["lwr_ci"] = lwr
+        result["median"] = median
+        result["upr_ci"] = upr
+
+        if not agg_type in ["default", "bed_occupancy", "theatres_available"]:
+            result.pop("model_runs")
+        else:
+            result["model_runs"] = [int(i) for i in result["model_runs"]]
+
+        result["baseline"] = int(result["baseline"])
+        result["principal"] = int(result["principal"])
+
+
+def _run_model(
+    model_type: Model, params: dict, path: str, hsa: Any, run_params: dict
+) -> dict:
+    """Run the model iterations
+
+    Runs the model for all of the model iterations, returning the aggregated results
+
+    :param model_type: the type of model that we want to run
+    :type model_type: Model
+    :param params: the parameters to run the model with
+    :type params: dict
+    :param path: where the data is stored
+    :type path: str
+    :param hsa: an instance of the HealthStatusAdjustment class
+    :type hsa: HealthStatusAdjustment
+    :param run_params: the generated run parameters for the model run
+    :type run_params: dict
+    :return: a dictionary containing the aggregated results
+    :rtype: dict
+    """
+    model_class = model_type.__name__[:-5]  # pylint: disable=protected-access
+    logging.info("%s", model_class)
+    logging.info(" * instantiating")
+    model = model_type(params, path, hsa, run_params)
+    logging.info(" * running")
+
+    model_runs = list(range(-1, params["model_runs"] + 1))
+
+    cpus = os.cpu_count()
+    batch_size = 16
+
+    with Pool(cpus) as pool:
+        results = list(pool.imap(model.go, model_runs, chunksize=batch_size))
+    logging.info(" * finished")
+
+    return results
+
+
+def run_all(params: dict, data_path: str) -> dict:
+    """Run the model
+
+    runs all 3 model types, aggregates and combines the results
+
+    :param params: the parameters to use for this model run
+    :type params: dict
+    :param data_path: where the data is stored
+    :type data_path: str
+    :return: the filename of the saved results
+    :rtype: dict
+    """
+    model_types = [InpatientsModel, OutpatientsModel, AaEModel]
+    run_params = Model.generate_run_params(params)
+
+    hsa = HealthStatusAdjustmentInterpolated(
+        f"{data_path}/{params['dataset']}", params["life_expectancy"]
+    )
+
+    results = _combine_results(
+        [_run_model(m, params, data_path, hsa, run_params) for m in model_types]
+    )
+
+    results["population_variants"] = run_params["variant"]
+
+    encoded_results = json.dumps(results).encode("utf-8")
+    filename = f"{params['id']}.json.gz"
+    with gzip.open(f"results/{filename}", "w") as file:
+        file.write(encoded_results)
+
+    return filename
+
+
+def run_single_model_run(
+    params: dict, data_path: str, model_type: Model, model_run: int
 ) -> None:
     """
     Runs a single model iteration for easier debugging in vscode
     """
+    run_params = Model.generate_run_params(params)
+    hsa = HealthStatusAdjustmentInterpolated(
+        f"{data_path}/{params['dataset']}", params["life_expectancy"]
+    )
+
     print("initialising model...  ", end="")
-    model = timeit(model_type, params, path, hsa, run_params)
+    model = timeit(model_type, params, data_path, hsa, run_params)
     print("running model...       ", end="")
     m_run = timeit(ModelRun, model, model_run)
     print("aggregating results... ", end="")
@@ -117,19 +267,14 @@ def main() -> None:
     # define the model to run
     match args.type:
         case "aae":
-            model = AaEModel
+            model_type = AaEModel
         case "ip":
-            model = InpatientsModel
+            model_type = InpatientsModel
         case "op":
-            model = OutpatientsModel
+            model_type = OutpatientsModel
     #
     params = load_params(args.params_file)
-    run_params = Model.generate_run_params(params)
-    hsa = HealthStatusAdjustmentInterpolated(
-        f"{args.data_path}/{params['dataset']}", params["life_expectancy"]
-    )
-
-    debug_run(model, params, run_params, args.data_path, hsa, args.model_run)
+    run_single_model_run(params, args.data_path, model_type, args.model_run)
 
 
 def init():
