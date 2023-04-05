@@ -165,7 +165,7 @@ def test_main(mocker):
 
     lp_m = mocker.patch("docker_run.load_params", return_value=params)
     gd_m = mocker.patch("docker_run.get_data")
-    ru_m = mocker.patch("docker_run.run_all", return_value="results.json.gz")
+    ru_m = mocker.patch("docker_run.run_all", return_value="results.json")
     ur_m = mocker.patch("docker_run._upload_results")
 
     # act
@@ -186,7 +186,7 @@ def test_main(mocker):
     gd_m.assert_called_once_with("synthetic")
     ru_m.assert_called_once_with(params, "data")
 
-    ur_m.assert_called_once_with("results.json.gz")
+    ur_m.assert_called_once_with("results.json")
 
 
 def test_init(mocker):

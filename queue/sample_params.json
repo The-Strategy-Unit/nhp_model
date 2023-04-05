@@ -1,4 +1,5 @@
 {
+  "id": "test",
   "scenario": "test",
   "dataset": "synthetic",
   "seed": 84308,

@@ -517,17 +517,39 @@ def test_main_debug_runs_model(mocker, activity_type, model_class):
     args.data_path = "data"
     args.model_run = 0
     args.params_file = "queue/params.json"
-    params = {"dataset": "synthetic", "life_expectancy": "life_expectancy"}
     mocker.patch("run_model._run_model_argparser", return_value=args)
-    ldp_mock = mocker.patch("run_model.load_params", return_value=params)
+    ldp_mock = mocker.patch("run_model.load_params", return_value="params")
 
-    run_mock = mocker.patch("run_model.run_single_model_run")
+    run_all_mock = mocker.patch("run_model.run_all")
+    run_single_mock = mocker.patch("run_model.run_single_model_run")
 
     # act
     main()
 
     # assert
-    run_mock.assert_called_once_with(params, "data", model_class, 0)
+    run_all_mock.assert_not_called()
+    run_single_mock.assert_called_once_with("params", "data", model_class, 0)
+    ldp_mock.assert_called_once_with("queue/params.json")
+
+
+def test_main_all_runs(mocker):
+    # arrange
+    args = Mock
+    args.type = "all"
+    args.data_path = "data"
+    args.params_file = "queue/params.json"
+    mocker.patch("run_model._run_model_argparser", return_value=args)
+    ldp_mock = mocker.patch("run_model.load_params", return_value="params")
+
+    run_all_mock = mocker.patch("run_model.run_all")
+    run_single_mock = mocker.patch("run_model.run_single_model_run")
+
+    # act
+    main()
+
+    # assert
+    run_all_mock.assert_called_once_with("params", "data")
+    run_single_mock.assert_not_called()
     ldp_mock.assert_called_once_with("queue/params.json")
 
 

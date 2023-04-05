@@ -14,7 +14,6 @@ will run a single run of the inpatients model, returning the results to display.
 """
 
 import argparse
-import gzip
 import json
 import logging
 import os
@@ -246,9 +245,9 @@ def _run_model_argparser() -> argparse.Namespace:  # pragma: no cover
     parser.add_argument(
         "-t",
         "--type",
-        default="ip",
-        choices=["aae", "ip", "op"],
-        help="Model type, either: ip, op, aae",
+        default="all",
+        choices=["all", "aae", "ip", "op"],
+        help="Model type, either: all, ip, op, aae",
         type=str,
     )
     return parser.parse_args()
@@ -263,16 +262,25 @@ def main() -> None:
 
     # Grab the Arguments
     args = _run_model_argparser()
+    #
+    params = load_params(args.params_file)
     # define the model to run
     match args.type:
+        case "all":
+            logging.basicConfig(
+                format="%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s",
+                level=logging.INFO,
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
+
+            run_all(params, args.data_path)
+            return
         case "aae":
             model_type = AaEModel
         case "ip":
             model_type = InpatientsModel
         case "op":
             model_type = OutpatientsModel
-    #
-    params = load_params(args.params_file)
     run_single_model_run(params, args.data_path, model_type, args.model_run)
 
 
