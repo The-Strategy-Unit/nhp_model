@@ -85,7 +85,7 @@ class AaEModel(Model):
         :return: the step counts for uploading
         :rtype: dict
         """
-        return Model._convert_step_counts(step_counts, ["arrivals"])
+        return self._convert_step_counts(step_counts, ["arrivals"])
 
     def efficiencies(self, model_run: ModelRun) -> None:
         """Run the efficiencies steps of the model
