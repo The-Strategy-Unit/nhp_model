@@ -117,7 +117,7 @@ class OutpatientsModel(Model):
         :return: the step counts for uploading
         :rtype: dict
         """
-        return Model._convert_step_counts(
+        return self._convert_step_counts(
             step_counts, ["attendances", "tele_attendances"]
         )
 

@@ -403,7 +403,7 @@ def test_convert_step_counts(mock_model):
         frozenset(
             {
                 ("change_factor", "a"),
-                ("activity_type", "aae"),
+                ("activity_type", "model_type"),
                 ("strategy", "-"),
                 ("measure", "admissions"),
             }
@@ -411,7 +411,7 @@ def test_convert_step_counts(mock_model):
         frozenset(
             {
                 ("change_factor", "a"),
-                ("activity_type", "aae"),
+                ("activity_type", "model_type"),
                 ("strategy", "-"),
                 ("measure", "beddays"),
             }
@@ -419,7 +419,7 @@ def test_convert_step_counts(mock_model):
         frozenset(
             {
                 ("measure", "admissions"),
-                ("activity_type", "aae"),
+                ("activity_type", "model_type"),
                 ("strategy", "-"),
                 ("change_factor", "b"),
             }
@@ -427,12 +427,13 @@ def test_convert_step_counts(mock_model):
         frozenset(
             {
                 ("measure", "beddays"),
-                ("activity_type", "aae"),
+                ("activity_type", "model_type"),
                 ("strategy", "-"),
                 ("change_factor", "b"),
             }
         ): 4.0,
     }
+    mock_model.model_type = "model_type"
 
     # act
     actual = mock_model._convert_step_counts(step_counts, ["admissions", "beddays"])

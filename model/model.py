@@ -256,8 +256,7 @@ class Model:
     def _get_data_mask(self) -> npt.ArrayLike:
         return np.array([1.0])
 
-    @staticmethod
-    def _convert_step_counts(step_counts: dict, names: list) -> dict:
+    def _convert_step_counts(self, step_counts: dict, names: list) -> dict:
         """Convert the step counts
 
         :param step_counts: the step counts dictionary
@@ -270,7 +269,7 @@ class Model:
         return {
             frozenset(
                 {
-                    ("activity_type", "aae"),
+                    ("activity_type", self.model_type),
                     ("change_factor", k0),
                     ("strategy", k1),
                     ("measure", k2),
