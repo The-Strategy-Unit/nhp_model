@@ -103,13 +103,13 @@ def test_upload_results(mocker):
         _upload_results("filename")
 
     # assert
-    mock_file.assert_called_once_with("results/dev/filename", "rb")
+    mock_file.assert_called_once_with("results/filename.json", "rb")
     bsc_m.assert_called_once_with(
         account_url="https://sa.blob.core.windows.net", credential="cred"
     )
     bsc_m().get_container_client.assert_called_once_with("results")
     bsc_m().get_container_client().upload_blob.assert_called_once_with(
-        "filename.gz", "gzdata"
+        "dev/filename.json.gz", "gzdata"
     )
 
 

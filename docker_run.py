@@ -75,8 +75,10 @@ def _upload_results(results_file: str) -> None:
         credential=DefaultAzureCredential(),
     ).get_container_client("results")
 
-    with open(f"results/{config.APP_VERSION}/{results_file}", "rb") as file:
-        container.upload_blob(f"{results_file}.gz", gzip.compress(file.read()))
+    with open(f"results/{results_file}.json", "rb") as file:
+        container.upload_blob(
+            f"{config.APP_VERSION}/{results_file}.json.gz", gzip.compress(file.read())
+        )
 
 
 def main():

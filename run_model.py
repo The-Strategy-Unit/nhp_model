@@ -176,11 +176,18 @@ def run_all(params: dict, data_path: str) -> dict:
         [_run_model(m, params, data_path, hsa, run_params) for m in model_types]
     )
 
-    results["population_variants"] = run_params["variant"]
+    filename = f"{params['dataset']}/{params['scenario']}-{params['create_datetime']}"
+    os.makedirs(f"results/{params['dataset']}", exist_ok=True)
 
-    filename = f"{params['id']}.json"
-    with open(f"results/{filename}", "w", encoding="utf-8") as file:
-        json.dump(results, file)
+    with open(f"results/{filename}.json", "w", encoding="utf-8") as file:
+        json.dump(
+            {
+                "params": params,
+                "population_variants": run_params["variant"],
+                "results": results,
+            },
+            file,
+        )
 
     return filename
 

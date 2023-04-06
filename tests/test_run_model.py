@@ -352,11 +352,16 @@ def test_run_all(mocker):
     )
 
     rm_m = mocker.patch("run_model._run_model", side_effect=["ip", "op", "aae"])
-    cr_m = mocker.patch(
-        "run_model._combine_results", return_value={"results": "results"}
-    )
+    cr_m = mocker.patch("run_model._combine_results", return_value="combined_results")
 
-    params = {"id": 1, "dataset": "synthetic", "life_expectancy": "le"}
+    os_m = mocker.patch("os.makedirs")
+
+    params = {
+        "dataset": "synthetic",
+        "scenario": "test",
+        "create_datetime": "20230123_012345",
+        "life_expectancy": "le",
+    }
 
     jd_m = mocker.patch("json.dump")
 
@@ -365,7 +370,7 @@ def test_run_all(mocker):
         actual = run_all(params, "data")
 
     # assert
-    assert actual == "1.json"
+    assert actual == "synthetic/test-20230123_012345"
 
     grp_m.assert_called_once_with(params)
     hsa_m.assert_called_once_with("data/synthetic", "le")
@@ -376,18 +381,24 @@ def test_run_all(mocker):
     ]
 
     cr_m.assert_called_once_with(["ip", "op", "aae"])
+    os_m.assert_called_once_with("results/synthetic", exist_ok=True)
 
-    mock_file.assert_called_once_with("results/1.json", "w", encoding="utf-8")
+    mock_file.assert_called_once_with(
+        "results/synthetic/test-20230123_012345.json", "w", encoding="utf-8"
+    )
     jd_m.assert_called_once_with(
-        {"results": "results", "population_variants": "variants"}, mock_file()
+        {
+            "params": params,
+            "population_variants": "variants",
+            "results": "combined_results",
+        },
+        mock_file(),
     )
 
 
 def test_run_single_model_run(mocker, capsys):
     """it should run the model and display outputs"""
     # arrange
-    m = Mock()
-
     mr_mock = Mock()
     grp_mock = mocker.patch(
         "run_model.Model.generate_run_params", return_value="run_params"
