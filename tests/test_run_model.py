@@ -305,11 +305,11 @@ def test_split_model_runs_out_step_counts():
         },
     ]
     expected = [
-        {"change_factor": "baseline", "baseline": [0, 1]},
+        {"change_factor": "baseline", "value": [0, 1]},
         {
             "change_factor": "a",
             "strategy": "a",
-            "principal": [3, 4],
+            "value": [3, 4],
             "model_runs": [[4, 5], [5, 6]],
         },
     ]

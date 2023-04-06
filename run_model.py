@@ -95,10 +95,9 @@ def _split_model_runs_out(agg_type: str, results: dict) -> None:
         if agg_type == "step_counts":
             if result["strategy"] == "-":
                 result.pop("strategy")
-            if result["change_factor"] != "baseline":
-                result.pop("baseline")
-            else:
-                result["baseline"] = result.pop("principal")
+            result.pop("baseline")
+            result["value"] = result.pop("principal")
+            if result["change_factor"] == "baseline":
                 result.pop("model_runs")
             continue
 
@@ -237,7 +236,12 @@ def run_single_model_run(
 
 def _run_model_argparser() -> argparse.Namespace:  # pragma: no cover
     parser = argparse.ArgumentParser()
-    parser.add_argument("params_file", help="Path to the params.json file")
+    parser.add_argument(
+        "params_file",
+        nargs="?",
+        default="queue/sample_params.json",
+        help="Path to the params.json file",
+    )
     parser.add_argument("-d", "--data-path", help="Path to the data", default="data")
     parser.add_argument(
         "-r", "--model-run", help="Which model iteration to run", default=0, type=int
