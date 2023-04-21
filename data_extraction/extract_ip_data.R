@@ -166,7 +166,7 @@ create_ip_data <- function(inpatients, specialties) {
 
   inpatients |>
     dplyr::arrange(.data$rn) |>
-    dplyr::select(-"epikey", -"hesid", -"lsoa11", -"sushrg") |>
+    dplyr::select(-"epikey", -"person_id", -"lsoa11", -"sushrg") |>
     dplyr::rename(age = "admiage") |>
     dplyr::mutate(
       dplyr::across(tidyselect::ends_with("date"), lubridate::ymd),
@@ -182,22 +182,24 @@ create_ip_data <- function(inpatients, specialties) {
         .data$admimeth %in% c("11", "12", "13") & .data$classpat == "1" ~ "ordelec",
         .data$admimeth %in% c("11", "12", "13") & .data$classpat == "2" ~ "daycase"
       ),
-      dplyr::across("age", pmin, 90L),
+      dplyr::across("age", ~ pmin(.x, 90L)),
       dplyr::across("tretspef", specialty_fn),
       dplyr::across("mainspef", fix_mainspef),
       dplyr::across(
         "imd04_decile",
-        forcats::fct_relevel,
-        "Most deprived 10%",
-        "More deprived 10-20%",
-        "More deprived 20-30%",
-        "More deprived 30-40%",
-        "More deprived 40-50%",
-        "Less deprived 40-50%",
-        "Less deprived 30-40%",
-        "Less deprived 20-30%",
-        "Less deprived 10-20%",
-        "Least deprived 10%"
+        ~ forcats::fct_relevel(
+          .x,
+          "Most deprived 10%",
+          "More deprived 10-20%",
+          "More deprived 20-30%",
+          "More deprived 30-40%",
+          "More deprived 40-50%",
+          "Less deprived 40-50%",
+          "Less deprived 30-40%",
+          "Less deprived 20-30%",
+          "Less deprived 10-20%",
+          "Least deprived 10%"
+        )
       ),
       dplyr::across(c("age", "sex"), as.integer),
       is_wla = .data$admimeth == "11",
@@ -261,7 +263,7 @@ union_bed_days_rows <- function(start_date) {
       "TRUE" = data |>
         dplyr::filter(.data$admidate < start_date) |>
         dplyr::mutate(
-          dplyr::across(dplyr::ends_with("date"), lubridate::`%m+%`, lubridate::years(1))
+          dplyr::across(dplyr::ends_with("date"), ~ lubridate::`%m+%`(.x, lubridate::years(1)))
         )
     ) |>
       dplyr::mutate(dplyr::across("bedday_rows", as.logical)) |>

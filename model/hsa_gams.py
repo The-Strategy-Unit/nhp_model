@@ -84,7 +84,7 @@ def create_gams(dataset: str, base_year: str) -> None:
 
     # create a helper function for paths
     def path_fn(filename):
-        return os.path.join("data", dataset, filename)
+        return os.path.join("data", base_year, dataset, filename)
 
     data = {}
     gams = {}

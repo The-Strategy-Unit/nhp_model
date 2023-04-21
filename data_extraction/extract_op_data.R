@@ -99,28 +99,30 @@ create_op_data <- function(outpatients, specialties = NULL) {
 
   outpatients |>
     dplyr::arrange(.data$rn) |>
-    dplyr::select(-"fyear", -"attendkey", -"encrypted_hesid", -"firstatt") |>
+    dplyr::select(-"fyear", -"attendkey", -"person_id", -"firstatt") |>
     dplyr::rename(age = "apptage") |>
     dplyr::mutate(
       dplyr::across(tidyselect::ends_with("date"), lubridate::ymd),
-      dplyr::across(tidyselect::ends_with("age"), pmin, 90),
+      dplyr::across(tidyselect::ends_with("age"), ~ pmin(.x, 90L)),
       dplyr::across(
         "imd04_decile",
-        forcats::fct_relevel,
-        "Most deprived 10%",
-        "More deprived 10-20%",
-        "More deprived 20-30%",
-        "More deprived 30-40%",
-        "More deprived 40-50%",
-        "Less deprived 40-50%",
-        "Less deprived 30-40%",
-        "Less deprived 20-30%",
-        "Less deprived 10-20%",
-        "Least deprived 10%"
+        forcats::fct_relevel(
+          .x,
+          "Most deprived 10%",
+          "More deprived 10-20%",
+          "More deprived 20-30%",
+          "More deprived 30-40%",
+          "More deprived 40-50%",
+          "Less deprived 40-50%",
+          "Less deprived 30-40%",
+          "Less deprived 20-30%",
+          "Less deprived 10-20%",
+          "Least deprived 10%"
+        )
       ),
       dplyr::across(c("age", "sex"), as.integer),
       dplyr::across("tretspef", specialty_fn),
-      dplyr::across("has_procedures", `*`, (1 - .data$is_tele_appointment)),
+      dplyr::across("has_procedures", ~ .x * (1 - .data$is_tele_appointment)),
       dplyr::across(tidyselect::matches("^(i|ha)s\\_"), as.logical)
     ) |>
     dplyr::filter(.data$sex %in% c(1, 2))
@@ -167,7 +169,7 @@ create_op_synth_from_data <- function(data) {
     # specialty
     dplyr::inner_join(hrg_by_tretspef) |>
     mutate(
-      dplyr::across("sushrg", purrr::map2_chr, .data$sushrg_n, sample, size = 1, replace = FALSE)
+      dplyr::across("sushrg", ~ purrr::map2_chr(.x, .data$sushrg_n, sample, size = 1, replace = FALSE))
     ) |>
     dplyr::ungroup() |>
     dplyr::select(-"sushrg_n", -"is_0_yo") |>

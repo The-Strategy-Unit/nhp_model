@@ -2,8 +2,13 @@
 `%m+%` <- lubridate::`%m+%` # nolint -- import function from luibridate
 where <- NULL # lint helper
 
-theatres_get_four_hour_sessions <- function(theatres_data_path, start_year = lubridate::ymd(20190401)) {
-  readr::read_csv(theatres_data_path, col_types = "ccDdddd") |>
+theatres_get_four_hour_sessions <- function(theatres_data_path, start_date = lubridate::ymd(20190401)) {
+  `%m+%` <- lubridate::`%m+%` # nolint -- import function from luibridate
+  readr::read_csv(theatres_data_path, col_types = "cccdddd") |>
+    dplyr::mutate(
+      # for some reason read_csv isn't able to parse the dates...
+      dplyr::across("reporting_date", lubridate::dmy)
+    ) |>
     dplyr::inner_join(
       tibble::tribble(
         ~sub_specialty, ~specialty_code,
@@ -20,8 +25,8 @@ theatres_get_four_hour_sessions <- function(theatres_data_path, start_year = lub
       by = "sub_specialty"
     ) |>
     dplyr::filter(
-      .data$reporting_date >= start_year,
-      .data$reporting_date < start_year %m+% lubridate::years(1)
+      .data$reporting_date >= start_date,
+      .data$reporting_date < start_date %m+% lubridate::years(1)
     ) |>
     dplyr::group_by(.data$org_code, .data$specialty_code) |>
     dplyr::summarise(

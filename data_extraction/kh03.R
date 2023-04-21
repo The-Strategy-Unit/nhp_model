@@ -66,14 +66,14 @@ kh03_get_file <- function(x) {
       by = "specialty_code"
     ) |>
     dplyr::mutate(
-      dplyr::across("specialty_group", tidyr::replace_na, "general_and_acute")
+      dplyr::across("specialty_group", ~ tidyr::replace_na(.x, "general_and_acute"))
     ) |>
     dplyr::arrange(.data$specialty_code)
 
   overall |>
     dplyr::rename(available_total = "available", occupied_total = "occupied") |>
     dplyr::filter(.data$available_total > 0 | .data$occupied_total > 0) |>
-    dplyr::inner_join(specialty_groups, by = "specialty_group") |>
+    dplyr::inner_join(specialty_groups, by = "specialty_group", relationship = "many-to-many") |>
     dplyr::inner_join(by_specialty, by = c("org_code", "specialty_code")) |>
     dplyr::filter(.data$occupied > 0) |>
     dplyr::group_nest(
@@ -96,8 +96,8 @@ kh03_combine <- function(kh03_overnight, kh03_dayonly) {
   kh03_overnight |>
     dplyr::left_join(kh03_dayonly, by = c("quarter", "org_code", "specialty_group")) |>
     dplyr::mutate(
-      dplyr::across("available_dayonly", tidyr::replace_na, 0),
-      dplyr::across("available_total", `+`, .data$available_dayonly)
+      dplyr::across("available_dayonly", ~ tidyr::replace_na(.x, 0)),
+      dplyr::across("available_total", ~ .x + .data$available_dayonly)
     ) |>
     dplyr::select(-"available_dayonly")
 }
@@ -105,17 +105,17 @@ kh03_combine <- function(kh03_overnight, kh03_dayonly) {
 # ------------------------------------------------------------------------------
 # processing required for NHP work
 # ------------------------------------------------------------------------------
-kh03_process <- function(kh03_all) {
+kh03_process <- function(kh03_all, year) {
+  fyear <- paste0(year, "-", year - 1999)
   kh03_all |>
-    # we are only interested, for now, in 2018/19
-    dplyr::filter(.data$quarter |> stringr::str_detect("2018-19")) |>
+    dplyr::filter(.data$quarter |> stringr::str_detect(fyear)) |>
     # use the overall occupancy rate to estimate available beds by specialty
     dplyr::mutate(rate = .data$occupied_total / .data$available_total) |>
     tidyr::unnest("by_specialty") |>
     dplyr::mutate(available = .data$occupied / .data$rate, .before = "occupied") |>
     # summarise rows to the year
     dplyr::group_by(
-      dplyr::across("quarter", purrr::compose(stringr::str_to_lower, stringr::str_extract), "Q\\d$"),
+      dplyr::across("quarter", ~ stringr::str_to_lower(stringr::str_extract(.x, "Q\\d$"))),
       .data$org_code,
       .data$specialty_group,
       .data$specialty_code

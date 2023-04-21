@@ -4,12 +4,12 @@ process_demographic_factors <- function(rds_path) {
   readRDS(rds_path) |>
     dplyr::mutate(
       dplyr::across("sex", ~ ifelse(.x == "males", 1, 2)),
-      dplyr::across("age", pmin, 90)
+      dplyr::across("age", ~ pmin(.x, 90))
     ) |>
     dtplyr::lazy_dt() |>
     dplyr::group_by(variant = .data$id, .data$sex, .data$age, .data$year, .data$procode) |>
     dplyr::summarise(
-      dplyr::across("pop", sum, na.rm = TRUE),
+      dplyr::across("pop", ~ sum(.x, na.rm = TRUE)),
       .groups = "drop"
     ) |>
     dplyr::as_tibble()
@@ -20,7 +20,7 @@ save_synthetic_demographic_factors <- function(demographic_factors, path = "data
     dplyr::select(-"procode") |>
     dplyr::group_by(dplyr::across(-"pop")) |>
     dplyr::summarise(
-      dplyr::across("pop", purrr::compose(as.integer, mean), na.rm = TRUE),
+      dplyr::across("pop", ~ as.integer(mean(.x, na.rm = TRUE))),
       .groups = "drop"
     ) |>
     tidyr::pivot_wider(names_from = "year", values_from = "pop") |>
@@ -54,6 +54,6 @@ create_gams <- function(org_codes, base_year = "2018") {
   reticulate::use_condaenv("nhp")
   hsa <- reticulate::import("model.hsa_gams")
 
-  hsa$run(trust, "2018") |> # returns filename
+  hsa$run(trust, base_year) |> # returns filename
     stringr::str_replace_all("\\\\", "/") # returns files with \, convert to /
 }

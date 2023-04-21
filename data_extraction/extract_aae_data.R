@@ -85,24 +85,26 @@ extract_aae_sample_data <- function(start_date, end_date, ...) {
 create_aae_data <- function(aae) {
   aae |>
     dplyr::arrange(.data$rn) |>
-    dplyr::select(-"aekey", -"hesid", -"sushrg") |>
+    dplyr::select(-"aekey", -"person_id", -"sushrg") |>
     dplyr::rename(age = "activage") |>
     dplyr::mutate(
       dplyr::across(tidyselect::ends_with("date"), lubridate::ymd),
-      dplyr::across("age", pmin, 90L),
+      dplyr::across("age", ~ pmin(.x, 90L)),
       dplyr::across(
         "imd04_decile",
-        forcats::fct_relevel,
-        "Most deprived 10%",
-        "More deprived 10-20%",
-        "More deprived 20-30%",
-        "More deprived 30-40%",
-        "More deprived 40-50%",
-        "Less deprived 40-50%",
-        "Less deprived 30-40%",
-        "Less deprived 20-30%",
-        "Less deprived 10-20%",
-        "Least deprived 10%"
+        ~ forcats::fct_relevel(
+          .x,
+          "Most deprived 10%",
+          "More deprived 10-20%",
+          "More deprived 20-30%",
+          "More deprived 30-40%",
+          "More deprived 40-50%",
+          "Less deprived 40-50%",
+          "Less deprived 30-40%",
+          "Less deprived 20-30%",
+          "Less deprived 10-20%",
+          "Least deprived 10%"
+        )
       ),
       dplyr::across(c("age", "sex"), as.integer),
       sitetret = "trust" # not currently available in our HES data
@@ -117,7 +119,10 @@ create_aae_synth_from_data <- function(data) {
         c("age", tidyselect::ends_with("date")),
         ~ .x + sample(-5:5, dplyr::n(), TRUE)
       ),
-      dplyr::across(c("imd04_decile", "ethnos"), ~ sample(.x, dplyr::n(), TRUE)),
+      dplyr::across(
+        c("imd04_decile", "ethnos"),
+        ~ sample(.x, dplyr::n(), TRUE)
+      ),
       # "fix" age field
       age = pmin(90L, pmax(0L, .data$age))
     )
