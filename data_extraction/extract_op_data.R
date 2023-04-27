@@ -103,10 +103,10 @@ create_op_data <- function(outpatients, specialties = NULL) {
     dplyr::rename(age = "apptage") |>
     dplyr::mutate(
       dplyr::across(tidyselect::ends_with("date"), lubridate::ymd),
-      dplyr::across(tidyselect::ends_with("age"), ~ pmin(.x, 90L)),
+      dplyr::across(tidyselect::ends_with("age"), \(.x) pmin(.x, 90L)),
       dplyr::across(
         "imd04_decile",
-        forcats::fct_relevel(
+        \(.x) forcats::fct_relevel(
           .x,
           "Most deprived 10%",
           "More deprived 10-20%",
@@ -122,7 +122,7 @@ create_op_data <- function(outpatients, specialties = NULL) {
       ),
       dplyr::across(c("age", "sex"), as.integer),
       dplyr::across("tretspef", specialty_fn),
-      dplyr::across("has_procedures", ~ .x * (1 - .data$is_tele_appointment)),
+      dplyr::across("has_procedures", \(.x) .x * (1 - .data$is_tele_appointment)),
       dplyr::across(tidyselect::matches("^(i|ha)s\\_"), as.logical)
     ) |>
     dplyr::filter(.data$sex %in% c(1, 2))
@@ -145,8 +145,8 @@ create_op_synth_from_data <- function(data) {
 
   data |>
     dplyr::mutate(
-      dplyr::across(c("age", "apptdate"), ~ .x + sample(-5:5, dplyr::n(), TRUE)),
-      dplyr::across(c("imd04_decile", "ethnos"), ~ sample(.x, dplyr::n(), TRUE)),
+      dplyr::across(c("age", "apptdate"), \(.x) .x + sample(-5:5, dplyr::n(), TRUE)),
+      dplyr::across(c("imd04_decile", "ethnos"), \(.x) sample(.x, dplyr::n(), TRUE)),
       age = dplyr::case_when(
         .data$age < 0L ~ 0L,
         .data$age > 90L ~ 90L,
@@ -169,7 +169,7 @@ create_op_synth_from_data <- function(data) {
     # specialty
     dplyr::inner_join(hrg_by_tretspef) |>
     mutate(
-      dplyr::across("sushrg", ~ purrr::map2_chr(.x, .data$sushrg_n, sample, size = 1, replace = FALSE))
+      dplyr::across("sushrg", \(.x) purrr::map2_chr(.x, .data$sushrg_n, sample, size = 1, replace = FALSE))
     ) |>
     dplyr::ungroup() |>
     dplyr::select(-"sushrg_n", -"is_0_yo") |>
