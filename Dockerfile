@@ -17,7 +17,10 @@ RUN mkdir -p data && \
   chmod a+w data && \
   mkdir -p queue && \
   chown $MAMBA_USER:$MAMBA_USER queue && \
-  chmod a+w data
+  chmod a+w queue \
+  mkdir -p results && \
+  chown $MAMBA_USER:$MAMBA_USER results && \
+  chmod a+w results
 USER $MAMBA_USER
 
 # copy the conda environment file across, and strip out the "dev" dependencies
