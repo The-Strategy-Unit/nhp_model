@@ -10,17 +10,13 @@ ENV DATA_VERSION=$data_version
 ENV STORAGE_ACCOUNT=$storage_account
 
 WORKDIR /opt
-# create data / queue folders, make sure the user has access to write into these folders
+# create data, queue, results folders, make sure the user has access to write into these folders
 USER root
-RUN mkdir -p data && \
-  chown $MAMBA_USER:$MAMBA_USER data && \
-  chmod a+w data && \
-  mkdir -p queue && \
-  chown $MAMBA_USER:$MAMBA_USER queue && \
-  chmod a+w queue \
-  mkdir -p results && \
-  chown $MAMBA_USER:$MAMBA_USER results && \
-  chmod a+w results
+RUN for DIR in data queue results; do \
+  mkdir -p $DIR && \
+  chown $MAMBA_USER:$MAMBA_USER $DIR && \
+  chmod a+w $DIR; \
+  done;
 USER $MAMBA_USER
 
 # copy the conda environment file across, and strip out the "dev" dependencies

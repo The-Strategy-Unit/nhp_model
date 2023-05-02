@@ -82,11 +82,11 @@ def test_create_gams(mocker):
 
     # assert
     read_csv_mock.assert_called_once_with(
-        os.path.join("data", "test", "demographic_factors.csv")
+        os.path.join("data", "2020", "test", "demographic_factors.csv")
     )
     assert data == "data"
-    assert gams == {}
-    assert path_fn("file") == os.path.join("data", "test", "file")
+    assert not gams
+    assert path_fn("file") == os.path.join("data", "2020", "test", "file")
 
     for i in catg_mock.call_args_list:
         assert i[0][0].equals(pop_expected)
@@ -102,7 +102,7 @@ def test_create_gams(mocker):
     catg_mock.call_args_list[2][0][5] == None
 
     gat_mock.assert_called_once_with(
-        os.path.join("data", "test", "hsa_activity_table.csv"), {}
+        os.path.join("data", "2020", "test", "hsa_activity_table.csv"), {}
     )
 
 
