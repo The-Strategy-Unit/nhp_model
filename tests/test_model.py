@@ -133,7 +133,11 @@ def mock_model_results():
 def test_model_init_sets_values(mocker, model_type):
     """test model constructor works as expected"""
     # arrange
-    params = {"dataset": "synthetic", "create_datetime": "20220101_012345"}
+    params = {
+        "dataset": "synthetic",
+        "start_year": "2020",
+        "create_datetime": "20220101_012345",
+    }
     mock_data = pd.DataFrame({"rn": [2, 1], "age": [2, 1]})
 
     mocker.patch("model.model.Model._load_parquet", return_value=mock_data)
@@ -144,15 +148,13 @@ def test_model_init_sets_values(mocker, model_type):
     mocker.patch("model.model.Model._get_data_mask", return_value="data_mask")
     mocker.patch("model.model.Model._get_data_counts", return_value="data_counts")
 
-    mocker.patch("os.path.join", lambda *args: "/".join(args))
-
     # act
     mdl = Model(model_type, params, "data", "hsa", "run_params")
 
     # assert
     assert mdl.model_type == model_type
     assert mdl.params == params
-    assert mdl._data_path == "data/synthetic"
+    assert mdl._data_path == "data/2020/synthetic"
     assert mdl.data.to_dict(orient="list") == {
         "rn": [1, 2],
         "age": [1, 2],
@@ -171,7 +173,11 @@ def test_model_init_sets_values(mocker, model_type):
 def test_model_init_calls_generate_run_params(mocker):
     """test model constructor works as expected"""
     # arrange
-    params = {"dataset": "synthetic", "create_datetime": "20220101_012345"}
+    params = {
+        "dataset": "synthetic",
+        "start_year": "2020",
+        "create_datetime": "20220101_012345",
+    }
     mock_data = pd.DataFrame({"rn": [2, 1], "age": [2, 1]})
 
     mocker.patch("model.model.Model._load_parquet", return_value=mock_data)
@@ -181,8 +187,6 @@ def test_model_init_calls_generate_run_params(mocker):
     mocker.patch("model.model.Model.generate_run_params", return_value="generated")
     mocker.patch("model.model.Model._get_data_mask", return_value="data_mask")
     mocker.patch("model.model.Model._get_data_counts", return_value="data_counts")
-
-    mocker.patch("os.path.join", lambda *args: "/".join(args))
 
     # act
     mdl = Model("aae", params, "data", "hsa")
@@ -201,15 +205,13 @@ def test_model_init_validates_model_type():
 def test_model_init_sets_create_datetime(mocker):
     """it sets the create_datetime item in params if not already set"""
     # arrange
-    params = {"dataset": "synthetic"}
+    params = {"dataset": "synthetic", "start_year": "2020"}
     mock_data = pd.DataFrame({"rn": [2, 1], "age": [2, 1]})
 
     mocker.patch("model.model.Model._load_parquet", return_value=mock_data)
     mocker.patch("model.model.age_groups", return_value="age_groups")
     mocker.patch("model.model.Model._load_demog_factors")
     mocker.patch("model.model.Model.generate_run_params")
-
-    mocker.patch("os.path.join", lambda *args: "/".join(args))
 
     # act
     mdl = Model("aae", params, "data", "run_params")

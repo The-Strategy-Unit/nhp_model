@@ -169,7 +169,8 @@ def run_all(params: dict, data_path: str) -> dict:
     run_params = Model.generate_run_params(params)
 
     hsa = HealthStatusAdjustmentInterpolated(
-        f"{data_path}/{params['dataset']}", params["life_expectancy"]
+        f"{data_path}/{params['start_year']}/{params['dataset']}",
+        params["life_expectancy"],
     )
 
     results = _combine_results(
@@ -200,7 +201,8 @@ def run_single_model_run(
     """
     run_params = Model.generate_run_params(params)
     hsa = HealthStatusAdjustmentInterpolated(
-        f"{data_path}/{params['dataset']}", params["life_expectancy"]
+        f"{data_path}/{params['start_year']}/{params['dataset']}",
+        params["life_expectancy"],
     )
 
     print("initialising model...  ", end="")

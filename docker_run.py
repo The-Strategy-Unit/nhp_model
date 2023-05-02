@@ -38,7 +38,7 @@ def load_params(filename: str) -> dict:
     return json.loads(params_content)
 
 
-def get_data(dataset: str) -> None:
+def get_data(dataset: str, year: str) -> None:
     """Get the data to run the model
 
     if the data exists locally in the folder `data/`, then this function does nothing.
@@ -54,11 +54,11 @@ def get_data(dataset: str) -> None:
     ).get_file_system_client("data")
 
     version = config.DATA_VERSION
-    directory_path = f"{version}/{dataset}"
+    directory_path = f"{version}/{year}/{dataset}"
 
     paths = [p.name for p in fs_client.get_paths(directory_path)]
 
-    os.makedirs(f"data/{dataset}", exist_ok=True)
+    os.makedirs(f"data/{year}/{dataset}", exist_ok=True)
 
     for filename in paths:
         logging.info(" * %s", filename)
@@ -106,7 +106,7 @@ def main():
     logging.info("running model for: %s", args.params_file)
 
     params = load_params(args.params_file)
-    get_data(params["dataset"])
+    get_data(params["dataset"], params["start_year"])
 
     results_file = run_all(params, "data")
 

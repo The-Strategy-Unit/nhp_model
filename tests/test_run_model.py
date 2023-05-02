@@ -359,6 +359,7 @@ def test_run_all(mocker):
     params = {
         "dataset": "synthetic",
         "scenario": "test",
+        "start_year": "2020",
         "create_datetime": "20230123_012345",
         "life_expectancy": "le",
     }
@@ -373,7 +374,7 @@ def test_run_all(mocker):
     assert actual == "synthetic/test-20230123_012345"
 
     grp_m.assert_called_once_with(params)
-    hsa_m.assert_called_once_with("data/synthetic", "le")
+    hsa_m.assert_called_once_with("data/2020/synthetic", "le")
 
     assert rm_m.call_args_list == [
         call(m, params, "data", "hsa", {"variant": "variants"})
@@ -480,14 +481,18 @@ def test_run_single_model_run(mocker, capsys):
             },
         ],
     )
-    params = {"dataset": "synthetic", "life_expectancy": "life_expectancy"}
+    params = {
+        "dataset": "synthetic",
+        "start_year": "2020",
+        "life_expectancy": "life_expectancy",
+    }
 
     # act
     run_single_model_run(params, "data", "model_type", 0)
 
     # assert
     grp_mock.assert_called_once_with(params)
-    hsa_mock.assert_called_once_with("data/synthetic", "life_expectancy")
+    hsa_mock.assert_called_once_with("data/2020/synthetic", "life_expectancy")
     assert timeit_mock.call_count == 3
     assert timeit_mock.call_args_list[0] == call(
         "model_type", params, "data", "hsa", "run_params"

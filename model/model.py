@@ -69,7 +69,7 @@ class Model:
         if not "create_datetime" in self.params:
             self.params["create_datetime"] = f"{datetime.now():%Y%m%d_%H%M%S}"
         # store the path where the data is stored and the results are stored
-        self._data_path = os.path.join(data_path, self.params["dataset"])
+        self._data_path = f"{data_path}/{params['start_year']}/{self.params['dataset']}"
         # load the data. we only need some of the columns for the model, so just load what we need
         self.data = self._load_parquet(self.model_type).sort_values("rn")
         self.data["age_group"] = age_groups(self.data["age"])

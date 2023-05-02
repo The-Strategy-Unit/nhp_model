@@ -70,20 +70,20 @@ def test_get_data_gets_data_from_blob(mocker):
 
     # act
     with patch("builtins.open", mock_open()) as mock_file:
-        get_data("synthetic")
+        get_data("synthetic", "2020")
 
     # assert
 
-    path_m.expect_called_once_with("data/synthetic")
+    path_m.expect_called_once_with("data/2020/synthetic")
     dlsc_m.assert_called_once_with(
         account_url="https://sa.dfs.core.windows.net", credential="cred"
     )
     dac_m.assert_called_once_with()
 
     mock.get_file_system_client.assert_called_once_with("data")
-    mock.get_paths.assert_called_once_with("dev/synthetic")
+    mock.get_paths.assert_called_once_with("dev/2020/synthetic")
 
-    mkdir_m.assert_called_once_with("data/synthetic", exist_ok=True)
+    mkdir_m.assert_called_once_with("data/2020/synthetic", exist_ok=True)
 
     assert mock.get_file_client.call_args_list == [call(str(i)) for i in files]
     assert mock.download_file.call_args_list == [call() for _ in files]
@@ -121,7 +121,7 @@ def test_main(mocker):
     mocker.patch("argparse.ArgumentParser", return_value=args)
     args.parse_args.return_value = args
 
-    params = {"dataset": "synthetic"}
+    params = {"dataset": "synthetic", "start_year": "2020"}
 
     lp_m = mocker.patch("docker_run.load_params", return_value=params)
     gd_m = mocker.patch("docker_run.get_data")
@@ -143,7 +143,7 @@ def test_main(mocker):
     args.parse_args.assert_called_once()
 
     lp_m.assert_called_once_with("params.json")
-    gd_m.assert_called_once_with("synthetic")
+    gd_m.assert_called_once_with("synthetic", "2020")
     ru_m.assert_called_once_with(params, "data")
 
     ur_m.assert_called_once_with("results.json")
