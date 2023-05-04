@@ -102,6 +102,46 @@
     "min_age": 55,
     "max_age": 90
   },
+  "covid_adjustment": {
+    "aae": {
+      "ambulance": [
+        1.0152,
+        1.0152
+      ],
+      "walk-in": [
+        1.0317,
+        1.0317
+      ]
+    },
+    "ip": {
+      "elective": [
+        1.0189,
+        1.0189
+      ],
+      "maternity": [
+        1.0103,
+        1.0103
+      ],
+      "non-elective": [
+        1.0085,
+        1.0085
+      ]
+    },
+    "op": {
+      "first": [
+        1.2557,
+        1.2557
+      ],
+      "followup": [
+        1.0566,
+        1.0566
+      ],
+      "procedure": [
+        1.0325,
+        1.0325
+      ]
+    }
+  },
   "expat": {
     "ip": {
       "elective": {

@@ -157,6 +157,29 @@ def test_health_status_adjustment(mocker, mock_activity_avoidance):
     u_mock.assert_called_once_with("hsa", ["hsagrp", "sex", "age"])
 
 
+def test_covid_adjustment(mocker, mock_activity_avoidance):
+    # arrange
+    aa_mock = mock_activity_avoidance
+    aa_mock._model_run.model.model_type = "ip"
+    aa_mock._model_run.run_params = {
+        "covid_adjustment": {"ip": {"elective": 1, "non-elective": 2}}
+    }
+
+    u_mock = mocker.patch(
+        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+    )
+
+    # act
+    actual = aa_mock.covid_adjustment()
+
+    # assert
+    assert actual == "update"
+    f, cols = u_mock.call_args_list[0][0]
+    assert f.to_dict() == {"elective": 1, "non-elective": 2}
+    assert f.name == "covid_adjustment"
+    assert cols == ["group"]
+
+
 def test_expat_adjustment_no_params(mocker, mock_activity_avoidance):
     # arrange
     aa_mock = mock_activity_avoidance

@@ -110,6 +110,12 @@ class ActivityAvoidance:
             ["hsagrp", "sex", "age"],
         )
 
+    def covid_adjustment(self):
+        """perform the covid adjustment"""
+        params = self.run_params["covid_adjustment"][self._activity_type]
+        factor = pd.Series(params, name="covid_adjustment")
+        return self._update(factor, ["group"])
+
     def expat_adjustment(self):
         """perform the expatriation adjustment"""
         if not (params := self.run_params["expat"][self._activity_type]):
