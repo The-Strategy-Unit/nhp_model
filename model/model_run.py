@@ -63,6 +63,7 @@ class ModelRun:
             ActivityAvoidance(self)
             .demographic_adjustment()
             .health_status_adjustment()
+            .covid_adjustment()
             .expat_adjustment()
             .repat_adjustment()
             .waiting_list_adjustment()

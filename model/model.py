@@ -190,6 +190,7 @@ class Model:
                 k: generate_param_values(params[k], v)
                 for k, v in [
                     ("health_status_adjustment", lambda x: x),
+                    ("covid_adjustment", lambda x: x),
                     ("expat", inrange_0_1),
                     ("repat_local", inrange_1_5),
                     ("repat_nonlocal", inrange_1_5),
@@ -236,6 +237,7 @@ class Model:
             **{
                 k: get_param_value(params[k])
                 for k in [
+                    "covid_adjustment",
                     "expat",
                     "repat_local",
                     "repat_nonlocal",
