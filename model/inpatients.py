@@ -176,13 +176,15 @@ class InpatientsModel(Model):
         :param model_run: an instance of the ModelRun class
         :type model_run: model.model_run.ModelRun
         """
-        (
-            InpatientEfficiencies(model_run)
-            .losr_all()
-            .losr_aec()
-            .losr_preop()
-            .losr_bads()
-        )
+        # skip if there are no efficiencies
+        if not model_run.model.strategies["efficiencies"].empty:
+            (
+                InpatientEfficiencies(model_run)
+                .losr_all()
+                .losr_aec()
+                .losr_preop()
+                .losr_bads()
+            )
 
     def _bedday_summary(self, data, year):
         """Summarise data to count how many beddays per quarter

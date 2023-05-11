@@ -118,7 +118,12 @@ class ActivityAvoidance:
 
     def expat_adjustment(self):
         """perform the expatriation adjustment"""
-        if not (params := self.run_params["expat"][self._activity_type]):
+        params = {
+            k: v
+            for k, v in self.run_params["expat"][self._activity_type].items()
+            if v  # remove empty values from the dictionary
+        }
+        if not params:
             return self
 
         factor = pd.concat({k: pd.Series(v, name="expat") for k, v in params.items()})
@@ -133,6 +138,7 @@ class ActivityAvoidance:
                 (0, "repat_nonlocal"),
             ]
             for k, v in self.run_params[repat_type][self._activity_type].items()
+            if v  # remove empty values from the dictionary
         }
         if not params:
             return self

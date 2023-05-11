@@ -270,15 +270,38 @@ def test_efficiencies(mocker, mock_model):
     mock.losr_preop.return_value = mock
     mock.losr_bads.return_value = mock
 
+    mock_model_run = Mock()
+    mock_model_run.empty = False
+    mock_model_run.model.strategies = {"efficiencies": mock_model_run}
+
     # act
-    mdl.efficiencies("model_run")
+    mdl.efficiencies(mock_model_run)
 
     # assert
-    mock.assert_called_once_with("model_run")
+    mock.assert_called_once_with(mock_model_run)
     mock.losr_all.assert_called_once()
     mock.losr_aec.assert_called_once()
     mock.losr_preop.assert_called_once()
     mock.losr_bads.assert_called_once()
+
+
+def test_efficiencies_no_params(mocker, mock_model):
+    """test that it runs the model steps"""
+
+    mdl = mock_model
+
+    mock = mocker.patch("model.inpatients.InpatientEfficiencies")
+    mock.return_value = mock
+
+    mock_model_run = Mock()
+    mock_model_run.empty = True
+    mock_model_run.model.strategies = {"efficiencies": mock_model_run}
+
+    # act
+    mdl.efficiencies(mock_model_run)
+
+    # assert
+    mock.assert_not_called()
 
 
 def test_bedday_summary(mock_model):
