@@ -74,4 +74,4 @@ coverage.xml
 docs/_build
 
 # ignore targets meta data
-_targets/
+_targets*/
