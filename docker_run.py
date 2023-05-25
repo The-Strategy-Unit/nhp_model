@@ -69,7 +69,7 @@ def get_data(dataset: str, year: str) -> None:
             local_file.write(file_client.download_file().readall())
 
 
-def _upload_results(results_file: str) -> None:
+def _upload_results(results_file: str, metadata: dict) -> None:
     """"""
     container = BlobServiceClient(
         account_url=f"https://{config.STORAGE_ACCOUNT}.blob.core.windows.net",
@@ -80,7 +80,9 @@ def _upload_results(results_file: str) -> None:
 
     with open(f"results/{results_file}.json", "rb") as file:
         container.upload_blob(
-            f"{app_version}/{results_file}.json.gz", gzip.compress(file.read())
+            f"{app_version}/{results_file}.json.gz",
+            gzip.compress(file.read()),
+            metadata=metadata
         )
 
 
@@ -113,7 +115,12 @@ def main():
 
     results_file = run_all(params, "data")
 
-    _upload_results(results_file)
+    metadata = {
+        k: str(v)
+        for k, v in params.items()
+        if not isinstance(v, dict) and not isinstance(v, list)
+    }
+    _upload_results(results_file, metadata)
 
     logging.info("complete")
 

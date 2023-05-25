@@ -100,7 +100,7 @@ def test_upload_results(mocker):
 
     # act
     with patch("builtins.open", mock_open(read_data="data")) as mock_file:
-        _upload_results("filename")
+        _upload_results("filename", "metadata")
 
     # assert
     mock_file.assert_called_once_with("results/filename.json", "rb")
@@ -109,7 +109,7 @@ def test_upload_results(mocker):
     )
     bsc_m().get_container_client.assert_called_once_with("results")
     bsc_m().get_container_client().upload_blob.assert_called_once_with(
-        "dev/filename.json.gz", "gzdata"
+        "dev/filename.json.gz", "gzdata", metadata="metadata"
     )
 
 
@@ -121,7 +121,10 @@ def test_main(mocker):
     mocker.patch("argparse.ArgumentParser", return_value=args)
     args.parse_args.return_value = args
 
-    params = {"dataset": "synthetic", "start_year": "2020"}
+    metadata = {"dataset": "synthetic", "start_year": "2020"}
+    params = metadata.copy()
+    params["list"] = [1,2]
+    params["dict"] = {"a": 1}
 
     lp_m = mocker.patch("docker_run.load_params", return_value=params)
     gd_m = mocker.patch("docker_run.get_data")
@@ -146,7 +149,7 @@ def test_main(mocker):
     gd_m.assert_called_once_with("synthetic", "2020")
     ru_m.assert_called_once_with(params, "data")
 
-    ur_m.assert_called_once_with("results.json")
+    ur_m.assert_called_once_with("results.json", metadata)
 
 
 def test_init(mocker):
