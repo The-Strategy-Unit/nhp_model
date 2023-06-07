@@ -39,7 +39,7 @@ def load_params(filename: str) -> dict:
     return json.loads(params_content)
 
 
-def get_data(dataset: str, year: str) -> None:
+def get_data(path: str) -> None:
     """Get the data to run the model
 
     if the data exists locally in the folder `data/`, then this function does nothing.
@@ -48,18 +48,18 @@ def get_data(dataset: str, year: str) -> None:
     :param dataset: the name of the dataset that we are loading
     :type dataset: str
     """
-    logging.info("downloading data")
+    logging.info("downloading data (%s)", path)
     fs_client = DataLakeServiceClient(
         account_url=f"https://{config.STORAGE_ACCOUNT}.dfs.core.windows.net",
         credential=DefaultAzureCredential(),
     ).get_file_system_client("data")
 
     version = config.DATA_VERSION
-    directory_path = f"{version}/{year}/{dataset}"
+    directory_path = f"{version}/{path}"
 
     paths = [p.name for p in fs_client.get_paths(directory_path)]
 
-    os.makedirs(f"data/{year}/{dataset}", exist_ok=True)
+    os.makedirs(f"data/{path}", exist_ok=True)
 
     for filename in paths:
         logging.info(" * %s", filename)
@@ -82,7 +82,7 @@ def _upload_results(results_file: str, metadata: dict) -> None:
         container.upload_blob(
             f"{app_version}/{results_file}.json.gz",
             gzip.compress(file.read()),
-            metadata=metadata
+            metadata=metadata,
         )
 
 
@@ -111,7 +111,8 @@ def main():
     logging.info("running model for: %s", args.params_file)
 
     params = load_params(args.params_file)
-    get_data(params["dataset"], params["start_year"])
+    get_data(f"{params['start_year']}/{params['dataset']}")
+    get_data("reference")
 
     results_file = run_all(params, "data")
 

@@ -70,7 +70,7 @@ def test_get_data_gets_data_from_blob(mocker):
 
     # act
     with patch("builtins.open", mock_open()) as mock_file:
-        get_data("synthetic", "2020")
+        get_data("2020/synthetic")
 
     # assert
 
@@ -123,7 +123,7 @@ def test_main(mocker):
 
     metadata = {"dataset": "synthetic", "start_year": "2020"}
     params = metadata.copy()
-    params["list"] = [1,2]
+    params["list"] = [1, 2]
     params["dict"] = {"a": 1}
 
     lp_m = mocker.patch("docker_run.load_params", return_value=params)
@@ -146,7 +146,7 @@ def test_main(mocker):
     args.parse_args.assert_called_once()
 
     lp_m.assert_called_once_with("params.json")
-    gd_m.assert_called_once_with("synthetic", "2020")
+    assert gd_m.call_args_list == [call("2020/synthetic"), call("reference")]
     ru_m.assert_called_once_with(params, "data")
 
     ur_m.assert_called_once_with("results.json", metadata)
