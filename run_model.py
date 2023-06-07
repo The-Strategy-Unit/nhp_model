@@ -26,7 +26,10 @@ import numpy as np
 import pandas as pd
 
 from model.aae import AaEModel
-from model.health_status_adjustment import HealthStatusAdjustmentInterpolated
+from model.health_status_adjustment import (
+    HealthStatusAdjustment,
+    HealthStatusAdjustmentInterpolated,
+)
 from model.helpers import load_params
 from model.inpatients import InpatientsModel
 from model.model import Model
@@ -168,9 +171,12 @@ def run_all(params: dict, data_path: str) -> dict:
     model_types = [InpatientsModel, OutpatientsModel, AaEModel]
     run_params = Model.generate_run_params(params)
 
+    # set the data path in the HealthStatusAdjustment class
+    HealthStatusAdjustment.data_path = data_path
     hsa = HealthStatusAdjustmentInterpolated(
         f"{data_path}/{params['start_year']}/{params['dataset']}",
-        params["life_expectancy"],
+        params["start_year"],
+        params["end_year"],
     )
 
     results = _combine_results(
@@ -200,9 +206,12 @@ def run_single_model_run(
     Runs a single model iteration for easier debugging in vscode
     """
     run_params = Model.generate_run_params(params)
+    # set the data path in the HealthStatusAdjustment class
+    HealthStatusAdjustment.data_path = data_path
     hsa = HealthStatusAdjustmentInterpolated(
         f"{data_path}/{params['start_year']}/{params['dataset']}",
-        params["life_expectancy"],
+        params["start_year"],
+        params["end_year"],
     )
 
     print("initialising model...  ", end="")

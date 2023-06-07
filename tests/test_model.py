@@ -82,33 +82,33 @@ def mock_run_params():
     return {
         "variant": ["a", "a", "b", "a"],
         "seeds": [1, 2, 3, 4],
-        "health_status_adjustment": [0.9, 1, 2, 3],
-        "covid_adjustment": [1.1, 4, 5, 6],
+        "health_status_adjustment": "hsa",
+        "covid_adjustment": [1.1, 1, 2, 3],
         "waiting_list_adjustment": "waiting_list_adjustment",
-        "expat": {"ip": {"elective": {"Other": [0.8, 7, 8, 9]}}},
-        "repat_local": {"ip": {"elective": {"Other": [1.1, 10, 11, 12]}}},
-        "repat_nonlocal": {"ip": {"elective": {"Other": [1.4, 13, 14, 15]}}},
-        "baseline_adjustment": {"ip": {"elective": {"Other": [1.6, 16, 17, 18]}}},
+        "expat": {"ip": {"elective": {"Other": [0.8, 4, 5, 6]}}},
+        "repat_local": {"ip": {"elective": {"Other": [1.1, 7, 8, 9]}}},
+        "repat_nonlocal": {"ip": {"elective": {"Other": [1.4, 10, 11, 12]}}},
+        "baseline_adjustment": {"ip": {"elective": {"Other": [1.6, 13, 14, 15]}}},
         "non-demographic_adjustment": {
-            "a": {"a_a": [1.1, 19, 20, 21], "a_b": [1.1, 22, 23, 24]},
-            "b": {"b_a": [1.1, 25, 26, 27], "b_b": [1.1, 28, 29, 30]},
+            "a": {"a_a": [1.1, 16, 17, 18], "a_b": [1.1, 19, 20, 21]},
+            "b": {"b_a": [1.1, 22, 23, 24], "b_b": [1.1, 25, 26, 27]},
         },
         "activity_avoidance": {
-            "ip": {"a_a": [0.5, 31, 32, 33], "a_b": [0.5, 34, 35, 36]},
-            "op": {"a_a": [0.5, 37, 38, 39], "a_b": [0.5, 40, 41, 42]},
-            "aae": {"a_a": [0.5, 43, 44, 45], "a_b": [0.5, 46, 47, 48]},
+            "ip": {"a_a": [0.5, 28, 29, 30], "a_b": [0.5, 31, 32, 33]},
+            "op": {"a_a": [0.5, 34, 35, 36], "a_b": [0.5, 37, 38, 39]},
+            "aae": {"a_a": [0.5, 40, 41, 42], "a_b": [0.5, 43, 44, 45]},
         },
         "efficiencies": {
-            "ip": {"b_a": [0.5, 49, 50, 51], "b_b": [0.5, 52, 53, 54]},
-            "op": {"b_a": [0.5, 55, 56, 57], "b_b": [0.5, 58, 59, 60]},
+            "ip": {"b_a": [0.5, 46, 47, 48], "b_b": [0.5, 49, 50, 51]},
+            "op": {"b_a": [0.5, 52, 53, 54], "b_b": [0.5, 55, 56, 57]},
         },
         "theatres": {
-            "change_utilisation": {"a": [1.02, 61, 62, 63], "b": [1.03, 64, 65, 66]},
-            "change_availability": [1.04, 67, 68, 69],
+            "change_utilisation": {"a": [1.02, 58, 59, 60], "b": [1.03, 61, 62, 63]},
+            "change_availability": [1.04, 64, 65, 66],
         },
         "bed_occupancy": {
-            "a": {"a": [0.5, 70, 71, 72], "b": [0.7, 0.7, 0.7, 0.7]},
-            "b": {"a": [0.5, 73, 74, 75], "b": [0.8, 0.8, 0.8, 0.8]},
+            "a": {"a": [0.5, 67, 68, 69], "b": [0.7, 0.7, 0.7, 0.7]},
+            "b": {"a": [0.5, 70, 71, 72], "b": [0.8, 0.8, 0.8, 0.8]},
         },
     }
 
@@ -297,6 +297,9 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
     rng.normal = Mock(wraps=get_next_n)
     mocker.patch("numpy.random.default_rng", return_value=rng)
 
+    hsa_m = mocker.patch("model.model.HealthStatusAdjustment.generate_params")
+    hsa_m.return_value = "hsa"
+
     mocker.patch("model.model.inrange", wraps=lambda x, low, high: x)
     # arrange
     mdl = mock_model
@@ -307,6 +310,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
     actual = mdl.generate_run_params(mdl.params)
 
     # assert
+    hsa_m.assert_called_once_with(2020, rng, 3)
     assert actual == mock_run_params
 
 
@@ -320,7 +324,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
             0,
             {
                 "variant": "a",
-                "health_status_adjustment": 0.9,
+                "health_status_adjustment": "h",
                 "seed": 1,
                 "covid_adjustment": 1.1,
                 "non-demographic_adjustment": {
@@ -356,32 +360,32 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
             {
                 "variant": "b",
                 "seed": 3,
-                "health_status_adjustment": 2,
-                "covid_adjustment": 5,
+                "health_status_adjustment": "a",
+                "covid_adjustment": 2,
                 "non-demographic_adjustment": {
-                    "a": {"a_a": 20, "a_b": 23},
-                    "b": {"b_a": 26, "b_b": 29},
+                    "a": {"a_a": 17, "a_b": 20},
+                    "b": {"b_a": 23, "b_b": 26},
                 },
-                "expat": {"ip": {"elective": {"Other": 8}}},
-                "repat_local": {"ip": {"elective": {"Other": 11}}},
-                "repat_nonlocal": {"ip": {"elective": {"Other": 14}}},
-                "baseline_adjustment": {"ip": {"elective": {"Other": 17}}},
+                "expat": {"ip": {"elective": {"Other": 5}}},
+                "repat_local": {"ip": {"elective": {"Other": 8}}},
+                "repat_nonlocal": {"ip": {"elective": {"Other": 11}}},
+                "baseline_adjustment": {"ip": {"elective": {"Other": 14}}},
                 "activity_avoidance": {
-                    "ip": {"a_a": 32, "a_b": 35},
-                    "op": {"a_a": 38, "a_b": 41},
-                    "aae": {"a_a": 44, "a_b": 47},
+                    "ip": {"a_a": 29, "a_b": 32},
+                    "op": {"a_a": 35, "a_b": 38},
+                    "aae": {"a_a": 41, "a_b": 44},
                 },
                 "efficiencies": {
-                    "ip": {"b_a": 50, "b_b": 53},
-                    "op": {"b_a": 56, "b_b": 59},
+                    "ip": {"b_a": 47, "b_b": 50},
+                    "op": {"b_a": 53, "b_b": 56},
                 },
                 "theatres": {
-                    "change_utilisation": {"a": 62, "b": 65},
-                    "change_availability": 68,
+                    "change_utilisation": {"a": 59, "b": 62},
+                    "change_availability": 65,
                 },
                 "bed_occupancy": {
-                    "a": {"a": 71, "b": 0.7},
-                    "b": {"a": 74, "b": 0.8},
+                    "a": {"a": 68, "b": 0.7},
+                    "b": {"a": 71, "b": 0.8},
                 },
                 "waiting_list_adjustment": "waiting_list_adjustment",
             },

@@ -17,6 +17,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from model.health_status_adjustment import HealthStatusAdjustment
 from model.helpers import age_groups, inrange, rnorm
 from model.model_run import ModelRun
 
@@ -183,13 +184,18 @@ class Model:
             + rng.choice(variants, model_runs - 1, p=probabilities).tolist(),
             "seeds": rng.integers(0, 65535, model_runs).tolist(),
             "waiting_list_adjustment": params["waiting_list_adjustment"],
+            "health_status_adjustment": HealthStatusAdjustment.generate_params(
+                params["end_year"],
+                rng,
+                # the principal value for HSA is the mode, so we need one less run
+                model_runs - 1,
+            ),
             # generate param values for the different items in params: this will traverse the dicts
             # until a value is reached that isn't a dict. Then it will generate the required amount
             # of values for that parameter
             **{
                 k: generate_param_values(params[k], v)
                 for k, v in [
-                    ("health_status_adjustment", lambda x: x),
                     ("covid_adjustment", lambda x: x),
                     ("expat", inrange_0_1),
                     ("repat_local", inrange_1_5),
