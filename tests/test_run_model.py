@@ -6,6 +6,7 @@ from unittest.mock import Mock, call, mock_open, patch
 import pytest
 
 from model.aae import AaEModel
+from model.health_status_adjustment import HealthStatusAdjustment
 from model.inpatients import InpatientsModel
 from model.outpatients import OutpatientsModel
 from run_model import (
@@ -359,25 +360,26 @@ def test_run_all(mocker):
     params = {
         "dataset": "synthetic",
         "scenario": "test",
-        "start_year": "2020",
+        "start_year": 2020,
+        "end_year": 2025,
         "create_datetime": "20230123_012345",
-        "life_expectancy": "le",
     }
 
     jd_m = mocker.patch("json.dump")
 
     # act
     with patch("builtins.open", mock_open()) as mock_file:
-        actual = run_all(params, "data")
+        actual = run_all(params, "data_path")
 
     # assert
     assert actual == "synthetic/test-20230123_012345"
 
     grp_m.assert_called_once_with(params)
-    hsa_m.assert_called_once_with("data/2020/synthetic", "le")
+    hsa_m.assert_called_once_with("data_path/2020/synthetic", 2020, 2025)
+    assert HealthStatusAdjustment.data_path == "data_path"
 
     assert rm_m.call_args_list == [
-        call(m, params, "data", "hsa", {"variant": "variants"})
+        call(m, params, "data_path", "hsa", {"variant": "variants"})
         for m in [InpatientsModel, OutpatientsModel, AaEModel]
     ]
 
@@ -481,21 +483,19 @@ def test_run_single_model_run(mocker, capsys):
             },
         ],
     )
-    params = {
-        "dataset": "synthetic",
-        "start_year": "2020",
-        "life_expectancy": "life_expectancy",
-    }
+    params = {"dataset": "synthetic", "start_year": 2020, "end_year": 2025}
 
     # act
-    run_single_model_run(params, "data", "model_type", 0)
+    run_single_model_run(params, "data_path", "model_type", 0)
 
     # assert
     grp_mock.assert_called_once_with(params)
-    hsa_mock.assert_called_once_with("data/2020/synthetic", "life_expectancy")
+    hsa_mock.assert_called_once_with("data_path/2020/synthetic", 2020, 2025)
+    assert HealthStatusAdjustment.data_path == "data_path"
+
     assert timeit_mock.call_count == 3
     assert timeit_mock.call_args_list[0] == call(
-        "model_type", params, "data", "hsa", "run_params"
+        "model_type", params, "data_path", "hsa", "run_params"
     )
     assert timeit_mock.call_args_list[2] == call(mr_mock.get_aggregate_results)
 

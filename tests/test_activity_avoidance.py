@@ -153,7 +153,7 @@ def test_health_status_adjustment(mocker, mock_activity_avoidance):
 
     # assert
     assert actual == "update"
-    aa_mock.hsa.run.assert_called_once_with(2)
+    aa_mock.hsa.run.assert_called_once_with({"health_status_adjustment": 2})
     u_mock.assert_called_once_with("hsa", ["hsagrp", "sex", "age"])
 
 
