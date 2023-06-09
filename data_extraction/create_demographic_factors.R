@@ -1,6 +1,29 @@
 .data <- NULL # lint helper
 
 process_demographic_factors <- function(rds_path) {
+  variant_lookup <- list(
+    "principal_proj" = "principal_proj",
+    "var_proj_10_year_migration" = "var_proj_10_year_migration",
+    "var_proj_alt_internal_migration" = "var_proj_alt_internal_migration",
+    "var_proj_high_intl_migration" = "var_proj_high_intl_migration",
+    "var_proj_low_intl_migration" = "var_proj_low_intl_migration",
+    "Constant fertility, no mortality improvement" = "const_fertility_no_mortality_improvement",
+    "Constant fertility" = "const_fertility",
+    "High population" = "high_population",
+    "Young age structure" = "young_age_structure",
+    "High fertility" = "high_fertility",
+    "Old age structure" = "old_age_structure",
+    "Low population" = "low_population",
+    "Low fertility" = "low_fertility",
+    "High life expectancy" = "high_life_expectancy",
+    "Low life expectancy" = "low_life_expectancy",
+    "No mortality improvement" = "no_mortality_improvement",
+    "0% Future EU migration (Not National Statistics)" = "zero_eu_migration",
+    "50% Future EU migration (Not National Statistics)" = "half_eu_migration",
+    "Zero net migration (natural change only)" = "zero_net_migration",
+    "Replacement fertility" = "replacement_fertility"
+  )
+
   readRDS(rds_path) |>
     dplyr::mutate(
       dplyr::across("sex", ~ ifelse(.x == "males", 1, 2)),
@@ -12,6 +35,7 @@ process_demographic_factors <- function(rds_path) {
       dplyr::across("pop", ~ sum(.x, na.rm = TRUE)),
       .groups = "drop"
     ) |>
+    dplyr::mutate(dplyr::across("variant", ~ as.character(variant_lookup[.]))) |>
     dplyr::as_tibble()
 }
 
