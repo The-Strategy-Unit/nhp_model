@@ -187,8 +187,7 @@ class Model:
             "health_status_adjustment": HealthStatusAdjustment.generate_params(
                 params["end_year"],
                 rng,
-                # the principal value for HSA is the mode, so we need one less run
-                model_runs - 1,
+                model_runs,
             ),
             # generate param values for the different items in params: this will traverse the dicts
             # until a value is reached that isn't a dict. Then it will generate the required amount
