@@ -1,14 +1,5 @@
 FROM mambaorg/micromamba:1.3.1-alpine
 
-# define build arguments, these will set the environment variables in the container
-ARG app_version
-ARG data_version
-ARG storage_account
-
-ENV APP_VERSION=$app_version
-ENV DATA_VERSION=$data_version
-ENV STORAGE_ACCOUNT=$storage_account
-
 WORKDIR /opt
 # create data, queue, results folders, make sure the user has access to write into these folders
 USER root
@@ -32,6 +23,15 @@ COPY model /opt/model
 COPY run_model.py /opt
 COPY docker_run.py /opt
 COPY config.py /opt
+
+# define build arguments, these will set the environment variables in the container
+ARG app_version
+ARG data_version
+ARG storage_account
+
+ENV APP_VERSION=$app_version
+ENV DATA_VERSION=$data_version
+ENV STORAGE_ACCOUNT=$storage_account
 
 # set the entry point of the container to be our script
 ENTRYPOINT [ "./docker_run.py" ]
