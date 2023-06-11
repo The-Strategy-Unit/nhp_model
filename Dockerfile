@@ -22,6 +22,7 @@ RUN awk 'NR==1,/# dev dependencies/' /tmp/environment.yml | \
 COPY model /opt/model
 COPY run_model.py /opt
 COPY docker_run.py /opt
+COPY docker_test.py /opt
 COPY config.py /opt
 
 # define build arguments, these will set the environment variables in the container
