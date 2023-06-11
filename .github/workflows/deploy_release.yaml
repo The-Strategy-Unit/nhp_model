@@ -12,6 +12,5 @@ jobs:
     with:
       app-version: ${{github.ref_name}} 
       data-version: ${{vars.data_version}}
-      cosmos-db: production
       latest: true
     secrets: inherit

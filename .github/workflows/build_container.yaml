@@ -7,9 +7,6 @@ on:
       data-version:
         required: true
         type: string  
-      cosmos-db:
-        required: true
-        type: string
       latest:
         required: false
         default: false
@@ -22,10 +19,6 @@ on:
       REGISTRY_PASSWORD:
         required: true
       NHP_STORAGE_ACCOUNT:
-        required: true
-      NHP_KEYVAULT_ENDPOINT:
-        required: true
-      NHP_COSMOS_ENDPOINT:
         required: true
 
 jobs:
@@ -52,10 +45,7 @@ jobs:
           docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.app-version }} \
             --build-arg app_version=${{ inputs.app-version }} \
             --build-arg data_version=${{ inputs.data-version }} \
-            --build-arg storage_account=${{ secrets.NHP_STORAGE_ACCOUNT }} \
-            --build-arg keyvault_endpoint=${{ secrets.NHP_KEYVAULT_ENDPOINT }} \
-            --build-arg cosmos_endpoint=${{ secrets.NHP_COSMOS_ENDPOINT }} \
-            --build-arg cosmos_db=${{ inputs.cosmos-db }}
+            --build-arg storage_account=${{ secrets.NHP_STORAGE_ACCOUNT }}
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.app-version }}
           
       - name: 'Push latest'
