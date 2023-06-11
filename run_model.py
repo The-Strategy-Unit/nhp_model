@@ -24,6 +24,7 @@ from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
+from tqdm.auto import tqdm as base_tqdm
 
 from model.aae import AaEModel
 from model.health_status_adjustment import (
@@ -119,7 +120,12 @@ def _split_model_runs_out(agg_type: str, results: dict) -> None:
 
 
 def _run_model(
-    model_type: Model, params: dict, path: str, hsa: Any, run_params: dict
+    model_type: Model,
+    params: dict,
+    path: str,
+    hsa: Any,
+    run_params: dict,
+    progress_callback,
 ) -> dict:
     """Run the model iterations
 
@@ -147,16 +153,31 @@ def _run_model(
     model_runs = list(range(-1, params["model_runs"] + 1))
 
     cpus = os.cpu_count()
-    batch_size = 16
+    batch_size = int(os.getenv("BATCH_SIZE", "16"))
+
+    class tqdm(base_tqdm):
+        def update(self, n=1):
+            super().update(n)
+            progress_callback(self.n)
 
     with Pool(cpus) as pool:
-        results = list(pool.imap(model.go, model_runs, chunksize=batch_size))
+        results = list(
+            tqdm(
+                pool.imap(
+                    model.go,
+                    model_runs,
+                    chunksize=batch_size,
+                ),
+                f"Running {model.__class__.__name__[:-5].rjust(11)} model",  # pylint: disable=protected-access
+                total=len(model_runs),
+            )
+        )
     logging.info(" * finished")
 
     return results
 
 
-def run_all(params: dict, data_path: str) -> dict:
+def run_all(params: dict, data_path: str, progress_callback) -> dict:
     """Run the model
 
     runs all 3 model types, aggregates and combines the results
@@ -179,8 +200,20 @@ def run_all(params: dict, data_path: str) -> dict:
         params["end_year"],
     )
 
+    pcallback = progress_callback(params["id"])
+
     results = _combine_results(
-        [_run_model(m, params, data_path, hsa, run_params) for m in model_types]
+        [
+            _run_model(
+                m,
+                params,
+                data_path,
+                hsa,
+                run_params,
+                lambda n: pcallback(m.__name__[:-5], n),
+            )
+            for m in model_types
+        ]
     )
 
     filename = f"{params['dataset']}/{params['scenario']}-{params['create_datetime']}"

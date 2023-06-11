@@ -16,6 +16,38 @@ import config
 from run_model import run_all
 
 
+def _get_container(container_name):
+    return BlobServiceClient(
+        account_url=f"https://{config.STORAGE_ACCOUNT}.blob.core.windows.net",
+        credential=DefaultAzureCredential(),
+    ).get_container_client(container_name)
+
+
+def progress_callback(model_id):
+    """Progress callback method
+
+    updates a queue message with the status of the current model runs
+    """
+    filename = f"{model_id}.json"
+
+    blob = _get_container("queue").get_blob_client(filename)
+
+    current_progress = {
+        **blob.get_blob_properties()["metadata"],
+        "Inpatients": 0,
+        "Outpatients": 0,
+        "AaE": 0,
+    }
+
+    blob.set_blob_metadata({k: str(v) for k, v in current_progress.items()})
+
+    def callback(model_type, n_completed):
+        current_progress[model_type] = n_completed
+        blob.set_blob_metadata({k: str(v) for k, v in current_progress.items()})
+
+    return callback
+
+
 def load_params(filename: str) -> dict:
     """Load model parameters
 
@@ -29,12 +61,7 @@ def load_params(filename: str) -> dict:
     """
     logging.info("downloading params: %s", filename)
 
-    container = BlobServiceClient(
-        account_url=f"https://{config.STORAGE_ACCOUNT}.blob.core.windows.net",
-        credential=DefaultAzureCredential(),
-    ).get_container_client("queue")
-
-    params_content = container.download_blob(filename).readall()
+    params_content = _get_container("queue").download_blob(filename).readall()
 
     return json.loads(params_content)
 
@@ -71,10 +98,7 @@ def get_data(path: str) -> None:
 
 def _upload_results(results_file: str, metadata: dict) -> None:
     """"""
-    container = BlobServiceClient(
-        account_url=f"https://{config.STORAGE_ACCOUNT}.blob.core.windows.net",
-        credential=DefaultAzureCredential(),
-    ).get_container_client("results")
+    container = _get_container("results")
 
     app_version = re.sub("(\\d+\\.\\d+)\\..*", "\\1", config.APP_VERSION)
 
@@ -84,6 +108,19 @@ def _upload_results(results_file: str, metadata: dict) -> None:
             gzip.compress(file.read()),
             metadata=metadata,
         )
+
+
+def _cleanup(model_id: int):
+    """Cleanup
+
+    :param filename: the name of the parameter file to load
+    :type filename: str
+    :return: the parameters to use for a model run
+    :rtype: dict
+    """
+    logging.info("cleaning up queue")
+
+    _get_container("queue").delete_blob(f"{model_id}.json")
 
 
 def main():
@@ -114,7 +151,7 @@ def main():
     get_data(f"{params['start_year']}/{params['dataset']}")
     get_data("reference")
 
-    results_file = run_all(params, "data")
+    results_file = run_all(params, "data", progress_callback)
 
     metadata = {
         k: str(v)
@@ -122,6 +159,7 @@ def main():
         if not isinstance(v, dict) and not isinstance(v, list)
     }
     _upload_results(results_file, metadata)
+    _cleanup(params["id"])
 
     logging.info("complete")
 
