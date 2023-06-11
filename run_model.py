@@ -38,6 +38,20 @@ from model.model_run import ModelRun
 from model.outpatients import OutpatientsModel
 
 
+class tqdm(base_tqdm):  # pylint: disable=inconsistent-mro, invalid-name
+    """Custom tqdm class that provides a callback function on update"""
+
+    # ideally this would be set in the contstructor, but as this is a pretty
+    # simple use case just implemented as a static variable. this does mean that
+    # you need to update the value before using the class (each time)
+    progress_callback = lambda x: None  # pylint: disable=unnecessary-lambda-assignment
+
+    def update(self, n=1):
+        """overide the default tqdm update function to run the callback method"""
+        super().update(n)
+        tqdm.progress_callback(self.n)
+
+
 def timeit(func: Callable, *args) -> Any:
     """
     Time how long it takes to evaluate function `f` with arguments `*args`.
@@ -150,15 +164,13 @@ def _run_model(
     model = model_type(params, path, hsa, run_params)
     logging.info(" * running")
 
+    # set the progress callback for this run
+    tqdm.progress_callback = progress_callback
+
     model_runs = list(range(-1, params["model_runs"] + 1))
 
     cpus = os.cpu_count()
     batch_size = int(os.getenv("BATCH_SIZE", "16"))
-
-    class tqdm(base_tqdm):
-        def update(self, n=1):
-            super().update(n)
-            progress_callback(self.n)
 
     with Pool(cpus) as pool:
         results = list(
