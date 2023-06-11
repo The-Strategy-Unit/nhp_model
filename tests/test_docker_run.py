@@ -6,7 +6,7 @@ from unittest.mock import Mock, call, mock_open, patch
 import pytest
 
 import config
-from docker_run import _upload_results, get_data, load_params, main
+from docker_run import _upload_results, get_data, load_params, main, progress_callback
 
 config.STORAGE_ACCOUNT = "sa"
 config.APP_VERSION = "dev"
@@ -121,7 +121,7 @@ def test_main(mocker):
     mocker.patch("argparse.ArgumentParser", return_value=args)
     args.parse_args.return_value = args
 
-    metadata = {"dataset": "synthetic", "start_year": "2020"}
+    metadata = {"id": "1", "dataset": "synthetic", "start_year": "2020"}
     params = metadata.copy()
     params["list"] = [1, 2]
     params["dict"] = {"a": 1}
@@ -130,6 +130,7 @@ def test_main(mocker):
     gd_m = mocker.patch("docker_run.get_data")
     ru_m = mocker.patch("docker_run.run_all", return_value="results.json")
     ur_m = mocker.patch("docker_run._upload_results")
+    cu_m = mocker.patch("docker_run._cleanup")
 
     # act
     main()
@@ -147,9 +148,10 @@ def test_main(mocker):
 
     lp_m.assert_called_once_with("params.json")
     assert gd_m.call_args_list == [call("2020/synthetic"), call("reference")]
-    ru_m.assert_called_once_with(params, "data")
+    ru_m.assert_called_once_with(params, "data", progress_callback)
 
     ur_m.assert_called_once_with("results.json", metadata)
+    cu_m.assert_called_once_with("1")
 
 
 def test_init(mocker):

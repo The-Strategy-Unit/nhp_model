@@ -23,9 +23,12 @@ def progress_callback(model_id):
 
     save_file()
 
-    def callback(model_type, n_completed):
-        current_progress[model_type] = n_completed
-        save_file()
+    def callback(model_type):
+        def update(n_completed):
+            current_progress[model_type] = n_completed
+            save_file()
+
+        return update
 
     return callback
 

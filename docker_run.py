@@ -41,9 +41,12 @@ def progress_callback(model_id):
 
     blob.set_blob_metadata({k: str(v) for k, v in current_progress.items()})
 
-    def callback(model_type, n_completed):
-        current_progress[model_type] = n_completed
-        blob.set_blob_metadata({k: str(v) for k, v in current_progress.items()})
+    def callback(model_type):
+        def update(n_completed):
+            current_progress[model_type] = n_completed
+            blob.set_blob_metadata({k: str(v) for k, v in current_progress.items()})
+
+        return update
 
     return callback
 

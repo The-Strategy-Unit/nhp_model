@@ -210,7 +210,7 @@ def run_all(params: dict, data_path: str, progress_callback) -> dict:
                 data_path,
                 hsa,
                 run_params,
-                lambda n: pcallback(m.__name__[:-5], n),
+                pcallback(m.__name__[:-5]),
             )
             for m in model_types
         ]
