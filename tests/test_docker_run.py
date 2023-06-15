@@ -3,14 +3,79 @@
 
 from unittest.mock import Mock, call, mock_open, patch
 
-import pytest
-
 import config
-from docker_run import _upload_results, get_data, load_params, main
+from docker_run import (
+    _cleanup,
+    _get_container,
+    _upload_results,
+    get_data,
+    load_params,
+    main,
+    progress_callback,
+)
 
 config.STORAGE_ACCOUNT = "sa"
 config.APP_VERSION = "dev"
 config.DATA_VERSION = "dev"
+
+
+def test_get_container(mocker):
+    # arrange
+    mock = Mock()
+    mock.get_container_client.return_value = "container_client"
+
+    bsc_m = mocker.patch("docker_run.BlobServiceClient", return_value=mock)
+
+    dac_m = mocker.patch("docker_run.DefaultAzureCredential", return_value="cred")
+
+    # act
+    actual = _get_container("container")
+
+    # assert
+    assert actual == "container_client"
+    bsc_m.assert_called_once_with(
+        account_url="https://sa.blob.core.windows.net", credential="cred"
+    )
+    dac_m.assert_called_once_with()
+
+
+def test_progress_callback(mocker):
+    # arrange
+    m = mocker.patch("docker_run._get_container")
+    m().get_blob_client().get_blob_properties.return_value = {"metadata": {"id": 1}}
+    m.reset_mock()
+
+    # (1) the initial set up
+    # act (1)
+    p = progress_callback(1)
+
+    # assert (1)
+    m.assert_called_once_with("queue")
+    m().get_blob_client.assert_called_once_with("1.json")
+    sbm = m().get_blob_client().set_blob_metadata
+
+    sbm.assert_called_once_with(
+        {
+            "id": "1",
+            "Inpatients": "0",
+            "Outpatients": "0",
+            "AaE": "0",
+        }
+    )
+
+    # (2) calling the callback
+    # act (2)
+    p("Inpatients")(5)
+
+    # assert (2)
+    sbm.assert_called_with(
+        {
+            "id": "1",
+            "Inpatients": "5",
+            "Outpatients": "0",
+            "AaE": "0",
+        }
+    )
 
 
 def test_load_params_from_blob_storage(mocker):
@@ -19,14 +84,9 @@ def test_load_params_from_blob_storage(mocker):
 
     path_m = mocker.patch("os.path.exists", return_value=False)
 
-    mock = Mock()
-    mock.get_container_client.return_value = mock
-    mock.download_blob.return_value = mock
-    mock.readall.return_value = '{"dataset": "synthetic"}'.encode()
-
-    bsc_m = mocker.patch("docker_run.BlobServiceClient", return_value=mock)
-
-    dac_m = mocker.patch("docker_run.DefaultAzureCredential", return_value="cred")
+    m = mocker.patch("docker_run._get_container")
+    m().download_blob().readall.return_value = """{"dataset": "synthetic"}"""
+    m.reset_mock()
 
     # act
     actual = load_params("filename")
@@ -35,14 +95,10 @@ def test_load_params_from_blob_storage(mocker):
     assert actual == expected
 
     path_m.expect_called_once_with("queue/filename")
-    bsc_m.assert_called_once_with(
-        account_url="https://sa.blob.core.windows.net", credential="cred"
-    )
-    dac_m.assert_called_once_with()
 
-    mock.get_container_client.assert_called_once_with("queue")
-    mock.download_blob.assert_called_once_with("filename")
-    mock.readall.assert_called_once()
+    m.assert_called_once_with("queue")
+    m().download_blob.assert_called_once_with("filename")
+    m().download_blob().readall.assert_called_once()
 
 
 def test_get_data_gets_data_from_blob(mocker):
@@ -94,8 +150,7 @@ def test_get_data_gets_data_from_blob(mocker):
 
 def test_upload_results(mocker):
     # arrange
-    bsc_m = mocker.patch("docker_run.BlobServiceClient")
-    mocker.patch("docker_run.DefaultAzureCredential", return_value="cred")
+    m = mocker.patch("docker_run._get_container")
     mocker.patch("gzip.compress", return_value="gzdata")
 
     # act
@@ -104,13 +159,22 @@ def test_upload_results(mocker):
 
     # assert
     mock_file.assert_called_once_with("results/filename.json", "rb")
-    bsc_m.assert_called_once_with(
-        account_url="https://sa.blob.core.windows.net", credential="cred"
-    )
-    bsc_m().get_container_client.assert_called_once_with("results")
-    bsc_m().get_container_client().upload_blob.assert_called_once_with(
+    m.assert_called_once_with("results")
+    m().upload_blob.assert_called_once_with(
         "dev/filename.json.gz", "gzdata", metadata="metadata"
     )
+
+
+def test_cleanup(mocker):
+    # arrange
+    m = mocker.patch("docker_run._get_container")
+
+    # act
+    _cleanup(1)
+
+    # assert
+    m.assert_called_once_with("queue")
+    m().delete_blob.assert_called_once_with("1.json")
 
 
 def test_main(mocker):
@@ -121,7 +185,7 @@ def test_main(mocker):
     mocker.patch("argparse.ArgumentParser", return_value=args)
     args.parse_args.return_value = args
 
-    metadata = {"dataset": "synthetic", "start_year": "2020"}
+    metadata = {"id": "1", "dataset": "synthetic", "start_year": "2020"}
     params = metadata.copy()
     params["list"] = [1, 2]
     params["dict"] = {"a": 1}
@@ -130,6 +194,7 @@ def test_main(mocker):
     gd_m = mocker.patch("docker_run.get_data")
     ru_m = mocker.patch("docker_run.run_all", return_value="results.json")
     ur_m = mocker.patch("docker_run._upload_results")
+    cu_m = mocker.patch("docker_run._cleanup")
 
     # act
     main()
@@ -147,9 +212,10 @@ def test_main(mocker):
 
     lp_m.assert_called_once_with("params.json")
     assert gd_m.call_args_list == [call("2020/synthetic"), call("reference")]
-    ru_m.assert_called_once_with(params, "data")
+    ru_m.assert_called_once_with(params, "data", progress_callback)
 
     ur_m.assert_called_once_with("results.json", metadata)
+    cu_m.assert_called_once_with("1")
 
 
 def test_init(mocker):

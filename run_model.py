@@ -24,6 +24,7 @@ from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
+from tqdm.auto import tqdm as base_tqdm
 
 from model.aae import AaEModel
 from model.health_status_adjustment import (
@@ -35,6 +36,21 @@ from model.inpatients import InpatientsModel
 from model.model import Model
 from model.model_run import ModelRun
 from model.outpatients import OutpatientsModel
+
+
+class tqdm(base_tqdm):  # pylint: disable=inconsistent-mro, invalid-name
+    """Custom tqdm class that provides a callback function on update"""
+
+    # ideally this would be set in the contstructor, but as this is a pretty
+    # simple use case just implemented as a static variable. this does mean that
+    # you need to update the value before using the class (each time)
+    progress_callback = None
+
+    def update(self, n=1):
+        """overide the default tqdm update function to run the callback method"""
+        super().update(n)
+        if tqdm.progress_callback:
+            tqdm.progress_callback(self.n)  # pylint: disable=not-callable
 
 
 def timeit(func: Callable, *args) -> Any:
@@ -119,7 +135,12 @@ def _split_model_runs_out(agg_type: str, results: dict) -> None:
 
 
 def _run_model(
-    model_type: Model, params: dict, path: str, hsa: Any, run_params: dict
+    model_type: Model,
+    params: dict,
+    path: str,
+    hsa: Any,
+    run_params: dict,
+    progress_callback,
 ) -> dict:
     """Run the model iterations
 
@@ -144,19 +165,32 @@ def _run_model(
     model = model_type(params, path, hsa, run_params)
     logging.info(" * running")
 
+    # set the progress callback for this run
+    tqdm.progress_callback = progress_callback
+
     model_runs = list(range(-1, params["model_runs"] + 1))
 
     cpus = os.cpu_count()
-    batch_size = 16
+    batch_size = int(os.getenv("BATCH_SIZE", "16"))
 
     with Pool(cpus) as pool:
-        results = list(pool.imap(model.go, model_runs, chunksize=batch_size))
+        results = list(
+            tqdm(
+                pool.imap(
+                    model.go,
+                    model_runs,
+                    chunksize=batch_size,
+                ),
+                f"Running {model.__class__.__name__[:-5].rjust(11)} model",  # pylint: disable=protected-access
+                total=len(model_runs),
+            )
+        )
     logging.info(" * finished")
 
     return results
 
 
-def run_all(params: dict, data_path: str) -> dict:
+def run_all(params: dict, data_path: str, progress_callback) -> dict:
     """Run the model
 
     runs all 3 model types, aggregates and combines the results
@@ -179,8 +213,20 @@ def run_all(params: dict, data_path: str) -> dict:
         params["end_year"],
     )
 
+    pcallback = progress_callback(params["id"])
+
     results = _combine_results(
-        [_run_model(m, params, data_path, hsa, run_params) for m in model_types]
+        [
+            _run_model(
+                m,
+                params,
+                data_path,
+                hsa,
+                run_params,
+                pcallback(m.__name__[:-5]),
+            )
+            for m in model_types
+        ]
     )
 
     filename = f"{params['dataset']}/{params['scenario']}-{params['create_datetime']}"

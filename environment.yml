@@ -13,6 +13,7 @@ dependencies:
   - pandas=1.5.*
   - python-dotenv=1.0.*
   - scipy=1.10.*
+  - tqdm=4.65.*
   # dev dependencies
   - black=23.1.*
   - coverage=7.2.*

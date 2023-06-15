@@ -17,7 +17,15 @@ from run_model import (
     run_all,
     run_single_model_run,
     timeit,
+    tqdm,
 )
+
+
+def test_tqdm():
+    tqdm.progress_callback = Mock()
+    t = tqdm()
+    t.update(5)
+    tqdm.progress_callback.assert_called_once_with(5)
 
 
 def test_timeit(mocker, capsys):
@@ -335,12 +343,15 @@ def test_run_model(mocker):
     pool_ctm.name = "pool"
     pool_ctm.imap = Mock(wraps=lambda f, i, **kwargs: map(f, i))
 
+    pc_m = Mock()
+
     # act
-    actual = _run_model(model_m, params, "data", "hsa", "run_params")
+    actual = _run_model(model_m, params, "data", "hsa", "run_params", pc_m)
 
     # assert
     pool_ctm.imap.assert_called_once_with(model_m().go, [-1, 0, 1, 2], chunksize=16)
     assert actual == [model_m().go()] * 4
+    pc_m.assert_not_called()
 
 
 def test_run_all(mocker):
@@ -357,7 +368,12 @@ def test_run_all(mocker):
 
     os_m = mocker.patch("os.makedirs")
 
+    pc_m = Mock()
+    pc_m().return_value = "progress callback"
+    pc_m.reset_mock()
+
     params = {
+        "id": "1",
         "dataset": "synthetic",
         "scenario": "test",
         "start_year": 2020,
@@ -369,17 +385,26 @@ def test_run_all(mocker):
 
     # act
     with patch("builtins.open", mock_open()) as mock_file:
-        actual = run_all(params, "data_path")
+        actual = run_all(params, "data_path", pc_m)
 
     # assert
     assert actual == "synthetic/test-20230123_012345"
+
+    pc_m.assert_called_once_with("1")
+    assert pc_m().call_args_list == [
+        call("Inpatients"),
+        call("Outpatients"),
+        call("AaE"),
+    ]
 
     grp_m.assert_called_once_with(params)
     hsa_m.assert_called_once_with("data_path/2020/synthetic", 2020, 2025)
     assert HealthStatusAdjustment.data_path == "data_path"
 
     assert rm_m.call_args_list == [
-        call(m, params, "data_path", "hsa", {"variant": "variants"})
+        call(
+            m, params, "data_path", "hsa", {"variant": "variants"}, "progress callback"
+        )
         for m in [InpatientsModel, OutpatientsModel, AaEModel]
     ]
 
