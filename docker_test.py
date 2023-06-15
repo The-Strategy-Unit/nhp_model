@@ -9,28 +9,10 @@ from model.helpers import load_params
 from run_model import run_all
 
 
-def progress_callback(model_id):
-    """Progress callback method
+def progress_callback(_):
+    """minimum implementation of the progress callback"""
 
-    updates a file containing the status of the current model runs
-    """
-    current_progress = {"Inpatients": 0, "Outpatients": 0, "AaE": 0}
-    filename = f"results/status-{model_id}.json"
-
-    def save_file():
-        with open(filename, "w", encoding="UTF-8") as file:
-            json.dump(current_progress, file)
-
-    save_file()
-
-    def callback(model_type):
-        def update(n_completed):
-            current_progress[model_type] = n_completed
-            save_file()
-
-        return update
-
-    return callback
+    return lambda _: None
 
 
 def main():

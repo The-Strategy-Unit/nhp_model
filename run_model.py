@@ -44,12 +44,13 @@ class tqdm(base_tqdm):  # pylint: disable=inconsistent-mro, invalid-name
     # ideally this would be set in the contstructor, but as this is a pretty
     # simple use case just implemented as a static variable. this does mean that
     # you need to update the value before using the class (each time)
-    progress_callback = lambda x: None  # pylint: disable=unnecessary-lambda-assignment
+    progress_callback = None
 
     def update(self, n=1):
         """overide the default tqdm update function to run the callback method"""
         super().update(n)
-        tqdm.progress_callback(self.n)
+        if tqdm.progress_callback:
+            tqdm.progress_callback(self.n)  # pylint: disable=not-callable
 
 
 def timeit(func: Callable, *args) -> Any:
