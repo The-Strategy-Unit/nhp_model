@@ -17,7 +17,15 @@ from run_model import (
     run_all,
     run_single_model_run,
     timeit,
+    tqdm,
 )
+
+
+def test_tqdm():
+    tqdm.progress_callback = Mock()
+    t = tqdm()
+    t.update(5)
+    tqdm.progress_callback.assert_called_once_with(5)
 
 
 def test_timeit(mocker, capsys):
