@@ -119,8 +119,11 @@ def test_update_step_counts(mock_activity_avoidance):
 def test_demographic_adjustment(mocker, mock_activity_avoidance):
     # arrange
     aa_mock = mock_activity_avoidance
-    aa_mock._model_run.run_params = {"variant": "a"}
-    aa_mock._model_run.model.demog_factors = {"a": "f"}
+    aa_mock._model_run.run_params = {"year": 2020, "variant": "a"}
+    aa_mock._model_run.model.demog_factors = pd.DataFrame(
+        {"2020": [1, 2, 3]},
+        index=pd.MultiIndex.from_tuples([("a", 0), ("a", 1), ("b", 0)]),
+    )
 
     u_mock = mocker.patch(
         "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
@@ -131,7 +134,10 @@ def test_demographic_adjustment(mocker, mock_activity_avoidance):
 
     # assert
     assert actual == "update"
-    u_mock.assert_called_once_with("f", ["age", "sex"])
+    u_mock.assert_called_once()
+
+    assert u_mock.call_args[0][0].to_list() == [1, 2]
+    assert u_mock.call_args[0][1] == ["age", "sex"]
 
 
 # _health_status_adjustment()

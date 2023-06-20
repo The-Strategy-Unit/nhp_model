@@ -121,20 +121,16 @@ class Model:
         """
         dfp = self.params["demographic_factors"]
         start_year = str(self.params["start_year"])
-        end_year = str(self.params["end_year"])
 
         merge_cols = ["age", "sex"]
 
         demog_factors = pd.read_csv(os.path.join(self._data_path, dfp["file"]))
         demog_factors[merge_cols] = demog_factors[merge_cols].astype(int)
-        demog_factors["demographic_adjustment"] = (
-            demog_factors[end_year] / demog_factors[start_year]
-        )
-        demog_factors.set_index(merge_cols, inplace=True)
+        demog_factors.set_index(["variant"] + merge_cols, inplace=True)
 
-        self.demog_factors = {
-            k: v["demographic_adjustment"] for k, v in demog_factors.groupby("variant")
-        }
+        self.demog_factors = demog_factors.apply(
+            lambda x: x / demog_factors[start_year]
+        )
 
     @staticmethod
     def generate_run_params(params):
@@ -185,9 +181,10 @@ class Model:
             "seeds": rng.integers(0, 65535, model_runs).tolist(),
             "waiting_list_adjustment": params["waiting_list_adjustment"],
             "health_status_adjustment": HealthStatusAdjustment.generate_params(
+                params["start_year"],
                 params["end_year"],
                 rng,
-                model_runs,
+                model_runs - 1,
             ),
             # generate param values for the different items in params: this will traverse the dicts
             # until a value is reached that isn't a dict. Then it will generate the required amount
@@ -230,29 +227,43 @@ class Model:
         """
         params = self.run_params
 
-        def get_param_value(prm):
+        def get_param_value(prm, i):
             if isinstance(prm, dict):
-                return {k: get_param_value(v) for k, v in prm.items()}
-            return prm[model_run]
+                return {k: get_param_value(v, i) for k, v in prm.items()}
+            return 1 - (1 - prm[model_run]) * i
+
+        horizon_years = self.params["end_year"] - self.params["start_year"]
+        year = model_run - self.params["model_runs"]
+        if year < 0:
+            year = horizon_years
+
+        time_profiles = {
+            "none": 1,
+            "linear": year / horizon_years,
+            "front_loaded": np.sqrt(horizon_years**2 - (horizon_years - year) ** 2)
+            / horizon_years,
+            "back_loaded": 1 - np.sqrt(horizon_years**2 - year**2) / horizon_years,
+        }
+
+        time_profile_mappings = self.params["time_profile_mappings"]
+
+        hsa = params["health_status_adjustment"][model_run]
+
+        if model_run <= self.params["model_runs"]:
+            # when we aren't performing the time profiles, set everything to "none"
+            time_profile_mappings = {k: "none" for k in time_profile_mappings}
+        else:
+            # for the time profiles, use the principal projection
+            model_run = 0
 
         return {
+            "year": year + self.params["start_year"],
             "variant": params["variant"][model_run],
-            "health_status_adjustment": params["health_status_adjustment"][model_run],
+            "health_status_adjustment": hsa,
             "seed": params["seeds"][model_run],
             **{
-                k: get_param_value(params[k])
-                for k in [
-                    "covid_adjustment",
-                    "expat",
-                    "repat_local",
-                    "repat_nonlocal",
-                    "baseline_adjustment",
-                    "non-demographic_adjustment",
-                    "activity_avoidance",
-                    "efficiencies",
-                    "bed_occupancy",
-                    "theatres",
-                ]
+                k: get_param_value(params[k], time_profiles[v])
+                for k, v in time_profile_mappings.items()
             },
             "waiting_list_adjustment": params["waiting_list_adjustment"],
         }

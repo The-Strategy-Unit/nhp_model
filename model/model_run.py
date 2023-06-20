@@ -92,6 +92,7 @@ class ModelRun:
         # pylint: disable=assignment-from-no-return
         agg, aggregates = self.model.aggregate(self)
         step_counts = self.get_step_counts()
+
         return {**agg(), **agg(["sex", "age_group"]), **aggregates, **step_counts}
 
     def get_step_counts(self):

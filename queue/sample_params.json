@@ -4,7 +4,7 @@
   "dataset": "synthetic",
   "seed": 84308,
   "model_runs": 256,
-  "start_year": 2018,
+  "start_year": 2019,
   "end_year": 2035,
   "app_version": "dev",
   "create_datetime": "20220101_000000",
@@ -2193,5 +2193,17 @@
         ]
       }
     }
+  },
+  "time_profile_mappings": {
+    "covid_adjustment": "none",
+    "expat": "linear",
+    "repat_local": "linear",
+    "repat_nonlocal": "linear",
+    "baseline_adjustment": "linear",
+    "non-demographic_adjustment": "linear",
+    "activity_avoidance": "linear",
+    "efficiencies": "linear",
+    "bed_occupancy": "linear",
+    "theatres": "linear"
   }
 }

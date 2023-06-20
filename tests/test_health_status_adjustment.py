@@ -175,9 +175,10 @@ def test_load_activity_ages(mocker, mock_hsa):
 
 
 @pytest.mark.parametrize(
-    "year, expected", [(2020, (1, 4, 7)), (2021, (2, 5, 8)), (2022, (3, 6, 9))]
+    "year, expected_results, expected_call",
+    [(2021, [2, 1, 2, 3], (2, 5, 8)), (2022, [3, 1, 2, 3, 2], (3, 6, 9))],
 )
-def test_generate_params(mocker, year, expected):
+def test_generate_params(mocker, year, expected_results, expected_call):
     # arrange
     m = mocker.patch(
         "model.health_status_adjustment.HealthStatusAdjustment.random_splitnorm"
@@ -186,20 +187,20 @@ def test_generate_params(mocker, year, expected):
 
     p = pd.DataFrame(
         {
-            "year": [2020, 2021, 2022],
-            "mode": [1, 2, 3],
-            "sd1": [4, 5, 6],
-            "sd2": [7, 8, 9],
+            "year": [2019, 2020, 2021, 2022],
+            "mode": [0, 1, 2, 3],
+            "sd1": [0, 4, 5, 6],
+            "sd2": [0, 7, 8, 9],
         }
     )
     read_csv_mock = mocker.patch("pandas.read_csv", return_value=p)
 
     # act
-    actual = HealthStatusAdjustment.generate_params(year, "rng", 10)
+    actual = HealthStatusAdjustment.generate_params(2020, year, "rng", 10)
 
     # assert
-    assert actual == [expected[0]] + [1, 2, 3]
-    m.assert_called_once_with("rng", 10, *expected)
+    assert actual.tolist() == expected_results
+    m.assert_called_once_with("rng", 10, *expected_call)
     read_csv_mock.assert_called_once_with("data/reference/hsa_split_normal_params.csv")
 
 

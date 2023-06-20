@@ -40,7 +40,7 @@ class HealthStatusAdjustment:
                 f"{HealthStatusAdjustment._reference_path()}/life_expectancy.csv"
             )
             .set_index(["var", "sex", "age"])
-            .loc[slice(None), slice(None), self._ages]
+            .loc[(slice(None), slice(None), self._ages)]
         )
         # calculate the life expectancy (change) between the model year and base year
         self._life_expectancy = lexc[str(model_year)] - lexc[str(base_year)]
@@ -60,12 +60,14 @@ class HealthStatusAdjustment:
 
     @staticmethod
     def generate_params(
-        year: int, rng: np.random.BitGenerator, model_runs: int
+        start_year: int, end_year: int, rng: np.random.BitGenerator, model_runs: int
     ) -> np.array:
         """Generate Health Status Adjustment Parameters
 
-        :param year: The year the model is running for
-        :type year: int
+        :param start_year: The baseline year for the model
+        :type start_year: int
+        :param end_year: The year the model is running for
+        :type end_year: int
         :param rng: Random Number Generator
         :type rng: np.random.BitGenerator
         :param model_runs: Number of Model Runs
@@ -74,15 +76,20 @@ class HealthStatusAdjustment:
         :rtype: np.array
         """
 
-        mode, sd1, sd2 = (
-            pd.read_csv(
-                f"{HealthStatusAdjustment._reference_path()}/hsa_split_normal_params.csv"
-            )
-            .set_index("year")
-            .loc[year]
-        )
-        return [mode] + HealthStatusAdjustment.random_splitnorm(
-            rng, model_runs, mode, sd1, sd2
+        hsa_snp = pd.read_csv(
+            f"{HealthStatusAdjustment._reference_path()}/hsa_split_normal_params.csv"
+        ).set_index("year")
+
+        mode, sd1, sd2 = hsa_snp.loc[end_year]
+
+        return np.concatenate(
+            [
+                [mode],
+                HealthStatusAdjustment.random_splitnorm(
+                    rng, model_runs, mode, sd1, sd2
+                ),
+                hsa_snp.loc[np.arange(start_year + 1, end_year), "mode"],
+            ]
         )
 
     @staticmethod
