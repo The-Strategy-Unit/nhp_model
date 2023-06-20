@@ -420,7 +420,7 @@ def test_run_all(mocker):
     ]
 
     grp_m.assert_called_once_with(params)
-    hsa_m.assert_called_once_with("data_path/2020/synthetic", 2020, 2025)
+    hsa_m.assert_called_once_with("data_path/2020/synthetic", 2020)
     assert HealthStatusAdjustment.data_path == "data_path"
 
     assert rm_m.call_args_list == [
@@ -537,7 +537,7 @@ def test_run_single_model_run(mocker, capsys):
 
     # assert
     grp_mock.assert_called_once_with(params)
-    hsa_mock.assert_called_once_with("data_path/2020/synthetic", 2020, 2025)
+    hsa_mock.assert_called_once_with("data_path/2020/synthetic", 2020)
     assert HealthStatusAdjustment.data_path == "data_path"
 
     assert timeit_mock.call_count == 3

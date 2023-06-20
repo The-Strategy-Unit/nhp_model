@@ -220,9 +220,7 @@ def run_all(params: dict, data_path: str, progress_callback) -> dict:
     # set the data path in the HealthStatusAdjustment class
     HealthStatusAdjustment.data_path = data_path
     hsa = HealthStatusAdjustmentInterpolated(
-        f"{data_path}/{params['start_year']}/{params['dataset']}",
-        params["start_year"],
-        params["end_year"],
+        f"{data_path}/{params['start_year']}/{params['dataset']}", params["start_year"]
     )
 
     pcallback = progress_callback(params["id"])
@@ -270,7 +268,6 @@ def run_single_model_run(
     hsa = HealthStatusAdjustmentInterpolated(
         f"{data_path}/{params['start_year']}/{params['dataset']}",
         params["start_year"],
-        params["end_year"],
     )
 
     print("initialising model...  ", end="")
