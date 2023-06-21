@@ -183,7 +183,7 @@ def _run_model(
     model_runs = list(range(-1, params["model_runs"] + years))
 
     cpus = os.cpu_count()
-    batch_size = int(os.getenv("BATCH_SIZE", "16"))
+    batch_size = int(os.getenv("BATCH_SIZE", "1"))
 
     with Pool(cpus) as pool:
         results = list(

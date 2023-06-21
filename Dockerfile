@@ -34,5 +34,7 @@ ENV APP_VERSION=$app_version
 ENV DATA_VERSION=$data_version
 ENV STORAGE_ACCOUNT=$storage_account
 
+ENV BATCH_SIZE=16
+
 # set the entry point of the container to be our script
 ENTRYPOINT [ "./docker_run.py" ]
