@@ -50,24 +50,18 @@ class RunWithLocalStorage:
         :type metadata: dict
         """
 
-    def cleanup(self, model_id: str) -> None:
+    def cleanup(self) -> None:
         """Cleanup
 
         for local storage there is nothing else to do
-
-        :param model_id: the id of the model which we have just run
-        :type model_id: str
         """
 
-    def progress_callback(self, model_id: str) -> None:
+    def progress_callback(self) -> None:
         """Progress callback method
 
         for local storage do nothing
-
-        :param model_id: the id of the model which we are running
-        :type model_id: str
         """
-        return lambda _: lambda _: model_id
+        return lambda _: lambda _: None
 
 
 class RunWithAzureStorage:
@@ -75,6 +69,7 @@ class RunWithAzureStorage:
 
     def __init__(self, app_version: str = "dev"):
         self._app_version = re.sub("(\\d+\\.\\d+)\\..*", "\\1", app_version)
+        self._queue_blob = None
 
         logging.getLogger("azure.storage.common.storageclient").setLevel(
             logging.WARNING
@@ -98,7 +93,10 @@ class RunWithAzureStorage:
         :rtype: dict
         """
         logging.info("downloading params: %s", filename)
-        params_content = self._get_container("queue").download_blob(filename).readall()
+
+        self._queue_blob = self._get_container("queue").get_blob_client(filename)
+
+        params_content = self._queue_blob.download_blob().readall()
 
         return json.loads(params_content)
 
@@ -149,29 +147,22 @@ class RunWithAzureStorage:
                 metadata=metadata,
             )
 
-    def cleanup(self, model_id: str) -> None:
+    def cleanup(self) -> None:
         """Cleanup
 
         once the model has run, remove the file from the queue
-
-        :param model_id: the id of the model which we have just run
-        :type model_id: str
         """
         logging.info("cleaning up queue")
 
-        self._get_container("queue").delete_blob(f"{model_id}.json")
+        self._queue_blob.delete_blob()
 
-    def progress_callback(self, model_id: str) -> None:
+    def progress_callback(self) -> None:
         """Progress callback method
 
         updates the metadata for the blob in the queue to give progress
-
-        :param model_id: the id of the model which we are running
-        :type model_id: str
         """
-        filename = f"{model_id}.json"
 
-        blob = self._get_container("queue").get_blob_client(filename)
+        blob = self._queue_blob
 
         current_progress = {
             **blob.get_blob_properties()["metadata"],
@@ -242,7 +233,7 @@ def main():
         if not isinstance(v, dict) and not isinstance(v, list)
     }
     runner.upload_results(results_file, metadata)
-    runner.cleanup(params["id"])
+    runner.cleanup()
 
     logging.info("complete")
 

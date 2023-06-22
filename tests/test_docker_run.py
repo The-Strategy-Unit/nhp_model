@@ -55,7 +55,7 @@ def test_RunWithLocalStorage_cleanup():
     s = RunWithLocalStorage()
 
     # act
-    s.cleanup(1)
+    s.cleanup()
 
     # assert (nothing to assert)
 
@@ -65,7 +65,7 @@ def test_RunWithLocalStorage_progress_callback():
     s = RunWithLocalStorage()
 
     # act
-    p = s.progress_callback(1)
+    p = s.progress_callback()
     p("Inpatients")(5)
 
     # assert (nothing to assert)
@@ -80,6 +80,9 @@ def test_RunWithAzureStorage_init():
     # assert
     assert a1._app_version == "dev"
     assert a2._app_version == "v0.3"
+
+    assert not a1._queue_blob
+    assert not a2._queue_blob
 
 
 def test_RunWithAzureStorage_get_container(mocker):
@@ -108,9 +111,15 @@ def test_RunWithAzureStorage_get_params(mocker):
     # arrange
     expected = {"dataset": "synthetic"}
 
-    m = mocker.patch("docker_run.RunWithAzureStorage._get_container")
-    m().download_blob().readall.return_value = """{"dataset": "synthetic"}"""
-    m.reset_mock()
+    m1 = mocker.patch("docker_run.RunWithAzureStorage._get_container")
+    m2 = Mock()
+
+    m1().get_blob_client.return_value = m2
+
+    m2.download_blob().readall.return_value = """{"dataset": "synthetic"}"""
+
+    m1.reset_mock()
+    m2.reset_mock()
 
     s = RunWithAzureStorage()
 
@@ -120,9 +129,11 @@ def test_RunWithAzureStorage_get_params(mocker):
     # assert
     assert actual == expected
 
-    m.assert_called_once_with("queue")
-    m().download_blob.assert_called_once_with("filename")
-    m().download_blob().readall.assert_called_once()
+    m1.assert_called_once_with("queue")
+    assert s._queue_blob == m2
+
+    m2.download_blob.assert_called_once_with()
+    m2.download_blob().readall.assert_called_once()
 
 
 def test_RunWithAzureStorage_get_data(mocker):
@@ -190,34 +201,31 @@ def test_RunWithAzureStorage_upload_results(mocker):
     )
 
 
-def test_RunWithAzureStorage_cleanup(mocker):
+def test_RunWithAzureStorage_cleanup():
     # arrange
-    m = mocker.patch("docker_run.RunWithAzureStorage._get_container")
     s = RunWithAzureStorage()
+    m = s._queue_blob = Mock()
 
     # act
-    s.cleanup(1)
+    s.cleanup()
 
     # assert
-    m.assert_called_once_with("queue")
-    m().delete_blob.assert_called_once_with("1.json")
+    m.delete_blob.assert_called_once_with()
 
 
-def test_RunWithAzureStorage_progress_callback(mocker):
+def test_RunWithAzureStorage_progress_callback():
     # arrange
-    m = mocker.patch("docker_run.RunWithAzureStorage._get_container")
-    m().get_blob_client().get_blob_properties.return_value = {"metadata": {"id": 1}}
-    m.reset_mock()
     s = RunWithAzureStorage()
+    m = s._queue_blob = Mock()
+    m.get_blob_properties.return_value = {"metadata": {"id": 1}}
 
     # (1) the initial set up
     # act (1)
-    p = s.progress_callback(1)
+    p = s.progress_callback()
 
     # assert (1)
-    m.assert_called_once_with("queue")
-    m().get_blob_client.assert_called_once_with("1.json")
-    sbm = m().get_blob_client().set_blob_metadata
+    m.get_blob_properties.assert_called_once_with()
+    sbm = m.set_blob_metadata
 
     sbm.assert_called_once_with(
         {
@@ -299,7 +307,7 @@ def test_main_local(mocker):
     ru_m.assert_called_once_with(params, "data", s.progress_callback)
 
     s.upload_results.assert_called_once_with("results.json", metadata)
-    s.cleanup.assert_called_once_with("1")
+    s.cleanup.assert_called_once_with()
 
 
 def test_main_azure(mocker):
@@ -337,7 +345,7 @@ def test_main_azure(mocker):
     ru_m.assert_called_once_with(params, "data", s.progress_callback)
 
     s.upload_results.assert_called_once_with("results.json", metadata)
-    s.cleanup.assert_called_once_with("1")
+    s.cleanup.assert_called_once_with()
 
 
 def test_init(mocker):

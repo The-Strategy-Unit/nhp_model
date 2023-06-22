@@ -223,7 +223,7 @@ def run_all(params: dict, data_path: str, progress_callback) -> dict:
         f"{data_path}/{params['start_year']}/{params['dataset']}", params["start_year"]
     )
 
-    pcallback = progress_callback(params["id"])
+    pcallback = progress_callback()
 
     results = _combine_results(
         [

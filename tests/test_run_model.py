@@ -412,7 +412,7 @@ def test_run_all(mocker):
     # assert
     assert actual == "synthetic/test-20230123_012345"
 
-    pc_m.assert_called_once_with("1")
+    pc_m.assert_called_once_with()
     assert pc_m().call_args_list == [
         call("Inpatients"),
         call("Outpatients"),
