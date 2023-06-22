@@ -121,6 +121,9 @@ class Model:
         """
         dfp = self.params["demographic_factors"]
         start_year = str(self.params["start_year"])
+        years = (
+            np.arange(self.params["start_year"], self.params["end_year"]) + 1
+        ).astype("str")
 
         merge_cols = ["age", "sex"]
 
@@ -128,7 +131,7 @@ class Model:
         demog_factors[merge_cols] = demog_factors[merge_cols].astype(int)
         demog_factors.set_index(["variant"] + merge_cols, inplace=True)
 
-        self.demog_factors = demog_factors.apply(
+        self.demog_factors = demog_factors[years].apply(
             lambda x: x / demog_factors[start_year]
         )
 
@@ -234,7 +237,7 @@ class Model:
 
         horizon_years = self.params["end_year"] - self.params["start_year"]
         year = model_run - self.params["model_runs"]
-        if year < 0:
+        if year <= 0:
             year = horizon_years
 
         time_profiles = {
