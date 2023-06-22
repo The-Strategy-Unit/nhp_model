@@ -15,54 +15,34 @@ config.DATA_VERSION = "dev"
 # RunWithLocalStorage
 
 
-def test_RunWithLocalStorage_get_params(mocker):
+def test_RunWithLocalStorage(mocker):
     # arrange
     m = mocker.patch("docker_run.load_params", return_value="params")
 
-    s = RunWithLocalStorage()
-
     # act
-    actual = s.get_params("filename")
+    s = RunWithLocalStorage("filename")
 
     # assert
-    assert actual == "params"
+    assert s.params == "params"
 
     m.assert_called_once_with("queue/filename")
 
 
-def test_RunWithLocalStorage_get_data():
+def test_RunWithLocalStorage_finish(mocker):
     # arrange
-    s = RunWithLocalStorage()
+    mocker.patch("docker_run.load_params", return_value="params")
+    s = RunWithLocalStorage("filename")
 
     # act
-    s.get_data("data")
+    s.finish("results")
 
     # assert (nothing to assert)
 
 
-def test_RunWithLocalStorage_upload_results():
+def test_RunWithLocalStorage_progress_callback(mocker):
     # arrange
-    s = RunWithLocalStorage()
-
-    # act
-    s.upload_results("filename", "metadata")
-
-    # assert (nothing to assert)
-
-
-def test_RunWithLocalStorage_cleanup():
-    # arrange
-    s = RunWithLocalStorage()
-
-    # act
-    s.cleanup()
-
-    # assert (nothing to assert)
-
-
-def test_RunWithLocalStorage_progress_callback():
-    # arrange
-    s = RunWithLocalStorage()
+    mocker.patch("docker_run.load_params", return_value="params")
+    s = RunWithLocalStorage("filename")
 
     # act
     p = s.progress_callback()
@@ -72,29 +52,55 @@ def test_RunWithLocalStorage_progress_callback():
 
 
 # RunWithAzureStorage
-def test_RunWithAzureStorage_init():
+
+
+@pytest.fixture
+def mock_run_with_azure_storage():
+    """create a mock Model instance"""
+    with patch.object(RunWithAzureStorage, "__init__", lambda *args: None):
+        rwas = RunWithAzureStorage(None)
+
+    rwas.params = {}
+    rwas._app_version = "dev"
+
+    return rwas
+
+
+@pytest.mark.parametrize(
+    "args, expected_version", [(["filename"], "dev"), (["filename", "v0.3.5"], "v0.3")]
+)
+def test_RunWithAzureStorage_init(mocker, args, expected_version):
+    # arrange
+    expected_params = {"start_year": 2020, "dataset": "synthetic"}
+    gpm = mocker.patch(
+        "docker_run.RunWithAzureStorage._get_params",
+        return_value=expected_params,
+    )
+    gdm = mocker.patch("docker_run.RunWithAzureStorage._get_data")
+
     # act
-    a1 = RunWithAzureStorage()
-    a2 = RunWithAzureStorage("v0.3.5")
+    s = RunWithAzureStorage(*args)
 
     # assert
-    assert a1._app_version == "dev"
-    assert a2._app_version == "v0.3"
+    assert s._app_version == expected_version
+    assert s.params == expected_params
 
-    assert not a1._queue_blob
-    assert not a2._queue_blob
+    gpm.assert_called_once_with("filename")
+
+    assert gdm.call_count == 2
+    assert gdm.call_args_list == [call("2020/synthetic"), call("reference")]
 
 
-def test_RunWithAzureStorage_get_container(mocker):
+def test_RunWithAzureStorage_get_container(mock_run_with_azure_storage, mocker):
     # arrange
+    s = mock_run_with_azure_storage
+
     mock = Mock()
     mock.get_container_client.return_value = "container_client"
 
     bsc_m = mocker.patch("docker_run.BlobServiceClient", return_value=mock)
 
     dac_m = mocker.patch("docker_run.DefaultAzureCredential", return_value="cred")
-
-    s = RunWithAzureStorage()
 
     # act
     actual = s._get_container("container")
@@ -107,8 +113,10 @@ def test_RunWithAzureStorage_get_container(mocker):
     dac_m.assert_called_once_with()
 
 
-def test_RunWithAzureStorage_get_params(mocker):
+def test_RunWithAzureStorage_get_params(mock_run_with_azure_storage, mocker):
     # arrange
+    s = mock_run_with_azure_storage
+
     expected = {"dataset": "synthetic"}
 
     m1 = mocker.patch("docker_run.RunWithAzureStorage._get_container")
@@ -121,10 +129,8 @@ def test_RunWithAzureStorage_get_params(mocker):
     m1.reset_mock()
     m2.reset_mock()
 
-    s = RunWithAzureStorage()
-
     # act
-    actual = s.get_params("filename")
+    actual = s._get_params("filename")
 
     # assert
     assert actual == expected
@@ -136,8 +142,10 @@ def test_RunWithAzureStorage_get_params(mocker):
     m2.download_blob().readall.assert_called_once()
 
 
-def test_RunWithAzureStorage_get_data(mocker):
+def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
     # arrange
+    s = mock_run_with_azure_storage
+
     files = [1, 2, 3, 4]
 
     def paths_helper(i):
@@ -158,11 +166,9 @@ def test_RunWithAzureStorage_get_data(mocker):
 
     dac_m = mocker.patch("docker_run.DefaultAzureCredential", return_value="cred")
 
-    s = RunWithAzureStorage()
-
     # act
     with patch("builtins.open", mock_open()) as mock_file:
-        s.get_data("2020/synthetic")
+        s._get_data("2020/synthetic")
 
     # assert
 
@@ -183,39 +189,61 @@ def test_RunWithAzureStorage_get_data(mocker):
     assert mock_file.call_args_list == [call(f"data{i}", "wb") for i in files]
 
 
-def test_RunWithAzureStorage_upload_results(mocker):
+def test_RunWithAzureStorage_upload_results(mock_run_with_azure_storage, mocker):
     # arrange
+    s = mock_run_with_azure_storage
+
     m = mocker.patch("docker_run.RunWithAzureStorage._get_container")
     mocker.patch("gzip.compress", return_value="gzdata")
-    s = RunWithAzureStorage()
 
     # act
     with patch("builtins.open", mock_open(read_data="data")) as mock_file:
-        s.upload_results("filename", "metadata")
+        s._upload_results("filename", "metadata")
 
     # assert
     mock_file.assert_called_once_with("results/filename.json", "rb")
     m.assert_called_once_with("results")
     m().upload_blob.assert_called_once_with(
-        "dev/filename.json.gz", "gzdata", metadata="metadata"
+        "dev/filename.json.gz", "gzdata", metadata="metadata", overwrite=True
     )
 
 
-def test_RunWithAzureStorage_cleanup():
+def test_RunWithAzureStorage_cleanup(mock_run_with_azure_storage):
     # arrange
-    s = RunWithAzureStorage()
+    s = mock_run_with_azure_storage
     m = s._queue_blob = Mock()
 
     # act
-    s.cleanup()
+    s._cleanup()
 
     # assert
     m.delete_blob.assert_called_once_with()
 
 
-def test_RunWithAzureStorage_progress_callback():
+def test_RunWithAzureStorage_finish(mock_run_with_azure_storage, mocker):
     # arrange
-    s = RunWithAzureStorage()
+    s = mock_run_with_azure_storage
+    m1 = mocker.patch("docker_run.RunWithAzureStorage._upload_results")
+    m2 = mocker.patch("docker_run.RunWithAzureStorage._cleanup")
+
+    metadata = {"id": "1", "dataset": "synthetic", "start_year": "2020"}
+    params = metadata.copy()
+    params["list"] = [1, 2]
+    params["dict"] = {"a": 1}
+
+    s.params = params
+
+    # act
+    s.finish("results_file")
+
+    # assert
+    m1.assert_called_once_with("results_file", metadata)
+    m2.assert_called_once()
+
+
+def test_RunWithAzureStorage_progress_callback(mock_run_with_azure_storage):
+    # arrange
+    s = mock_run_with_azure_storage
     m = s._queue_blob = Mock()
     m.get_blob_properties.return_value = {"metadata": {"id": 1}}
 
@@ -281,12 +309,7 @@ def test_main_local(mocker):
     rwls = mocker.patch("docker_run.RunWithLocalStorage")
     rwas = mocker.patch("docker_run.RunWithAzureStorage")
 
-    metadata = {"id": "1", "dataset": "synthetic", "start_year": "2020"}
-    params = metadata.copy()
-    params["list"] = [1, 2]
-    params["dict"] = {"a": 1}
-
-    rwls().get_params.return_value = params
+    rwls().params = "params"
     rwls.reset_mock()
 
     ru_m = mocker.patch("docker_run.run_all", return_value="results.json")
@@ -295,19 +318,12 @@ def test_main_local(mocker):
     main()
 
     # assert
-    rwls.assert_called_once()
+    rwls.assert_called_once_with("params.json")
     rwas.assert_not_called()
 
     s = rwls()
-
-    s.get_params.assert_called_once_with("params.json")
-    assert s.get_data.call_count == 2
-    assert s.get_data.call_args_list == [call("2020/synthetic"), call("reference")]
-
-    ru_m.assert_called_once_with(params, "data", s.progress_callback)
-
-    s.upload_results.assert_called_once_with("results.json", metadata)
-    s.cleanup.assert_called_once_with()
+    ru_m.assert_called_once_with("params", "data", s.progress_callback)
+    s.finish.assert_called_once_with("results.json")
 
 
 def test_main_azure(mocker):
@@ -319,12 +335,7 @@ def test_main_azure(mocker):
     rwls = mocker.patch("docker_run.RunWithLocalStorage")
     rwas = mocker.patch("docker_run.RunWithAzureStorage")
 
-    metadata = {"id": "1", "dataset": "synthetic", "start_year": "2020"}
-    params = metadata.copy()
-    params["list"] = [1, 2]
-    params["dict"] = {"a": 1}
-
-    rwas().get_params.return_value = params
+    rwas().params = "params"
     rwas.reset_mock()
 
     ru_m = mocker.patch("docker_run.run_all", return_value="results.json")
@@ -334,18 +345,11 @@ def test_main_azure(mocker):
 
     # assert
     rwls.assert_not_called()
-    rwas.assert_called_once_with("dev")
+    rwas.assert_called_once_with("params.json", "dev")
 
     s = rwas()
-
-    s.get_params.assert_called_once_with("params.json")
-    assert s.get_data.call_count == 2
-    assert s.get_data.call_args_list == [call("2020/synthetic"), call("reference")]
-
-    ru_m.assert_called_once_with(params, "data", s.progress_callback)
-
-    s.upload_results.assert_called_once_with("results.json", metadata)
-    s.cleanup.assert_called_once_with()
+    ru_m.assert_called_once_with("params", "data", s.progress_callback)
+    s.finish.assert_called_once_with("results.json")
 
 
 def test_init(mocker):
