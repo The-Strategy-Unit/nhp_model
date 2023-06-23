@@ -249,7 +249,15 @@ class ActivityAvoidance:
         sum_before = self.step_counts[("baseline", "-")]
         sum_est = np.array(list(self.step_counts.values())).sum(axis=0)
         # create the slack to add to each step
-        slack = 1 + (sum_after - sum_est) / (sum_est - sum_before)
+        # note: simple division will cause an issue in the case that there is
+        #   no change, i.e. sum_est == sum_before. this ensures that if that is
+        #   the case, then we get a value of 1 for the slack
+        slack = 1 + np.divide(
+            sum_after - sum_est,
+            sum_est - sum_before,
+            out=np.zeros_like(sum_before),
+            where=sum_est != sum_before,
+        )
         for k in self.step_counts.keys():
             if k != ("baseline", "-"):
                 self.step_counts[k] *= slack
