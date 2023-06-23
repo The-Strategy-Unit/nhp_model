@@ -2,7 +2,7 @@
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring
 
 import re
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 import numpy as np
 import pandas as pd
@@ -315,7 +315,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
 
 
 @pytest.mark.parametrize(
-    "model_run, expected_run_params",
+    "model_run, expected_run_params, mock_call",
     [
         (
             0,
@@ -352,6 +352,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "waiting_list_adjustment": "waiting_list_adjustment",
                 "year": 2020,
             },
+            [],
         ),
         (
             2,
@@ -388,6 +389,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "waiting_list_adjustment": "waiting_list_adjustment",
                 "year": 2020,
             },
+            [],
         ),
         (
             4,
@@ -401,8 +403,8 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                     "b": {"b_a": 1.05, "b_b": 1.05},
                 },
                 "expat": {"ip": {"elective": {"Other": 0.9}}},
-                "repat_local": {"ip": {"elective": {"Other": 1.0866025403784438}}},
-                "repat_nonlocal": {"ip": {"elective": {"Other": 1.0535898384862246}}},
+                "repat_local": {"ip": {"elective": {"Other": 1.05}}},
+                "repat_nonlocal": {"ip": {"elective": {"Other": 1.2}}},
                 "baseline_adjustment": {"ip": {"elective": {"Other": 1.3}}},
                 "activity_avoidance": {
                     "ip": {"a_a": 0.75, "a_b": 0.75},
@@ -418,16 +420,19 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                     "b": {"a": 0.75, "b": 0.9},
                 },
                 "theatres": {
-                    "change_utilisation": {"a": 1.01, "b": 1.0150000000000001},
-                    "change_availability": 1.02,
+                    "change_utilisation": {"a": 1.02, "b": 1.03},
+                    "change_availability": 1.04,
                 },
                 "waiting_list_adjustment": "waiting_list_adjustment",
                 "year": 2019,
             },
+            [call(7)] * 3,
         ),
     ],
 )
-def test_get_run_params(mock_model, mock_run_params, model_run, expected_run_params):
+def test_get_run_params(
+    mocker, mock_model, mock_run_params, model_run, expected_run_params, mock_call
+):
     """tests _get_run_params gets the right params for a model run"""
     # arrange
     mdl = mock_model
@@ -436,20 +441,28 @@ def test_get_run_params(mock_model, mock_run_params, model_run, expected_run_par
     mdl.params["time_profile_mappings"] = {
         "covid_adjustment": "none",
         "expat": "linear",
-        "repat_local": "front_loaded",
-        "repat_nonlocal": "back_loaded",
+        "repat_local": "linear",
+        "repat_nonlocal": "linear",
         "baseline_adjustment": "linear",
         "non-demographic_adjustment": "linear",
         "activity_avoidance": "linear",
         "efficiencies": "linear",
         "bed_occupancy": "linear",
-        "theatres": "linear",
+        "theatres": "step2025",
     }
+
+    m = Mock(return_value=1)
+    mocker.patch(
+        "model.model.create_time_profiles",
+        return_value={"none": 1, "linear": 0.5, "step": m},
+    )
 
     # act
     actual = mdl._get_run_params(model_run)
     # assert
     assert actual == expected_run_params
+
+    assert m.call_args_list == mock_call
 
 
 # _convert_step_counts()

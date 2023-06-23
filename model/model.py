@@ -18,7 +18,7 @@ import numpy.typing as npt
 import pandas as pd
 
 from model.health_status_adjustment import HealthStatusAdjustment
-from model.helpers import age_groups, inrange, rnorm
+from model.helpers import age_groups, create_time_profiles, inrange, rnorm
 from model.model_run import ModelRun
 
 
@@ -230,23 +230,29 @@ class Model:
         """
         params = self.run_params
 
-        def get_param_value(prm, i):
-            if isinstance(prm, dict):
-                return {k: get_param_value(v, i) for k, v in prm.items()}
-            return 1 - (1 - prm[model_run]) * i
-
         horizon_years = self.params["end_year"] - self.params["start_year"]
         year = model_run - self.params["model_runs"]
         if year <= 0:
             year = horizon_years
 
-        time_profiles = {
-            "none": 1,
-            "linear": year / horizon_years,
-            "front_loaded": np.sqrt(horizon_years**2 - (horizon_years - year) ** 2)
-            / horizon_years,
-            "back_loaded": 1 - np.sqrt(horizon_years**2 - year**2) / horizon_years,
-        }
+        time_profiles = create_time_profiles(horizon_years, year)
+
+        def get_param_value(prm, i):
+            if isinstance(prm, dict):
+                # a function to choose the next value of `i`
+                #   * if `i` is a dictionary, then we need to choose the item
+                #   * otherwise, `i` is already the name of a time profile, so use a const function
+                get_i = (lambda k: i[k]) if isinstance(i, dict) else (lambda _: i)
+                return {k: get_param_value(v, get_i(k)) for k, v in prm.items()}
+
+            # get the time profile value, if it's a step change then we need to parse the year out
+            # and run the step function
+            if i[:4] == "step":
+                j = int(i[4:]) - self.params["start_year"]
+                i = time_profiles["step"](j)
+            else:
+                i = time_profiles[i]
+            return 1 - (1 - prm[model_run]) * i
 
         time_profile_mappings = self.params["time_profile_mappings"]
 
@@ -265,7 +271,7 @@ class Model:
             "health_status_adjustment": hsa,
             "seed": params["seeds"][model_run],
             **{
-                k: get_param_value(params[k], time_profiles[v])
+                k: get_param_value(params[k], v)
                 for k, v in time_profile_mappings.items()
             },
             "waiting_list_adjustment": params["waiting_list_adjustment"],

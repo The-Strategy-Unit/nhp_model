@@ -359,7 +359,7 @@ def main() -> None:
             model_type = InpatientsModel
         case "op":
             model_type = OutpatientsModel
-    run_single_model_run(params, args.data_path, model_type, 0)  # args.model_run)
+    run_single_model_run(params, args.data_path, model_type, args.model_run)
 
 
 def init():
