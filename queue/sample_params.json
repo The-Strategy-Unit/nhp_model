@@ -1809,26 +1809,26 @@
     "op": {
       "convert_to_tele_adult_surgical": {
         "interval": [
-          0.05,
-          0.1
+          0.95,
+          0.975
         ]
       },
       "convert_to_tele_adult_non-surgical": {
         "interval": [
-          0.05,
-          0.1
+          0.95,
+          0.975
         ]
       },
       "convert_to_tele_child_surgical": {
         "interval": [
-          0.05,
-          0.1
+          0.95,
+          0.975
         ]
       },
       "convert_to_tele_child_non-surgical": {
         "interval": [
-          0.05,
-          0.1
+          0.95,
+          0.975
         ]
       }
     }
