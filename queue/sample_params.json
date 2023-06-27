@@ -2196,10 +2196,10 @@
   },
   "time_profile_mappings": {
     "covid_adjustment": "none",
+    "baseline_adjustment": "none",
     "expat": "linear",
     "repat_local": "linear",
     "repat_nonlocal": "linear",
-    "baseline_adjustment": "linear",
     "non-demographic_adjustment": "linear",
     "activity_avoidance": {
       "aae": {
