@@ -30,7 +30,10 @@ def mock_model():
         "end_year": 2020,
         "health_status_adjustment": [0.8, 1.0],
         "covid_adjustment": [1.0, 1.2],
-        "waiting_list_adjustment": "waiting_list_adjustment",
+        "waiting_list_adjustment": {
+            "ip": {"100": 1, "120": 2},
+            "op": {"100": 3, "120": 4},
+        },
         "expat": {"ip": {"elective": {"Other": [0.7, 0.9]}}},
         "repat_local": {"ip": {"elective": {"Other": [1.0, 1.2]}}},
         "repat_nonlocal": {"ip": {"elective": {"Other": [1.3, 1.5]}}},
@@ -84,7 +87,10 @@ def mock_run_params():
         "seeds": [1, 2, 3, 4],
         "health_status_adjustment": [1, 2, 3, 4, 5],
         "covid_adjustment": [1.1, 1, 2, 3],
-        "waiting_list_adjustment": "waiting_list_adjustment",
+        "waiting_list_adjustment": {
+            "ip": {"100": 1, "120": 2},
+            "op": {"100": 3, "120": 4},
+        },
         "expat": {"ip": {"elective": {"Other": [0.8, 4, 5, 6]}}},
         "repat_local": {"ip": {"elective": {"Other": [1.1, 7, 8, 9]}}},
         "repat_nonlocal": {"ip": {"elective": {"Other": [1.4, 10, 11, 12]}}},
@@ -349,7 +355,10 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                     "change_utilisation": {"a": 1.02, "b": 1.03},
                     "change_availability": 1.04,
                 },
-                "waiting_list_adjustment": "waiting_list_adjustment",
+                "waiting_list_adjustment": {
+                    "ip": {"100": 1, "120": 2},
+                    "op": {"100": 3, "120": 4},
+                },
                 "year": 2020,
             },
             [],
@@ -386,7 +395,10 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                     "a": {"a": 68, "b": 0.7},
                     "b": {"a": 71, "b": 0.8},
                 },
-                "waiting_list_adjustment": "waiting_list_adjustment",
+                "waiting_list_adjustment": {
+                    "ip": {"100": 1, "120": 2},
+                    "op": {"100": 3, "120": 4},
+                },
                 "year": 2020,
             },
             [],
@@ -405,7 +417,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "expat": {"ip": {"elective": {"Other": 0.9}}},
                 "repat_local": {"ip": {"elective": {"Other": 1.05}}},
                 "repat_nonlocal": {"ip": {"elective": {"Other": 1.2}}},
-                "baseline_adjustment": {"ip": {"elective": {"Other": 1.3}}},
+                "baseline_adjustment": {"ip": {"elective": {"Other": 1.6}}},
                 "activity_avoidance": {
                     "ip": {"a_a": 0.75, "a_b": 0.75},
                     "op": {"a_a": 0.75, "a_b": 0.75},
@@ -423,7 +435,10 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                     "change_utilisation": {"a": 1.02, "b": 1.03},
                     "change_availability": 1.04,
                 },
-                "waiting_list_adjustment": "waiting_list_adjustment",
+                "waiting_list_adjustment": {
+                    "ip": {"100": 0.5, "120": 1.0},
+                    "op": {"100": 1.5, "120": 2.0},
+                },
                 "year": 2019,
             },
             [call(7)] * 3,
@@ -440,15 +455,16 @@ def test_get_run_params(
 
     mdl.params["time_profile_mappings"] = {
         "covid_adjustment": "none",
+        "baseline_adjustment": "none",
         "expat": "linear",
         "repat_local": "linear",
         "repat_nonlocal": "linear",
-        "baseline_adjustment": "linear",
         "non-demographic_adjustment": "linear",
         "activity_avoidance": "linear",
         "efficiencies": "linear",
         "bed_occupancy": "linear",
         "theatres": "step2025",
+        "waiting_list_adjustment": "linear",
     }
 
     m = Mock(return_value=1)

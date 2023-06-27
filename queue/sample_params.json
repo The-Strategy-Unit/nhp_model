@@ -2296,6 +2296,7 @@
       }
     },
     "bed_occupancy": "linear",
-    "theatres": "linear"
+    "theatres": "linear",
+    "waiting_list_adjustment": "linear"
   }
 }

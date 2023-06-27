@@ -252,7 +252,11 @@ class Model:
                 i = time_profiles["step"](j)
             else:
                 i = time_profiles[i]
-            return 1 - (1 - prm[model_run]) * i
+
+            if isinstance(prm, list):
+                return 1 - (1 - prm[model_run]) * i
+            else:
+                return prm * i
 
         time_profile_mappings = self.params["time_profile_mappings"]
 
@@ -274,7 +278,6 @@ class Model:
                 k: get_param_value(params[k], v)
                 for k, v in time_profile_mappings.items()
             },
-            "waiting_list_adjustment": params["waiting_list_adjustment"],
         }
 
     def _get_data_counts(self, data) -> npt.ArrayLike:
