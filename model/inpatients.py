@@ -572,44 +572,36 @@ class InpatientEfficiencies:
 
         Rows that are modelled away from elective care have the length of stay fixed to 0 days.
         """
+        #
         losr = self.losr
         data = self.data
         rng = self._model_run.rng
 
-        i = losr.type == "bads"
-        # create a copy of our data, and join to the losr data
-        bads_df = data.merge(
-            losr[i][["baseline_target_rate", "op_dc_split", "losr_f"]],
+        losr = losr[losr.type.str[:4] == "bads"]
+
+        i = losr.index
+
+        factor = data.merge(
+            losr["losr_f"],
             left_index=True,
             right_index=True,
+        )["losr_f"]
+
+        beddays_before = (
+            (data.loc[i, "speldur"] * ~data.loc[i, "bedday_rows"])
+            .groupby(level=0)
+            .sum()
         )
-        # convert the factor value to be the amount we need to adjust the non-target type to to make
-        # the target rate equal too the factor value
-        factor = (
-            (bads_df["losr_f"] - bads_df["baseline_target_rate"])
-            / (1 - bads_df["baseline_target_rate"])
-        ).apply(inrange)
-        # create three values that will sum to 1 - these will be the probabilties of:
-        #   - staying where we are  [0.0, u0)
-        #   - moving to daycase     [u0,  u1)
-        #   - moving to outpatients (u1,  1.0]
-        ur1 = bads_df["op_dc_split"] * factor
-        ur2 = (1 - bads_df["op_dc_split"]) * factor
-        ur0 = 1 - ur1 - ur2
-        # we now create a random value for each row in [0, 1]
-        rvr = rng.uniform(size=len(factor))
-        # we can use this random value to update the patient class column appropriately
-        bads_df.loc[
-            (rvr >= ur0) & (rvr < ur0 + ur1), "classpat"
-        ] = "2"  # row becomes daycase
-        bads_df.loc[(rvr >= ur0 + ur1), "classpat"] = "-1"  # row becomes outpatients
-        # we now need to apply these changes to the actual data
-        i = losr.index[i]
-        # make sure we only keep values in losr that exist in data
-        i = i[i.isin(data.index)]
-        data.loc[i, "classpat"] = bads_df["classpat"].tolist()
-        # set the speldur to 0 if we aren't inpatients
-        data.loc[i, "speldur"] *= data.loc[i, "classpat"] == "1"
+
+        dont_change_classpat = rng.binomial(1, factor).astype(bool)
+        data.loc[i, "speldur"] *= dont_change_classpat
+
+        # change the classpat column
+        data.loc[i, "classpat"] = np.where(
+            dont_change_classpat,
+            data.loc[i, "classpat"],
+            np.where(data.loc[i].index.str[5:12] == "daycase", "2", "-1"),
+        )
 
         step_counts_admissions = -(
             ((data.loc[i, "classpat"] == "-1") * ~data.loc[i, "bedday_rows"])
@@ -623,9 +615,7 @@ class InpatientEfficiencies:
                     (data.loc[i, "speldur"] * ~data.loc[i, "bedday_rows"])
                     .groupby(level=0)
                     .sum()
-                    - (bads_df["speldur"] * ~bads_df["bedday_rows"])
-                    .groupby(level=0)
-                    .sum()
+                    - beddays_before
                     + step_counts_admissions
                 )
             )
