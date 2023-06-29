@@ -26,7 +26,7 @@ def convert_all_files_in_folder(path: str) -> None:
     for i in tqdm(files):
         params = v03_to_v04(i)
 
-        results_file = rm.run_all(params, "data", lambda _: lambda _: None)
+        results_file = rm.run_all(params, "data", lambda: lambda _: None)
 
         metadata = {
             k: str(v)

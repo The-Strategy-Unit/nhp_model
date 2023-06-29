@@ -30,4 +30,5 @@ def upload_results(results_file: str, app_version: str, metadata: dict) -> None:
             f"{app_version}/{results_file}.json.gz",
             gzip.compress(file.read()),
             metadata=metadata,
+            overwrite=True,
         )
