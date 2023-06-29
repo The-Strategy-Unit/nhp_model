@@ -74,7 +74,7 @@ class InpatientsModel(Model):
                 },
             )
             .merge(self._ward_groups, left_on="specialty_code", right_index=True)
-            .groupby(["quarter", "ward_group"])[["available", "occupied"]]
+            .groupby(["quarter", "ward_type", "ward_group"])[["available", "occupied"]]
             .agg(lambda x: sum(np.round(x).astype(int)))
         )
         # get the baseline data
@@ -239,12 +239,13 @@ class InpatientsModel(Model):
         """
         bed_occupancy_params = model_run.run_params["bed_occupancy"]
 
-        def create_dict_key(quarter, ward_group):
+        def create_dict_key(quarter, ward_type, ward_group):
             return frozenset(
                 {
                     ("pod", "ip"),
                     ("measure", "day+night"),
                     ("quarter", quarter),
+                    ("ward_type", ward_type),
                     ("ward_group", ward_group),
                 }
             )
@@ -263,17 +264,17 @@ class InpatientsModel(Model):
             .rename(columns={"size": "model"})
             .merge(
                 self._kh03_data["occupied"],
-                left_on=["quarter", "ward_group"],
+                left_on=["quarter", "ward_type", "ward_group"],
                 right_index=True,
                 how="outer",
             )
             .fillna(value={"occupied": 0})
-            .set_index(["quarter", "ward_group"])
+            .set_index(["quarter", "ward_type", "ward_group"])
         )
         beddays_baseline = (
             self._beds_baseline.rename(columns={"size": "baseline"})
             .merge(target_bed_occupancy_rates, left_on="ward_group", right_index=True)
-            .set_index(["quarter", "ward_group"])
+            .set_index(["quarter", "ward_type", "ward_group"])
         )
 
         beddays_results = (

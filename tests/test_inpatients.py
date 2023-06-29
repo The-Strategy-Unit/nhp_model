@@ -151,10 +151,10 @@ def test_load_kh03_data(mocker, mock_model):
         "501": {"ward_type": "Maternity", "ward_group": "c"},
     }
     assert mdl._kh03_data.to_dict("index") == {
-        ("q1", "a"): {"available": 1, "occupied": 4},
-        ("q1", "b"): {"available": 5, "occupied": 11},
-        ("q1", "c"): {"available": 4, "occupied": 7},
-        ("q2", "a"): {"available": 5, "occupied": 8},
+        ("q1", "General and Acute", "a"): {"available": 1, "occupied": 4},
+        ("q1", "General and Acute", "b"): {"available": 5, "occupied": 11},
+        ("q1", "Maternity", "c"): {"available": 4, "occupied": 7},
+        ("q2", "General and Acute", "a"): {"available": 5, "occupied": 8},
     }
     mdl._bedday_summary.assert_called_once_with("data", 2018)
     assert mdl._beds_baseline == "beds_baseline"
@@ -361,7 +361,7 @@ def test_bed_occupancy(mock_model):
             "occupied": [5, 40, 10, 80],
         },
         index=pd.MultiIndex.from_tuples(
-            [(q, k) for q in ["q1", "q2"] for k in ["A", "B"]]
+            [(q, "general_and_acute", k) for q in ["q1", "q2"] for k in ["A", "B"]]
         ),
     )
     mdl._beds_baseline = pd.DataFrame(
@@ -377,6 +377,7 @@ def test_bed_occupancy(mock_model):
         frozenset(
             {
                 ("ward_group", "A"),
+                ("ward_type", "general_and_acute"),
                 ("pod", "ip"),
                 ("measure", "day+night"),
                 ("quarter", "q1"),
@@ -385,6 +386,7 @@ def test_bed_occupancy(mock_model):
         frozenset(
             {
                 ("ward_group", "B"),
+                ("ward_type", "general_and_acute"),
                 ("pod", "ip"),
                 ("measure", "day+night"),
                 ("quarter", "q1"),
@@ -393,6 +395,7 @@ def test_bed_occupancy(mock_model):
         frozenset(
             {
                 ("ward_group", "C"),
+                ("ward_type", "general_and_acute"),
                 ("pod", "ip"),
                 ("measure", "day+night"),
                 ("quarter", "q1"),
@@ -401,6 +404,7 @@ def test_bed_occupancy(mock_model):
         frozenset(
             {
                 ("quarter", "q2"),
+                ("ward_type", "general_and_acute"),
                 ("pod", "ip"),
                 ("measure", "day+night"),
                 ("ward_group", "A"),
@@ -409,6 +413,7 @@ def test_bed_occupancy(mock_model):
         frozenset(
             {
                 ("ward_group", "B"),
+                ("ward_type", "general_and_acute"),
                 ("quarter", "q2"),
                 ("pod", "ip"),
                 ("measure", "day+night"),
@@ -417,6 +422,7 @@ def test_bed_occupancy(mock_model):
         frozenset(
             {
                 ("ward_group", "C"),
+                ("ward_type", "general_and_acute"),
                 ("quarter", "q2"),
                 ("pod", "ip"),
                 ("measure", "day+night"),
@@ -449,7 +455,7 @@ def test_bed_occupancy_baseline(mock_model):
             "occupied": [5, 40, 10, 80],
         },
         index=pd.MultiIndex.from_tuples(
-            [(q, k) for q in ["q1", "q2"] for k in ["A", "B"]]
+            [(q, "general_and_acute", k) for q in ["q1", "q2"] for k in ["A", "B"]]
         ),
     )
     expected = {
@@ -458,6 +464,7 @@ def test_bed_occupancy_baseline(mock_model):
                 ("pod", "ip"),
                 ("measure", "day+night"),
                 ("quarter", "q1"),
+                ("ward_type", "general_and_acute"),
                 ("ward_group", "A"),
             }
         ): 10,
@@ -466,6 +473,7 @@ def test_bed_occupancy_baseline(mock_model):
                 ("pod", "ip"),
                 ("measure", "day+night"),
                 ("quarter", "q1"),
+                ("ward_type", "general_and_acute"),
                 ("ward_group", "B"),
             }
         ): 50,
@@ -474,6 +482,7 @@ def test_bed_occupancy_baseline(mock_model):
                 ("pod", "ip"),
                 ("measure", "day+night"),
                 ("quarter", "q2"),
+                ("ward_type", "general_and_acute"),
                 ("ward_group", "A"),
             }
         ): 20,
@@ -482,6 +491,7 @@ def test_bed_occupancy_baseline(mock_model):
                 ("pod", "ip"),
                 ("measure", "day+night"),
                 ("quarter", "q2"),
+                ("ward_type", "general_and_acute"),
                 ("ward_group", "B"),
             }
         ): 100,
