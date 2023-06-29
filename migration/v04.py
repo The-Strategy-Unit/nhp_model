@@ -23,7 +23,7 @@ def convert_all_files_in_folder(path: str) -> None:
     files = [
         f"{path}/{d}/{i}" for d in os.listdir(path) for i in os.listdir(f"{path}/{d}")
     ]
-    for i in tqdm(files):
+    for i in tqdm(files, position=0):
         params = v03_to_v04(i)
 
         results_file = rm.run_all(params, "data", lambda: lambda _: None)

@@ -195,6 +195,8 @@ def _run_model(
                 ),
                 f"Running {model.__class__.__name__[:-5].rjust(11)} model",  # pylint: disable=protected-access
                 total=len(model_runs),
+                position=1,
+                leave=False,
             )
         )
     logging.info(" * finished")
@@ -351,7 +353,7 @@ def main() -> None:
                 datefmt="%Y-%m-%d %H:%M:%S",
             )
 
-            run_all(params, args.data_path, lambda _: lambda _: None)
+            run_all(params, args.data_path, lambda: lambda _: None)
             return
         case "aae":
             model_type = AaEModel
