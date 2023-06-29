@@ -161,7 +161,10 @@ class ActivityAvoidance:
             return self
 
         factor = pd.concat(
-            {k: pd.Series(v, name="baseline_adjustment") for k, v in params.items()}
+            {
+                k: pd.Series(v, name="baseline_adjustment", dtype="float64")
+                for k, v in params.items()
+            }
         )
         return self._update(factor, ["group", "tretspef"])
 
