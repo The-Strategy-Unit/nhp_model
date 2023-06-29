@@ -210,21 +210,22 @@ def test_losr_preop(mock_ipe):
 
 def test_losr_bads(mock_ipe):
     """test that it reduces the speldur column for 'bads' types"""
+    # arrange
     m = mock_ipe
+    bads_strats = ["bads_daycase", "bads_daycase_occassional", "bads_outpatients"]
+    # replace the index
+    i = m.losr.index[m.losr.type != "bads"].to_list() + bads_strats
+    m.losr.index = i
+
     m._model_run.data = pd.DataFrame(
         {
             "speldur": list(range(12)) * 2,
             "classpat": (["1"] * 6 + ["2"] * 3 + ["1"] * 3) * 2,
             "bedday_rows": [True] * 12 + [False] * 12,
         },
-        index=[x for x in ["x", "g", "h", "i"] for _ in range(3)] * 2,
+        index=[x for x in ["x"] + bads_strats for _ in range(3)] * 2,
     )
-    # 1: rvr < ur0
-    # 2: rvr < ur0 + ur1
-    # 3: rvr >= ur0 + ur1
-    m._model_run.rng.uniform.return_value = (
-        [0.02, 0.02, 0.01] + [0.04, 0.03, 1.0] + [0.04, 0.03, 0.55]
-    ) * 2
+    m._model_run.rng.binomial.return_value = np.tile([1, 1, 0], 3 * 2)
     m.step_counts = {}
 
     # act
@@ -233,14 +234,22 @@ def test_losr_bads(mock_ipe):
     # assert
     assert actual == m
 
-    assert m._model_run.rng.uniform.call_args_list[0] == call(size=18)
+    assert m._model_run.rng.binomial.call_args[0][0] == 1
+    assert (
+        m._model_run.rng.binomial.call_args[0][1]
+        == m.losr[m.losr.type == "bads"]["losr_f"].repeat(6)
+    ).all()
 
     assert (
         m._model_run.data["speldur"].to_list()
-        == [0, 1, 2, 3, 4, 5] + [0] * 6 + [0, 1, 2] + [0] * 9
+        == [0, 1, 2, 3, 4, 0, 6, 7, 0, 9, 10, 0] * 2
+    )
+    assert (
+        m._model_run.data["classpat"].to_list()
+        == (["1"] * 5 + ["2"] * 4 + ["1", "1", "-1"]) * 2
     )
     assert {k: v.tolist() for k, v in m.step_counts.items()} == {
-        ("efficiencies", "g"): [-3, -15],
-        ("efficiencies", "h"): [0, -21],
-        ("efficiencies", "i"): [-1, -31],
+        ("efficiencies", "bads_daycase"): [0, -5],
+        ("efficiencies", "bads_daycase_occassional"): [0, -8],
+        ("efficiencies", "bads_outpatients"): [-1, -12],
     }
