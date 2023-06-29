@@ -614,7 +614,7 @@ def test_main_all_runs(mocker):
     run_all_mock.assert_called_once()
     assert run_all_mock.call_args[0][0] == "params"
     assert run_all_mock.call_args[0][1] == "data"
-    assert run_all_mock.call_args[0][2](0)(0) is None
+    assert run_all_mock.call_args[0][2]()(0) is None
 
     run_single_mock.assert_not_called()
     ldp_mock.assert_called_once_with("queue/params.json")
