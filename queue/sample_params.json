@@ -1396,170 +1396,170 @@
       },
       "ambulatory_care_conditions_acute": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "ambulatory_care_conditions_chronic": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "ambulatory_care_conditions_vaccine_preventable": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "cancelled_operations": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "eol_care_2_days": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "eol_care_3_to_14_days": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "evidence_based_interventions_ent": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "evidence_based_interventions_general_surgery": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "evidence_based_interventions_gi_surgical": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "evidence_based_interventions_msk": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "evidence_based_interventions_vascular_varicose_veins": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "evidence_based_interventions_urology": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "falls_related_admissions": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "frail_elderly_high": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "frail_elderly_intermediate": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "intentional_self_harm": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "medically_unexplained_related_admissions": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "medicines_related_admissions_explicit": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "medicines_related_admissions_implicit_anti-diabetics": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "medicines_related_admissions_implicit_benzodiasepines": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "medicines_related_admissions_implicit_diurectics": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "medicines_related_admissions_implicit_nsaids": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "obesity_related_admissions": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "raid_ae": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "readmission_within_28_days": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "smoking": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "zero_los_no_procedure_adult": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       },
       "zero_los_no_procedure_child": {
         "interval": [
-          0.7,
-          0.9
+          0.85,
+          0.95
         ]
       }
     },
@@ -1782,15 +1782,15 @@
       "general_los_reduction_non-elective": {
         "type": "all",
         "interval": [
-          0.51,
-          0.54
+          0.84,
+          0.86
         ]
       },
       "general_los_reduction_elective": {
         "type": "all",
         "interval": [
-          0.71,
-          0.74
+          0.91,
+          0.93
         ]
       }
     },
