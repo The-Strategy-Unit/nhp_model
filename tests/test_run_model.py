@@ -75,7 +75,7 @@ def test_combine_results(mocker):
                     ): [2 + j, 3 + j],
                 },
             }
-            for j in range(4)
+            for j in range(6)
         ],
         [{"a": {frozenset({("measure", "a"), ("pod", "a")}): 100}}],
     ]
@@ -87,6 +87,7 @@ def test_combine_results(mocker):
                 "baseline": 101,
                 "principal": 21,
                 "model_runs": [41, 61],
+                "time_profiles": [81, 101],
             },
             {
                 "pod": "b",
@@ -94,6 +95,7 @@ def test_combine_results(mocker):
                 "baseline": 2,
                 "principal": 22,
                 "model_runs": [42, 62],
+                "time_profiles": [82, 102],
             },
             {
                 "pod": "a",
@@ -101,6 +103,7 @@ def test_combine_results(mocker):
                 "baseline": 3,
                 "principal": 23,
                 "model_runs": [43, 63],
+                "time_profiles": [83, 103],
             },
             {
                 "pod": "b",
@@ -108,6 +111,7 @@ def test_combine_results(mocker):
                 "baseline": 4,
                 "principal": 24,
                 "model_runs": [44, 64],
+                "time_profiles": [84, 104],
             },
         ],
         "b": [
@@ -117,6 +121,7 @@ def test_combine_results(mocker):
                 "baseline": 5,
                 "principal": 25,
                 "model_runs": [45, 65],
+                "time_profiles": [85, 105],
             },
             {
                 "pod": "b",
@@ -124,6 +129,7 @@ def test_combine_results(mocker):
                 "baseline": 6,
                 "principal": 26,
                 "model_runs": [46, 66],
+                "time_profiles": [86, 106],
             },
             {
                 "pod": "a",
@@ -131,6 +137,7 @@ def test_combine_results(mocker):
                 "baseline": 7,
                 "principal": 27,
                 "model_runs": [47, 67],
+                "time_profiles": [87, 107],
             },
             {
                 "pod": "b",
@@ -138,6 +145,7 @@ def test_combine_results(mocker):
                 "baseline": 8,
                 "principal": 28,
                 "model_runs": [48, 68],
+                "time_profiles": [88, 108],
             },
         ],
         "c": [
@@ -147,6 +155,7 @@ def test_combine_results(mocker):
                 "baseline": 9,
                 "principal": 29,
                 "model_runs": [49, 69],
+                "time_profiles": [89, 109],
             },
             {
                 "pod": "b",
@@ -154,6 +163,7 @@ def test_combine_results(mocker):
                 "baseline": 10,
                 "principal": 30,
                 "model_runs": [50, 70],
+                "time_profiles": [90, 110],
             },
             {
                 "pod": "a",
@@ -161,6 +171,7 @@ def test_combine_results(mocker):
                 "baseline": 11,
                 "principal": 31,
                 "model_runs": [51, 71],
+                "time_profiles": [91, 111],
             },
             {
                 "pod": "b",
@@ -168,6 +179,7 @@ def test_combine_results(mocker):
                 "baseline": 12,
                 "principal": 32,
                 "model_runs": [52, 72],
+                "time_profiles": [92, 112],
             },
         ],
         "d": [
@@ -177,6 +189,7 @@ def test_combine_results(mocker):
                 "baseline": 13,
                 "principal": 33,
                 "model_runs": [53, 73],
+                "time_profiles": [93, 113],
             },
             {
                 "pod": "b",
@@ -184,6 +197,7 @@ def test_combine_results(mocker):
                 "baseline": 14,
                 "principal": 34,
                 "model_runs": [54, 74],
+                "time_profiles": [94, 114],
             },
             {
                 "pod": "a",
@@ -191,6 +205,7 @@ def test_combine_results(mocker):
                 "baseline": 15,
                 "principal": 35,
                 "model_runs": [55, 75],
+                "time_profiles": [95, 115],
             },
             {
                 "pod": "b",
@@ -198,6 +213,7 @@ def test_combine_results(mocker):
                 "baseline": 16,
                 "principal": 36,
                 "model_runs": [56, 76],
+                "time_profiles": [96, 116],
             },
         ],
         "step_counts": [
@@ -207,6 +223,7 @@ def test_combine_results(mocker):
                 "baseline": [0, 1],
                 "principal": [0, 1],
                 "model_runs": [[0, 1], [0, 1]],
+                "time_profiles": [[0, 1], [0, 1]],
             },
             {
                 "change_factor": "a",
@@ -214,12 +231,13 @@ def test_combine_results(mocker):
                 "baseline": [2, 3],
                 "principal": [3, 4],
                 "model_runs": [[4, 5], [5, 6]],
+                "time_profiles": [[6, 7], [7, 8]],
             },
         ],
     }
 
     # act
-    actual = _combine_results(results)
+    actual = _combine_results(results, 2)
 
     # assert
     assert actual == expected
@@ -304,6 +322,7 @@ def test_split_model_runs_out_step_counts():
             "baseline": [0, 1],
             "principal": [0, 1],
             "model_runs": [[0, 1], [0, 1]],
+            "time_profiles": [[0, 1], [0, 1]],
         },
         {
             "change_factor": "a",
@@ -311,6 +330,7 @@ def test_split_model_runs_out_step_counts():
             "baseline": [2, 3],
             "principal": [3, 4],
             "model_runs": [[4, 5], [5, 6]],
+            "time_profiles": [[6, 7], [7, 8]],
         },
     ]
     expected = [
@@ -320,6 +340,7 @@ def test_split_model_runs_out_step_counts():
             "strategy": "a",
             "value": [3, 4],
             "model_runs": [[4, 5], [5, 6]],
+            "time_profiles": [[6, 7], [7, 8]],
         },
     ]
 
@@ -335,7 +356,7 @@ def test_run_model(mocker):
     model_m = Mock()
     model_m.__name__ = "InpatientsModel"
 
-    params = {"model_runs": 2}
+    params = {"start_year": 2020, "end_year": 2022, "model_runs": 2}
     mocker.patch("os.cpu_count", return_value=2)
 
     pool_mock = mocker.patch("run_model.Pool")
@@ -349,8 +370,8 @@ def test_run_model(mocker):
     actual = _run_model(model_m, params, "data", "hsa", "run_params", pc_m)
 
     # assert
-    pool_ctm.imap.assert_called_once_with(model_m().go, [-1, 0, 1, 2], chunksize=16)
-    assert actual == [model_m().go()] * 4
+    pool_ctm.imap.assert_called_once_with(model_m().go, [-1, 0, 1, 2, 3], chunksize=1)
+    assert actual == [model_m().go()] * 5
     pc_m.assert_not_called()
 
 
@@ -378,6 +399,7 @@ def test_run_all(mocker):
         "scenario": "test",
         "start_year": 2020,
         "end_year": 2025,
+        "model_runs": 10,
         "create_datetime": "20230123_012345",
     }
 
@@ -390,7 +412,7 @@ def test_run_all(mocker):
     # assert
     assert actual == "synthetic/test-20230123_012345"
 
-    pc_m.assert_called_once_with("1")
+    pc_m.assert_called_once_with()
     assert pc_m().call_args_list == [
         call("Inpatients"),
         call("Outpatients"),
@@ -398,7 +420,7 @@ def test_run_all(mocker):
     ]
 
     grp_m.assert_called_once_with(params)
-    hsa_m.assert_called_once_with("data_path/2020/synthetic", 2020, 2025)
+    hsa_m.assert_called_once_with("data_path/2020/synthetic", 2020)
     assert HealthStatusAdjustment.data_path == "data_path"
 
     assert rm_m.call_args_list == [
@@ -408,7 +430,7 @@ def test_run_all(mocker):
         for m in [InpatientsModel, OutpatientsModel, AaEModel]
     ]
 
-    cr_m.assert_called_once_with(["ip", "op", "aae"])
+    cr_m.assert_called_once_with(["ip", "op", "aae"], 10)
     os_m.assert_called_once_with("results/synthetic", exist_ok=True)
 
     mock_file.assert_called_once_with(
@@ -515,7 +537,7 @@ def test_run_single_model_run(mocker, capsys):
 
     # assert
     grp_mock.assert_called_once_with(params)
-    hsa_mock.assert_called_once_with("data_path/2020/synthetic", 2020, 2025)
+    hsa_mock.assert_called_once_with("data_path/2020/synthetic", 2020)
     assert HealthStatusAdjustment.data_path == "data_path"
 
     assert timeit_mock.call_count == 3
@@ -589,7 +611,11 @@ def test_main_all_runs(mocker):
     main()
 
     # assert
-    run_all_mock.assert_called_once_with("params", "data")
+    run_all_mock.assert_called_once()
+    assert run_all_mock.call_args[0][0] == "params"
+    assert run_all_mock.call_args[0][1] == "data"
+    assert run_all_mock.call_args[0][2]()(0) is None
+
     run_single_mock.assert_not_called()
     ldp_mock.assert_called_once_with("queue/params.json")
 

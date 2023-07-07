@@ -13,121 +13,170 @@ from azure.storage.blob import BlobServiceClient
 from azure.storage.filedatalake import DataLakeServiceClient
 
 import config
+from model.helpers import load_params
 from run_model import run_all
 
 
-def _get_container(container_name):
-    return BlobServiceClient(
-        account_url=f"https://{config.STORAGE_ACCOUNT}.blob.core.windows.net",
-        credential=DefaultAzureCredential(),
-    ).get_container_client(container_name)
+class RunWithLocalStorage:
+    """Methods for running with local storage"""
+
+    def __init__(self, filename: str):
+        self.params = load_params(f"queue/{filename}")
+
+    def finish(self, results_file: str) -> None:
+        """Post model run steps
+
+        :param results_file: the path to the results file
+        :type results_file: str
+        """
+
+    def progress_callback(self) -> None:
+        """Progress callback method
+
+        for local storage do nothing
+        """
+        return lambda _: lambda _: None
 
 
-def progress_callback(model_id):
-    """Progress callback method
+class RunWithAzureStorage:
+    """Methods for running with azure storage"""
 
-    updates a queue message with the status of the current model runs
-    """
-    filename = f"{model_id}.json"
-
-    blob = _get_container("queue").get_blob_client(filename)
-
-    current_progress = {
-        **blob.get_blob_properties()["metadata"],
-        "Inpatients": 0,
-        "Outpatients": 0,
-        "AaE": 0,
-    }
-
-    blob.set_blob_metadata({k: str(v) for k, v in current_progress.items()})
-
-    def callback(model_type):
-        def update(n_completed):
-            current_progress[model_type] = n_completed
-            blob.set_blob_metadata({k: str(v) for k, v in current_progress.items()})
-
-        return update
-
-    return callback
-
-
-def load_params(filename: str) -> dict:
-    """Load model parameters
-
-    if the file exists in the local folder `queue/`, then we will load the file from there.
-    otherwise, the file will be downloaded from blob storage
-
-    :param filename: the name of the parameter file to load
-    :type filename: str
-    :return: the parameters to use for a model run
-    :rtype: dict
-    """
-    logging.info("downloading params: %s", filename)
-
-    params_content = _get_container("queue").download_blob(filename).readall()
-
-    return json.loads(params_content)
-
-
-def get_data(path: str) -> None:
-    """Get the data to run the model
-
-    if the data exists locally in the folder `data/`, then this function does nothing.
-    otherwise, it will download the data from Azure Data Lake storage
-
-    :param dataset: the name of the dataset that we are loading
-    :type dataset: str
-    """
-    logging.info("downloading data (%s)", path)
-    fs_client = DataLakeServiceClient(
-        account_url=f"https://{config.STORAGE_ACCOUNT}.dfs.core.windows.net",
-        credential=DefaultAzureCredential(),
-    ).get_file_system_client("data")
-
-    version = config.DATA_VERSION
-    directory_path = f"{version}/{path}"
-
-    paths = [p.name for p in fs_client.get_paths(directory_path)]
-
-    os.makedirs(f"data/{path}", exist_ok=True)
-
-    for filename in paths:
-        logging.info(" * %s", filename)
-        local_name = "data" + filename.removeprefix(version)
-        with open(local_name, "wb") as local_file:
-            file_client = fs_client.get_file_client(filename)
-            local_file.write(file_client.download_file().readall())
-
-
-def _upload_results(results_file: str, metadata: dict) -> None:
-    """"""
-    container = _get_container("results")
-
-    app_version = re.sub("(\\d+\\.\\d+)\\..*", "\\1", config.APP_VERSION)
-
-    with open(f"results/{results_file}.json", "rb") as file:
-        container.upload_blob(
-            f"{app_version}/{results_file}.json.gz",
-            gzip.compress(file.read()),
-            metadata=metadata,
+    def __init__(self, filename: str, app_version: str = "dev"):
+        logging.getLogger("azure.storage.common.storageclient").setLevel(
+            logging.WARNING
+        )
+        logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
+            logging.WARNING
         )
 
+        self._app_version = re.sub("(\\d+\\.\\d+)\\..*", "\\1", app_version)
 
-def _cleanup(model_id: int):
-    """Cleanup
+        self.params = self._get_params(filename)
+        self._get_data(f"{self.params['start_year']}/{self.params['dataset']}")
+        self._get_data("reference")
 
-    :param filename: the name of the parameter file to load
-    :type filename: str
-    :return: the parameters to use for a model run
-    :rtype: dict
-    """
-    logging.info("cleaning up queue")
+    def _get_container(self, container_name: str):
+        return BlobServiceClient(
+            account_url=f"https://{config.STORAGE_ACCOUNT}.blob.core.windows.net",
+            credential=DefaultAzureCredential(),
+        ).get_container_client(container_name)
 
-    _get_container("queue").delete_blob(f"{model_id}.json")
+    def _get_params(self, filename: str) -> dict:
+        """Get the parameters for the model
+
+        :param filename: the name of the params file
+        :type filename: str
+        :return: the parameters for the model
+        :rtype: dict
+        """
+        logging.info("downloading params: %s", filename)
+
+        self._queue_blob = self._get_container("queue").get_blob_client(filename)
+
+        params_content = self._queue_blob.download_blob().readall()
+
+        return json.loads(params_content)
+
+    def _get_data(self, path: str) -> None:
+        """Get data to run the model
+
+        for local storage, the data is already available, so do nothing.
+
+        :param path: the path to load the files from
+        :type path: str
+        """
+        logging.info("downloading data (%s)", path)
+        fs_client = DataLakeServiceClient(
+            account_url=f"https://{config.STORAGE_ACCOUNT}.dfs.core.windows.net",
+            credential=DefaultAzureCredential(),
+        ).get_file_system_client("data")
+
+        version = config.DATA_VERSION
+        directory_path = f"{version}/{path}"
+
+        paths = [p.name for p in fs_client.get_paths(directory_path)]
+
+        os.makedirs(f"data/{path}", exist_ok=True)
+
+        for filename in paths:
+            logging.info(" * %s", filename)
+            local_name = "data" + filename.removeprefix(version)
+            with open(local_name, "wb") as local_file:
+                file_client = fs_client.get_file_client(filename)
+                local_file.write(file_client.download_file().readall())
+
+    def _upload_results(self, results_file: str, metadata: dict) -> None:
+        """Upload the results
+
+        once the model has run, upload the results to blob storage
+
+        :param results_file: the saved results file
+        :type results_file: str
+        :param metadata: the metadata to attach to the blob
+        :type metadata: dict
+        """
+        container = self._get_container("results")
+
+        with open(f"results/{results_file}.json", "rb") as file:
+            container.upload_blob(
+                f"{self._app_version}/{results_file}.json.gz",
+                gzip.compress(file.read()),
+                metadata=metadata,
+                overwrite=True,
+            )
+
+    def _cleanup(self) -> None:
+        """Cleanup
+
+        once the model has run, remove the file from the queue
+        """
+        logging.info("cleaning up queue")
+
+        self._queue_blob.delete_blob()
+
+    def finish(self, results_file: str) -> None:
+        """Post model run steps
+
+        :param results_file: the path to the results file
+        :type results_file: str
+        """
+        metadata = {
+            k: str(v)
+            for k, v in self.params.items()
+            if not isinstance(v, dict) and not isinstance(v, list)
+        }
+        self._upload_results(results_file, metadata)
+        self._cleanup()
+
+    def progress_callback(self) -> None:
+        """Progress callback method
+
+        updates the metadata for the blob in the queue to give progress
+        """
+
+        blob = self._queue_blob
+
+        current_progress = {
+            **blob.get_blob_properties()["metadata"],
+            "Inpatients": 0,
+            "Outpatients": 0,
+            "AaE": 0,
+        }
+
+        blob.set_blob_metadata({k: str(v) for k, v in current_progress.items()})
+
+        def callback(model_type):
+            def update(n_completed):
+                current_progress[model_type] = n_completed
+                blob.set_blob_metadata({k: str(v) for k, v in current_progress.items()})
+
+            return update
+
+        return callback
 
 
-def main():
-    """the main method"""
+def parse_args():
+    """Parse command line arguments"""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "params_file",
@@ -136,33 +185,37 @@ def main():
         help="Name of the parameters file stored in Azure",
     )
 
-    args = parser.parse_args()
+    parser.add_argument(
+        "--local-storage",
+        "-l",
+        action="store_true",
+        help="Use local storage (instead of Azure)",
+    )
+
+    return parser.parse_args()
+
+
+def main():
+    """the main method"""
+
+    args = parse_args()
 
     logging.basicConfig(
         format="%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s",
         level=logging.INFO,
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    logging.getLogger("azure.storage.common.storageclient").setLevel(logging.WARNING)
-    logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
-        logging.WARNING
-    )
 
     logging.info("running model for: %s", args.params_file)
 
-    params = load_params(args.params_file)
-    get_data(f"{params['start_year']}/{params['dataset']}")
-    get_data("reference")
+    if args.local_storage:
+        runner = RunWithLocalStorage(args.params_file)
+    else:
+        runner = RunWithAzureStorage(args.params_file, config.APP_VERSION)
 
-    results_file = run_all(params, "data", progress_callback)
+    results_file = run_all(runner.params, "data", runner.progress_callback)
 
-    metadata = {
-        k: str(v)
-        for k, v in params.items()
-        if not isinstance(v, dict) and not isinstance(v, list)
-    }
-    _upload_results(results_file, metadata)
-    _cleanup(params["id"])
+    runner.finish(results_file)
 
     logging.info("complete")
 

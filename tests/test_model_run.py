@@ -43,7 +43,7 @@ def test_init(mocker, run, rp_call):
     assert actual.run_params == {"seed": 1}
     assert actual.rng == "rng"
     assert actual.data == "data"
-    assert actual.step_counts == {}
+    assert not actual.step_counts
 
     rng_mock.assert_called_once_with(1)
     prp_mock.assert_called_once_with()

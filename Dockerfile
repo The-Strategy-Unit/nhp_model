@@ -22,7 +22,6 @@ RUN awk 'NR==1,/# dev dependencies/' /tmp/environment.yml | \
 COPY model /opt/model
 COPY run_model.py /opt
 COPY docker_run.py /opt
-COPY docker_test.py /opt
 COPY config.py /opt
 
 # define build arguments, these will set the environment variables in the container
@@ -33,6 +32,8 @@ ARG storage_account
 ENV APP_VERSION=$app_version
 ENV DATA_VERSION=$data_version
 ENV STORAGE_ACCOUNT=$storage_account
+
+ENV BATCH_SIZE=16
 
 # set the entry point of the container to be our script
 ENTRYPOINT [ "./docker_run.py" ]

@@ -20,7 +20,7 @@ from model.health_status_adjustment import (
 def mock_hsa():
     """create a mock Model instance"""
     with patch.object(HealthStatusAdjustment, "__init__", lambda *args: None):
-        hsa = HealthStatusAdjustment(None, None, None)
+        hsa = HealthStatusAdjustment(None, None)
 
     hsa._all_ages = np.arange(0, 101)
     hsa._activity_table_path = "data/synthetic/hsa_activity_table.csv"
@@ -43,50 +43,40 @@ def test_hsa_init(mocker):
     )
 
     # act
-    hsa = HealthStatusAdjustment("data/synthetic", 2020, 2025)
+    hsa = HealthStatusAdjustment("data/synthetic", 2020)
 
     # assert
     assert hsa._all_ages.tolist() == list(range(0, 101))
     assert hsa._activity_table_path == "data/synthetic/hsa_activity_table.csv"
     assert hsa._cache == dict()
 
-    lle_mock.assert_called_once_with(2020, 2025)
+    lle_mock.assert_called_once_with(2020)
     lvl_mock.assert_called_once_with()
     laa_mock.assert_called_once_with()
 
 
 @pytest.mark.parametrize(
-    "start_year, end_year, expectation",
+    "year, expectation",
     [
         (
             2020,
-            2021,
             {
-                ("a", 1, 55): 3 - 2,
-                ("b", 2, 55): 13 - 8,
-            },
-        ),
-        (
-            2020,
-            2022,
-            {
-                ("a", 1, 55): 5 - 2,
-                ("b", 2, 55): 21 - 8,
+                "2020": {("a", 1, 55): 0, ("b", 2, 55): 0},
+                "2021": {("a", 1, 55): 1, ("b", 2, 55): 5},
+                "2022": {("a", 1, 55): 3, ("b", 2, 55): 13},
             },
         ),
         (
             2021,
-            2022,
             {
-                ("a", 1, 55): 5 - 3,
-                ("b", 2, 55): 21 - 13,
+                "2020": {("a", 1, 55): -1, ("b", 2, 55): -5},
+                "2021": {("a", 1, 55): 0, ("b", 2, 55): 0},
+                "2022": {("a", 1, 55): 2, ("b", 2, 55): 8},
             },
         ),
     ],
 )
-def test_hsa_load_life_expectancy_series(
-    mocker, mock_hsa, start_year, end_year, expectation
-):
+def test_hsa_load_life_expectancy_series(mocker, mock_hsa, year, expectation):
     # arrange
     life_expectancy = pd.DataFrame(
         {
@@ -101,7 +91,8 @@ def test_hsa_load_life_expectancy_series(
     mocker.patch("pandas.read_csv", return_value=life_expectancy)
 
     # act
-    mock_hsa._load_life_expectancy_series(start_year, end_year)
+
+    mock_hsa._load_life_expectancy_series(year)
 
     # assert
     assert mock_hsa._ages.tolist() == np.arange(55, 91).tolist()
@@ -122,12 +113,12 @@ def test_hsa_load_life_expectancy_series_filters_ages(mocker, mock_hsa):
     mocker.patch("pandas.read_csv", return_value=life_expectancy)
 
     # act
-    mock_hsa._load_life_expectancy_series(2020, 2022)
+    mock_hsa._load_life_expectancy_series(2020)
 
     # assert
-    assert mock_hsa._life_expectancy.to_dict() == {
-        ("a", 1, i): i for i in range(55, 91)
-    }
+    assert list(mock_hsa._life_expectancy.to_dict()["2020"].keys()) == [
+        ("a", 1, i) for i in range(55, 91)
+    ]
 
 
 def test_load_variant_lookup(mocker, mock_hsa):
@@ -175,9 +166,10 @@ def test_load_activity_ages(mocker, mock_hsa):
 
 
 @pytest.mark.parametrize(
-    "year, expected", [(2020, (1, 4, 7)), (2021, (2, 5, 8)), (2022, (3, 6, 9))]
+    "year, expected_results, expected_call",
+    [(2021, [2, 1, 2, 3], (2, 5, 8)), (2022, [3, 1, 2, 3, 2], (3, 6, 9))],
 )
-def test_generate_params(mocker, year, expected):
+def test_generate_params(mocker, year, expected_results, expected_call):
     # arrange
     m = mocker.patch(
         "model.health_status_adjustment.HealthStatusAdjustment.random_splitnorm"
@@ -186,20 +178,20 @@ def test_generate_params(mocker, year, expected):
 
     p = pd.DataFrame(
         {
-            "year": [2020, 2021, 2022],
-            "mode": [1, 2, 3],
-            "sd1": [4, 5, 6],
-            "sd2": [7, 8, 9],
+            "year": [2019, 2020, 2021, 2022],
+            "mode": [0, 1, 2, 3],
+            "sd1": [0, 4, 5, 6],
+            "sd2": [0, 7, 8, 9],
         }
     )
     read_csv_mock = mocker.patch("pandas.read_csv", return_value=p)
 
     # act
-    actual = HealthStatusAdjustment.generate_params(year, "rng", 10)
+    actual = HealthStatusAdjustment.generate_params(2020, year, "rng", 10)
 
     # assert
-    assert actual == [expected[0]] + [1, 2, 3]
-    m.assert_called_once_with("rng", 10, *expected)
+    assert actual.tolist() == expected_results
+    m.assert_called_once_with("rng", 10, *expected_call)
     read_csv_mock.assert_called_once_with("data/reference/hsa_split_normal_params.csv")
 
 
@@ -232,16 +224,18 @@ def test_random_splitnorm():
 def test_hsa_run_not_cached(mock_hsa):
     # arrange
     mock_hsa._ages = [1, 2]
-    mock_hsa._life_expectancy = pd.Series(
+    mock_hsa._life_expectancy = pd.DataFrame(
         {
-            ("ppp", 1, 1): 0,
-            ("ppp", 1, 2): 1,
-            ("ppp", 2, 1): 2,
-            ("ppp", 2, 2): 3,
-            ("hle", 1, 1): 4,
-            ("hle", 1, 2): 5,
-            ("hle", 2, 1): 6,
-            ("hle", 2, 2): 7,
+            "2020": {
+                ("ppp", 1, 1): 0,
+                ("ppp", 1, 2): 1,
+                ("ppp", 2, 1): 2,
+                ("ppp", 2, 2): 3,
+                ("hle", 1, 1): 4,
+                ("hle", 1, 2): 5,
+                ("hle", 2, 1): 6,
+                ("hle", 2, 2): 7,
+            }
         }
     ).rename_axis(["var", "sex", "age"])
     activity = pd.Series(
@@ -280,7 +274,9 @@ def test_hsa_run_not_cached(mock_hsa):
     mock_hsa._variant_lookup = {"principal_proj": "ppp"}
 
     # act
-    actual = mock_hsa.run({"health_status_adjustment": 2, "variant": "principal_proj"})
+    actual = mock_hsa.run(
+        {"year": 2020, "health_status_adjustment": 2, "variant": "principal_proj"}
+    )
 
     # assert
     assert actual.to_dict() == {
@@ -293,16 +289,18 @@ def test_hsa_run_not_cached(mock_hsa):
         ("b", 2, 1): 7.0,
         ("b", 2, 2): 8.0,
     }
-    assert mock_hsa._cache[(2, "ppp")].equals(actual)
+    assert mock_hsa._cache[(2, 2020, "ppp")].equals(actual)
 
 
 def test_hsa_run_cached(mock_hsa):
     # arrange
-    mock_hsa._cache[(1, "ppp")] = "a"
+    mock_hsa._cache[(1, 2020, "ppp")] = "a"
     mock_hsa._variant_lookup = {"principal_proj": "ppp"}
 
     # act
-    actual = mock_hsa.run({"health_status_adjustment": 1, "variant": "principal_proj"})
+    actual = mock_hsa.run(
+        {"year": 2020, "health_status_adjustment": 1, "variant": "principal_proj"}
+    )
 
     # assert
     assert actual == "a"
@@ -339,12 +337,12 @@ def test_hsa_gam_init(mocker):
 
     # act
     with patch("builtins.open", mock_open(read_data="hsa_gams")) as mock_file:
-        hsa = HealthStatusAdjustmentGAM("data/synthetic", 2020, 2025)
+        hsa = HealthStatusAdjustmentGAM("data/synthetic", 2020)
 
     # assert
     assert hsa._gams == "pkl_load"
     mock_file.assert_called_with("data/synthetic/hsa_gams.pkl", "rb")
-    super_mock.assert_called_once_with("data/synthetic", 2020, 2025)
+    super_mock.assert_called_once_with("data/synthetic", 2020)
 
 
 def test_hsa_gam_predict_activity(mock_hsa_gam):
@@ -416,10 +414,10 @@ def test_hsa_interpolated_init(mocker):
     )
 
     # act
-    HealthStatusAdjustmentInterpolated("data/synthetic", 2020, 2025)
+    HealthStatusAdjustmentInterpolated("data/synthetic", 2020)
 
     # assert
-    super_mock.assert_called_once_with("data/synthetic", 2020, 2025)
+    super_mock.assert_called_once_with("data/synthetic", 2020)
     lal_mock.assert_called_once_with()
 
 

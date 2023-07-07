@@ -100,7 +100,10 @@ class ActivityAvoidance:
 
     def demographic_adjustment(self):
         """perform the demograhic adjustment"""
-        factor = self.demog_factors[self.run_params["variant"]]
+        year = str(self.run_params["year"])
+        variant = self.run_params["variant"]
+
+        factor = self.demog_factors.loc[variant][year].rename("demographic_adjustment")
         return self._update(factor, ["age", "sex"])
 
     def health_status_adjustment(self):
@@ -158,7 +161,10 @@ class ActivityAvoidance:
             return self
 
         factor = pd.concat(
-            {k: pd.Series(v, name="baseline_adjustment") for k, v in params.items()}
+            {
+                k: pd.Series(v, name="baseline_adjustment", dtype="float64")
+                for k, v in params.items()
+            }
         )
         return self._update(factor, ["group", "tretspef"])
 

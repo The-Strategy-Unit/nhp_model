@@ -2,7 +2,7 @@
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring
 
 import re
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 import numpy as np
 import pandas as pd
@@ -30,7 +30,10 @@ def mock_model():
         "end_year": 2020,
         "health_status_adjustment": [0.8, 1.0],
         "covid_adjustment": [1.0, 1.2],
-        "waiting_list_adjustment": "waiting_list_adjustment",
+        "waiting_list_adjustment": {
+            "ip": {"100": 1, "120": 2},
+            "op": {"100": 3, "120": 4},
+        },
         "expat": {"ip": {"elective": {"Other": [0.7, 0.9]}}},
         "repat_local": {"ip": {"elective": {"Other": [1.0, 1.2]}}},
         "repat_nonlocal": {"ip": {"elective": {"Other": [1.3, 1.5]}}},
@@ -82,9 +85,12 @@ def mock_run_params():
     return {
         "variant": ["a", "a", "b", "a"],
         "seeds": [1, 2, 3, 4],
-        "health_status_adjustment": "hsa",
+        "health_status_adjustment": [1, 2, 3, 4, 5],
         "covid_adjustment": [1.1, 1, 2, 3],
-        "waiting_list_adjustment": "waiting_list_adjustment",
+        "waiting_list_adjustment": {
+            "ip": {"100": 1, "120": 2},
+            "op": {"100": 3, "120": 4},
+        },
         "expat": {"ip": {"elective": {"Other": [0.8, 4, 5, 6]}}},
         "repat_local": {"ip": {"elective": {"Other": [1.1, 7, 8, 9]}}},
         "repat_nonlocal": {"ip": {"elective": {"Other": [1.4, 10, 11, 12]}}},
@@ -243,10 +249,15 @@ def test_load_parquet(mocker, mock_model):
 
 
 @pytest.mark.parametrize(
-    "start_year, end_year", [("2018", "2019"), ("2018", "2020"), ("2019", "2020")]
+    "year, expected",
+    [
+        (2018, np.arange(21, 41) / np.arange(1, 21)),
+        (2019, np.arange(21, 41) / np.arange(11, 31)),
+    ],
 )
-def test_demog_factors_loads_correctly(mocker, mock_model, start_year, end_year):
+def test_demog_factors_loads_correctly(mocker, mock_model, year, expected):
     """test that the demographic factors are loaded correctly"""
+    # arrange
     mocker.patch(
         "pandas.read_csv",
         return_value=pd.DataFrame(
@@ -261,22 +272,13 @@ def test_demog_factors_loads_correctly(mocker, mock_model, start_year, end_year)
         ),
     )
     mdl = mock_model
-    mdl.params["start_year"] = start_year
-    mdl.params["end_year"] = end_year
+    mdl.params["start_year"] = year
+
+    # act
     mdl._load_demog_factors()
 
-    # choose the values for the ranges to test
-    if start_year == "2018":
-        a_range = range(1, 11)
-        b_range = range(11, 21)
-        diff = 10 if end_year == "2019" else 20
-    else:
-        a_range = range(11, 21)
-        b_range = range(21, 31)
-        diff = 10
-
-    assert mdl.demog_factors["a"].to_list() == [(i + diff) / i for i in a_range]
-    assert mdl.demog_factors["b"].to_list() == [(i + diff) / i for i in b_range]
+    # assert
+    assert np.equal(mdl.demog_factors["2020"], expected).all()
 
 
 # _generate_run_params()
@@ -284,6 +286,7 @@ def test_demog_factors_loads_correctly(mocker, mock_model, start_year, end_year)
 
 def test_generate_run_params(mocker, mock_model, mock_run_params):
     """test that _generate_run_params returns the run parameters"""
+    # arrange
     n = 0
 
     def get_next_n(*args):  # pylint: disable=unused-argument
@@ -298,10 +301,10 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
     mocker.patch("numpy.random.default_rng", return_value=rng)
 
     hsa_m = mocker.patch("model.model.HealthStatusAdjustment.generate_params")
-    hsa_m.return_value = "hsa"
+    hsa_m.return_value = [1, 2, 3, 4, 5]
 
     mocker.patch("model.model.inrange", wraps=lambda x, low, high: x)
-    # arrange
+
     mdl = mock_model
     mdl._variants = ["a", "b"]
     mdl._probabilities = [0.6, 0.4]
@@ -310,7 +313,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
     actual = mdl.generate_run_params(mdl.params)
 
     # assert
-    hsa_m.assert_called_once_with(2020, rng, 4)
+    hsa_m.assert_called_once_with(2018, 2020, rng, 3)
     assert actual == mock_run_params
 
 
@@ -318,13 +321,13 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
 
 
 @pytest.mark.parametrize(
-    "model_run, expected_run_params",
+    "model_run, expected_run_params, mock_call",
     [
         (
             0,
             {
                 "variant": "a",
-                "health_status_adjustment": "h",
+                "health_status_adjustment": 1,
                 "seed": 1,
                 "covid_adjustment": 1.1,
                 "non-demographic_adjustment": {
@@ -352,15 +355,20 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                     "change_utilisation": {"a": 1.02, "b": 1.03},
                     "change_availability": 1.04,
                 },
-                "waiting_list_adjustment": "waiting_list_adjustment",
+                "waiting_list_adjustment": {
+                    "ip": {"100": 1, "120": 2},
+                    "op": {"100": 3, "120": 4},
+                },
+                "year": 2020,
             },
+            [],
         ),
         (
             2,
             {
                 "variant": "b",
                 "seed": 3,
-                "health_status_adjustment": "a",
+                "health_status_adjustment": 3,
                 "covid_adjustment": 2,
                 "non-demographic_adjustment": {
                     "a": {"a_a": 17, "a_b": 20},
@@ -387,20 +395,90 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                     "a": {"a": 68, "b": 0.7},
                     "b": {"a": 71, "b": 0.8},
                 },
-                "waiting_list_adjustment": "waiting_list_adjustment",
+                "waiting_list_adjustment": {
+                    "ip": {"100": 1, "120": 2},
+                    "op": {"100": 3, "120": 4},
+                },
+                "year": 2020,
             },
+            [],
+        ),
+        (
+            4,
+            {
+                "variant": "a",
+                "health_status_adjustment": 5,
+                "seed": 1,
+                "covid_adjustment": 1.1,
+                "non-demographic_adjustment": {
+                    "a": {"a_a": 1.05, "a_b": 1.05},
+                    "b": {"b_a": 1.05, "b_b": 1.05},
+                },
+                "expat": {"ip": {"elective": {"Other": 0.9}}},
+                "repat_local": {"ip": {"elective": {"Other": 1.05}}},
+                "repat_nonlocal": {"ip": {"elective": {"Other": 1.2}}},
+                "baseline_adjustment": {"ip": {"elective": {"Other": 1.6}}},
+                "activity_avoidance": {
+                    "ip": {"a_a": 0.75, "a_b": 0.75},
+                    "op": {"a_a": 0.75, "a_b": 0.75},
+                    "aae": {"a_a": 0.75, "a_b": 0.75},
+                },
+                "efficiencies": {
+                    "ip": {"b_a": 0.75, "b_b": 0.75},
+                    "op": {"b_a": 0.75, "b_b": 0.75},
+                },
+                "bed_occupancy": {
+                    "a": {"a": 0.75, "b": 0.85},
+                    "b": {"a": 0.75, "b": 0.9},
+                },
+                "theatres": {
+                    "change_utilisation": {"a": 1.02, "b": 1.03},
+                    "change_availability": 1.04,
+                },
+                "waiting_list_adjustment": {
+                    "ip": {"100": 0.5, "120": 1.0},
+                    "op": {"100": 1.5, "120": 2.0},
+                },
+                "year": 2019,
+            },
+            [call(7)] * 3,
         ),
     ],
 )
-def test_get_run_params(mock_model, mock_run_params, model_run, expected_run_params):
+def test_get_run_params(
+    mocker, mock_model, mock_run_params, model_run, expected_run_params, mock_call
+):
     """tests _get_run_params gets the right params for a model run"""
     # arrange
     mdl = mock_model
     mdl.run_params = mock_run_params
+
+    mdl.params["time_profile_mappings"] = {
+        "covid_adjustment": "none",
+        "baseline_adjustment": "none",
+        "expat": "linear",
+        "repat_local": "linear",
+        "repat_nonlocal": "linear",
+        "non-demographic_adjustment": "linear",
+        "activity_avoidance": "linear",
+        "efficiencies": "linear",
+        "bed_occupancy": "linear",
+        "theatres": "step2025",
+        "waiting_list_adjustment": "linear",
+    }
+
+    m = Mock(return_value=1)
+    mocker.patch(
+        "model.model.create_time_profiles",
+        return_value={"none": 1, "linear": 0.5, "step": m},
+    )
+
     # act
     actual = mdl._get_run_params(model_run)
     # assert
     assert actual == expected_run_params
+
+    assert m.call_args_list == mock_call
 
 
 # _convert_step_counts()

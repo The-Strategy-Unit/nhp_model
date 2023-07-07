@@ -63,7 +63,7 @@ def timeit(func: Callable, *args) -> Any:
     return results
 
 
-def _combine_results(results: list) -> dict:
+def _combine_results(results: list, model_runs: int) -> dict:
     """Combine the results into a single dictionary
 
     When we run the models we have an array containing 3 items [inpatients, outpatient, a&e].
@@ -89,7 +89,13 @@ def _combine_results(results: list) -> dict:
     # now we can convert this to the results we want
     combined_results = {
         k0: [
-            {**dict(k1), "baseline": v1[0], "principal": v1[1], "model_runs": v1[2:]}
+            {
+                **dict(k1),
+                "baseline": v1[0],
+                "principal": v1[1],
+                "model_runs": v1[2 : (model_runs + 2)],
+                "time_profiles": v1[(model_runs + 2) :],
+            }
             for k1, v1 in v0.items()
         ]
         for k0, v0 in combined_results.items()
@@ -118,6 +124,7 @@ def _split_model_runs_out(agg_type: str, results: dict) -> None:
             result["value"] = result.pop("principal")
             if result["change_factor"] == "baseline":
                 result.pop("model_runs")
+                result.pop("time_profiles")
             continue
 
         [lwr, median, upr] = np.quantile(result["model_runs"], [0.05, 0.5, 0.95])
@@ -168,10 +175,15 @@ def _run_model(
     # set the progress callback for this run
     tqdm.progress_callback = progress_callback
 
-    model_runs = list(range(-1, params["model_runs"] + 1))
+    # model run -1 is the baseline
+    # model run  0 is the principal
+    # model run 1:n are the monte carlo sims
+    # model run >n are the time profile years
+    years = params["end_year"] - params["start_year"]
+    model_runs = list(range(-1, params["model_runs"] + years))
 
     cpus = os.cpu_count()
-    batch_size = int(os.getenv("BATCH_SIZE", "16"))
+    batch_size = int(os.getenv("BATCH_SIZE", "1"))
 
     with Pool(cpus) as pool:
         results = list(
@@ -183,6 +195,8 @@ def _run_model(
                 ),
                 f"Running {model.__class__.__name__[:-5].rjust(11)} model",  # pylint: disable=protected-access
                 total=len(model_runs),
+                position=1,
+                leave=False,
             )
         )
     logging.info(" * finished")
@@ -208,12 +222,10 @@ def run_all(params: dict, data_path: str, progress_callback) -> dict:
     # set the data path in the HealthStatusAdjustment class
     HealthStatusAdjustment.data_path = data_path
     hsa = HealthStatusAdjustmentInterpolated(
-        f"{data_path}/{params['start_year']}/{params['dataset']}",
-        params["start_year"],
-        params["end_year"],
+        f"{data_path}/{params['start_year']}/{params['dataset']}", params["start_year"]
     )
 
-    pcallback = progress_callback(params["id"])
+    pcallback = progress_callback()
 
     results = _combine_results(
         [
@@ -226,7 +238,8 @@ def run_all(params: dict, data_path: str, progress_callback) -> dict:
                 pcallback(m.__name__[:-5]),
             )
             for m in model_types
-        ]
+        ],
+        params["model_runs"],
     )
 
     filename = f"{params['dataset']}/{params['scenario']}-{params['create_datetime']}"
@@ -257,7 +270,6 @@ def run_single_model_run(
     hsa = HealthStatusAdjustmentInterpolated(
         f"{data_path}/{params['start_year']}/{params['dataset']}",
         params["start_year"],
-        params["end_year"],
     )
 
     print("initialising model...  ", end="")
@@ -341,7 +353,7 @@ def main() -> None:
                 datefmt="%Y-%m-%d %H:%M:%S",
             )
 
-            run_all(params, args.data_path)
+            run_all(params, args.data_path, lambda: lambda _: None)
             return
         case "aae":
             model_type = AaEModel
