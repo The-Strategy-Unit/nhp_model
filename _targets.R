@@ -28,6 +28,7 @@ list(
     all_providers,
     list(
       "RA9",
+      "RAS",
       "RD8",
       "RGP",
       "RGR",
