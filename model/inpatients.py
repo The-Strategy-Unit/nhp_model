@@ -518,6 +518,10 @@ class InpatientEfficiencies:
         rng = self._model_run.rng
 
         i = losr.index[(losr.type == "all") & (losr.index.isin(data.index))]
+
+        if i.empty:
+            return self
+
         new = rng.binomial(
             data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"]
         )
@@ -534,6 +538,10 @@ class InpatientEfficiencies:
         rng = self._model_run.rng
 
         i = losr.index[(losr.type == "aec") & (losr.index.isin(data.index))]
+
+        if i.empty:
+            return self
+
         new = data.loc[i, "speldur"] * rng.binomial(
             1, losr.loc[data.loc[i].index, "losr_f"]
         )
@@ -550,6 +558,10 @@ class InpatientEfficiencies:
         rng = self._model_run.rng
 
         i = losr.index[(losr.type == "pre-op") & (losr.index.isin(data.index))]
+
+        if i.empty:
+            return self
+
         new = data.loc[i, "speldur"] - (
             rng.binomial(1, 1 - losr.loc[data.loc[i].index, "losr_f"])
             * losr.loc[data.loc[i].index, "pre-op_days"]
