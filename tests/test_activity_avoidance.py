@@ -435,24 +435,18 @@ def test_waiting_list_adjustment(mocker, mock_activity_avoidance):
     assert cols == ["is_wla", "tretspef"]
 
 
-def test_non_demographic_adjustment_not_ip(mocker, mock_activity_avoidance):
+@pytest.mark.parametrize("model_type", ["ip", "op", "aae"])
+def test_non_demographic_adjustment_no_params(
+    mocker, mock_activity_avoidance, model_type
+):
     # arrange
     aa_mock = mock_activity_avoidance
-    aa_mock._model_run.model.model_type = "op"
+    aa_mock._model_run.model.model_type = model_type
 
     aa_mock._model_run.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
 
     aa_mock._model_run.run_params = {
-        "non-demographic_adjustment": {
-            "elective": {
-                "a": 1,
-                "b": 2,
-            },
-            "non-elective": {
-                "a": 3,
-                "b": 4,
-            },
-        }
+        "non-demographic_adjustment": {"ip": {}, "op": {}, "aae": {}}
     }
 
     u_mock = mocker.patch(
@@ -467,44 +461,28 @@ def test_non_demographic_adjustment_not_ip(mocker, mock_activity_avoidance):
     u_mock.assert_not_called()
 
 
-def test_non_demographic_adjustment_no_params(mocker, mock_activity_avoidance):
+@pytest.mark.parametrize(
+    "model_type, expected",
+    [
+        ("ip", {"elective": 1, "non-elective": 2}),
+        ("op", {"first": 3, "followup": 4}),
+        ("aae", {"ambulance": 5, "walk-in": 6}),
+    ],
+)
+def test_non_demographic_adjustment(
+    mocker, mock_activity_avoidance, model_type, expected
+):
     # arrange
     aa_mock = mock_activity_avoidance
-    aa_mock._model_run.model.model_type = "ip"
-
-    aa_mock._model_run.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
-
-    aa_mock._model_run.run_params = {"non-demographic_adjustment": {}}
-
-    u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
-    )
-
-    # act
-    actual = aa_mock.non_demographic_adjustment()
-
-    # assert
-    assert actual == aa_mock
-    u_mock.assert_not_called()
-
-
-def test_non_demographic_adjustment(mocker, mock_activity_avoidance):
-    # arrange
-    aa_mock = mock_activity_avoidance
-    aa_mock._model_run.model.model_type = "ip"
+    aa_mock._model_run.model.model_type = model_type
 
     aa_mock._model_run.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
 
     aa_mock._model_run.run_params = {
         "non-demographic_adjustment": {
-            "elective": {
-                "a": 1,
-                "b": 2,
-            },
-            "non-elective": {
-                "a": 3,
-                "b": 4,
-            },
+            "ip": {"elective": 1, "non-elective": 2},
+            "op": {"first": 3, "followup": 4},
+            "aae": {"ambulance": 5, "walk-in": 6},
         }
     }
 
@@ -518,14 +496,9 @@ def test_non_demographic_adjustment(mocker, mock_activity_avoidance):
     # assert
     assert actual == "update"
     f, cols = u_mock.call_args_list[0][0]
-    assert f.to_dict() == {
-        ("a", "elective"): 1,
-        ("b", "elective"): 2,
-        ("a", "non-elective"): 3,
-        ("b", "non-elective"): 4,
-    }
+    assert f.to_dict() == expected
     assert f.name == "non-demographic_adjustment"
-    assert cols == ["age_group", "group"]
+    assert cols == ["group"]
 
 
 def test_activity_avoidance_no_params(mocker, mock_activity_avoidance):
