@@ -178,6 +178,9 @@ class Model:
         probabilities = list(
             params["demographic_factors"]["variant_probabilities"].values()
         )
+        # there can be numerical inacurracies in the probabilities not summing to 1
+        # this will adjust the probabiliteies to sum correctly
+        probabilities = [p / sum(probabilities) for p in probabilities]
         return {
             "variant": [variants[np.argmax(probabilities)]]
             + rng.choice(variants, model_runs - 1, p=probabilities).tolist(),
