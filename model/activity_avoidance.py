@@ -195,21 +195,14 @@ class ActivityAvoidance:
 
     def non_demographic_adjustment(self):
         """perform the non-demographic adjustment"""
-        if self._activity_type != "ip":
+
+        if not (
+            params := self.run_params["non-demographic_adjustment"][self._activity_type]
+        ):
             return self
 
-        if not (params := self.run_params["non-demographic_adjustment"]):
-            return self
-
-        factor = (
-            pd.DataFrame.from_dict(params, orient="index")
-            .reset_index()
-            .rename(columns={"index": "group"})
-            .melt(["group"], var_name="age_group")
-            .set_index(["age_group", "group"])["value"]
-            .rename("non-demographic_adjustment")
-        )
-        return self._update(factor, ["age_group", "group"])
+        factor = pd.Series(params).rename("non-demographic_adjustment")
+        return self._update(factor, ["group"])
 
     def activity_avoidance(self) -> dict:
         """perform the activity avoidance (strategies)"""
