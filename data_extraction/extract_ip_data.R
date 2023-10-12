@@ -12,7 +12,6 @@ extract_ip_data <- function(start_date, end_date, providers) {
     dplyr::filter(
       .data$DISDATE >= start_date,
       .data$DISDATE <= end_date,
-      .data$ADMIAGE <= 120,
       .data$PROCODE3 %in% providers
     )
 
@@ -65,8 +64,7 @@ extract_ip_sample_data <- function(start_date, end_date, ...) {
   tbl_inpatients <- dplyr::tbl(con, dbplyr::in_schema("nhp_modelling", "inpatients")) |>
     dplyr::filter(
       .data$DISDATE >= start_date,
-      .data$DISDATE <= end_date,
-      .data$ADMIAGE <= 120
+      .data$DISDATE <= end_date
     ) |>
     dplyr::semi_join(tbl_providers_of_interest, by = c("PROCODE3" = "org_code"))
 
@@ -167,7 +165,6 @@ create_ip_data <- function(inpatients, specialties) {
   inpatients |>
     dplyr::arrange(.data$rn) |>
     dplyr::select(-"epikey", -"person_id", -"lsoa11", -"sushrg") |>
-    dplyr::rename(age = "admiage") |>
     dplyr::mutate(
       dplyr::across(tidyselect::ends_with("date"), lubridate::ymd),
       hsagrp = dplyr::case_when(
@@ -320,9 +317,11 @@ save_ip_data <- function(data, strategies, name, path) {
     dplyr::mutate(
       dplyr::across(
         "strategy_type",
-        forcats::fct_recode,
-        "activity_avoidance" = "admission avoidance",
-        "efficiencies" = "los reduction"
+        ~ forcats::fct_recode(
+          .x,
+          "activity_avoidance" = "admission avoidance",
+          "efficiencies" = "los reduction"
+        )
       )
     ) |>
     purrr::pmap_chr(\(strategy_type, data) {

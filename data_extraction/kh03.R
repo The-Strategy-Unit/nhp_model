@@ -94,7 +94,11 @@ kh03_get_file <- function(x) {
 
 kh03_combine <- function(kh03_overnight, kh03_dayonly) {
   kh03_overnight |>
-    dplyr::left_join(kh03_dayonly, by = c("quarter", "org_code", "specialty_group")) |>
+    dplyr::distinct() |>
+    dplyr::left_join(
+      dplyr::distinct(kh03_dayonly),
+      by = c("quarter", "org_code", "specialty_group")
+    ) |>
     dplyr::mutate(
       dplyr::across("available_dayonly", ~ tidyr::replace_na(.x, 0)),
       dplyr::across("available_total", ~ .x + .data$available_dayonly)
