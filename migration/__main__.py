@@ -4,15 +4,19 @@ scripts for migrating between versions of the app
 
 import sys
 
-from migration.v04 import v03_to_v04
-from migration.v05 import v04_to_v05
+import migration.v04 as v04
+import migration.v05 as v05
 
-print(sys.argv)
 
-match sys.argv[1]:
-    case "v03":
-        v03_to_v04(sys.argv[2])
-    case "v04":
-        v04_to_v05(sys.argv[2])
-    case _:
-        print("Unknown migration type")
+def main(version, path):
+    match version:
+        case "v03":
+            v04.convert_all_files_in_folder(path)
+        case "v04":
+            v05.convert_all_files_in_folder(path)
+        case _:
+            print("Unknown version")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1], sys.argv[2])

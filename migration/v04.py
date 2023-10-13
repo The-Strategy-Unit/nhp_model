@@ -6,7 +6,17 @@ Scripts to migrate from a previous version of the model to a new version
 import gzip
 import json
 
+from migration.convert_all_files_in_folder import _convert_all_files_in_folder
 from model.helpers import load_params
+
+
+def convert_all_files_in_folder(path: str) -> None:
+    """Convert all files in a folder from v03 to v04
+
+    :param path: the folder which contains the old results
+    :type path: str
+    """
+    _convert_all_files_in_folder(path, "v0.4", v03_to_v04)
 
 
 def v03_to_v04(filename: str) -> dict:
