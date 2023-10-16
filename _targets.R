@@ -29,7 +29,12 @@ list(
     list(
       "RA9",
       "RAS",
+      "RBT",
+      "RCF",
+      "RCX",
       "RD8",
+      "RDU",
+      "RGN",
       "RGP",
       "RGR",
       "RH5", # "RBA" is merged in with this activity
