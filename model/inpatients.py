@@ -106,7 +106,6 @@ class InpatientsModel(Model):
         self._procedures_baseline = self._procedures_baseline[
             self._procedures_baseline.index.isin(fhs_baseline.index)
         ]
-        self._theatre_spells_baseline = (fhs_baseline / baseline_params).sum()
 
     def _load_strategies(self) -> None:
         """Load a set of strategies"""
@@ -328,6 +327,8 @@ class InpatientsModel(Model):
                 for k, v in fhs_baseline.items()
             }
 
+        params = pd.Series(model_run.run_params["theatres"]["change_utilisation"])
+
         # sum the amount of procedures, by specialty,
         # then keep only the ones which appear in fhs_baseline
         future = (
@@ -339,7 +340,7 @@ class InpatientsModel(Model):
 
         baseline = self._procedures_baseline
 
-        fhs_future = (future / baseline * fhs_baseline).dropna()
+        fhs_future = (future / baseline * fhs_baseline * params).dropna()
 
         return {
             frozenset(
