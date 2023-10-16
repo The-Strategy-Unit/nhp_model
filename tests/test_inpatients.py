@@ -184,7 +184,6 @@ def test_load_theatres_data(mocker, mock_model):
             "Other (Surgical)": 3,
         }
         assert mock_model._procedures_baseline.to_dict() == {"100": 5, "200": 5}
-        assert mock_model._theatre_spells_baseline == 3.469437852876197
 
 
 def test_load_strategies(mock_model):
@@ -548,21 +547,21 @@ def test_theatres_available(mock_model):
                 ("measure", "four_hour_sessions"),
                 ("pod", "ip_theatres"),
             }
-        ): 450.0,
+        ): 900.0,
         frozenset(
             {
                 ("tretspef", "110"),
                 ("measure", "four_hour_sessions"),
                 ("pod", "ip_theatres"),
             }
-        ): 1800.0,
+        ): 4500.0,
         frozenset(
             {
                 ("tretspef", "Other (Surgical)"),
                 ("measure", "four_hour_sessions"),
                 ("pod", "ip_theatres"),
             }
-        ): 3780.0,
+        ): 11340.0,
     }
 
     # act
@@ -580,13 +579,11 @@ def test_theatres_available_baseline(mock_model):
     mr_mock.run_params = {
         "theatres": {
             "change_utilisation": {"100": 2, "110": 2.5, "Other (Surgical)": 3},
-            "change_availability": 5,
         }
     }
     mr_mock.model_run = -1
 
     mock_model._theatres_data = {
-        "theatres": 10,
         "four_hour_sessions": pd.Series(
             {"100": 100, "110": 200, "Other (Surgical)": 300}, name="four_hour_sessions"
         ),
