@@ -75,22 +75,22 @@ theatres_generate_synthetic <- function(theatres_four_hour_sessions, theatres_av
   theatres_save_data(four_hour_sessions, available, "synthetic", path)
 }
 
-theatres_save_data <- function(theatres_four_hour_sessions, theatres_available, org_codes, path = "data") {
-  trust <- paste(org_codes, collapse = "_")
+theatres_save_data <- function(theatres_four_hour_sessions, theatres_available, params) {
+  trust <- params$name
 
   four_hour_sessions <- theatres_four_hour_sessions |>
-    dplyr::filter(.data$org_code %in% org_codes) |>
+    dplyr::filter(.data$org_code %in% params$providers) |>
     dplyr::count(.data$specialty_code, wt = .data$four_hour_sessions) |>
     tibble::deframe() |>
     as.list()
 
   available <- theatres_available |>
-    dplyr::filter(.data$org_code %in% org_codes) |>
+    dplyr::filter(.data$org_code %in% params$providers) |>
     dplyr::select(-"org_code") |>
     tidyr::pivot_longer(tidyselect::everything()) |>
     tibble::deframe()
 
-  fn <- file.path(path, trust, "theatres.json")
+  fn <- file.path(params$path, trust, "theatres.json")
 
   c(available, list(four_hour_sessions = four_hour_sessions)) |>
     jsonlite::write_json(fn, pretty = TRUE, auto_unbox = TRUE)

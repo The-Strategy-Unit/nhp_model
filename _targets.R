@@ -11,21 +11,33 @@ tar_option_set(
     "arrow",
     "janitor",
     "zeallot"
-  ),
-  error = "continue"
+  )
 )
 
 # load all of the R scripts in the data_extraction directory
-purrr::walk(fs::dir_ls("data_extraction", glob = "*.R"), source)
+targets::tar_source("data_extraction")
 
 # End this file with a list of target objects.
 list(
   # variables ----
   # these may need to be update as required
   tar_target(data_version, "dev"),
-  tar_target(start_date, ymd("20190401")),
+  # take they year and turn it into a date
   tar_target(
-    all_providers,
+    extract_years,
+    c(2018, 2019)
+  ),
+  tar_target(
+    start_date,
+    # don't use glue as targets cannot determine the dependency
+    ymd(paste0(extract_years, "-04-01"))
+  ),
+  tar_target(
+    data_path,
+    file.path("data", year(start_date))
+  ),
+  tar_target(
+    providers,
     list(
       "RA9",
       "RAS",
@@ -44,33 +56,37 @@ list(
       "RNQ",
       "RX1",
       "RXC",
+      # "RXN",
       c("RXN", "RTX"),
       "RYJ"
     )
   ),
   tar_target(
-    data_path,
+    params,
     {
-      p <- paste("data", lubridate::year(start_date), sep = "/")
-
-      # ensure the folders have been created to store the data
-      purrr::walk(c(all_providers, "synthetic"), \(.x) {
-        d <- file.path(p, paste(.x, collapse = "_"))
-        if (!dir.exists(d)) {
-          dir.create(d, recursive = TRUE)
-        }
-      })
-
-      p
-    }
+      n <- paste(collapse = "_", providers[[1]])
+      dir.create(
+        file.path(data_path, n),
+        showWarnings = FALSE,
+        recursive = TRUE
+      )
+      list(
+        name = n,
+        providers = providers[[1]],
+        start_date = start_date,
+        end_date = start_date %m+% lubridate::years(1) %m-% days(1),
+        path = data_path
+      )
+    },
+    pattern = cross(providers, map(start_date, data_path))
   ),
-  # default end_date to be 1 year (-1 day) after the start date
-  tar_target(end_date, start_date %m+% years(1) %m-% days(1)),
-  tar_target(rtt_specs, c(
-    "100", "101", "110", "120", "130", "140", "160", "300", "320", "330", "400",
-    "410", "430", "502"
-  )),
-  tar_target(providers, all_providers),
+  tar_target(
+    rtt_specs,
+    c(
+      "100", "101", "110", "120", "130", "140", "160", "300", "320", "330",
+      "400", "410", "430", "502"
+    )
+  ),
   # targets ----
   # sql data
   tar_target(
@@ -78,92 +94,29 @@ list(
     extract_reference_data("../nhp_documentation/data")
   ),
   tar_target(
-    ip_data_file_paths,
-    create_provider_ip_extract(
-      start_date,
-      end_date,
-      providers[[1]],
-      specialties = rtt_specs,
-      path = data_path
-    ),
-    pattern = map(providers)
-  ),
-  tar_target(
     ip_data,
-    ip_data_file_paths[[1]][[1]],
-    pattern = map(ip_data_file_paths),
-    format = "file"
-  ),
-  tar_target(
-    ip_files,
-    ip_data_file_paths[[1]],
-    pattern = map(ip_data_file_paths),
-    format = "file"
-  ),
-  tar_target(
-    ip_synth_data_file_paths,
-    create_synthetic_ip_extract(
-      start_date,
-      end_date,
-      specialties = rtt_specs,
-      path = data_path
+    create_provider_ip_extract(
+      params,
+      specialties = rtt_specs
     ),
-  ),
-  tar_target(
-    ip_synth_data,
-    ip_synth_data_file_paths[[1]],
+    pattern = map(params),
     format = "file"
-  ),
-  tar_target(
-    op_data_file_paths,
-    create_provider_op_extract(
-      start_date,
-      end_date,
-      providers[[1]],
-      specialties = rtt_specs,
-      path = data_path
-    ),
-    pattern = map(providers)
   ),
   tar_target(
     op_data,
-    op_data_file_paths,
-    pattern = map(op_data_file_paths),
-    format = "file"
-  ),
-  tar_target(
-    op_synth_data,
-    create_synthetic_op_extract(
-      start_date,
-      end_date,
-      specialties = rtt_specs,
-      path = data_path
+    create_provider_op_extract(
+      params,
+      specialties = rtt_specs
     ),
+    pattern = map(params),
     format = "file"
-  ),
-  tar_target(
-    aae_data_file_paths,
-    create_provider_aae_extract(
-      start_date,
-      end_date,
-      providers[[1]],
-      path = data_path
-    ),
-    pattern = map(providers)
   ),
   tar_target(
     aae_data,
-    aae_data_file_paths,
-    pattern = map(aae_data_file_paths),
-    format = "file"
-  ),
-  tar_target(
-    aae_synth_data,
-    create_synthetic_aae_extract(
-      start_date,
-      end_date,
-      path = data_path
+    create_provider_aae_extract(
+      params
     ),
+    pattern = map(params),
     format = "file"
   ),
   # kh03 data
@@ -190,48 +143,48 @@ list(
       dplyr::select("quarter", "org_code", "specialty_group", available_dayonly = "available_total"),
     pattern = map(kh03_files_dayonly)
   ),
-  tar_target(kh03_all, kh03_combine(kh03_overnight, kh03_dayonly)),
-  tar_target(kh03_processed, kh03_process(kh03_all, lubridate::year(start_date))),
   tar_target(
-    kh03_synthetic,
-    kh03_generate_synthnetic(kh03_processed, path = data_path),
-    format = "file"
+    kh03_all,
+    kh03_combine(kh03_overnight, kh03_dayonly)
   ),
   tar_target(
-    kh03_save_file_paths,
-    kh03_save_trust(kh03_processed, providers[[1]], path = data_path),
-    pattern = map(providers)
+    kh03_processed,
+    kh03_process(kh03_all, extract_years),
+    pattern = map(extract_years)
   ),
   tar_target(
     kh03_save,
-    kh03_save_file_paths,
-    pattern = map(kh03_save_file_paths),
+    kh03_save_trust(
+      kh03_processed,
+      params
+    ),
+    pattern = map(params),
     format = "file"
   ),
   # demographic factors
-  tar_target(demographic_raw_data_path, "_scratch/demographic_factors.rds", format = "file"),
-  tar_target(processed_demographic_factors, process_demographic_factors(demographic_raw_data_path)),
   tar_target(
-    demographic_factors_synthetic,
-    save_synthetic_demographic_factors(
-      processed_demographic_factors,
-      path = data_path
-    ),
-    format = "file"
+    demographic_factors_pin_name,
+    "Paul.Seamer/cohort4_trust_wt_catchment_pops"
   ),
   tar_target(
-    demographic_factors_file_paths,
-    save_demographic_factors(
-      processed_demographic_factors,
-      providers[[1]],
-      path = data_path
-    ),
-    pattern = map(providers)
+    demographic_factors_version,
+    get_demographics_factors_version(demographic_factors_pin_name),
+    cue = targets::tar_cue("always")
+  ),
+  tar_target(
+    processed_demographic_factors,
+    process_demographic_factors(
+      demographic_factors_pin_name,
+      demographic_factors_version
+    )
   ),
   tar_target(
     demographic_factors,
-    demographic_factors_file_paths,
-    pattern = map(demographic_factors_file_paths),
+    save_demographic_factors(
+      processed_demographic_factors,
+      params
+    ),
+    pattern = map(params),
     format = "file"
   ),
   tar_target(
@@ -245,38 +198,21 @@ list(
       \(fn, p, b, ...) fn(p, b),
       args = list(
         fn = create_gams,
-        p = providers[[1]],
-        b = as.character(lubridate::year(start_date)),
-        ip_data,
+        p = params$providers,
+        b = as.character(lubridate::year(params$start_date)),
+        stringr::str_subset(ip_data, "ip\\.parquet$"),
         op_data,
         aae_data,
         demographic_factors,
         py_gam_file_path
       )
     ),
-    pattern = map(providers, ip_data, op_data, aae_data, demographic_factors)
+    pattern = map(params, ip_data, op_data, aae_data, demographic_factors)
   ),
   tar_target(
     gams,
     gams_file_paths,
     pattern = map(gams_file_paths),
-    format = "file"
-  ),
-  tar_target(
-    gams_synthetic,
-    callr::r(
-      \(fn, p, b, ...) fn(p, b),
-      args = list(
-        fn = create_gams,
-        p = "synthetic",
-        b = as.character(lubridate::year(start_date)),
-        ip_synth_data,
-        op_synth_data,
-        aae_synth_data,
-        demographic_factors_synthetic,
-        py_gam_file_path
-      )
-    ),
     format = "file"
   ),
   # theatres
@@ -298,10 +234,9 @@ list(
     theatres_save_data(
       theatres_four_hour_sessions,
       theatres_available,
-      providers[[1]],
-      path = data_path
+      params
     ),
-    pattern = map(providers)
+    pattern = map(params)
   ),
   tar_target(
     theatres,
@@ -309,37 +244,20 @@ list(
     pattern = map(theatres_file_paths),
     format = "file"
   ),
-  tar_target(
-    theatres_synthetic,
-    theatres_generate_synthetic(
-      theatres_four_hour_sessions,
-      theatres_available,
-      path = data_path
-    ),
-    format = "file"
-  ),
   # files upload
   tar_files(
     all_files,
     c(
-      ip_files,
-      ip_synth_data,
+      ip_data,
       op_data,
-      op_synth_data,
       aae_data,
-      aae_synth_data,
       demographic_factors,
-      demographic_factors_synthetic,
       gams,
-      gams_synthetic,
       # bit of a cheat, the gams only returns a single file name (of the pkl object)
       # add in the hsa_activity_table.csv files
       stringr::str_replace(gams, "_gams.pkl", "_activity_table.csv"),
-      stringr::str_replace(gams_synthetic, "_gams.pkl", "_activity_table.csv"),
       kh03_save,
-      kh03_synthetic,
-      theatres,
-      theatres_synthetic
+      theatres
     )
   ),
   tar_target(

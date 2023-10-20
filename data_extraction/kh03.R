@@ -138,6 +138,10 @@ kh03_process <- function(kh03_all, year) {
     dplyr::summarise(
       dplyr::across(c("available", "occupied"), sum),
       .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      year = year,
+      .before = tidyselect::everything()
     )
 }
 
@@ -178,12 +182,15 @@ kh03_generate_synthnetic <- function(kh03, path = "data") {
   fn
 }
 
-kh03_save_trust <- function(kh03, org_codes, path = "data") {
-  trust <- paste(org_codes, collapse = "_")
+kh03_save_trust <- function(kh03, params) {
+  trust <- params$name
 
   data <- kh03 |>
-    dplyr::filter(.data$org_code %in% org_codes) |>
-    dplyr::select(-"org_code") |>
+    dplyr::filter(
+      .data[["org_code"]] %in% params$providers,
+      .data[["year"]] == lubridate::year(params$start_date)
+    ) |>
+    dplyr::select(-"org_code", -"year") |>
     dplyr::group_by(
       dplyr::across(where(is.character))
     ) |>
@@ -192,7 +199,7 @@ kh03_save_trust <- function(kh03, org_codes, path = "data") {
       .groups = "drop"
     )
 
-  fn <- file.path(path, trust, "kh03.csv")
+  fn <- file.path(params$path, trust, "kh03.csv")
   readr::write_csv(data, fn)
 
   fn

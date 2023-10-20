@@ -334,7 +334,7 @@ save_ip_data <- function(data, strategies, name, path) {
       fn
     })
 
-  list(c(ip_fn, strategies_fns))
+  c(ip_fn, strategies_fns)
 }
 
 # ------------------------------------------------------------------------------
@@ -380,27 +380,17 @@ create_synthetic_ip_extract <- function(start_date,
   )
 }
 
-create_provider_ip_extract <- function(start_date,
-                                       end_date,
-                                       providers,
-                                       ...,
-                                       name,
-                                       specialties = NULL,
-                                       path = "data") {
-  if (missing(name)) {
-    name <- paste(providers, collapse = "_")
-  }
-  cat(paste("    running:", name))
+create_provider_ip_extract <- function(params, specialties = NULL) {
+  cat(paste("    [ip] running:", params$name))
 
   create_ip_extract(
-    start_date,
-    end_date,
-    providers,
+    params$start_date,
+    params$end_date,
+    params$providers,
     specialties,
-    name,
+    params$name,
     extract_ip_data,
     identity,
-    path,
-    ...
+    params$path,
   )
 }
