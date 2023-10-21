@@ -37,29 +37,15 @@ list(
     file.path("data", year(start_date))
   ),
   tar_target(
+    providers_file,
+    "providers.json",
+    format = "file"
+  ),
+  tar_target(
     providers,
-    list(
-      "RA9",
-      "RAS",
-      "RBT",
-      "RCF",
-      "RCX",
-      "RD8",
-      "RDU",
-      "RGN",
-      "RGP",
-      "RGR",
-      "RH5", # "RBA" is merged in with this activity
-      "RH8", # was "RBZ",
-      "RHW",
-      "RN5",
-      "RNQ",
-      "RX1",
-      "RXC",
-      # "RXN",
-      c("RXN", "RTX"),
-      "RYJ"
-    )
+    jsonlite::read_json(providers_file, simplifyVector = TRUE) |>
+      _$current_cohort |>
+      stringr::str_split("\\|")
   ),
   tar_target(
     params,
