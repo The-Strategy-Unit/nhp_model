@@ -43,8 +43,8 @@ list(
   ),
   tar_target(
     providers,
-    jsonlite::read_json(providers_file, simplifyVector = TRUE) |>
-      _$current_cohort |>
+    providers_file |>
+      jsonlite::read_json(simplifyVector = TRUE) |>
       stringr::str_split("\\|")
   ),
   tar_target(
