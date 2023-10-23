@@ -250,5 +250,10 @@ list(
     uploaded_file,
     upload_file_to_azure(all_files, data_version),
     pattern = map(all_files)
+  ),
+  #
+  tar_target(
+    activity_counts,
+    generate_activity_counts(ip_data, op_data, aae_data)
   )
 )
