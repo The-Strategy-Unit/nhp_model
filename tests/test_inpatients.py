@@ -95,13 +95,11 @@ def test_init_calls_super_init(mocker):
     """test that the model calls the super method and loads the strategies"""
     # arrange
     super_mock = mocker.patch("model.inpatients.super")
-    mocker.patch("model.inpatients.InpatientsModel._load_theatres_data")
     mocker.patch("model.inpatients.InpatientsModel._load_kh03_data")
     # act
     mdl = InpatientsModel("params", "data_path", "hsa", "run_params")
     # assert
     super_mock.assert_called_once()
-    mdl._load_theatres_data.assert_called_once()
     mdl._load_kh03_data.assert_called_once()
 
 
@@ -158,32 +156,6 @@ def test_load_kh03_data(mocker, mock_model):
     }
     mdl._bedday_summary.assert_called_once_with("data", 2018)
     assert mdl._beds_baseline == "beds_baseline"
-
-
-def test_load_theatres_data(mocker, mock_model):
-    """test that it loads the json file correctly"""
-    json_mock = mocker.patch(
-        "json.load",
-        return_value={
-            "theatres": 10,
-            "four_hour_sessions": {"100": 1, "200": 2, "Other (Surgical)": 3},
-        },
-    )
-    mock_model.data["has_procedure"] = [i for i in [0, 1] for _j in range(10)]
-    mock_model.data["tretspef"] = ["100", "200"] * 10
-    with patch("builtins.open", mock_open()) as mock_file:
-        mock_model._load_theatres_data()
-        json_mock.assert_called_once()
-        mock_file.assert_called_with(
-            "data/synthetic/theatres.json", "r", encoding="UTF-8"
-        )
-        assert mock_model._theatres_data["theatres"] == 10
-        assert mock_model._theatres_data["four_hour_sessions"].to_dict() == {
-            "100": 1,
-            "200": 2,
-            "Other (Surgical)": 3,
-        }
-        assert mock_model._procedures_baseline.to_dict() == {"100": 5, "200": 5}
 
 
 def test_load_strategies(mock_model):
@@ -503,123 +475,6 @@ def test_bed_occupancy_baseline(mock_model):
     assert actual == expected
 
 
-def test_theatres_available(mock_model):
-    """test that it aggregates the theatres data"""
-    # arrange
-    mdl = mock_model
-
-    mr_mock = Mock()
-    mr_mock.run_params = {
-        "theatres": {
-            "change_utilisation": {"100": 2, "110": 2.5, "Other (Surgical)": 3},
-            "change_availability": 5,
-        }
-    }
-    mr_mock.model_run = 0
-
-    mdl._theatres_data = {
-        "theatres": 10,
-        "four_hour_sessions": pd.Series(
-            {"100": 100, "110": 200, "Other (Surgical)": 300}, name="four_hour_sessions"
-        ),
-    }
-    mdl._procedures_baseline = pd.Series(
-        {"100": 2, "110": 3, "200": 4, "Other (Surgical)": 5}
-    )
-
-    mdl._theatre_spells_baseline = 1000
-
-    model_results = pd.DataFrame(
-        [
-            {"tretspef": t, "measure": p}
-            for t in ["100", "110", "200", "Other (Surgical)"]
-            for p in ["x"] + ["procedures"] * 2
-        ]
-    )
-    model_results["value"] = list(range(len(model_results)))
-    # this makes the results nicer numbers
-    model_results["value"] *= 3
-
-    expected = {
-        frozenset(
-            {
-                ("tretspef", "100"),
-                ("measure", "four_hour_sessions"),
-                ("pod", "ip_theatres"),
-            }
-        ): 900.0,
-        frozenset(
-            {
-                ("tretspef", "110"),
-                ("measure", "four_hour_sessions"),
-                ("pod", "ip_theatres"),
-            }
-        ): 4500.0,
-        frozenset(
-            {
-                ("tretspef", "Other (Surgical)"),
-                ("measure", "four_hour_sessions"),
-                ("pod", "ip_theatres"),
-            }
-        ): 11340.0,
-    }
-
-    # act
-    actual = mdl._theatres_available(model_results, mr_mock)
-
-    # assert
-    assert actual == expected
-
-
-def test_theatres_available_baseline(mock_model):
-    """test that it returns the baseline theatres data"""
-    # arrange
-
-    mr_mock = Mock()
-    mr_mock.run_params = {
-        "theatres": {
-            "change_utilisation": {"100": 2, "110": 2.5, "Other (Surgical)": 3},
-        }
-    }
-    mr_mock.model_run = -1
-
-    mock_model._theatres_data = {
-        "four_hour_sessions": pd.Series(
-            {"100": 100, "110": 200, "Other (Surgical)": 300}, name="four_hour_sessions"
-        ),
-    }
-
-    expected = {
-        frozenset(
-            {
-                ("tretspef", "100"),
-                ("measure", "four_hour_sessions"),
-                ("pod", "ip_theatres"),
-            }
-        ): 100,
-        frozenset(
-            {
-                ("measure", "four_hour_sessions"),
-                ("tretspef", "110"),
-                ("pod", "ip_theatres"),
-            }
-        ): 200,
-        frozenset(
-            {
-                ("tretspef", "Other (Surgical)"),
-                ("measure", "four_hour_sessions"),
-                ("pod", "ip_theatres"),
-            }
-        ): 300,
-    }
-
-    # act
-    actual = mock_model._theatres_available(None, mr_mock)
-
-    # assert
-    assert actual == expected
-
-
 def test_aggregate(mock_model):
     """test that it aggregates the results correctly"""
 
@@ -631,7 +486,7 @@ def test_aggregate(mock_model):
     mdl = mock_model
     mdl._create_agg = Mock(wraps=create_agg_stub)
     mdl._get_run_params = Mock(
-        return_value={"bed_occupancy": "run_params", "theatres": "theatres"}
+        return_value={"bed_occupancy": "run_params"}
     )
     mdl._bed_occupancy = Mock(return_value=2)
     mdl._theatres_available = Mock(return_value=3)
@@ -757,7 +612,6 @@ def test_aggregate(mock_model):
     assert results == {
         "sex+tretspef": expected_mr,
         "bed_occupancy": 2,
-        "theatres_available": 3,
     }
 
 
