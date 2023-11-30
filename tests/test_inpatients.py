@@ -58,17 +58,6 @@ def mock_model():
             "a": {"a": [0.4, 0.6], "b": 0.7},
             "b": {"a": [0.4, 0.6], "b": 0.8},
         },
-        "theatres": {
-            "change_utilisation": {
-                "100": {
-                    "baseline": 1.01,
-                    "interval": [1.02, 1.04],
-                },
-                "110": {"baseline": 1.11, "interval": [1.12, 1.14]},
-                "Other (Surgical)": {"baseline": 1.21, "interval": [1.22, 1.24]},
-            },
-            "change_availability": [1.03, 1.05],
-        },
     }
     mdl._data_path = "data/synthetic"
     # create a mock object for the hsa gams
@@ -489,7 +478,6 @@ def test_aggregate(mock_model):
         return_value={"bed_occupancy": "run_params"}
     )
     mdl._bed_occupancy = Mock(return_value=2)
-    mdl._theatres_available = Mock(return_value=3)
     xs = list(range(6)) * 2
     mr_mock = Mock()
     mr_mock.get_model_results.return_value = pd.DataFrame(
