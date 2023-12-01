@@ -1,25 +1,27 @@
 .data <- NULL # lint helper
 
-get_demographics_factors_version <- function(demographic_factors_pin_name) {
-  board <- pins::board_connect()
+get_trust_wt_catchment_pops <- function() {
+  cont <- AzureStor::blob_container(
+    Sys.getenv("DEMOG_DATA_SA_CONTAINER"),
+    key = Sys.getenv("DEMOG_DATA_SA_KEY")
+  )
 
-  pins::pin_versions(board, demographic_factors_pin_name) |>
-    dplyr::filter(.data[["active"]]) |>
-    _$version
+  tf <- withr::local_tempfile()
+  AzureStor::download_blob(cont, "trust_wt_catchment_pops.csv", tf)
+
+  readr::read_csv(tf, col_types = "cccddd")
 }
 
-process_demographic_factors <- function(demographic_factors_pin_name, demographic_factors_version) {
+get_variant_lookup <- function() {
   board <- pins::board_connect()
-
-  pop <- board |>
-    pins::pin_read(demographic_factors_pin_name, demographic_factors_version) |>
-    tibble::as_tibble()
 
   variant_lookup <- board |> # nolint
     pins::pin_read("thomas.jemmett/nhp_demographic_variants") |>
     dplyr::select("ons_id", "name") |>
     tibble::deframe()
+}
 
+process_demographic_factors <- function(pop, variant_lookup) {
   pop |>
     dplyr::mutate(
       dplyr::across("sex", ~ ifelse(.x == "m", 1, 2)),
@@ -82,7 +84,7 @@ create_gams <- function(org_codes, base_year = "2018") {
 
   withr::local_envvar("RETICULATE_PYTHON" = "")
 
-  reticulate::use_condaenv("nhp")
+  reticulate::use_condaenv("nhp", conda = r"{C:\ProgramData\Miniconda3\Scripts\conda.exe}")
   hsa <- reticulate::import("model.hsa_gams")
 
   hsa$run(trust, base_year) |> # returns filename
