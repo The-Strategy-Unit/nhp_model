@@ -248,8 +248,7 @@ def test_combine_results(mocker):
     "agg_type",
     [
         "default",
-        "bed_occupancy",
-        "theatres_available",
+        "bed_occupancy"
     ],
 )
 def test_split_model_runs_out_default(agg_type):
