@@ -443,7 +443,7 @@ def test_get_run_params(
         "activity_avoidance": "linear",
         "efficiencies": "linear",
         "bed_occupancy": "linear",
-        "waiting_list_adjustment": "linear",
+        "waiting_list_adjustment": "step2025",
     }
 
     m = Mock(return_value=1)
