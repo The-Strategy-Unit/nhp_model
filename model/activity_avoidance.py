@@ -183,9 +183,7 @@ class ActivityAvoidance:
         if not (params := self.run_params["waiting_list_adjustment"][activity_type]):
             return self
 
-        tretspef_n = self.data["tretspef"].value_counts()
-        wla_param = pd.Series(params)
-        factor = (wla_param / tretspef_n).fillna(0) + 1
+        factor = pd.Series(params)
 
         # update the index to include "True" for the is_wla field
         factor.index = pd.MultiIndex.from_tuples([(True, i) for i in factor.index])
