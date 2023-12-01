@@ -1,13 +1,21 @@
 .data <- NULL # lint helper
 
-process_demographic_factors <- function(rds_path) {
+get_demographics_factors_version <- function(demographic_factors_pin_name) {
+  board <- pins::board_connect()
+
+  pins::pin_versions(board, demographic_factors_pin_name) |>
+    dplyr::filter(.data[["active"]]) |>
+    _$version
+}
+
+process_demographic_factors <- function(demographic_factors_pin_name, demographic_factors_version) {
   board <- pins::board_connect()
 
   pop <- board |>
-    pins::pin_read("Paul.Seamer/cohort4_trust_wt_catchment_pops") |>
+    pins::pin_read(demographic_factors_pin_name, demographic_factors_version) |>
     tibble::as_tibble()
 
-  variant_lookup <- board |>
+  variant_lookup <- board |> # nolint
     pins::pin_read("thomas.jemmett/nhp_demographic_variants") |>
     dplyr::select("ons_id", "name") |>
     tibble::deframe()
@@ -55,14 +63,14 @@ save_synthetic_demographic_factors <- function(demographic_factors, path = "data
   fn
 }
 
-save_demographic_factors <- function(demographic_factors, org_codes, path = "data") {
-  trust <- paste(org_codes, collapse = "_")
+save_demographic_factors <- function(demographic_factors, params) {
+  trust <- params$name
 
   data <- demographic_factors |>
-    dplyr::filter(.data$procode == trust) |>
+    dplyr::filter(.data[["procode"]] == params$providers) |>
     tidyr::pivot_wider(names_from = "year", values_from = "pop")
 
-  fn <- file.path(path, trust, "demographic_factors.csv")
+  fn <- file.path(params$path, trust, "demographic_factors.csv")
   readr::write_csv(data, fn)
 
   fn

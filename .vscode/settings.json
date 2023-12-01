@@ -1,6 +1,5 @@
 {
-  "python.linting.enabled": true,
-  "python.linting.pylintArgs": [
+  "pylint.args": [
     "--max-args",
     "6"
   ],
@@ -12,5 +11,5 @@
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter"
   },
-  "python.formatting.provider": "none"
+  "azurite.location": "../.azurite"
 }
