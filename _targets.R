@@ -149,19 +149,18 @@ list(
   ),
   # demographic factors
   tar_target(
-    demographic_factors_pin_name,
-    "Paul.Seamer/cohort4_trust_wt_catchment_pops"
+    trust_wt_catchment_pops,
+    get_trust_wt_catchment_pops()
   ),
   tar_target(
-    demographic_factors_version,
-    get_demographics_factors_version(demographic_factors_pin_name),
-    cue = targets::tar_cue("always")
+    variant_lookup,
+    get_variant_lookup()
   ),
   tar_target(
     processed_demographic_factors,
     process_demographic_factors(
-      demographic_factors_pin_name,
-      demographic_factors_version
+      trust_wt_catchment_pops,
+      variant_lookup
     )
   ),
   tar_target(
