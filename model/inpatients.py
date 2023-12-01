@@ -35,8 +35,6 @@ class InpatientsModel(Model):
     ) -> None:
         # call the parent init function
         super().__init__("ip", params, data_path, hsa, run_params)
-        # load the theatres data
-        self._load_theatres_data()
         # load the kh03 data
         self._load_kh03_data()
 
@@ -79,33 +77,6 @@ class InpatientsModel(Model):
         )
         # get the baseline data
         self._beds_baseline = self._bedday_summary(self.data, self.params["start_year"])
-
-    def _load_theatres_data(self) -> None:
-        """Load the Theatres data
-
-        Loads the theatres data and stores in the private variable `self._theatres_data`
-        """
-        with open(f"{self._data_path}/theatres.json", "r", encoding="UTF-8") as tdf:
-            self._theatres_data = json.load(tdf)
-
-        fhs_baseline = pd.Series(
-            self._theatres_data["four_hour_sessions"], name="four_hour_sessions"
-        )
-
-        baseline_params = pd.Series(
-            {
-                k: v["baseline"]
-                for k, v in self.params["theatres"]["change_utilisation"].items()
-            }
-        )
-
-        self._theatres_data["four_hour_sessions"] = fhs_baseline
-        # sum the amount of procedures, by specialty,
-        # then keep only the ones which appear in fhs_baseline
-        self._procedures_baseline = self.data.groupby("tretspef")["has_procedure"].sum()
-        self._procedures_baseline = self._procedures_baseline[
-            self._procedures_baseline.index.isin(fhs_baseline.index)
-        ]
 
     def _load_strategies(self) -> None:
         """Load a set of strategies"""
@@ -294,64 +265,6 @@ class InpatientsModel(Model):
             for k, v in beddays_results.items()
         }
 
-    def _theatres_available(
-        self, model_results: pd.DataFrame, model_run: Model
-    ) -> dict:
-        """Calculate the theatres available
-
-        :param model_results: a DataFrame containing the results of a model iteration
-        :type model_results: pandas.DataFrame
-        :param theatres_params: the theatres params from run_params
-        :type theatres_params: dict
-        :param model_run: the current model run
-        :type model_run: int
-
-        :returns: a dictionary of a named tuple to an integer. There are two set's of results that
-            are returned: the number of theatres available, and the number of four hour sessions.
-        :rtype: dict
-        """
-        # pylint: disable=too-many-locals
-        # create the namedtuple types
-
-        fhs_baseline = self._theatres_data["four_hour_sessions"]
-
-        if model_run.model_run == -1:
-            return {
-                frozenset(
-                    {
-                        ("pod", "ip_theatres"),
-                        ("measure", "four_hour_sessions"),
-                        ("tretspef", k),
-                    }
-                ): v
-                for k, v in fhs_baseline.items()
-            }
-
-        params = pd.Series(model_run.run_params["theatres"]["change_utilisation"])
-
-        # sum the amount of procedures, by specialty,
-        # then keep only the ones which appear in fhs_baseline
-        future = (
-            model_results[model_results["measure"] == "procedures"]
-            .groupby("tretspef")["value"]
-            .sum()
-        )
-        future = future[future.index.isin(fhs_baseline.index)]
-
-        baseline = self._procedures_baseline
-
-        fhs_future = (future / baseline * fhs_baseline * params).dropna()
-
-        return {
-            frozenset(
-                zip(
-                    ["pod", "measure", "tretspef"],
-                    ["ip_theatres", "four_hour_sessions", k],
-                )
-            ): v
-            for k, v in fhs_future.items()
-        }
-
     def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
         """Aggregate the model results
 
@@ -411,18 +324,12 @@ class InpatientsModel(Model):
         model_results.loc[op_rows, "measure"] = "attendances"
         model_results.loc[op_rows, "pod"] = "op_procedure"
 
-        theatres_available = self._theatres_available(
-            model_results.loc[~op_rows],
-            model_run,
-        )
-
         agg = partial(self._create_agg, model_results)
         return (
             agg,
             {
                 **agg(["sex", "tretspef"]),
                 "bed_occupancy": bed_occupancy,
-                "theatres_available": theatres_available,
             },
         )
 

@@ -206,7 +206,6 @@ class Model:
                     ("non-demographic_adjustment", inrange_0_5),
                     ("activity_avoidance", inrange_0_1),
                     ("efficiencies", inrange_0_1),
-                    ("theatres", inrange_0_5),
                 ]
             },
             # handle this case separately as we need to filter the params list

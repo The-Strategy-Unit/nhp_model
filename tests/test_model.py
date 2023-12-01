@@ -61,10 +61,6 @@ def mock_model():
             "a": {"a": [0.4, 0.6], "b": 0.7},
             "b": {"a": [0.4, 0.6], "b": 0.8},
         },
-        "theatres": {
-            "change_utilisation": {"a": [1.01, 1.03], "b": [1.02, 1.04]},
-            "change_availability": [1.03, 1.05],
-        },
     }
     mdl._data_path = "data/synthetic"
     # create a minimal data object for testing
@@ -107,10 +103,6 @@ def mock_run_params():
         "efficiencies": {
             "ip": {"b_a": [0.5, 46, 47, 48], "b_b": [0.5, 49, 50, 51]},
             "op": {"b_a": [0.5, 52, 53, 54], "b_b": [0.5, 55, 56, 57]},
-        },
-        "theatres": {
-            "change_utilisation": {"a": [1.02, 58, 59, 60], "b": [1.03, 61, 62, 63]},
-            "change_availability": [1.04, 64, 65, 66],
         },
         "bed_occupancy": {
             "a": {"a": [0.5, 67, 68, 69], "b": [0.7, 0.7, 0.7, 0.7]},
@@ -351,10 +343,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                     "a": {"a": 0.5, "b": 0.7},
                     "b": {"a": 0.5, "b": 0.8},
                 },
-                "theatres": {
-                    "change_utilisation": {"a": 1.02, "b": 1.03},
-                    "change_availability": 1.04,
-                },
                 "waiting_list_adjustment": {
                     "ip": {"100": 1, "120": 2},
                     "op": {"100": 3, "120": 4},
@@ -386,10 +374,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "efficiencies": {
                     "ip": {"b_a": 47, "b_b": 50},
                     "op": {"b_a": 53, "b_b": 56},
-                },
-                "theatres": {
-                    "change_utilisation": {"a": 59, "b": 62},
-                    "change_availability": 65,
                 },
                 "bed_occupancy": {
                     "a": {"a": 68, "b": 0.7},
@@ -431,10 +415,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                     "a": {"a": 0.75, "b": 0.85},
                     "b": {"a": 0.75, "b": 0.9},
                 },
-                "theatres": {
-                    "change_utilisation": {"a": 1.02, "b": 1.03},
-                    "change_availability": 1.04,
-                },
                 "waiting_list_adjustment": {
                     "ip": {"100": 0.5, "120": 1.0},
                     "op": {"100": 1.5, "120": 2.0},
@@ -463,8 +443,7 @@ def test_get_run_params(
         "activity_avoidance": "linear",
         "efficiencies": "linear",
         "bed_occupancy": "linear",
-        "theatres": "step2025",
-        "waiting_list_adjustment": "linear",
+        "waiting_list_adjustment": "step2025",
     }
 
     m = Mock(return_value=1)
