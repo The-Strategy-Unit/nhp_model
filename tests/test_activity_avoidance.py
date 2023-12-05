@@ -427,10 +427,7 @@ def test_waiting_list_adjustment(mocker, mock_activity_avoidance):
     # assert
     assert actual == "update"
     f, cols = u_mock.call_args_list[0][0]
-    assert f.to_dict() == {
-        (True, "100"): 1 + 1 / 4,
-        (True, "200"): 1 + 4 / 2,
-    }
+    assert f.to_dict() == {(True, "100"): 1, (True, "200"): 4}
     assert f.name == "waiting_list_adjustment"
     assert cols == ["is_wla", "tretspef"]
 
