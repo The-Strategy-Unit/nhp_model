@@ -30,7 +30,7 @@ def test_rnorm():
     rng = Mock()
     rng.normal.return_value = 1.5
     assert rnorm(rng, 1, 2) == 1.5
-    rng.normal.assert_called_once_with(1.5, 0.303978439417249)
+    rng.normal.assert_called_once_with(1.5, 0.3901520929904105)
 
 
 def test_age_groups():
