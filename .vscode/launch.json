@@ -36,6 +36,17 @@
         "--type=aae"
       ],
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Full Model Run",
+      "type": "python",
+      "request": "launch",
+      "program": "run_model.py",
+      "args": [
+        "queue/sample_params.json",
+        "--type=all"
+      ],
+      "console": "integratedTerminal"
     }
   ]
 }
