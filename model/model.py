@@ -279,6 +279,9 @@ class Model:
             **{
                 k: get_param_value(params[k], v)
                 for k, v in time_profile_mappings.items()
+                # TODO: this probably should be removed
+                # it masks potential issues in the parameters by just ignoring them
+                if k in params.keys()
             },
         }
 
