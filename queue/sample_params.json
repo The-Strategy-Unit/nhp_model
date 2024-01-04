@@ -1212,39 +1212,39 @@
     "ip": {
       "elective": [
         1,
-        1.2
+        1.02
       ],
       "non-elective": [
         1,
-        1.2
+        1.02
       ],
       "maternity": [
         1,
-        1.2
+        1.02
       ]
     },
     "op": {
       "first": [
         1,
-        1.2
+        1.02
       ],
       "followup": [
         1,
-        1.2
+        1.02
       ],
       "procedure": [
         1,
-        1.2
+        1.02
       ]
     },
     "aae": {
       "ambulance": [
         1,
-        1.2
+        1.02
       ],
       "walk-in": [
         1,
-        1.2
+        1.02
       ]
     }
   },
@@ -1939,7 +1939,7 @@
     "expat": "linear",
     "repat_local": "linear",
     "repat_nonlocal": "linear",
-    "non-demographic_adjustment": "linear",
+    "non-demographic_adjustment": "none",
     "activity_avoidance": {
       "aae": {
         "frequent_attenders_adult_ambulance": "linear",
