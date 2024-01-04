@@ -312,6 +312,42 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
 # _get_run_params()
 
 
+# expect errors
+@pytest.mark.parametrize(
+    "key", ["covid_adjustment", "baseline_adjustment", "non-demographic_adjustment"]
+)
+def test_get_run_params_invalid_time_profiles(mocker, mock_model, mock_run_params, key):
+    """tests _get_run_params gets the right params for a model run"""
+    # arrange
+    mdl = mock_model
+    mdl.run_params = mock_run_params
+
+    mdl.params["time_profile_mappings"] = {
+        "covid_adjustment": "none",
+        "baseline_adjustment": "none",
+        "expat": "linear",
+        "repat_local": "linear",
+        "repat_nonlocal": "linear",
+        "non-demographic_adjustment": "none",
+        "activity_avoidance": "linear",
+        "efficiencies": "linear",
+        "bed_occupancy": "linear",
+        "waiting_list_adjustment": "step2025",
+    }
+
+    m = Mock(return_value=1)
+    mocker.patch(
+        "model.model.create_time_profiles",
+        return_value={"none": 1, "linear": 0.5, "step": m},
+    )
+
+    mdl.params["time_profile_mappings"][key] = "linear"
+
+    # act / assert
+    with pytest.raises(Exception):
+        mdl._get_run_params(4)
+
+
 @pytest.mark.parametrize(
     "model_run, expected_run_params, mock_call",
     [
@@ -395,8 +431,8 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "seed": 1,
                 "covid_adjustment": 1.1,
                 "non-demographic_adjustment": {
-                    "a": {"a_a": 1.05, "a_b": 1.05},
-                    "b": {"b_a": 1.05, "b_b": 1.05},
+                    "a": {"a_a": 1.1, "a_b": 1.1},
+                    "b": {"b_a": 1.1, "b_b": 1.1},
                 },
                 "expat": {"ip": {"elective": {"Other": 0.9}}},
                 "repat_local": {"ip": {"elective": {"Other": 1.05}}},
@@ -439,7 +475,7 @@ def test_get_run_params(
         "expat": "linear",
         "repat_local": "linear",
         "repat_nonlocal": "linear",
-        "non-demographic_adjustment": "linear",
+        "non-demographic_adjustment": "none",
         "activity_avoidance": "linear",
         "efficiencies": "linear",
         "bed_occupancy": "linear",

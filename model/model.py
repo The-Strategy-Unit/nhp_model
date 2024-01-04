@@ -270,6 +270,16 @@ class Model:
         else:
             # for the time profiles, use the principal projection
             model_run = 0
+            # make sure these parameters do not have a time profile selected
+            assert (
+                time_profile_mappings["covid_adjustment"] == "none"
+            ), "Invalid Time Profile for Covid Adjustment"
+            assert (
+                time_profile_mappings["baseline_adjustment"] == "none"
+            ), "Invalid Time Profile for Baseline Adjustment"
+            assert (
+                time_profile_mappings["non-demographic_adjustment"] == "none"
+            ), "Invalid Time Profile for Non-Demographic Adjustment"
 
         return {
             "year": year + self.params["start_year"],
