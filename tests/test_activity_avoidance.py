@@ -459,15 +459,18 @@ def test_non_demographic_adjustment_no_params(
 
 
 @pytest.mark.parametrize(
-    "model_type, expected",
+    "model_type, expected, year",
     [
-        ("ip", {"elective": 1, "non-elective": 2}),
-        ("op", {"first": 3, "followup": 4}),
-        ("aae", {"ambulance": 5, "walk-in": 6}),
+        ("ip", {"elective": 1, "non-elective": 2}, 2021),
+        ("op", {"first": 3, "followup": 4}, 2021),
+        ("aae", {"ambulance": 5, "walk-in": 6}, 2021),
+        ("ip", {"elective": 1, "non-elective": 4}, 2022),
+        ("op", {"first": 9, "followup": 16}, 2022),
+        ("aae", {"ambulance": 25, "walk-in": 36}, 2022),
     ],
 )
 def test_non_demographic_adjustment(
-    mocker, mock_activity_avoidance, model_type, expected
+    mocker, mock_activity_avoidance, model_type, expected, year
 ):
     # arrange
     aa_mock = mock_activity_avoidance
@@ -476,12 +479,14 @@ def test_non_demographic_adjustment(
     aa_mock._model_run.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
 
     aa_mock._model_run.run_params = {
+        "year": year,
         "non-demographic_adjustment": {
             "ip": {"elective": 1, "non-elective": 2},
             "op": {"first": 3, "followup": 4},
             "aae": {"ambulance": 5, "walk-in": 6},
-        }
+        },
     }
+    aa_mock._model_run.params = {"start_year": 2020}
 
     u_mock = mocker.patch(
         "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
