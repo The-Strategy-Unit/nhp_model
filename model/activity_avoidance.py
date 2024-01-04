@@ -199,7 +199,8 @@ class ActivityAvoidance:
         ):
             return self
 
-        factor = pd.Series(params).rename("non-demographic_adjustment")
+        year_exponent = self.run_params["year"] - self.params["start_year"]
+        factor = pd.Series(params).rename("non-demographic_adjustment") ** year_exponent
         return self._update(factor, ["group"])
 
     def activity_avoidance(self) -> dict:
