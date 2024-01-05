@@ -130,6 +130,28 @@ def test_update(mock_ipe):
     }
 
 
+@pytest.mark.parametrize("losr_type", ["all", "aec", "pre-op"])
+def test_losr_empty(mock_ipe, losr_type):
+    """test that if no preop strategy provided losr functions return self"""
+    # arrange
+    m = mock_ipe
+    m.losr = m.losr[m.losr.type != losr_type]
+    m._model_run.data = pd.DataFrame(
+        {"speldur": list(range(9))}, index=["x", "a", "b"] * 3
+    )
+
+    # act
+    if losr_type == "all":
+        actual = m.losr_all()
+    if losr_type == "aec":
+        actual = m.losr_aec()
+    if losr_type == "pre-op":
+        actual = m.losr_preop()
+
+    # assert
+    assert actual == m
+
+
 def test_losr_all(mock_ipe):
     """test that it reduces the speldur column for 'all' types"""
     # arrange
