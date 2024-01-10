@@ -1,6 +1,6 @@
 .data <- NULL # lint helper
 
-extract_op_data <- function(start_date, end_date, providers, specialty_fn, ...) {
+extract_op_data <- function(start_date, end_date, providers, specialty_fn) {
   con <- DBI::dbConnect(
     odbc::odbc(),
     .connection_string = Sys.getenv("CONSTR"), timeout = 10
@@ -24,8 +24,7 @@ extract_op_data <- function(start_date, end_date, providers, specialty_fn, ...) 
           "tretspef",
           "sitetret",
           "is_main_icb",
-          tidyselect::matches("^(ha|i)s_"),
-          ...
+          tidyselect::matches("^(ha|i)s_")
         )
       )
     ) |>
@@ -112,7 +111,7 @@ create_provider_op_extract <- function(params, specialties = NULL) {
     params$start_date,
     params$end_date,
     params$providers,
-    specialty_fn,
+    specialty_fn
   ) |>
     save_op_data(params$name, params$path)
 }

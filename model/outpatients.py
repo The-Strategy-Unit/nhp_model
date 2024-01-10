@@ -49,6 +49,8 @@ class OutpatientsModel(Model):
                     + data[~data["is_first"] & ~data["has_procedures"]]["type"],
                     "consultant_to_consultant_reduction_"
                     + data[data["is_cons_cons_ref"]]["type"],
+                    "gp_referred_first_attendance_reduction_" 
+                    + data[data["is_gp_ref"] & data["is_first"]]["type"]
                 ]
             )
             .rename("strategy")

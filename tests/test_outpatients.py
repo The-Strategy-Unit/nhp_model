@@ -110,15 +110,18 @@ def test_load_strategies(mock_model):
     mdl.data["is_first"] = ([True] * 5 + [False] * 5) * 2
     mdl.data["is_cons_cons_ref"] = [True] * 10 + [False] * 10
     mdl.data["type"] = ["a", "b", "c", "d", "e"] * 4
+    mdl.data["is_gp_ref"] = [False] * 10 + [True] * 10
     # act
     mdl._load_strategies()
     # assert
     assert mdl.strategies["activity_avoidance"]["strategy"].to_list() == [
         f"{i}_{j}"
-        for i in ["followup_reduction"] + ["consultant_to_consultant_reduction"] * 2
+        for i in ["followup_reduction"]
+        + ["consultant_to_consultant_reduction"] * 2
+        + ["gp_referred_first_attendance_reduction"]
         for j in ["a", "b", "c", "d", "e"]
     ]
-    assert mdl.strategies["activity_avoidance"]["sample_rate"].to_list() == [1] * 15
+    assert mdl.strategies["activity_avoidance"]["sample_rate"].to_list() == [1] * 20
 
 
 def test_convert_to_tele(mock_model):
