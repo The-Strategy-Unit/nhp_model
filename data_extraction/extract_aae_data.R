@@ -2,7 +2,7 @@
 `%m+%` <- lubridate::`%m+%` # nolint
 `%m-%` <- lubridate::`%m-%` # nolint
 
-extract_aae_data <- function(start_date, end_date, providers, ...) {
+extract_aae_data <- function(start_date, end_date, providers) {
   con <- DBI::dbConnect(
     odbc::odbc(),
     .connection_string = Sys.getenv("CONSTR"), timeout = 10
@@ -30,8 +30,7 @@ extract_aae_data <- function(start_date, end_date, providers, ...) {
           "sitetret",
           "is_main_icb",
           "aedepttype",
-          tidyselect::matches("^(ha|i)s_"),
-          ...
+          tidyselect::matches("^(ha|i)s_")
         )
       )
     ) |>
