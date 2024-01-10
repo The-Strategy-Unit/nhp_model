@@ -51,6 +51,7 @@ class AaEModel(Model):
                         ("is_frequent_attender", "frequent_attenders"),
                         ("is_left_before_treatment", "left_before_seen"),
                         ("is_low_cost_referred_or_discharged", "low_cost_discharged"),
+                        ("is_discharged_no_treatment", "discharged_no_treatment")
                     ]
                 ]
             )

@@ -109,6 +109,7 @@ def test_load_strategies(mock_model):
     mdl.data["is_low_cost_referred_or_discharged"] = (
         [False] * 12 + [True] * 4 + [False] * 4
     )
+    mdl.data["is_discharged_no_treatment"] = [False] * 16 + [True] * 4
     # act
     mdl._load_strategies()
     # assert
@@ -125,8 +126,12 @@ def test_load_strategies(mock_model):
         "low_cost_discharged_b_b",
         "low_cost_discharged_a_a",
         "low_cost_discharged_b_b",
+        "discharged_no_treatment_a_a",
+        "discharged_no_treatment_b_b",
+        "discharged_no_treatment_a_a",
+        "discharged_no_treatment_b_b",
     ]
-    assert mdl.strategies["activity_avoidance"]["sample_rate"].to_list() == [1] * 12
+    assert mdl.strategies["activity_avoidance"]["sample_rate"].to_list() == [1] * 16
 
 
 def test_apply_resampling(mocker, mock_model):
