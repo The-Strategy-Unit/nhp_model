@@ -1321,6 +1321,30 @@
           0.7,
           0.9
         ]
+      },
+      "discharged_no_treatment_adult_ambulance": {
+        "interval": [
+          0.85,
+          0.95
+        ]
+      },
+      "discharged_no_treatment_adult_walk-in": {
+        "interval": [
+          0.85,
+          0.95
+        ]
+      },
+      "discharged_no_treatment_child_ambulance": {
+        "interval": [
+          0.85,
+          0.95
+        ]
+      },
+      "discharged_no_treatment_child_walk-in": {
+        "interval": [
+          0.7,
+          0.9
+        ]
       }
     },
     "ip": {
@@ -1555,6 +1579,30 @@
         ]
       },
       "followup_reduction_child_non-surgical": {
+        "interval": [
+          0.7,
+          0.9
+        ]
+      },
+      "gp_referred_first_attendance_reduction_adult_non-surgical": {
+        "interval": [
+          0.85,
+          0.95
+        ]
+      },
+      "gp_referred_first_attendance_reduction_adult_surgical": {
+        "interval": [
+          0.85,
+          0.95
+        ]
+      },
+      "gp_referred_first_attendance_reduction_child_non-surgical": {
+        "interval": [
+          0.85,
+          0.95
+        ]
+      },
+      "gp_referred_first_attendance_reduction_child_surgical": {
         "interval": [
           0.7,
           0.9
@@ -1953,7 +2001,11 @@
         "low_cost_discharged_adult_ambulance": "linear",
         "low_cost_discharged_adult_walk-in": "linear",
         "low_cost_discharged_child_ambulance": "linear",
-        "low_cost_discharged_child_walk-in": "linear"
+        "low_cost_discharged_child_walk-in": "linear",
+        "discharged_no_treatment_adult_ambulance": "linear",
+        "discharged_no_treatment_adult_walk-in": "linear",
+        "discharged_no_treatment_child_ambulance": "linear",
+        "discharged_no_treatment_child_walk-in": "linear"
       },
       "ip": {
         "alcohol_partially_attributable_acute": "linear",
@@ -1996,7 +2048,11 @@
         "followup_reduction_adult_surgical": "linear",
         "followup_reduction_adult_non-surgical": "linear",
         "followup_reduction_child_surgical": "linear",
-        "followup_reduction_child_non-surgical": "linear"
+        "followup_reduction_child_non-surgical": "linear",
+        "gp_referred_first_attendance_reduction_adult_non-surgical": "linear",
+        "gp_referred_first_attendance_reduction_adult_surgical": "linear",
+        "gp_referred_first_attendance_reduction_child_non-surgical": "linear",
+        "gp_referred_first_attendance_reduction_child_surgical": "linear"
       }
     },
     "efficiencies": {
