@@ -114,6 +114,7 @@ def test_run(mocker, mock_model_run):
     rr_mock = mocker.patch("model.model_run.ActivityAvoidance")
     rr_mock.return_value = rr_mock
     rr_mock.demographic_adjustment.return_value = rr_mock
+    rr_mock.birth_adjustment.return_value = rr_mock
     rr_mock.health_status_adjustment.return_value = rr_mock
     rr_mock.covid_adjustment.return_value = rr_mock
     rr_mock.expat_adjustment.return_value = rr_mock
@@ -130,6 +131,7 @@ def test_run(mocker, mock_model_run):
     # assert
     rr_mock.assert_called_once_with(mr_mock)
     rr_mock.demographic_adjustment.assert_called_once()
+    rr_mock.birth_adjustment.assert_called_once()
     rr_mock.health_status_adjustment.assert_called_once()
     rr_mock.covid_adjustment.assert_called_once()
     rr_mock.expat_adjustment.assert_called_once()
