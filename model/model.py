@@ -185,7 +185,6 @@ class Model:
             "variant": [variants[np.argmax(probabilities)]]
             + rng.choice(variants, model_runs - 1, p=probabilities).tolist(),
             "seeds": rng.integers(0, 65535, model_runs).tolist(),
-            "waiting_list_adjustment": params["waiting_list_adjustment"],
             "health_status_adjustment": HealthStatusAdjustment.generate_params(
                 params["start_year"],
                 params["end_year"],
@@ -199,6 +198,7 @@ class Model:
                 k: generate_param_values(params[k], v)
                 for k, v in [
                     ("covid_adjustment", lambda x: x),
+                    ("waiting_list_adjustment", inrange_0_5),
                     ("expat", inrange_0_1),
                     ("repat_local", inrange_1_5),
                     ("repat_nonlocal", inrange_1_5),
@@ -255,10 +255,7 @@ class Model:
             else:
                 i = time_profiles[i]
 
-            if isinstance(prm, list):
-                return 1 - (1 - prm[model_run]) * i
-            else:
-                return prm * i
+            return 1 - (1 - prm[model_run]) * i
 
         time_profile_mappings = self.params["time_profile_mappings"]
 

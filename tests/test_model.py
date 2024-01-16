@@ -84,8 +84,8 @@ def mock_run_params():
         "health_status_adjustment": [1, 2, 3, 4, 5],
         "covid_adjustment": [1.1, 1, 2, 3],
         "waiting_list_adjustment": {
-            "ip": {"100": 1, "120": 2},
-            "op": {"100": 3, "120": 4},
+            "ip": {"100": [1] * 4, "120": [2] * 4},
+            "op": {"100": [3] * 4, "120": [4] * 4},
         },
         "expat": {"ip": {"elective": {"Other": [0.8, 4, 5, 6]}}},
         "repat_local": {"ip": {"elective": {"Other": [1.1, 7, 8, 9]}}},

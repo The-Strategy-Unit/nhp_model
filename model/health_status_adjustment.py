@@ -152,11 +152,15 @@ class HealthStatusAdjustment:
         ]
         adjusted_ages = np.tile(self._ages, 2) - lexc * hsa_param
 
-        self._cache[cache_key] = factor = (
+        factor = (
             self._predict_activity(adjusted_ages).rename_axis(["hsagrp", "sex", "age"])
             / self._activity_ages.loc[slice(None), slice(None), self._ages]
         ).rename("health_status_adjustment")
 
+        # if any factor goes below 0, set it to 0
+        factor[factor < 0] = 0
+
+        self._cache[cache_key] = factor
         return factor
 
     def _predict_activity(self, adjusted_ages):
