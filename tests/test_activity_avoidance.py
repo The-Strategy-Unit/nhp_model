@@ -141,13 +141,16 @@ def test_demographic_adjustment(mocker, mock_activity_avoidance):
     assert u_mock.call_args[0][0].to_list() == [1, 2]
     assert u_mock.call_args[0][1] == ["age", "sex"]
 
+
 def test_birth_adjustment(mocker, mock_activity_avoidance):
     # arrange
     aa_mock = mock_activity_avoidance
     aa_mock._model_run.run_params = {"year": 2020, "variant": "a"}
     aa_mock._model_run.model.demog_factors = pd.DataFrame(
         {"2020": [2, 2, 2, 2]},
-        index=pd.MultiIndex.from_tuples([("a", 1, 1), ("a", 2, 1), ("a", 2, 2), ("b", 1, 1)]),
+        index=pd.MultiIndex.from_tuples(
+            [("a", 1, 1), ("a", 2, 1), ("a", 2, 2), ("b", 1, 1)]
+        ),
     )
     aa_mock._model_run.model.birth_factors = pd.DataFrame(
         {"2020": [4, 4, 4]},

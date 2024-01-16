@@ -243,39 +243,46 @@ def test_load_parquet(mocker, mock_model):
 @pytest.mark.parametrize(
     "year, expected_demog, expected_birth",
     [
-        (2018, np.arange(21, 41) / np.arange(1, 21), np.arange(21, 31) / np.arange(1, 11)),
-        (2019, np.arange(21, 41) / np.arange(11, 31), np.arange(21, 31) / np.arange(11, 21)),
+        (
+            2018,
+            np.arange(21, 41) / np.arange(1, 21),
+            np.arange(21, 31) / np.arange(1, 11),
+        ),
+        (
+            2019,
+            np.arange(21, 41) / np.arange(11, 31),
+            np.arange(21, 31) / np.arange(11, 21),
+        ),
     ],
 )
-def test_demog_factors_loads_correctly(mocker, mock_model, year, expected_demog, expected_birth):
+def test_demog_factors_loads_correctly(
+    mocker, mock_model, year, expected_demog, expected_birth
+):
     """test that the demographic factors are loaded correctly"""
     # arrange
     mock_read_csv = Mock()
     demog_factors = pd.DataFrame(
-            {
-                "variant": ["a"] * 10 + ["b"] * 10,
-                "age": list(range(1, 6)) * 4,
-                "sex": ([1] * 5 + [2] * 5) * 2,
-                "2018": list(range(1, 21)),
-                "2019": list(range(11, 31)),
-                "2020": list(range(21, 41)),
-            }
-        )
-    birth_factors = pd.DataFrame(
-            {
-                "variant": ["a"] * 5 + ["b"] * 5,
-                "age": list(range(1, 6)) * 2,
-                "sex": [1] * 10,
-                "2018": list(range(1, 11)),
-                "2019": list(range(11, 21)),
-                "2020": list(range(21, 31)),
-            }
-        )
-    mock_read_csv.side_effect = [demog_factors, birth_factors]
-    mocker.patch(
-        "pandas.read_csv",
-        mock_read_csv
+        {
+            "variant": ["a"] * 10 + ["b"] * 10,
+            "age": list(range(1, 6)) * 4,
+            "sex": ([1] * 5 + [2] * 5) * 2,
+            "2018": list(range(1, 21)),
+            "2019": list(range(11, 31)),
+            "2020": list(range(21, 41)),
+        }
     )
+    birth_factors = pd.DataFrame(
+        {
+            "variant": ["a"] * 5 + ["b"] * 5,
+            "age": list(range(1, 6)) * 2,
+            "sex": [1] * 10,
+            "2018": list(range(1, 11)),
+            "2019": list(range(11, 21)),
+            "2020": list(range(21, 31)),
+        }
+    )
+    mock_read_csv.side_effect = [demog_factors, birth_factors]
+    mocker.patch("pandas.read_csv", mock_read_csv)
     mdl = mock_model
     mdl.params["start_year"] = year
 
