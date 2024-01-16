@@ -255,10 +255,7 @@ class Model:
             else:
                 i = time_profiles[i]
 
-            if isinstance(prm, list):
-                return 1 - (1 - prm[model_run]) * i
-            else:
-                return prm * i
+            return 1 - (1 - prm[model_run]) * i
 
         time_profile_mappings = self.params["time_profile_mappings"]
 
