@@ -127,13 +127,15 @@ class Model:
 
         merge_cols = ["age", "sex"]
 
-        demog_factors = pd.read_csv(os.path.join(self._data_path, dfp["file"]))
-        demog_factors[merge_cols] = demog_factors[merge_cols].astype(int)
-        demog_factors.set_index(["variant"] + merge_cols, inplace=True)
+        def load_factors(filename):
+            factors = pd.read_csv(os.path.join(self._data_path, filename))
+            factors[merge_cols] = factors[merge_cols].astype(int)
+            factors.set_index(["variant"] + merge_cols, inplace=True)
 
-        self.demog_factors = demog_factors[years].apply(
-            lambda x: x / demog_factors[start_year]
-        )
+            return factors[years].apply(lambda x: x / factors[start_year])
+
+        self.demog_factors = load_factors(dfp["file"])
+        self.birth_factors = load_factors("birth_factors.csv")
 
     @staticmethod
     def generate_run_params(params):
