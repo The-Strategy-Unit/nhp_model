@@ -12,6 +12,18 @@ get_trust_wt_catchment_pops <- function() {
   readr::read_csv(tf, col_types = "cccddd")
 }
 
+get_trust_wt_catchment_births <- function() {
+  cont <- AzureStor::blob_container(
+    Sys.getenv("DEMOG_DATA_SA_CONTAINER"),
+    key = Sys.getenv("DEMOG_DATA_SA_KEY")
+  )
+
+  tf <- withr::local_tempfile()
+  AzureStor::download_blob(cont, "trust_wt_catchment_births.csv", tf)
+
+  readr::read_csv(tf, col_types = "cccddd")
+}
+
 get_variant_lookup <- function() {
   board <- pins::board_connect()
 
@@ -65,14 +77,14 @@ save_synthetic_demographic_factors <- function(demographic_factors, path = "data
   fn
 }
 
-save_demographic_factors <- function(demographic_factors, params) {
+save_demographic_factors <- function(demographic_factors, params, filename) {
   trust <- params$name
 
   data <- demographic_factors |>
     dplyr::filter(.data[["procode"]] == params$providers) |>
     tidyr::pivot_wider(names_from = "year", values_from = "pop")
 
-  fn <- file.path(params$path, trust, "demographic_factors.csv")
+  fn <- file.path(params$path, trust, filename)
   readr::write_csv(data, fn)
 
   fn
