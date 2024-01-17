@@ -35,13 +35,10 @@ class HealthStatusAdjustment:
         # hardcoded to max out at 90 as ages >90 are mapped to 90
         self._ages = np.arange(55, 91)
         # load the life expectancy file, only select the rows for the ages we are interested in
-        lexc = (
-            pd.read_csv(
-                f"{HealthStatusAdjustment._reference_path()}/life_expectancy.csv"
-            )
-            .set_index(["var", "sex", "age"])
-            .loc[(slice(None), slice(None), self._ages)]
-        )
+        lexc = pd.read_csv(
+            f"{HealthStatusAdjustment._reference_path()}/life_expectancy.csv"
+        ).set_index(["var", "sex", "age"])
+        lexc = lexc[lexc.index.isin(self._ages, level=2)]
         # calculate the life expectancy (change) between the model year and base year
         self._life_expectancy = lexc.apply(lambda x: x - lexc[str(base_year)])
 

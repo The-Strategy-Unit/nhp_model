@@ -31,6 +31,7 @@ def test_init(mocker):
     model_run.run_params = "run_params"
     model_run.step_counts = "step_counts"
     model_run.model.demog_factors = "demog_factors"
+    model_run.model.birth_factors = "birth_factors"
     model_run.model.hsa = "hsa"
     model_run.model.strategies = {"activity_avoidance": "activity_avoidance"}
 
@@ -48,6 +49,7 @@ def test_init(mocker):
     assert actual.run_params == "run_params"
     assert actual.step_counts == "step_counts"
     assert actual.demog_factors == "demog_factors"
+    assert actual.birth_factors == "birth_factors"
     assert actual.hsa == "hsa"
     assert actual.strategies == "activity_avoidance"
     usc_mock.assert_called_once_with(("baseline", "-"))
@@ -138,6 +140,41 @@ def test_demographic_adjustment(mocker, mock_activity_avoidance):
 
     assert u_mock.call_args[0][0].to_list() == [1, 2]
     assert u_mock.call_args[0][1] == ["age", "sex"]
+
+
+def test_birth_adjustment(mocker, mock_activity_avoidance):
+    # arrange
+    aa_mock = mock_activity_avoidance
+    aa_mock._model_run.run_params = {"year": 2020, "variant": "a"}
+    # set up demog_factors/birth_factors: we end up dividing birth factors by the demog factors, so
+    # we set these up here so (roughly) birth_factors == 1 / demog_factors.
+    # the result of this should be x ** 2 for the values in birth_factors
+    aa_mock._model_run.model.demog_factors = pd.DataFrame(
+        {"2020": [1 / (x + 1) for x in range(16)]},
+        index=pd.MultiIndex.from_tuples(
+            [(v, s, a) for s in [1, 2] for v in ["a", "b"] for a in [1, 2, 3, 4]]
+        ),
+    )
+    aa_mock._model_run.model.birth_factors = pd.DataFrame(
+        {"2020": [(x + 9) for x in range(8)]},
+        index=pd.MultiIndex.from_tuples(
+            [(v, 2, a) for v in ["a", "b"] for a in [1, 2, 3, 4]]
+        ),
+    )
+
+    u_mock = mocker.patch(
+        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+    )
+
+    # act
+    actual = aa_mock.birth_adjustment()
+
+    # assert
+    assert actual == "update"
+    u_mock.assert_called_once()
+
+    assert u_mock.call_args[0][0].to_list() == [(x + 9) ** 2 for x in range(4)]
+    assert u_mock.call_args[0][1] == ["group", "age", "sex"]
 
 
 # _health_status_adjustment()

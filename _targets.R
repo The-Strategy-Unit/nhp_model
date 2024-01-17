@@ -153,6 +153,10 @@ list(
     get_trust_wt_catchment_pops()
   ),
   tar_target(
+    trust_wt_catchment_births,
+    get_trust_wt_catchment_births()
+  ),
+  tar_target(
     variant_lookup,
     get_variant_lookup()
   ),
@@ -164,10 +168,29 @@ list(
     )
   ),
   tar_target(
+    processed_birth_factors,
+    process_demographic_factors(
+      trust_wt_catchment_births |>
+        dplyr::mutate(sex = 2),
+      variant_lookup
+    )
+  ),
+  tar_target(
     demographic_factors,
     save_demographic_factors(
       processed_demographic_factors,
-      params
+      params,
+      "demographic_factors.csv"
+    ),
+    pattern = map(params),
+    format = "file"
+  ),
+  tar_target(
+    birth_factors,
+    save_demographic_factors(
+      processed_birth_factors,
+      params,
+      "birth_factors.csv"
     ),
     pattern = map(params),
     format = "file"
@@ -237,6 +260,7 @@ list(
       op_data,
       aae_data,
       demographic_factors,
+      birth_factors,
       gams,
       # bit of a cheat, the gams only returns a single file name (of the pkl object)
       # add in the hsa_activity_table.csv files

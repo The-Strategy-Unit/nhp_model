@@ -57,6 +57,11 @@ class ActivityAvoidance:
         return self._model_run.model.demog_factors
 
     @property
+    def birth_factors(self):
+        """get the birth factors for the model"""
+        return self._model_run.model.birth_factors
+
+    @property
     def hsa(self):
         """get the health status adjustment GAMs for the model"""
         return self._model_run.model.hsa
@@ -103,8 +108,31 @@ class ActivityAvoidance:
         year = str(self.run_params["year"])
         variant = self.run_params["variant"]
 
-        factor = self.demog_factors.loc[variant][year].rename("demographic_adjustment")
+        factor = self.demog_factors.loc[(variant, slice(None), slice(None))][
+            year
+        ].rename("demographic_adjustment")
         return self._update(factor, ["age", "sex"])
+
+    def birth_adjustment(self):
+        """perform the birth adjustment"""
+        year = str(self.run_params["year"])
+        variant = self.run_params["variant"]
+
+        b_factor = self.birth_factors.loc[([variant], slice(None), slice(None))][year]
+        d_factor = self.demog_factors.loc[b_factor.index][year]
+
+        factor = b_factor / d_factor
+
+        factor = pd.Series(
+            factor.values,
+            name="birth_adjustment",
+            index=pd.MultiIndex.from_tuples(
+                [("maternity", a, s) for _, a, s in factor.index.values],
+                names=["group", "age", "sex"],
+            ),
+        )
+
+        return self._update(factor, ["group", "age", "sex"])
 
     def health_status_adjustment(self):
         """perform the health status adjustment"""
