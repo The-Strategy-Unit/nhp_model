@@ -146,15 +146,20 @@ def test_birth_adjustment(mocker, mock_activity_avoidance):
     # arrange
     aa_mock = mock_activity_avoidance
     aa_mock._model_run.run_params = {"year": 2020, "variant": "a"}
+    # set up demog_factors/birth_factors: we end up dividing birth factors by the demog factors, so
+    # we set these up here so (roughly) birth_factors == 1 / demog_factors.
+    # the result of this should be x ** 2 for the values in birth_factors
     aa_mock._model_run.model.demog_factors = pd.DataFrame(
-        {"2020": [2, 2, 2, 2]},
+        {"2020": [1 / (x + 1) for x in range(16)]},
         index=pd.MultiIndex.from_tuples(
-            [("a", 1, 1), ("a", 2, 1), ("a", 2, 2), ("b", 1, 1)]
+            [(v, s, a) for s in [1, 2] for v in ["a", "b"] for a in [1, 2, 3, 4]]
         ),
     )
     aa_mock._model_run.model.birth_factors = pd.DataFrame(
-        {"2020": [4, 4, 4]},
-        index=pd.MultiIndex.from_tuples([("a", 1, 1), ("a", 2, 1), ("b", 1, 1)]),
+        {"2020": [(x + 9) for x in range(8)]},
+        index=pd.MultiIndex.from_tuples(
+            [(v, 2, a) for v in ["a", "b"] for a in [1, 2, 3, 4]]
+        ),
     )
 
     u_mock = mocker.patch(
@@ -168,7 +173,7 @@ def test_birth_adjustment(mocker, mock_activity_avoidance):
     assert actual == "update"
     u_mock.assert_called_once()
 
-    assert u_mock.call_args[0][0].to_list() == [2, 2]
+    assert u_mock.call_args[0][0].to_list() == [(x + 9) ** 2 for x in range(4)]
     assert u_mock.call_args[0][1] == ["group", "age", "sex"]
 
 
