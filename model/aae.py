@@ -25,10 +25,17 @@ class AaEModel(Model):
     """
 
     def __init__(
-        self, params: dict, data_path: str, hsa: Any, run_params: dict = None
+        self,
+        params: dict,
+        data_path: str,
+        hsa: Any,
+        run_params: dict = None,
+        save_full_model_results: bool = False,
     ) -> None:
         # call the parent init function
-        super().__init__("aae", params, data_path, hsa, run_params)
+        super().__init__(
+            "aae", params, data_path, hsa, run_params, save_full_model_results
+        )
 
     def _get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
         """Get row counts of data
@@ -51,7 +58,7 @@ class AaEModel(Model):
                         ("is_frequent_attender", "frequent_attenders"),
                         ("is_left_before_treatment", "left_before_seen"),
                         ("is_low_cost_referred_or_discharged", "low_cost_discharged"),
-                        ("is_discharged_no_treatment", "discharged_no_treatment")
+                        ("is_discharged_no_treatment", "discharged_no_treatment"),
                     ]
                 ]
             )

@@ -26,10 +26,17 @@ class OutpatientsModel(Model):
     """
 
     def __init__(
-        self, params: dict, data_path: str, hsa: Any, run_params: dict
+        self,
+        params: dict,
+        data_path: str,
+        hsa: Any,
+        run_params: dict,
+        save_full_model_results: bool = False,
     ) -> None:
         # call the parent init function
-        super().__init__("op", params, data_path, hsa, run_params)
+        super().__init__(
+            "op", params, data_path, hsa, run_params, save_full_model_results
+        )
 
     def _get_data_counts(self, data) -> npt.ArrayLike:
         return (

@@ -192,6 +192,8 @@ def parse_args():
         help="Use local storage (instead of Azure)",
     )
 
+    parser.add_argument("--save-full-model-results", action="store_true")
+
     return parser.parse_args()
 
 
@@ -213,7 +215,9 @@ def main():
     else:
         runner = RunWithAzureStorage(args.params_file, config.APP_VERSION)
 
-    results_file = run_all(runner.params, "data", runner.progress_callback)
+    results_file = run_all(
+        runner.params, "data", runner.progress_callback, args.save_full_model_results
+    )
 
     runner.finish(results_file)
 
