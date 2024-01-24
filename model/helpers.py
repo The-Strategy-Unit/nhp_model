@@ -25,13 +25,13 @@ def inrange(value: float, low: float = 0, high: float = 1) -> float:
 
 
 def rnorm(rng: np.random.BitGenerator, low: float, high: float) -> float:
-    """Create a single random normal value from a 90% confidence interval
+    """Create a single random normal value from a 80% confidence interval
 
     :param rng: a random number generator
     :type rng: numpy.random.Generator
-    :param low: the low estimate of our 90% confidence interval
+    :param low: the low estimate of our 80% confidence interval
     :type low: float
-    :param high: the high estimate of our 90% confidence interval
+    :param high: the high estimate of our 80% confidence interval
     :type high: float
 
     :returns: a random normal value

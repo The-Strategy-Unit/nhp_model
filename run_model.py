@@ -127,7 +127,7 @@ def _split_model_runs_out(agg_type: str, results: dict) -> None:
                 result.pop("time_profiles")
             continue
 
-        [lwr, median, upr] = np.quantile(result["model_runs"], [0.05, 0.5, 0.95])
+        [lwr, median, upr] = np.quantile(result["model_runs"], [0.1, 0.5, 0.9])
         result["lwr_ci"] = lwr
         result["median"] = median
         result["upr_ci"] = upr

@@ -269,9 +269,9 @@ def test_split_model_runs_out_default(agg_type):
             "baseline": 1,
             "principal": 2,
             "model_runs": list(range(101)),
-            "lwr_ci": 5.0,
+            "lwr_ci": 10.0,
             "median": 50.0,
-            "upr_ci": 95.0,
+            "upr_ci": 90.0,
         }
     ]
 
@@ -299,9 +299,9 @@ def test_split_model_runs_out_other():
             "measure": "a",
             "baseline": 1,
             "principal": 2,
-            "lwr_ci": 5.0,
+            "lwr_ci": 10.0,
             "median": 50.0,
-            "upr_ci": 95.0,
+            "upr_ci": 90.0,
         }
     ]
 
