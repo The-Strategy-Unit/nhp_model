@@ -51,6 +51,7 @@ extract_op_data <- function(start_date, end_date, providers, specialty_fn) {
       dplyr::across(tidyselect::ends_with("date"), lubridate::ymd),
       dplyr::across("age", ~ pmin(.x, 90L)),
       dplyr::across(c("age", "sex"), as.integer),
+      tretspef_raw = .data[["trespef"]],
       dplyr::across("tretspef", specialty_fn),
       is_wla = TRUE
     ) |>
