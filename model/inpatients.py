@@ -287,11 +287,13 @@ class InpatientsModel(Model):
             .groupby(
                 [
                     "sitetret",
+                    "age",
                     "age_group",
                     "sex",
                     "group",
                     "classpat",
                     "tretspef",
+                    "tretspef_raw",
                 ],
                 # as_index = False
             )
@@ -329,6 +331,7 @@ class InpatientsModel(Model):
             agg,
             {
                 **agg(["sex", "tretspef"]),
+                **agg(["tretspef_raw"]),
                 "bed_occupancy": bed_occupancy,
             },
         )

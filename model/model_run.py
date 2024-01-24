@@ -94,7 +94,13 @@ class ModelRun:
         agg, aggregates = self.model.aggregate(self)
         step_counts = self.get_step_counts()
 
-        return {**agg(), **agg(["sex", "age_group"]), **aggregates, **step_counts}
+        return {
+            **agg(),
+            **agg(["sex", "age_group"]),
+            **agg(["age"]),
+            **aggregates,
+            **step_counts,
+        }
 
     def get_step_counts(self):
         """get the step counts of a model run"""

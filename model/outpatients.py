@@ -49,8 +49,8 @@ class OutpatientsModel(Model):
                     + data[~data["is_first"] & ~data["has_procedures"]]["type"],
                     "consultant_to_consultant_reduction_"
                     + data[data["is_cons_cons_ref"]]["type"],
-                    "gp_referred_first_attendance_reduction_" 
-                    + data[data["is_gp_ref"] & data["is_first"]]["type"]
+                    "gp_referred_first_attendance_reduction_"
+                    + data[data["is_gp_ref"] & data["is_first"]]["type"],
                 ]
             )
             .rename("strategy")
@@ -161,14 +161,29 @@ class OutpatientsModel(Model):
             .groupby(
                 # note: any columns used in the calls to _create_agg, including pod and measure
                 # must be included below
-                ["pod", "sitetret", "measure", "sex", "age_group", "tretspef"],
+                [
+                    "pod",
+                    "sitetret",
+                    "measure",
+                    "sex",
+                    "age_group",
+                    "age",
+                    "tretspef",
+                    "tretspef_raw",
+                ],
                 as_index=False,
             )
             .agg({"value": "sum"})
         )
 
         agg = partial(self._create_agg, model_results)
-        return (agg, {**agg(["sex", "tretspef"])})
+        return (
+            agg,
+            {
+                **agg(["sex", "tretspef"]),
+                **agg(["tretspef_raw"]),
+            },
+        )
 
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model
