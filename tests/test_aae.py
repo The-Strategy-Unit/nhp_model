@@ -198,6 +198,7 @@ def test_aggregate(mock_model):
     mr_mock.get_model_results.return_value = pd.DataFrame(
         {
             "sitetret": ["trust"] * 4,
+            "age": [1, 2, 3, 4],
             "age_group": [1] * 4,
             "sex": [1] * 4,
             "aedepttype": ["01", "01", "02", "02"],
@@ -211,6 +212,7 @@ def test_aggregate(mock_model):
         "sitetret": ["trust"] * 4,
         "measure": ["ambulance", "walk-in"] * 2,
         "sex": [1] * 4,
+        "age": [1, 2, 3, 4],
         "age_group": [1] * 4,
         "value": [1, 2, 3, 4],
     }
