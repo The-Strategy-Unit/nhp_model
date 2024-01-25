@@ -184,7 +184,7 @@ def test_get_aggregate_results(mock_model_run):
 
     # assert
     assert results == {
-        i: i for i in ["default", "sex+age_group", "results", "step_counts"]
+        i: i for i in ["default", "sex+age_group", "age", "results", "step_counts"]
     }
     mr_mock.model.aggregate.assert_called_once_with(mr_mock)
 

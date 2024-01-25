@@ -474,20 +474,20 @@ def test_aggregate(mock_model):
 
     mdl = mock_model
     mdl._create_agg = Mock(wraps=create_agg_stub)
-    mdl._get_run_params = Mock(
-        return_value={"bed_occupancy": "run_params"}
-    )
+    mdl._get_run_params = Mock(return_value={"bed_occupancy": "run_params"})
     mdl._bed_occupancy = Mock(return_value=2)
     xs = list(range(6)) * 2
     mr_mock = Mock()
     mr_mock.get_model_results.return_value = pd.DataFrame(
         {
             "sitetret": ["trust"] * 24,
+            "age": list(range(12)) * 2,
             "age_group": xs * 2,
             "sex": xs * 2,
             "group": ["elective", "non-elective", "maternity"] * 8,
             "classpat": ["1", "2", "3", "4", "5", "-1"] * 4,
             "tretspef": xs * 2,
+            "tretspef_raw": list(range(12)) * 2,
             "rn": [1] * 24,
             "has_procedure": [0, 1] * 12,
             "speldur": list(range(12)) * 2,
@@ -496,82 +496,23 @@ def test_aggregate(mock_model):
     )
 
     expected_mr = {
-        "sitetret": [
-            "trust",
-            "trust",
-            "trust",
-            "trust",
-            "trust",
-            "trust",
-            "trust",
-            "trust",
-            "trust",
-            "trust",
-            "trust",
-            "trust",
-            "trust",
-            "trust",
-            "trust",
-            "trust",
-        ],
-        "age_group": [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4],
-        "sex": [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4],
-        "group": [
-            "elective",
-            "non-elective",
-            "maternity",
-            "elective",
-            "non-elective",
-            "maternity",
-            "elective",
-            "non-elective",
-            "maternity",
-            "elective",
-            "non-elective",
-            "elective",
-            "non-elective",
-            "maternity",
+        "sitetret": ["trust"] * 32,
+        "age": list(range(12)) + [i for i in range(11) if i != 5] * 2,
+        "age_group": list(range(6)) * 2 + list(range(5)) * 4,
+        "sex": list(range(6)) * 2 + list(range(5)) * 4,
+        "group": ["elective", "non-elective", "maternity"] * 5
+        + ["elective", "non-elective", "elective", "non-elective", "maternity"] * 3
+        + [
             "elective",
             "non-elective",
         ],
-        "classpat": [
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "-1",
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-        ],
-        "tretspef": [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4],
-        "measure": [
-            "admissions",
-            "admissions",
-            "admissions",
-            "admissions",
-            "admissions",
-            "attendances",
-            "procedures",
-            "procedures",
-            "procedures",
-            "procedures",
-            "procedures",
-            "beddays",
-            "beddays",
-            "beddays",
-            "beddays",
-            "beddays",
-        ],
-        "value": [2, 2, 2, 2, 2, 2, 0, 2, 0, 2, 0, 8, 10, 12, 14, 16],
+        "classpat": ["1", "2", "3", "4", "5", "-1"] * 2 + ["1", "2", "3", "4", "5"] * 4,
+        "tretspef": list(range(6)) * 2 + list(range(5)) * 4,
+        "tretspef_raw": list(range(12)) + [i for i in range(11) if i != 5] * 2,
+        "measure": (["admissions"] * 5 + ["attendances"]) * 2
+        + ["procedures"] * 10
+        + ["beddays"] * 10,
+        "value": [1] * 12 + [0, 1, 0, 1, 0] * 2 + [i for i in range(1, 12) if i != 6],
         "pod": [
             "ip_elective_admission",
             "ip_elective_daycase",
@@ -579,17 +520,16 @@ def test_aggregate(mock_model):
             "ip_elective_admission",
             "ip_non-elective_admission",
             "op_procedure",
+        ]
+        * 2
+        + [
             "ip_elective_admission",
             "ip_elective_daycase",
             "ip_elective_daycase",
             "ip_elective_admission",
             "ip_non-elective_admission",
-            "ip_elective_admission",
-            "ip_elective_daycase",
-            "ip_elective_daycase",
-            "ip_elective_admission",
-            "ip_non-elective_admission",
-        ],
+        ]
+        * 4,
     }
 
     # act
@@ -599,6 +539,7 @@ def test_aggregate(mock_model):
     assert agg() == {"default": expected_mr}
     assert results == {
         "sex+tretspef": expected_mr,
+        "tretspef_raw": expected_mr,
         "bed_occupancy": 2,
     }
 

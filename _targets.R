@@ -25,7 +25,7 @@ list(
   # take they year and turn it into a date
   tar_target(
     extract_years,
-    c(2018, 2019)
+    c(2019)
   ),
   tar_target(
     start_date,

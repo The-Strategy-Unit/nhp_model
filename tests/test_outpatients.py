@@ -223,9 +223,11 @@ def test_aggregate(mock_model):
             "is_first": [True, True, False, False],
             "has_procedures": [False, True, False, True],
             "tretspef": [1, 1, 1, 1],
+            "tretspef_raw": [1, 1, 1, 1],
             "rn": [1, 2, 3, 4],
             "attendances": [5, 6, 7, 8],
             "tele_attendances": [9, 10, 11, 12],
+            "age": [1, 1, 1, 1],
             "age_group": [1, 1, 1, 1],
             "sex": [1, 1, 1, 1],
         }
@@ -238,8 +240,10 @@ def test_aggregate(mock_model):
         "sitetret": ["trust"] * 6,
         "measure": ["attendances", "tele_attendances"] * 3,
         "sex": [1] * 6,
+        "age": [1] * 6,
         "age_group": [1] * 6,
         "tretspef": [1] * 6,
+        "tretspef_raw": [1] * 6,
         "value": [5, 9, 7, 11, 14, 22],
     }
 
@@ -248,7 +252,7 @@ def test_aggregate(mock_model):
 
     # assert
     assert agg() == {"default": expected_mr}
-    assert results == {"sex+tretspef": expected_mr}
+    assert results == {"sex+tretspef": expected_mr, "tretspef_raw": expected_mr}
 
 
 def test_save_results(mocker, mock_model):

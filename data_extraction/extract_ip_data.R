@@ -19,25 +19,15 @@ extract_ip_data <- function(start_date, end_date, providers) {
     dplyr::arrange(.data$EPIKEY) |>
     dplyr::collect() |>
     janitor::clean_names() |>
-    dplyr::mutate(
-      rn = dplyr::row_number(),
-      .before = tidyselect::everything()
-    )
+    dplyr::rename(rn = "epikey")
 
   strategy_lookups <- dplyr::tbl(con, dbplyr::in_schema("nhp_modelling_reference", "strategy_lookups"))
 
   strategies <- dplyr::tbl(con, dbplyr::in_schema("nhp_modelling", "strategies")) |>
     dplyr::semi_join(tb_inpatients, by = "EPIKEY") |>
     dplyr::inner_join(strategy_lookups, by = c("strategy")) |>
-    dplyr::select("EPIKEY", "strategy", "strategy_type", "sample_rate") |>
-    dplyr::collect() |>
-    janitor::clean_names() |>
-    dplyr::inner_join(
-      dplyr::select(inpatients, "epikey", "rn"),
-      by = "epikey"
-    ) |>
-    dplyr::relocate("rn", .before = tidyselect::everything()) |>
-    dplyr::select(-"epikey")
+    dplyr::select(rn = "EPIKEY", "strategy", "strategy_type", "sample_rate") |>
+    dplyr::collect()
 
   list(
     data = inpatients,
@@ -164,7 +154,7 @@ create_ip_data <- function(inpatients, specialties) {
 
   inpatients |>
     dplyr::arrange(.data$rn) |>
-    dplyr::select(-"epikey", -"person_id", -"lsoa11", -"sushrg") |>
+    dplyr::select(-"person_id", -"lsoa11", -"sushrg") |>
     dplyr::mutate(
       dplyr::across(tidyselect::ends_with("date"), lubridate::ymd),
       hsagrp = dplyr::case_when(
@@ -180,6 +170,7 @@ create_ip_data <- function(inpatients, specialties) {
         .data$admimeth %in% c("11", "12", "13") & .data$classpat == "2" ~ "daycase"
       ),
       dplyr::across("age", ~ pmin(.x, 90L)),
+      tretspef_raw = .data[["tretspef"]],
       dplyr::across("tretspef", specialty_fn),
       dplyr::across("mainspef", fix_mainspef),
       dplyr::across(
@@ -284,15 +275,6 @@ save_ip_data <- function(data, strategies, name, path) {
     ) |>
     arrow::write_parquet(ip_fn)
 
-  # for los reduction we have the general los reduction for all elective/non-elective rows inpatient
-  general_los_reduction <- data |>
-    dplyr::filter(.data$classpat == "1", .data$group %in% c("elective", "non-elective")) |>
-    dplyr::transmute(
-      .data$rn,
-      strategy_type = "los reduction",
-      strategy = paste0("general_los_reduction_", .data$group)
-    )
-
   strategies_to_remove <- dplyr::bind_rows(
     # bads records where we wont convert daycases
     strategies |>
@@ -306,13 +288,12 @@ save_ip_data <- function(data, strategies, name, path) {
         by = "rn"
       ),
     strategies |>
-      dplyr::filter(strategy == "improved_discharge_planning_emergency")
+      dplyr::filter(.data$strategy == "improved_discharge_planning_emergency")
   )
 
   strategies_fns <- strategies |>
     dplyr::anti_join(strategies_to_remove, by = c("rn", "strategy")) |>
     tidyr::drop_na("strategy_type") |>
-    dplyr::bind_rows(general_los_reduction) |>
     dplyr::group_nest(.data$strategy_type) |>
     dplyr::mutate(
       dplyr::across(
