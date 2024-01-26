@@ -188,13 +188,18 @@ class Model:
         # there can be numerical inacurracies in the probabilities not summing to 1
         # this will adjust the probabiliteies to sum correctly
         probabilities = [p / sum(probabilities) for p in probabilities]
+
+        variants = [variants[np.argmax(probabilities)]] + rng.choice(
+            variants, model_runs - 1, p=probabilities
+        ).tolist()
+
         return {
-            "variant": [variants[np.argmax(probabilities)]]
-            + rng.choice(variants, model_runs - 1, p=probabilities).tolist(),
+            "variant": variants,
             "seeds": rng.integers(0, 65535, model_runs).tolist(),
             "health_status_adjustment": HealthStatusAdjustment.generate_params(
                 params["start_year"],
                 params["end_year"],
+                variants,
                 rng,
                 model_runs - 1,
             ),

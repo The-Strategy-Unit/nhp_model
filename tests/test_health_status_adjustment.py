@@ -167,31 +167,40 @@ def test_load_activity_ages(mocker, mock_hsa):
 
 @pytest.mark.parametrize(
     "year, expected_results, expected_call",
-    [(2021, [2, 1, 2, 3], (2, 5, 8)), (2022, [3, 1, 2, 3, 2], (3, 6, 9))],
+    [
+        (2021, [2] + list(range(1, 11)), (2, 5, 8)),
+        (2022, [3] + list(range(1, 11)) + [2], (3, 6, 9)),
+    ],
 )
 def test_generate_params(mocker, year, expected_results, expected_call):
     # arrange
     m = mocker.patch(
         "model.health_status_adjustment.HealthStatusAdjustment.random_splitnorm"
     )
-    m.return_value = [1, 2, 3]
+    m.return_value = list(range(1, 11))
 
     p = pd.DataFrame(
         {
-            "year": [2019, 2020, 2021, 2022],
-            "mode": [0, 1, 2, 3],
-            "sd1": [0, 4, 5, 6],
-            "sd2": [0, 7, 8, 9],
+            "var": ["ppp"] * 8,
+            "sex": ["m"] * 4 + ["f"] * 4,
+            "year": [2019, 2020, 2021, 2022] * 2,
+            "mode": [0, 1, 2, 3] * 2,
+            "sd1": [0, 4, 5, 6] * 2,
+            "sd2": [0, 7, 8, 9] * 2,
         }
     )
     read_csv_mock = mocker.patch("pandas.read_csv", return_value=p)
 
     # act
-    actual = HealthStatusAdjustment.generate_params(2020, year, "rng", 10)
+    actual = HealthStatusAdjustment.generate_params(
+        2020, year, ["principal_proj"] * 11, "rng", 10
+    )
 
     # assert
-    assert actual.tolist() == expected_results
-    m.assert_called_once_with("rng", 10, *expected_call)
+    assert [i[0] for i in actual] == expected_results
+    assert [i[1] for i in actual] == expected_results
+    m.assert_called_with("rng", 10, *expected_call)
+    assert m.call_count == 2
     read_csv_mock.assert_called_once_with("data/reference/hsa_split_normal_params.csv")
 
 
@@ -275,7 +284,7 @@ def test_hsa_run_not_cached(mock_hsa):
 
     # act
     actual = mock_hsa.run(
-        {"year": 2020, "health_status_adjustment": 2, "variant": "principal_proj"}
+        {"year": 2020, "health_status_adjustment": [2, 3], "variant": "principal_proj"}
     )
 
     # assert
@@ -289,17 +298,17 @@ def test_hsa_run_not_cached(mock_hsa):
         ("b", 2, 1): 7.0,
         ("b", 2, 2): 8.0,
     }
-    assert mock_hsa._cache[(2, 2020, "ppp")].equals(actual)
+    assert mock_hsa._cache[(2, 3, 2020, "ppp")].equals(actual)
 
 
 def test_hsa_run_cached(mock_hsa):
     # arrange
-    mock_hsa._cache[(1, 2020, "ppp")] = "a"
+    mock_hsa._cache[(1, 2, 2020, "ppp")] = "a"
     mock_hsa._variant_lookup = {"principal_proj": "ppp"}
 
     # act
     actual = mock_hsa.run(
-        {"year": 2020, "health_status_adjustment": 1, "variant": "principal_proj"}
+        {"year": 2020, "health_status_adjustment": [1, 2], "variant": "principal_proj"}
     )
 
     # assert
