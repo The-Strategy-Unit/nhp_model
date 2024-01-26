@@ -383,6 +383,6 @@ class Model:
                 os.makedirs(path, exist_ok=True)
                 return path
 
-            mr.model.save_results(mr, path_fn)
+            self.save_results(mr, path_fn)
 
         return mr.get_aggregate_results()

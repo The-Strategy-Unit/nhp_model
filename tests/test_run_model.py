@@ -246,10 +246,7 @@ def test_combine_results(mocker):
 
 @pytest.mark.parametrize(
     "agg_type",
-    [
-        "default",
-        "bed_occupancy"
-    ],
+    ["default", "bed_occupancy"],
 )
 def test_split_model_runs_out_default(agg_type):
     # arrange
@@ -366,7 +363,7 @@ def test_run_model(mocker):
     pc_m = Mock()
 
     # act
-    actual = _run_model(model_m, params, "data", "hsa", "run_params", pc_m)
+    actual = _run_model(model_m, params, "data", "hsa", "run_params", pc_m, False)
 
     # assert
     pool_ctm.imap.assert_called_once_with(model_m().go, [-1, 0, 1, 2, 3], chunksize=1)
@@ -406,7 +403,7 @@ def test_run_all(mocker):
 
     # act
     with patch("builtins.open", mock_open()) as mock_file:
-        actual = run_all(params, "data_path", pc_m)
+        actual = run_all(params, "data_path", pc_m, False)
 
     # assert
     assert actual == "synthetic/test-20230123_012345"
@@ -424,7 +421,13 @@ def test_run_all(mocker):
 
     assert rm_m.call_args_list == [
         call(
-            m, params, "data_path", "hsa", {"variant": "variants"}, "progress callback"
+            m,
+            params,
+            "data_path",
+            "hsa",
+            {"variant": "variants"},
+            "progress callback",
+            False,
         )
         for m in [InpatientsModel, OutpatientsModel, AaEModel]
     ]
@@ -600,6 +603,7 @@ def test_main_all_runs(mocker):
     args.type = "all"
     args.data_path = "data"
     args.params_file = "queue/params.json"
+    args.save_full_model_results = False
     mocker.patch("run_model._run_model_argparser", return_value=args)
     ldp_mock = mocker.patch("run_model.load_params", return_value="params")
 
