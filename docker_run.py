@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import re
+from pathlib import Path
 
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
@@ -23,11 +24,13 @@ class RunWithLocalStorage:
     def __init__(self, filename: str):
         self.params = load_params(f"queue/{filename}")
 
-    def finish(self, results_file: str) -> None:
+    def finish(self, results_file: str, save_full_model_results: bool) -> None:
         """Post model run steps
 
         :param results_file: the path to the results file
         :type results_file: str
+        :param save_full_model_results: whether to save the full model results or not
+        :type save_full_model_results: bool
         """
 
     def progress_callback(self) -> None:
@@ -125,6 +128,17 @@ class RunWithAzureStorage:
                 overwrite=True,
             )
 
+    def _upload_full_model_results(self) -> None:
+        container = self._get_container("results")
+        path = Path(f"results/{self.params['dataset']}/{self.params['id']}")
+
+        for file in path.glob("**/*.parquet"):
+            filename = file.as_posix()[8:]
+            with open(file, "rb") as f:
+                container.upload_blob(
+                    f"{self._app_version}/{filename}", f.read(), overwrite=True
+                )
+
     def _cleanup(self) -> None:
         """Cleanup
 
@@ -134,11 +148,13 @@ class RunWithAzureStorage:
 
         self._queue_blob.delete_blob()
 
-    def finish(self, results_file: str) -> None:
+    def finish(self, results_file: str, save_full_model_results: bool) -> None:
         """Post model run steps
 
         :param results_file: the path to the results file
         :type results_file: str
+        :param save_full_model_results: whether to save the full model results or not
+        :type save_full_model_results: bool
         """
         metadata = {
             k: str(v)
@@ -146,6 +162,8 @@ class RunWithAzureStorage:
             if not isinstance(v, dict) and not isinstance(v, list)
         }
         self._upload_results(results_file, metadata)
+        if save_full_model_results:
+            self._upload_full_model_results()
         self._cleanup()
 
     def progress_callback(self) -> None:
@@ -192,6 +210,8 @@ def parse_args():
         help="Use local storage (instead of Azure)",
     )
 
+    parser.add_argument("--save-full-model-results", action="store_true")
+
     return parser.parse_args()
 
 
@@ -213,9 +233,11 @@ def main():
     else:
         runner = RunWithAzureStorage(args.params_file, config.APP_VERSION)
 
-    results_file = run_all(runner.params, "data", runner.progress_callback)
+    results_file = run_all(
+        runner.params, "data", runner.progress_callback, args.save_full_model_results
+    )
 
-    runner.finish(results_file)
+    runner.finish(results_file, args.save_full_model_results)
 
     logging.info("complete")
 

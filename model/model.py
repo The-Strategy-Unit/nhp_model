@@ -36,6 +36,8 @@ class Model:
     :type data_path: str
     :param columns_to_load: a list of columns to load from the data
     :type columns_to_load: str, optional
+    :param save_full_model_results: whether to save the full model results or not
+    :type save_full_model_results: bool, optional
 
     :ivar str model_type: a string describing the type of model, must be one of "aae", "ip", or "op"
     :ivar dict params: the parameters that are to be used by this model instance
@@ -58,6 +60,7 @@ class Model:
         data_path: str,
         hsa: Any,
         run_params: dict = None,
+        save_full_model_results: bool = False,
     ) -> None:
         valid_model_types = ["aae", "ip", "op"]
         assert (
@@ -79,6 +82,8 @@ class Model:
         self.hsa = hsa
         # generate the run parameters if they haven't been passed in
         self.run_params = run_params or self.generate_run_params(params)
+        #
+        self.save_full_model_results = save_full_model_results
         # get the data mask and baseline counts
         self.data_mask = self._get_data_mask()
         # pylint: disable=assignment-from-no-return
@@ -367,4 +372,17 @@ class Model:
         :return: the aggregated model results
         :rtype: dictionary
         """
-        return ModelRun(self, model_run).get_aggregate_results()
+        mr = ModelRun(self, model_run)
+
+        if self.save_full_model_results:
+            dataset = self.params["dataset"]
+            model_id = self.params["id"]
+
+            def path_fn(f):
+                path = f"results/{dataset}/{model_id}/{f}/model_run={model_run}/"
+                os.makedirs(path, exist_ok=True)
+                return path
+
+            self.save_results(mr, path_fn)
+
+        return mr.get_aggregate_results()

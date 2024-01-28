@@ -31,10 +31,17 @@ class InpatientsModel(Model):
     # pylint: disable=too-many-instance-attributes
 
     def __init__(
-        self, params: dict, data_path: str, hsa: Any, run_params: dict = None
+        self,
+        params: dict,
+        data_path: str,
+        hsa: Any,
+        run_params: dict = None,
+        save_full_model_results: bool = False,
     ) -> None:
         # call the parent init function
-        super().__init__("ip", params, data_path, hsa, run_params)
+        super().__init__(
+            "ip", params, data_path, hsa, run_params, save_full_model_results
+        )
         # load the kh03 data
         self._load_kh03_data()
 

@@ -148,6 +148,7 @@ def _run_model(
     hsa: Any,
     run_params: dict,
     progress_callback,
+    save_full_model_results: bool,
 ) -> dict:
     """Run the model iterations
 
@@ -169,7 +170,7 @@ def _run_model(
     model_class = model_type.__name__[:-5]  # pylint: disable=protected-access
     logging.info("%s", model_class)
     logging.info(" * instantiating")
-    model = model_type(params, path, hsa, run_params)
+    model = model_type(params, path, hsa, run_params, save_full_model_results)
     logging.info(" * running")
 
     # set the progress callback for this run
@@ -204,7 +205,9 @@ def _run_model(
     return results
 
 
-def run_all(params: dict, data_path: str, progress_callback) -> dict:
+def run_all(
+    params: dict, data_path: str, progress_callback, save_full_model_results: bool
+) -> dict:
     """Run the model
 
     runs all 3 model types, aggregates and combines the results
@@ -236,6 +239,7 @@ def run_all(params: dict, data_path: str, progress_callback) -> dict:
                 hsa,
                 run_params,
                 pcallback(m.__name__[:-5]),
+                save_full_model_results,
             )
             for m in model_types
         ],
@@ -330,6 +334,7 @@ def _run_model_argparser() -> argparse.Namespace:  # pragma: no cover
         help="Model type, either: all, ip, op, aae",
         type=str,
     )
+    parser.add_argument("--save-full-model-results", action="store_true")
     return parser.parse_args()
 
 
@@ -353,7 +358,12 @@ def main() -> None:
                 datefmt="%Y-%m-%d %H:%M:%S",
             )
 
-            run_all(params, args.data_path, lambda: lambda _: None)
+            run_all(
+                params,
+                args.data_path,
+                lambda: lambda _: None,
+                args.save_full_model_results,
+            )
             return
         case "aae":
             model_type = AaEModel
