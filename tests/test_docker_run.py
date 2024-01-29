@@ -87,8 +87,7 @@ def test_RunWithAzureStorage_init(mocker, args, expected_version):
 
     gpm.assert_called_once_with("filename")
 
-    assert gdm.call_count == 2
-    assert gdm.call_args_list == [call("2020/synthetic"), call("reference")]
+    gdm.assert_called_once_with("2020/synthetic")
 
 
 def test_RunWithAzureStorage_get_container(mock_run_with_azure_storage, mocker):

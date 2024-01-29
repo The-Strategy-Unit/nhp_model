@@ -56,7 +56,6 @@ class RunWithAzureStorage:
 
         self.params = self._get_params(filename)
         self._get_data(f"{self.params['start_year']}/{self.params['dataset']}")
-        self._get_data("reference")
 
     def _get_container(self, container_name: str):
         return BlobServiceClient(

@@ -24,6 +24,9 @@ COPY run_model.py /opt
 COPY docker_run.py /opt
 COPY config.py /opt
 
+# copy reference data
+ADD data/reference data/reference
+
 # define build arguments, these will set the environment variables in the container
 ARG app_version
 ARG data_version
