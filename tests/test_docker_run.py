@@ -380,7 +380,14 @@ def test_main_local(mocker):
     rwls = mocker.patch("docker_run.RunWithLocalStorage")
     rwas = mocker.patch("docker_run.RunWithAzureStorage")
 
-    rwls().params = "params"
+    params = {
+        "model_runs": 256,
+        "start_year": 2019,
+        "end_year": 2035,
+        "app_version": "dev",
+    }
+
+    rwls().params = params
     rwls.reset_mock()
 
     ru_m = mocker.patch("docker_run.run_all", return_value="results.json")
@@ -393,7 +400,7 @@ def test_main_local(mocker):
     rwas.assert_not_called()
 
     s = rwls()
-    ru_m.assert_called_once_with("params", "data", s.progress_callback, False)
+    ru_m.assert_called_once_with(params, "data", s.progress_callback, False)
     s.finish.assert_called_once_with("results.json", False)
 
 
@@ -407,7 +414,14 @@ def test_main_azure(mocker):
     rwls = mocker.patch("docker_run.RunWithLocalStorage")
     rwas = mocker.patch("docker_run.RunWithAzureStorage")
 
-    rwas().params = "params"
+    params = {
+        "model_runs": 256,
+        "start_year": 2019,
+        "end_year": 2035,
+        "app_version": "dev",
+    }
+
+    rwas().params = params
     rwas.reset_mock()
 
     ru_m = mocker.patch("docker_run.run_all", return_value="results.json")
@@ -420,7 +434,7 @@ def test_main_azure(mocker):
     rwas.assert_called_once_with("params.json", "dev")
 
     s = rwas()
-    ru_m.assert_called_once_with("params", "data", s.progress_callback, False)
+    ru_m.assert_called_once_with(params, "data", s.progress_callback, False)
     s.finish.assert_called_once_with("results.json", False)
 
 

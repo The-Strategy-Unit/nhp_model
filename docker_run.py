@@ -225,12 +225,17 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    logging.info("running model for: %s", args.params_file)
-
     if args.local_storage:
         runner = RunWithLocalStorage(args.params_file)
     else:
         runner = RunWithAzureStorage(args.params_file, config.APP_VERSION)
+
+    logging.info("running model for: %s", args.params_file)
+    logging.info("submitted by: %s", runner.params.get("user"))
+    logging.info("model_runs:   %s", runner.params["model_runs"])
+    logging.info("start_year:   %s", runner.params["start_year"])
+    logging.info("end_year:     %s", runner.params["end_year"])
+    logging.info("app_version:  %s", runner.params["app_version"])
 
     results_file = run_all(
         runner.params, "data", runner.progress_callback, args.save_full_model_results
