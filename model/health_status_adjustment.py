@@ -57,7 +57,11 @@ class HealthStatusAdjustment:
 
     @staticmethod
     def generate_params(
-        start_year: int, end_year: int, rng: np.random.BitGenerator, model_runs: int
+        start_year: int,
+        end_year: int,
+        variants: [str],
+        rng: np.random.BitGenerator,
+        model_runs: int,
     ) -> np.array:
         """Generate Health Status Adjustment Parameters
 
@@ -75,19 +79,41 @@ class HealthStatusAdjustment:
 
         hsa_snp = pd.read_csv(
             f"{HealthStatusAdjustment._reference_path()}/hsa_split_normal_params.csv"
-        ).set_index("year")
+        ).set_index(["var", "sex", "year"])
 
-        mode, sd1, sd2 = hsa_snp.loc[end_year]
+        # TODO: reimplements the function above... not DRY
+        with open(
+            f"{HealthStatusAdjustment._reference_path()}/variant_lookup.json",
+            "r",
+            encoding="UTF-8",
+        ) as vlup_file:
+            variant_lookup = json.load(vlup_file)
 
-        return np.concatenate(
-            [
-                [mode],
-                HealthStatusAdjustment.random_splitnorm(
-                    rng, model_runs, mode, sd1, sd2
-                ),
-                hsa_snp.loc[np.arange(start_year + 1, end_year), "mode"],
-            ]
-        )
+        def gen(variant, sex):
+            mode, sd1, sd2 = hsa_snp.loc[(variant, sex, end_year)]
+
+            return np.concatenate(
+                [
+                    [mode],
+                    HealthStatusAdjustment.random_splitnorm(
+                        rng, model_runs, mode, sd1, sd2
+                    ),
+                    hsa_snp.loc[
+                        (variant, sex, np.arange(start_year + 1, end_year)), "mode"
+                    ],
+                ]
+            )
+
+        values = {
+            v: np.transpose([gen(v, "m"), gen(v, "f")]) for v in hsa_snp.index.levels[0]
+        }
+
+        return [
+            values[variant_lookup[v]][i]
+            for i, v in enumerate(
+                variants + variants[0:1] * (end_year - start_year - 1)
+            )
+        ]
 
     @staticmethod
     def random_splitnorm(
@@ -140,13 +166,14 @@ class HealthStatusAdjustment:
         """
         hsa_param = run_params["health_status_adjustment"]
         selected_variant = self._variant_lookup[run_params["variant"]]
-        cache_key = (hsa_param, run_params["year"], selected_variant)
+        cache_key = (*hsa_param, run_params["year"], selected_variant)
         if cache_key in self._cache:
             return self._cache[cache_key]
 
         lexc = self._life_expectancy.loc[(selected_variant, slice(None), slice(None))][
             str(run_params["year"])
         ]
+        hsa_param = np.repeat(hsa_param, len(self._ages))
         adjusted_ages = np.tile(self._ages, 2) - lexc * hsa_param
 
         factor = (
