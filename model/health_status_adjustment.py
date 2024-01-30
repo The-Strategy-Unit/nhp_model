@@ -208,7 +208,7 @@ class HealthStatusAdjustmentGAM(HealthStatusAdjustment):
                 (h, s): pd.Series(
                     g.predict(adjusted_ages.loc[s]),
                     index=self._ages,
-                )
+                ).apply(lambda x: x if x > 0 else 0)
                 for (h, s), g in self._gams.items()
             }
         )
@@ -230,7 +230,7 @@ class HealthStatusAdjustmentInterpolated(HealthStatusAdjustment):
                 (h, s): pd.Series(
                     np.interp(adjusted_ages.loc[s], self._all_ages, v),
                     index=self._ages,
-                )
+                ).apply(lambda x: x if x > 0 else 0)
                 for (h, s), v in self._activity_ages_lists.items()
             }
         )
