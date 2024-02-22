@@ -11,7 +11,7 @@ method.
 import os
 from datetime import datetime
 from functools import partial
-from typing import Any
+from typing import Any, List
 
 import numpy as np
 import numpy.typing as npt
@@ -56,6 +56,7 @@ class Model:
     def __init__(
         self,
         model_type: str,
+        measures: str,
         params: dict,
         data_path: str,
         hsa: Any,
@@ -88,6 +89,17 @@ class Model:
         self.data_mask = self._get_data_mask()
         # pylint: disable=assignment-from-no-return
         self.baseline_counts = self._get_data_counts(self.data)
+        #
+        self._measures = measures
+
+    @property
+    def measures(self) -> List[str]:
+        """The names of the measure columns
+
+        :return: the names of the measure columns
+        :rtype: List[str]
+        """
+        return self._measures
 
     def _load_parquet(self, file: str) -> pd.DataFrame:
         """Load a parquet file

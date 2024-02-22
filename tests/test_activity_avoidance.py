@@ -18,7 +18,7 @@ def mock_activity_avoidance():
     with patch.object(ActivityAvoidance, "__init__", lambda m, c: None):
         mdl = ActivityAvoidance(None)
     mdl._model_run = Mock()
-    mdl._baseline_counts = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
+    mdl._baseline_counts = np.array([[1, 2, 3, 4], [5, 6, 7, 8]]).astype(float)
     mdl.step_counts = {}
     return mdl
 
@@ -47,7 +47,7 @@ def test_init():
     assert actual.params == "params"
     assert actual.run_params == "run_params"
     assert {k: v.tolist() for k, v in actual.step_counts.items()} == {
-        ("baseline", "-"): [12, 30]
+        ("baseline", "-"): [[2, 4, 6], [8, 10, 12]]
     }
     assert actual.demog_factors == "demog_factors"
     assert actual.birth_factors == "birth_factors"
@@ -73,7 +73,7 @@ def test_update(mock_activity_avoidance):
     assert aa_mock._row_counts.tolist() == [3, 8, 15, 6]
     assert actual == aa_mock
     assert {k: v.tolist() for k, v in actual.step_counts.items()} == {
-        ("f", "-"): [8.0, 20.0]
+        ("f", "-"): [[0.0, 2.0, 6.0, 0.0], [0.0, 6.0, 14.0, 0.0]]
     }
 
 
@@ -93,7 +93,7 @@ def test_update_rn(mock_activity_avoidance):
     assert aa_mock._row_counts.tolist() == [3, 8, 15, 6]
     assert actual == aa_mock
     assert {k: v.tolist() for k, v in actual.step_counts.items()} == {
-        ("activity_avoidance", "a"): [8.0, 20.0]
+        ("activity_avoidance", "a"): [[0.0, 2.0, 6.0, 0.0], [0.0, 6.0, 14.0, 0.0]]
     }
 
 
@@ -614,17 +614,17 @@ def test_apply_resampling(mock_activity_avoidance):
     mr.model.apply_resampling.return_value = ("data", np.array([[30.0, 50.0]]))
 
     aa_mock.step_counts = {
-        ("baseline", "-"): np.array([20.0, 30.0]),
-        ("a", "-"): np.array([5.0, 10.0]),  # 25, 40
-        ("b", "-"): np.array([10.0, 5.0]),  # 45, 45
-        ("c", "-"): np.array([-10.0, -5.0]),  # 25, 40
+        ("baseline", "-"): np.array([[20.0], [30.0]]),
+        ("a", "-"): np.array([[5.0], [10.0]]),  # 25, 40
+        ("b", "-"): np.array([[10.0], [5.0]]),  # 45, 45
+        ("c", "-"): np.array([[-10.0], [-5.0]]),  # 25, 40
     }
 
     expected = {
-        ("baseline", "-"): [20.0, 30.0],
-        ("a", "-"): [60.0, 50.0],
-        ("b", "-"): [120.0, 25.0],
-        ("c", "-"): [-120.0, -25.0],
+        ("baseline", "-"): [[20.0], [30.0]],
+        ("a", "-"): [[23.33333333333333], [38.57142857142857]],
+        ("b", "-"): [[46.66666666666666], [19.285714285714285]],
+        ("c", "-"): [[-46.66666666666666], [-19.285714285714285]],
     }
 
     # act

@@ -30,12 +30,18 @@ class OutpatientsModel(Model):
         params: dict,
         data_path: str,
         hsa: Any,
-        run_params: dict,
+        run_params: dict = None,
         save_full_model_results: bool = False,
     ) -> None:
         # call the parent init function
         super().__init__(
-            "op", params, data_path, hsa, run_params, save_full_model_results
+            "op",
+            ["attendances", "tele_attendances"],
+            params,
+            data_path,
+            hsa,
+            run_params,
+            save_full_model_results,
         )
 
     def _get_data_counts(self, data) -> npt.ArrayLike:
@@ -96,7 +102,7 @@ class OutpatientsModel(Model):
         data["attendances"] -= tele_conversion
         data["tele_attendances"] += tele_conversion
         model_run.step_counts[("efficiencies", "convert_to_tele")] = (
-            np.array([-1, 1]) * tele_conversion.sum()
+            np.array([[-1], [1]]) * tele_conversion
         )
 
     def apply_resampling(
@@ -118,18 +124,6 @@ class OutpatientsModel(Model):
         data["tele_attendances"] = row_samples[1]
         # return the altered data and the amount of admissions/beddays after resampling
         return (data, self._get_data_counts(data))
-
-    def convert_step_counts(self, step_counts: dict) -> pd.DataFrame:
-        """Convert the step counts
-
-        :param step_counts: the step counts dictionary
-        :type step_counts: dict
-        :return: the step counts for uploading
-        :rtype: dict
-        """
-        return self._convert_step_counts(
-            step_counts, ["attendances", "tele_attendances"]
-        )
 
     def efficiencies(self, model_run: ModelRun) -> None:
         """Run the efficiencies steps of the model

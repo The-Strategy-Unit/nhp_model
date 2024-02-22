@@ -34,7 +34,13 @@ class AaEModel(Model):
     ) -> None:
         # call the parent init function
         super().__init__(
-            "aae", params, data_path, hsa, run_params, save_full_model_results
+            "aae",
+            ["arrivals"],
+            params,
+            data_path,
+            hsa,
+            run_params,
+            save_full_model_results,
         )
 
     def _get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
@@ -84,16 +90,6 @@ class AaEModel(Model):
         data["arrivals"] = row_samples[0]
         # return the altered data and the amount of admissions/beddays after resampling
         return (data, self._get_data_counts(data))
-
-    def convert_step_counts(self, step_counts: dict) -> dict:
-        """Convert the step counts
-
-        :param step_counts: the step counts dictionary
-        :type step_counts: dict
-        :return: the step counts for uploading
-        :rtype: dict
-        """
-        return self._convert_step_counts(step_counts, ["arrivals"])
 
     def efficiencies(self, model_run: ModelRun) -> None:
         """Run the efficiencies steps of the model

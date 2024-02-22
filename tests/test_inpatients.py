@@ -1,4 +1,5 @@
 """test inpatients model"""
+
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring,unnecessary-lambda-assignment
 
 from unittest.mock import Mock, call, mock_open, patch
@@ -203,21 +204,6 @@ def test_apply_resampling(mocker, mock_model):
     gdc_mock.assert_called_once()
 
 
-def test_convert_step_counts(mocker, mock_model):
-    # arrange
-    m = mocker.patch(
-        "model.outpatients.Model._convert_step_counts",
-        return_value="convert_step_counts",
-    )
-
-    # act
-    actual = mock_model.convert_step_counts("step_counts")
-
-    # assert
-    assert actual == "convert_step_counts"
-    m.assert_called_once_with("step_counts", ["admissions", "beddays"])
-
-
 def test_efficiencies(mocker, mock_model):
     """test that it runs the model steps"""
 
@@ -225,10 +211,12 @@ def test_efficiencies(mocker, mock_model):
 
     mock = mocker.patch("model.inpatients.InpatientEfficiencies")
     mock.return_value = mock
+
     mock.losr_all.return_value = mock
     mock.losr_aec.return_value = mock
     mock.losr_preop.return_value = mock
     mock.losr_bads.return_value = mock
+    mock.update_step_counts.return_value = mock
 
     mock_model_run = Mock()
     mock_model_run.empty = False
@@ -243,6 +231,7 @@ def test_efficiencies(mocker, mock_model):
     mock.losr_aec.assert_called_once()
     mock.losr_preop.assert_called_once()
     mock.losr_bads.assert_called_once()
+    mock.update_step_counts.assert_called_once()
 
 
 def test_efficiencies_no_params(mocker, mock_model):

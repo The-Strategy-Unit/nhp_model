@@ -1,4 +1,5 @@
 """test inpatient efficiencies"""
+
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
 
 from datetime import datetime, timedelta
@@ -38,7 +39,7 @@ def test_init(mocker):
 
     model_run = Mock()
     model_run.model_run = 0
-    model_run.data = "data"
+    model_run.data = pd.DataFrame({"speldur": [1, 2, 3]})
     model_run.step_counts = "step_counts"
     model_run.model.strategies = {"efficiencies": "efficiencies"}
 
@@ -46,10 +47,11 @@ def test_init(mocker):
     actual = InpatientEfficiencies(model_run)
 
     # assert
-    actual._model_run == 0
-    actual.data == "data"
-    actual.step_counts == "step_counts"
-    actual.strategies == "efficiencies"
+    assert actual._model_run == model_run
+    assert actual.data.equals(model_run.data)
+    assert actual.step_counts == "step_counts"
+    assert actual.strategies == "efficiencies"
+    assert actual.speldur_before.to_list() == [1, 2, 3]
 
     actual._select_single_strategy.assert_called_once()
     actual._generate_losr_df.assert_called_once()
@@ -104,32 +106,6 @@ def test_generate_losr_df(mock_ipe):
     assert actual == expected
 
 
-def test_update(mock_ipe):
-    # arrange
-    m = mock_ipe
-    m.step_counts = {}
-
-    indexes = ["a", "b", "c"]
-    ixl = len(indexes)
-
-    m._model_run.data = pd.DataFrame(
-        {"bedday_rows": [True, False] * 2 * ixl, "speldur": range(4 * ixl)},
-        index=[i for i in indexes for _ in range(4)],
-    )
-
-    # act
-    i = indexes[1:]
-    m._update(i, range(4 * (ixl - 1)))
-
-    # assert
-    assert m._model_run.data["speldur"].tolist()[:4] == list(range(4))
-    assert m._model_run.data["speldur"].tolist()[4:] == list(range(8))
-    assert {k: v.tolist() for k, v in m.step_counts.items()} == {
-        ("efficiencies", "b"): [0, -8],
-        ("efficiencies", "c"): [0, -8],
-    }
-
-
 @pytest.mark.parametrize("losr_type", ["all", "aec", "pre-op"])
 def test_losr_empty(mock_ipe, losr_type):
     """test that if no preop strategy provided losr functions return self"""
@@ -165,14 +141,12 @@ def test_losr_all(mock_ipe):
 
     # act
     actual = m.losr_all()
-    update_call_args = m._update.call_args_list[0][0]
     binomial_call_args = m._model_run.rng.binomial.call_args_list[0][0]
 
     # assert
-    assert actual == "update"
+    assert actual == m
 
-    assert update_call_args[0].to_list() == ["a", "b"]
-    assert update_call_args[1] == [0, 1, 2, 3, 4, 5]
+    assert m.data["speldur"].to_list() == [0, 0, 3, 3, 1, 4, 6, 2, 5]
 
     assert binomial_call_args[0].to_list() == [1, 4, 7, 2, 5, 8]
     assert binomial_call_args[1].to_list() == [0, 0, 0, 0.5, 0.5, 0.5]
@@ -187,18 +161,14 @@ def test_losr_aec(mock_ipe):
     )
     m._model_run.rng.binomial.return_value = [0, 0, 0, 1, 1, 1]
 
-    m._update = Mock(return_value="update")
-
     # act
     actual = m.losr_aec()
-    update_call_args = m._update.call_args_list[0][0]
     binomial_call_args = m._model_run.rng.binomial.call_args_list[0][0]
 
     # assert
-    assert actual == "update"
+    assert actual == m
 
-    assert update_call_args[0].to_list() == ["c", "d"]
-    assert update_call_args[1].to_list() == [0, 0, 0, 2, 5, 8]
+    assert m.data["speldur"].to_list() == [0, 0, 2, 3, 0, 5, 6, 0, 8]
 
     assert binomial_call_args[0] == 1
     assert binomial_call_args[1].equals(m.losr.loc[["c"] * 3 + ["d"] * 3, "losr_f"])
@@ -213,18 +183,14 @@ def test_losr_preop(mock_ipe):
     )
     m._model_run.rng.binomial.return_value = [0, 1, 0, 1, 0, 1]
 
-    m._update = Mock(return_value="update")
-
     # act
     actual = m.losr_preop()
-    update_call_args = m._update.call_args_list[0][0]
     binomial_call_args = m._model_run.rng.binomial.call_args_list[0][0]
 
     # assert
-    assert actual == "update"
+    assert actual == m
 
-    assert update_call_args[0].to_list() == ["e", "f"]
-    assert update_call_args[1].to_list() == [1, 3, 7, 0, 5, 6]
+    assert m.data["speldur"].to_list() == [0, 1, 0, 3, 3, 5, 6, 7, 6]
 
     assert binomial_call_args[0] == 1
     assert binomial_call_args[1].equals(1 - m.losr.loc[["e"] * 3 + ["f"] * 3, "losr_f"])
@@ -270,8 +236,30 @@ def test_losr_bads(mock_ipe):
         m._model_run.data["classpat"].to_list()
         == (["1"] * 5 + ["2"] * 4 + ["1", "1", "-1"]) * 2
     )
-    assert {k: v.tolist() for k, v in m.step_counts.items()} == {
-        ("efficiencies", "bads_daycase"): [0, -5],
-        ("efficiencies", "bads_daycase_occassional"): [0, -8],
-        ("efficiencies", "bads_outpatients"): [-1, -12],
+
+
+def test_update_step_counts(mock_ipe):
+    # arrange
+    mock_ipe._model_run.data = pd.DataFrame(
+        {
+            "rn": ["1", "2", "3", "1"],
+            "classpat": ["-1", "1", "1", "1"],
+            "speldur": [1, 2, 3, 4],
+        },
+        index=["a", "b", "a", "a"],
+    )
+    mock_ipe.speldur_before = [3, 4, 5, 6]
+    mock_ipe._model_run.step_counts = {}
+    mock_ipe._model_run.model.data = pd.DataFrame(
+        {"rn": ["1", "2", "3", "4"], "bedday_rows": [False, False, True, False]}
+    )
+
+    # act
+    actual = mock_ipe.update_step_counts()
+
+    # assert
+    assert actual == mock_ipe
+    assert {k: v.tolist() for k, v in actual._model_run.step_counts.items()} == {
+        ("efficiencies", "a"): [[-1.0, 0.0, 0.0, 0.0], [-5.0, 0.0, -0.0, 0.0]],
+        ("efficiencies", "b"): [[0.0, 0.0, 0.0, 0.0], [0.0, -2.0, 0.0, 0.0]],
     }

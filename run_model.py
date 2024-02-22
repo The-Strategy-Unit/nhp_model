@@ -291,13 +291,13 @@ def run_single_model_run(
     # pylint: disable=unsubscriptable-object
     cf_values = step_counts["change_factor"].unique()
     step_counts = (
-        step_counts.groupby(["change_factor", "measure"], as_index=False)
+        step_counts.groupby(["change_factor", "measure"], as_index=False)[["value"]]
         .sum()
         .pivot(index="change_factor", columns="measure")
         .loc[cf_values]
     )
     step_counts.loc["total"] = step_counts.sum()
-    print(step_counts)
+    print(step_counts.astype(int))
     #
     print()
     print("aggregated (default) results:")

@@ -2,7 +2,9 @@
 
 Provides a simple class which holds all of the data required for a model run
 """
+
 import numpy as np
+import pandas as pd
 
 from model.activity_avoidance import ActivityAvoidance
 
@@ -107,7 +109,47 @@ class ModelRun:
         if not self.step_counts:
             return {}
 
-        return {"step_counts": self.model.convert_step_counts(self.step_counts)}
+        step_counts = (
+            pd.concat(
+                {
+                    k: pd.concat(
+                        [
+                            self.model.data[["sitetret", "group"]],
+                            pd.DataFrame(v.transpose(), columns=self.model.measures),
+                        ],
+                        axis=1,
+                    )
+                    for k, v in self.step_counts.items()
+                }
+            )
+            .reset_index()
+            .rename(columns={"level_0": "change_factor", "level_1": "strategy"})
+            .drop(columns="level_2")
+            .assign(activity_type=self.model.model_type)
+            .groupby(
+                ["activity_type", "sitetret", "group", "change_factor", "strategy"]
+            )
+            .sum()
+            .melt(var_name="measure", ignore_index=False)
+            .reset_index()
+            .set_index(
+                [
+                    "activity_type",
+                    "sitetret",
+                    "group",
+                    "change_factor",
+                    "strategy",
+                    "measure",
+                ]
+            )
+        )
+
+        return {
+            "step_counts": {
+                frozenset(zip(step_counts.index.names, k)): v
+                for k, v in step_counts["value"].to_dict().items()
+            }
+        }
 
     def get_model_results(self):
         """get the model results of a model run"""

@@ -1,4 +1,5 @@
 """test outpatients model"""
+
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring
 
 from unittest.mock import Mock, mock_open, patch
@@ -154,11 +155,11 @@ def test_convert_to_tele(mock_model):
     assert mr_mock.data["tele_attendances"].to_list() == [15, 25, 0]
 
     rng_call = mr_mock.rng.binomial.call_args_list[0][0]
-    rng_call[0].to_list() == [20, 25, 30]
-    rng_call[1].to_list() == [2.0, 3.0, 1.0]
+    assert rng_call[0].to_list() == [10, 10, 30]
+    assert rng_call[1].to_list() == [-1.0, -2.0, 0.0]
 
     step_counts = mr_mock.step_counts[("efficiencies", "convert_to_tele")]
-    assert step_counts.tolist() == [-25, 25]
+    assert step_counts.tolist() == [[-10, -15, 0], [10, 15, 0]]
 
 
 def test_apply_resampling(mocker, mock_model):
@@ -174,21 +175,6 @@ def test_apply_resampling(mocker, mock_model):
     assert data["tele_attendances"].to_list() == [5, 6, 7, 8]
     assert counts == 1
     gdc_mock.assert_called_once()
-
-
-def test_convert_step_counts(mocker, mock_model):
-    # arrange
-    m = mocker.patch(
-        "model.outpatients.Model._convert_step_counts",
-        return_value="convert_step_counts",
-    )
-
-    # act
-    actual = mock_model.convert_step_counts("step_counts")
-
-    # assert
-    assert actual == "convert_step_counts"
-    m.assert_called_once_with("step_counts", ["attendances", "tele_attendances"])
 
 
 def test_efficiencies(mock_model):

@@ -1,4 +1,5 @@
 """test a&e model"""
+
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring,unnecessary-lambda-assignment
 
 from unittest.mock import Mock, patch
@@ -144,35 +145,6 @@ def test_apply_resampling(mocker, mock_model):
     assert data["arrivals"].to_list() == [1, 2, 3, 4]
     assert counts == 1
     gdc_mock.assert_called_once()
-
-
-def test_convert_step_counts(mock_model):
-    # arrange
-    step_counts = {("a", "-"): [1], ("b", "-"): [2]}
-    expected = {
-        frozenset(
-            {
-                ("measure", "arrivals"),
-                ("strategy", "-"),
-                ("change_factor", "a"),
-                ("activity_type", "aae"),
-            }
-        ): 1.0,
-        frozenset(
-            {
-                ("measure", "arrivals"),
-                ("strategy", "-"),
-                ("change_factor", "b"),
-                ("activity_type", "aae"),
-            }
-        ): 2.0,
-    }
-
-    # act
-    actual = mock_model.convert_step_counts(step_counts)
-
-    # assert
-    assert actual == expected
 
 
 def test_efficiencies(mock_model):

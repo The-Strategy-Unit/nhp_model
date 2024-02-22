@@ -38,8 +38,7 @@ class ActivityAvoidance:
         self._baseline_counts = (
             self._model_run.model.data_mask * self._model_run.model.baseline_counts
         )
-
-        self.step_counts[("baseline", "-")] = self._baseline_counts.sum(axis=1)
+        self.step_counts[("baseline", "-")] = self._baseline_counts
 
     @property
     def _activity_type(self):
@@ -90,19 +89,17 @@ class ActivityAvoidance:
         )
 
         self._row_counts *= factor
+        self.step_counts[(step, "-")] = (factor - 1) * self._baseline_counts
 
-        self.step_counts[(step, "-")] = ((factor - 1) * self._baseline_counts).sum(
-            axis=1
-        )
         return self
 
     def _update_rn(self, factor: pd.Series, group: str):
         factor = self.data["rn"].map(factor).fillna(1).to_numpy()
         self._row_counts *= factor
-
         self.step_counts[("activity_avoidance", group)] = (
-            (factor - 1) * self._baseline_counts
-        ).sum(axis=1)
+            factor - 1
+        ) * self._baseline_counts
+
         return self
 
     def demographic_adjustment(self):
@@ -274,8 +271,8 @@ class ActivityAvoidance:
         # of the steps for this slack.
         # this will result in the sum of the step counts equalling the sum of the rows after
         # resampling
-        sum_before = self.step_counts[("baseline", "-")]
-        sum_est = np.array(list(self.step_counts.values())).sum(axis=0)
+        sum_before = self._baseline_counts.sum(axis=1)
+        sum_est = np.array(list(self.step_counts.values())).sum(axis=0).sum(axis=1)
         # create the slack to add to each step
         # note: simple division will cause an issue in the case that there is
         #   no change, i.e. sum_est == sum_before. this ensures that if that is
@@ -285,7 +282,7 @@ class ActivityAvoidance:
             sum_est - sum_before,
             out=np.zeros_like(sum_before),
             where=sum_est != sum_before,
-        )
+        ).reshape(len(sum_before), 1)
         for k in self.step_counts.keys():
             if k != ("baseline", "-"):
                 self.step_counts[k] *= slack

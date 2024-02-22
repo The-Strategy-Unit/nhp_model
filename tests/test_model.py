@@ -1,4 +1,5 @@
 """test model"""
+
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring
 
 import re
@@ -149,7 +150,7 @@ def test_model_init_sets_values(mocker, model_type):
     mocker.patch("model.model.Model._get_data_counts", return_value="data_counts")
 
     # act
-    mdl = Model(model_type, params, "data", "hsa", "run_params")
+    mdl = Model(model_type, ["measures"], params, "data", "hsa", "run_params")
 
     # assert
     assert mdl.model_type == model_type
@@ -189,7 +190,7 @@ def test_model_init_calls_generate_run_params(mocker):
     mocker.patch("model.model.Model._get_data_counts", return_value="data_counts")
 
     # act
-    mdl = Model("aae", params, "data", "hsa")
+    mdl = Model("aae", "arrivals", params, "data", "hsa")
 
     # assert
     mdl.generate_run_params.assert_called_once()
@@ -214,10 +215,25 @@ def test_model_init_sets_create_datetime(mocker):
     mocker.patch("model.model.Model.generate_run_params")
 
     # act
-    mdl = Model("aae", params, "data", "run_params")
+    mdl = Model("aae", "arrivals", params, "data", "run_params")
 
     # assert
     assert re.match("^\\d{8}_\\d{6}$", mdl.params["create_datetime"])
+
+
+# measures
+
+
+def test_measures(mock_model):
+    # arrange
+    mdl = mock_model
+    mdl._measures = ["x", "y"]
+
+    # act
+    actual = mdl.measures
+
+    # assert
+    assert actual == ["x", "y"]
 
 
 # _load_parquet()
