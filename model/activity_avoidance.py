@@ -34,7 +34,12 @@ class ActivityAvoidance:
         self._row_counts = self._model_run.model.baseline_counts.copy()
         # initialise step counts
         self.step_counts = model_run.step_counts
-        self.step_counts[("baseline", "-")] = self._row_counts.sum(axis=1)
+
+        self._baseline_counts = (
+            self._model_run.model.data_mask * self._model_run.model.baseline_counts
+        )
+
+        self.step_counts[("baseline", "-")] = self._baseline_counts.sum(axis=1)
 
     @property
     def _activity_type(self):
@@ -75,10 +80,6 @@ class ActivityAvoidance:
         """get the current model runs data"""
         return self._model_run.data
 
-    @property
-    def _row_mask(self):
-        return self._model_run.model.data_mask
-
     def _update(self, factor: pd.Series, cols: List[str]):
         step = factor.name
 
@@ -90,9 +91,9 @@ class ActivityAvoidance:
 
         self._row_counts *= factor
 
-        self.step_counts[(step, "-")] = (
-            (factor - 1) * self._model_run.model.baseline_counts
-        ).sum(axis=1)
+        self.step_counts[(step, "-")] = ((factor - 1) * self._baseline_counts).sum(
+            axis=1
+        )
         return self
 
     def _update_rn(self, factor: pd.Series, group: str):
@@ -100,7 +101,7 @@ class ActivityAvoidance:
         self._row_counts *= factor
 
         self.step_counts[("activity_avoidance", group)] = (
-            (factor - 1) * self._model_run.model.baseline_counts
+            (factor - 1) * self._baseline_counts
         ).sum(axis=1)
         return self
 
