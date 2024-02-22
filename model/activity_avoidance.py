@@ -33,9 +33,13 @@ class ActivityAvoidance:
 
         self._row_counts = self._model_run.model.baseline_counts.copy()
         # initialise step counts
-        self._sum = 0.0
         self.step_counts = model_run.step_counts
-        self._update_step_counts(("baseline", "-"))
+
+        self._baseline_counts = (
+            self._model_run.model.data_mask * self._model_run.model.baseline_counts
+        )
+
+        self.step_counts[("baseline", "-")] = self._baseline_counts.sum(axis=1)
 
     @property
     def _activity_type(self):
@@ -76,32 +80,30 @@ class ActivityAvoidance:
         """get the current model runs data"""
         return self._model_run.data
 
-    @property
-    def _row_mask(self):
-        return self._model_run.model.data_mask
-
     def _update(self, factor: pd.Series, cols: List[str]):
         step = factor.name
 
-        self._row_counts *= (
+        factor = (
             self.data.merge(factor, how="left", left_on=cols, right_index=True)[step]
             .fillna(1)
             .to_numpy()
         )
 
-        self._update_step_counts((step, "-"))
+        self._row_counts *= factor
+
+        self.step_counts[(step, "-")] = ((factor - 1) * self._baseline_counts).sum(
+            axis=1
+        )
         return self
 
     def _update_rn(self, factor: pd.Series, group: str):
-        self._row_counts *= self.data["rn"].map(factor).fillna(1).to_numpy()
+        factor = self.data["rn"].map(factor).fillna(1).to_numpy()
+        self._row_counts *= factor
 
-        self._update_step_counts(("activity_avoidance", group))
+        self.step_counts[("activity_avoidance", group)] = (
+            (factor - 1) * self._baseline_counts
+        ).sum(axis=1)
         return self
-
-    def _update_step_counts(self, step: Tuple[str, str]) -> None:
-        new_sum = (self._row_counts * self._row_mask).sum(axis=1)
-        self.step_counts[step] = new_sum - self._sum
-        self._sum = new_sum
 
     def demographic_adjustment(self):
         """perform the demograhic adjustment"""

@@ -1,4 +1,5 @@
 """test activity avoidance"""
+
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
 
 from unittest.mock import Mock, patch
@@ -17,27 +18,25 @@ def mock_activity_avoidance():
     with patch.object(ActivityAvoidance, "__init__", lambda m, c: None):
         mdl = ActivityAvoidance(None)
     mdl._model_run = Mock()
+    mdl._baseline_counts = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
+    mdl.step_counts = {}
     return mdl
 
 
-def test_init(mocker):
+def test_init():
     # arrange
     model_run = Mock()
     model_run.data = "data"
     model_run.model.model_type = "ip"
-    model_run.model.baseline_counts = pd.Series([1])
+    model_run.model.baseline_counts = np.array([[1, 2, 3], [4, 5, 6]])
     model_run.model.data_mask = [2]
     model_run.params = "params"
     model_run.run_params = "run_params"
-    model_run.step_counts = "step_counts"
+    model_run.step_counts = {}
     model_run.model.demog_factors = "demog_factors"
     model_run.model.birth_factors = "birth_factors"
     model_run.model.hsa = "hsa"
     model_run.model.strategies = {"activity_avoidance": "activity_avoidance"}
-
-    usc_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update_step_counts"
-    )
 
     # act
     actual = ActivityAvoidance(model_run)
@@ -47,17 +46,18 @@ def test_init(mocker):
     assert actual._activity_type == "ip"
     assert actual.params == "params"
     assert actual.run_params == "run_params"
-    assert actual.step_counts == "step_counts"
+    assert {k: v.tolist() for k, v in actual.step_counts.items()} == {
+        ("baseline", "-"): [12, 30]
+    }
     assert actual.demog_factors == "demog_factors"
     assert actual.birth_factors == "birth_factors"
     assert actual.hsa == "hsa"
     assert actual.strategies == "activity_avoidance"
-    usc_mock.assert_called_once_with(("baseline", "-"))
-    assert actual._row_counts.tolist() == [1]
-    assert actual._row_mask == [2]
+    assert actual._row_counts.tolist() == [[1, 2, 3], [4, 5, 6]]
+    assert actual._baseline_counts.tolist() == [[2, 4, 6], [8, 10, 12]]
 
 
-def test_update(mocker, mock_activity_avoidance):
+def test_update(mock_activity_avoidance):
     # arrange
     aa_mock = mock_activity_avoidance
 
@@ -66,20 +66,18 @@ def test_update(mocker, mock_activity_avoidance):
 
     factor = pd.Series([1.0, 2.0, 3.0], index=[1, 2, 3], name="f")
 
-    usc_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update_step_counts"
-    )
-
     # act
     actual = aa_mock._update(factor, ["a"])
 
     # assert
-    usc_mock.assert_called_once_with(("f", "-"))
     assert aa_mock._row_counts.tolist() == [3, 8, 15, 6]
     assert actual == aa_mock
+    assert {k: v.tolist() for k, v in actual.step_counts.items()} == {
+        ("f", "-"): [8.0, 20.0]
+    }
 
 
-def test_update_rn(mocker, mock_activity_avoidance):
+def test_update_rn(mock_activity_avoidance):
     # arrange
     aa_mock = mock_activity_avoidance
 
@@ -88,34 +86,15 @@ def test_update_rn(mocker, mock_activity_avoidance):
 
     factor = pd.Series([1.0, 2.0, 3.0], index=[1, 2, 3], name="f")
 
-    usc_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update_step_counts"
-    )
-
     # act
     actual = aa_mock._update_rn(factor, "a")
 
     # assert
-    usc_mock.assert_called_once_with(("activity_avoidance", "a"))
     assert aa_mock._row_counts.tolist() == [3, 8, 15, 6]
     assert actual == aa_mock
-
-
-def test_update_step_counts(mock_activity_avoidance):
-    # arrange
-    aa_mock = mock_activity_avoidance
-    aa_mock._model_run.model.data_mask = np.array([1.0, 1.0, 1.0, 0.0])
-
-    aa_mock._sum = np.array([3.0, 0.0])
-    aa_mock._row_counts = np.array([[3.0, 4.0, 5.0, 6.0], [1.0, 2.0, 3.0, 4.0]])
-    aa_mock.step_counts = {}
-
-    # act
-    aa_mock._update_step_counts(("a", "-"))
-
-    # assert
-    assert aa_mock.step_counts[("a", "-")].tolist() == [9.0, 6.0]
-    assert aa_mock._sum.tolist() == [12.0, 6.0]
+    assert {k: v.tolist() for k, v in actual.step_counts.items()} == {
+        ("activity_avoidance", "a"): [8.0, 20.0]
+    }
 
 
 def test_demographic_adjustment(mocker, mock_activity_avoidance):
