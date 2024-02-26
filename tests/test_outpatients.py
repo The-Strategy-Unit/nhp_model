@@ -89,6 +89,26 @@ def test_init_calls_super_init(mocker):
     super_mock.assert_called_once()
 
 
+def test_add_pod_to_data(mock_model):
+    # arrange
+    mock_model.data = pd.DataFrame(
+        {
+            "is_first": [True, True, False, False],
+            "has_procedures": [True, False, True, False],
+        }
+    )
+    # act
+    mock_model._add_pod_to_data()
+
+    # assert
+    assert mock_model.data["pod"].to_list() == [
+        "op_procedure",
+        "op_first",
+        "op_procedure",
+        "op_follow-up",
+    ]
+
+
 def test_get_data_counts(mock_model):
     # arrange
     mdl = mock_model
@@ -216,6 +236,7 @@ def test_aggregate(mock_model):
             "age": [1, 1, 1, 1],
             "age_group": [1, 1, 1, 1],
             "sex": [1, 1, 1, 1],
+            "pod": ["op_first", "op_procedure", "op_follow-up", "op_procedure"],
         }
     )
 

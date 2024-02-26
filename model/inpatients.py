@@ -49,6 +49,13 @@ class InpatientsModel(Model):
         # load the kh03 data
         self._load_kh03_data()
 
+    def _add_pod_to_data(self) -> None:
+        """Adds the POD column to data"""
+        self.data["pod"] = "ip_" + self.data["group"] + "_admission"
+        self.data.loc[self.data["classpat"].isin(["2", "3"]), "pod"] = (
+            "ip_elective_daycase"
+        )
+
     def _get_data_mask(self) -> npt.ArrayLike:
         """get the data mask
 
@@ -293,6 +300,7 @@ class InpatientsModel(Model):
                     "age_group",
                     "sex",
                     "group",
+                    "pod",
                     "classpat",
                     "tretspef",
                     "tretspef_raw",
@@ -312,7 +320,6 @@ class InpatientsModel(Model):
             .reset_index()
         )
 
-        model_results["pod"] = "ip_" + model_results["group"] + "_admission"
         # quick dq fix: convert any "non-elective" daycases to "elective"
         model_results.loc[model_results["classpat"].isin(["2", "3"]), "pod"] = (
             "ip_elective_daycase"

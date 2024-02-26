@@ -114,7 +114,7 @@ class ModelRun:
                 {
                     k: pd.concat(
                         [
-                            self.model.data[["sitetret", "group"]],
+                            self.model.data[["sitetret", "pod"]],
                             pd.DataFrame(v.transpose(), columns=self.model.measures),
                         ],
                         axis=1,
@@ -126,9 +126,7 @@ class ModelRun:
             .rename(columns={"level_0": "change_factor", "level_1": "strategy"})
             .drop(columns="level_2")
             .assign(activity_type=self.model.model_type)
-            .groupby(
-                ["activity_type", "sitetret", "group", "change_factor", "strategy"]
-            )
+            .groupby(["activity_type", "sitetret", "pod", "change_factor", "strategy"])
             .sum()
             .melt(var_name="measure", ignore_index=False)
             .reset_index()
@@ -136,7 +134,7 @@ class ModelRun:
                 [
                     "activity_type",
                     "sitetret",
-                    "group",
+                    "pod",
                     "change_factor",
                     "strategy",
                     "measure",

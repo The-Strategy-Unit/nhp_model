@@ -43,6 +43,10 @@ class AaEModel(Model):
             save_full_model_results,
         )
 
+    def _add_pod_to_data(self) -> None:
+        """Adds the POD column to data"""
+        self.data["pod"] = "aae_type-" + self.data["aedepttype"]
+
     def _get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
         """Get row counts of data
 
@@ -114,7 +118,6 @@ class AaEModel(Model):
         """
         model_results = model_run.get_model_results()
 
-        model_results["pod"] = "aae_type-" + model_results["aedepttype"]
         model_results["measure"] = "walk-in"
         model_results.loc[model_results["is_ambulance"], "measure"] = "ambulance"
         model_results.rename(columns={"arrivals": "value"}, inplace=True)

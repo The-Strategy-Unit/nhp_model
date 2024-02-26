@@ -93,6 +93,27 @@ def test_init_calls_super_init(mocker):
     mdl._load_kh03_data.assert_called_once()
 
 
+def test_add_pod_to_data(mock_model):
+    # arrange
+    mock_model.data = pd.DataFrame(
+        {
+            "group": ["elective", "elective", "elective", "non-elective", "maternity"],
+            "classpat": ["1", "2", "3", "1", "1"],
+        }
+    )
+    # act
+    mock_model._add_pod_to_data()
+
+    # assert
+    assert mock_model.data["pod"].to_list() == [
+        "ip_elective_admission",
+        "ip_elective_daycase",
+        "ip_elective_daycase",
+        "ip_non-elective_admission",
+        "ip_maternity_admission",
+    ]
+
+
 def test_get_data_mask(mock_model):
     # arrange
     expected = [True] * 3 + [False] * 2
@@ -466,8 +487,8 @@ def test_aggregate(mock_model):
     mdl._get_run_params = Mock(return_value={"bed_occupancy": "run_params"})
     mdl._bed_occupancy = Mock(return_value=2)
     xs = list(range(6)) * 2
-    mr_mock = Mock()
-    mr_mock.get_model_results.return_value = pd.DataFrame(
+
+    gmr_df = pd.DataFrame(
         {
             "sitetret": ["trust"] * 24,
             "age": list(range(12)) * 2,
@@ -483,6 +504,11 @@ def test_aggregate(mock_model):
             "bedday_rows": [False] * 12 + [True] * 12,
         }
     )
+
+    gmr_df["pod"] = "ip_" + gmr_df["group"] + "_admission"
+
+    mr_mock = Mock()
+    mr_mock.get_model_results.return_value = gmr_df
 
     expected_mr = {
         "sitetret": ["trust"] * 32,

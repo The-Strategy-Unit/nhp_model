@@ -148,6 +148,7 @@ def test_model_init_sets_values(mocker, model_type):
     mocker.patch("model.model.Model.generate_run_params")
     mocker.patch("model.model.Model._get_data_mask", return_value="data_mask")
     mocker.patch("model.model.Model._get_data_counts", return_value="data_counts")
+    mocker.patch("model.model.Model._add_pod_to_data")
 
     # act
     mdl = Model(model_type, ["measures"], params, "data", "hsa", "run_params")
@@ -169,6 +170,7 @@ def test_model_init_sets_values(mocker, model_type):
     assert mdl.data_mask == "data_mask"
     assert mdl.baseline_counts == "data_counts"
     mdl._get_data_counts.call_args_list[0][0][0].equals(mdl.data)
+    mdl._add_pod_to_data.assert_called_once_with()
 
 
 def test_model_init_calls_generate_run_params(mocker):

@@ -91,6 +91,12 @@ class Model:
         self.baseline_counts = self._get_data_counts(self.data)
         #
         self._measures = measures
+        #
+        self._add_pod_to_data()
+
+    def _add_pod_to_data(self) -> None:
+        """Adds the POD column to data"""
+        # to be implemented in ip/op/aae
 
     @property
     def measures(self) -> List[str]:

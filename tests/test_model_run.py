@@ -222,9 +222,7 @@ def test_get_step_counts(mock_model_run):
     mr.step_counts = step_counts
     mr.model = Mock()
     mr.step_counts = step_counts
-    mr.model.data = pd.DataFrame(
-        {"sitetret": ["a", "a", "b"], "group": ["a", "b", "a"]}
-    )
+    mr.model.data = pd.DataFrame({"sitetret": ["a", "a", "b"], "pod": ["a", "b", "a"]})
     mr.model.measures = ["x", "y"]
     mr.model.model_type = "ip"
 
@@ -233,121 +231,121 @@ def test_get_step_counts(mock_model_run):
             frozenset(
                 {
                     ("activity_type", "ip"),
-                    ("strategy", "-"),
-                    ("group", "a"),
-                    ("change_factor", "baseline"),
                     ("sitetret", "a"),
+                    ("pod", "a"),
+                    ("change_factor", "baseline"),
+                    ("strategy", "-"),
                     ("measure", "x"),
                 }
             ): 1,
             frozenset(
                 {
                     ("activity_type", "ip"),
+                    ("sitetret", "a"),
+                    ("pod", "a"),
                     ("change_factor", "x"),
                     ("strategy", "-"),
-                    ("group", "a"),
-                    ("sitetret", "a"),
                     ("measure", "x"),
                 }
             ): 3,
             frozenset(
                 {
                     ("activity_type", "ip"),
-                    ("group", "b"),
-                    ("strategy", "-"),
-                    ("change_factor", "baseline"),
                     ("sitetret", "a"),
+                    ("pod", "b"),
+                    ("change_factor", "baseline"),
+                    ("strategy", "-"),
                     ("measure", "x"),
                 }
             ): 2,
             frozenset(
                 {
                     ("activity_type", "ip"),
-                    ("group", "b"),
+                    ("sitetret", "a"),
+                    ("pod", "b"),
                     ("change_factor", "x"),
                     ("strategy", "-"),
-                    ("sitetret", "a"),
                     ("measure", "x"),
                 }
             ): 2,
             frozenset(
                 {
-                    ("sitetret", "b"),
                     ("activity_type", "ip"),
-                    ("strategy", "-"),
-                    ("group", "a"),
+                    ("sitetret", "b"),
+                    ("pod", "a"),
                     ("change_factor", "baseline"),
+                    ("strategy", "-"),
                     ("measure", "x"),
                 }
             ): 3,
             frozenset(
                 {
-                    ("sitetret", "b"),
                     ("activity_type", "ip"),
+                    ("sitetret", "b"),
+                    ("pod", "a"),
                     ("change_factor", "x"),
                     ("strategy", "-"),
-                    ("group", "a"),
                     ("measure", "x"),
                 }
             ): 1,
             frozenset(
                 {
                     ("activity_type", "ip"),
+                    ("pod", "a"),
+                    ("sitetret", "a"),
+                    ("change_factor", "baseline"),
+                    ("strategy", "-"),
                     ("measure", "y"),
-                    ("strategy", "-"),
-                    ("group", "a"),
-                    ("change_factor", "baseline"),
-                    ("sitetret", "a"),
                 }
             ): 4,
             frozenset(
                 {
                     ("activity_type", "ip"),
-                    ("measure", "y"),
+                    ("pod", "a"),
+                    ("sitetret", "a"),
                     ("change_factor", "x"),
                     ("strategy", "-"),
-                    ("group", "a"),
-                    ("sitetret", "a"),
+                    ("measure", "y"),
                 }
             ): 6,
             frozenset(
                 {
                     ("activity_type", "ip"),
-                    ("group", "b"),
-                    ("measure", "y"),
-                    ("strategy", "-"),
-                    ("change_factor", "baseline"),
+                    ("pod", "b"),
                     ("sitetret", "a"),
+                    ("change_factor", "baseline"),
+                    ("strategy", "-"),
+                    ("measure", "y"),
                 }
             ): 5,
             frozenset(
                 {
                     ("activity_type", "ip"),
-                    ("group", "b"),
-                    ("measure", "y"),
+                    ("pod", "b"),
+                    ("sitetret", "a"),
                     ("change_factor", "x"),
                     ("strategy", "-"),
-                    ("sitetret", "a"),
+                    ("measure", "y"),
                 }
             ): 5,
             frozenset(
                 {
-                    ("sitetret", "b"),
                     ("activity_type", "ip"),
-                    ("measure", "y"),
-                    ("strategy", "-"),
-                    ("group", "a"),
+                    ("pod", "a"),
+                    ("sitetret", "b"),
                     ("change_factor", "baseline"),
+                    ("strategy", "-"),
+                    ("measure", "y"),
                 }
             ): 6,
             frozenset(
                 {
-                    ("sitetret", "b"),
                     ("activity_type", "ip"),
-                    ("measure", "y"),
+                    ("pod", "a"),
+                    ("sitetret", "b"),
                     ("change_factor", "x"),
                     ("strategy", "-"),
-                    ("group", "a"),
+                    ("measure", "y"),
                 }
             ): 4,
         }
