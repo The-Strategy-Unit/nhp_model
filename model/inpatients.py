@@ -161,7 +161,6 @@ class InpatientsModel(Model):
                 .losr_all()
                 .losr_aec()
                 .losr_preop()
-                .losr_bads()
                 .update_step_counts()
             )
 
