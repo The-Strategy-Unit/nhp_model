@@ -535,55 +535,6 @@ def test_get_run_params(
     assert m.call_args_list == mock_call
 
 
-# _convert_step_counts()
-
-
-def test_convert_step_counts(mock_model):
-    # arrange
-    step_counts = {("a", "-"): [1, 2], ("b", "-"): [3, 4]}
-    expected = {
-        frozenset(
-            {
-                ("change_factor", "a"),
-                ("activity_type", "model_type"),
-                ("strategy", "-"),
-                ("measure", "admissions"),
-            }
-        ): 1.0,
-        frozenset(
-            {
-                ("change_factor", "a"),
-                ("activity_type", "model_type"),
-                ("strategy", "-"),
-                ("measure", "beddays"),
-            }
-        ): 2.0,
-        frozenset(
-            {
-                ("measure", "admissions"),
-                ("activity_type", "model_type"),
-                ("strategy", "-"),
-                ("change_factor", "b"),
-            }
-        ): 3.0,
-        frozenset(
-            {
-                ("measure", "beddays"),
-                ("activity_type", "model_type"),
-                ("strategy", "-"),
-                ("change_factor", "b"),
-            }
-        ): 4.0,
-    }
-    mock_model.model_type = "model_type"
-
-    # act
-    actual = mock_model._convert_step_counts(step_counts, ["admissions", "beddays"])
-
-    # assert
-    assert actual == expected
-
-
 # _create_agg()
 
 
