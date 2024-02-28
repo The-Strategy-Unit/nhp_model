@@ -236,7 +236,6 @@ def test_efficiencies(mocker, mock_model):
     mock.losr_all.return_value = mock
     mock.losr_aec.return_value = mock
     mock.losr_preop.return_value = mock
-    mock.losr_bads.return_value = mock
     mock.update_step_counts.return_value = mock
 
     mock_model_run = Mock()
@@ -251,7 +250,6 @@ def test_efficiencies(mocker, mock_model):
     mock.losr_all.assert_called_once()
     mock.losr_aec.assert_called_once()
     mock.losr_preop.assert_called_once()
-    mock.losr_bads.assert_called_once()
     mock.update_step_counts.assert_called_once()
 
 

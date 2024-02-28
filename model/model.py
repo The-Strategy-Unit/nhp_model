@@ -11,7 +11,7 @@ method.
 import os
 from datetime import datetime
 from functools import partial
-from typing import Any, List
+from typing import Any, Callable, List
 
 import numpy as np
 import numpy.typing as npt
@@ -386,3 +386,15 @@ class Model:
             self.save_results(mr, path_fn)
 
         return mr.get_aggregate_results()
+
+    def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
+        """Save the results of running the model
+
+        This method is used for saving the results of the model run to disk as a parquet file.
+        It saves just the `rn` (row number) column and the `arrivals`, with the intention that
+        you rejoin to the original data.
+
+        :param model_results: a DataFrame containing the results of a model iteration
+        :param path_fn: a function which takes the activity type and returns a path
+        """
+        # implemented by concrete classes
