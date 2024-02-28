@@ -34,8 +34,18 @@ class AaEModel(Model):
     ) -> None:
         # call the parent init function
         super().__init__(
-            "aae", params, data_path, hsa, run_params, save_full_model_results
+            "aae",
+            ["arrivals"],
+            params,
+            data_path,
+            hsa,
+            run_params,
+            save_full_model_results,
         )
+
+    def _add_pod_to_data(self) -> None:
+        """Adds the POD column to data"""
+        self.data["pod"] = "aae_type-" + self.data["aedepttype"]
 
     def _get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
         """Get row counts of data
@@ -85,16 +95,6 @@ class AaEModel(Model):
         # return the altered data and the amount of admissions/beddays after resampling
         return (data, self._get_data_counts(data))
 
-    def convert_step_counts(self, step_counts: dict) -> dict:
-        """Convert the step counts
-
-        :param step_counts: the step counts dictionary
-        :type step_counts: dict
-        :return: the step counts for uploading
-        :rtype: dict
-        """
-        return self._convert_step_counts(step_counts, ["arrivals"])
-
     def efficiencies(self, model_run: ModelRun) -> None:
         """Run the efficiencies steps of the model
 
@@ -118,7 +118,6 @@ class AaEModel(Model):
         """
         model_results = model_run.get_model_results()
 
-        model_results["pod"] = "aae_type-" + model_results["aedepttype"]
         model_results["measure"] = "walk-in"
         model_results.loc[model_results["is_ambulance"], "measure"] = "ambulance"
         model_results.rename(columns={"arrivals": "value"}, inplace=True)

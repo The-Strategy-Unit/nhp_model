@@ -1,4 +1,5 @@
 """test run_model"""
+
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
 
 from unittest.mock import Mock, patch
@@ -189,27 +190,172 @@ def test_get_aggregate_results(mock_model_run):
     mr_mock.model.aggregate.assert_called_once_with(mr_mock)
 
 
-@pytest.mark.parametrize(
-    "step_counts, expected", [({}, {}), ({1}, {"step_counts": "step_counts"})]
-)
-def test_get_step_counts(mock_model_run, step_counts, expected):
+def test_get_step_counts_empty(mock_model_run):
     # arrange
+    step_counts = {}
+
     mr = mock_model_run
     mr.step_counts = step_counts
     mr.model = Mock()
     mr.step_counts = step_counts
-    mr.model.convert_step_counts.return_value = "step_counts"
+    mr.model.data = pd.DataFrame(
+        {"sitetret": ["a", "a", "b"], "group": ["a", "b", "a"]}
+    )
+    mr.model.measures = ["x", "y"]
+    mr.model.model_type = "ip"
+
+    # act
+    actual = mock_model_run.get_step_counts()
+
+    # assert
+    assert not actual
+
+
+def test_get_step_counts(mock_model_run):
+    # arrange
+    step_counts = {
+        ("baseline", "-"): np.array([[1, 2, 3], [4, 5, 6]]),
+        ("x", "-"): np.array([[3, 2, 1], [6, 5, 4]]),
+    }
+
+    mr = mock_model_run
+    mr.step_counts = step_counts
+    mr.model = Mock()
+    mr.step_counts = step_counts
+    mr.model.data = pd.DataFrame({"sitetret": ["a", "a", "b"], "pod": ["a", "b", "a"]})
+    mr.model.measures = ["x", "y"]
+    mr.model.model_type = "ip"
+
+    expected = {
+        "step_counts": {
+            frozenset(
+                {
+                    ("activity_type", "ip"),
+                    ("sitetret", "a"),
+                    ("pod", "a"),
+                    ("change_factor", "baseline"),
+                    ("strategy", "-"),
+                    ("measure", "x"),
+                }
+            ): 1,
+            frozenset(
+                {
+                    ("activity_type", "ip"),
+                    ("sitetret", "a"),
+                    ("pod", "a"),
+                    ("change_factor", "x"),
+                    ("strategy", "-"),
+                    ("measure", "x"),
+                }
+            ): 3,
+            frozenset(
+                {
+                    ("activity_type", "ip"),
+                    ("sitetret", "a"),
+                    ("pod", "b"),
+                    ("change_factor", "baseline"),
+                    ("strategy", "-"),
+                    ("measure", "x"),
+                }
+            ): 2,
+            frozenset(
+                {
+                    ("activity_type", "ip"),
+                    ("sitetret", "a"),
+                    ("pod", "b"),
+                    ("change_factor", "x"),
+                    ("strategy", "-"),
+                    ("measure", "x"),
+                }
+            ): 2,
+            frozenset(
+                {
+                    ("activity_type", "ip"),
+                    ("sitetret", "b"),
+                    ("pod", "a"),
+                    ("change_factor", "baseline"),
+                    ("strategy", "-"),
+                    ("measure", "x"),
+                }
+            ): 3,
+            frozenset(
+                {
+                    ("activity_type", "ip"),
+                    ("sitetret", "b"),
+                    ("pod", "a"),
+                    ("change_factor", "x"),
+                    ("strategy", "-"),
+                    ("measure", "x"),
+                }
+            ): 1,
+            frozenset(
+                {
+                    ("activity_type", "ip"),
+                    ("pod", "a"),
+                    ("sitetret", "a"),
+                    ("change_factor", "baseline"),
+                    ("strategy", "-"),
+                    ("measure", "y"),
+                }
+            ): 4,
+            frozenset(
+                {
+                    ("activity_type", "ip"),
+                    ("pod", "a"),
+                    ("sitetret", "a"),
+                    ("change_factor", "x"),
+                    ("strategy", "-"),
+                    ("measure", "y"),
+                }
+            ): 6,
+            frozenset(
+                {
+                    ("activity_type", "ip"),
+                    ("pod", "b"),
+                    ("sitetret", "a"),
+                    ("change_factor", "baseline"),
+                    ("strategy", "-"),
+                    ("measure", "y"),
+                }
+            ): 5,
+            frozenset(
+                {
+                    ("activity_type", "ip"),
+                    ("pod", "b"),
+                    ("sitetret", "a"),
+                    ("change_factor", "x"),
+                    ("strategy", "-"),
+                    ("measure", "y"),
+                }
+            ): 5,
+            frozenset(
+                {
+                    ("activity_type", "ip"),
+                    ("pod", "a"),
+                    ("sitetret", "b"),
+                    ("change_factor", "baseline"),
+                    ("strategy", "-"),
+                    ("measure", "y"),
+                }
+            ): 6,
+            frozenset(
+                {
+                    ("activity_type", "ip"),
+                    ("pod", "a"),
+                    ("sitetret", "b"),
+                    ("change_factor", "x"),
+                    ("strategy", "-"),
+                    ("measure", "y"),
+                }
+            ): 4,
+        }
+    }
 
     # act
     actual = mr.get_step_counts()
 
     # assert
     assert actual == expected
-
-    if step_counts:
-        mr.model.convert_step_counts.assert_called_once_with({1})
-    else:
-        mr.model.convert_step_counts.assert_not_called()
 
 
 def test_get_model_results(mock_model_run):

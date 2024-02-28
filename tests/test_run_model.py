@@ -1,4 +1,5 @@
 """test run_model.py"""
+
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name, missing-function-docstring
 
 from unittest.mock import Mock, call, mock_open, patch
@@ -555,9 +556,9 @@ def test_run_single_model_run(mocker, capsys):
             "                            value        ",
             "measure                admissions beddays",
             "change_factor                            ",
-            "baseline                    100.0   200.0",
-            "demographic_adjustment       50.0   100.0",
-            "total                       150.0   300.0",
+            "baseline                      100     200",
+            "demographic_adjustment         50     100",
+            "total                         150     300",
             "",
             "aggregated (default) results:",
             "                           value                   ",

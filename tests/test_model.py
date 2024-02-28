@@ -1,4 +1,5 @@
 """test model"""
+
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring
 
 import re
@@ -147,9 +148,10 @@ def test_model_init_sets_values(mocker, model_type):
     mocker.patch("model.model.Model.generate_run_params")
     mocker.patch("model.model.Model._get_data_mask", return_value="data_mask")
     mocker.patch("model.model.Model._get_data_counts", return_value="data_counts")
+    mocker.patch("model.model.Model._add_pod_to_data")
 
     # act
-    mdl = Model(model_type, params, "data", "hsa", "run_params")
+    mdl = Model(model_type, ["measures"], params, "data", "hsa", "run_params")
 
     # assert
     assert mdl.model_type == model_type
@@ -168,6 +170,7 @@ def test_model_init_sets_values(mocker, model_type):
     assert mdl.data_mask == "data_mask"
     assert mdl.baseline_counts == "data_counts"
     mdl._get_data_counts.call_args_list[0][0][0].equals(mdl.data)
+    mdl._add_pod_to_data.assert_called_once_with()
 
 
 def test_model_init_calls_generate_run_params(mocker):
@@ -189,7 +192,7 @@ def test_model_init_calls_generate_run_params(mocker):
     mocker.patch("model.model.Model._get_data_counts", return_value="data_counts")
 
     # act
-    mdl = Model("aae", params, "data", "hsa")
+    mdl = Model("aae", "arrivals", params, "data", "hsa")
 
     # assert
     mdl.generate_run_params.assert_called_once()
@@ -214,10 +217,25 @@ def test_model_init_sets_create_datetime(mocker):
     mocker.patch("model.model.Model.generate_run_params")
 
     # act
-    mdl = Model("aae", params, "data", "run_params")
+    mdl = Model("aae", "arrivals", params, "data", "run_params")
 
     # assert
     assert re.match("^\\d{8}_\\d{6}$", mdl.params["create_datetime"])
+
+
+# measures
+
+
+def test_measures(mock_model):
+    # arrange
+    mdl = mock_model
+    mdl._measures = ["x", "y"]
+
+    # act
+    actual = mdl.measures
+
+    # assert
+    assert actual == ["x", "y"]
 
 
 # _load_parquet()
@@ -515,55 +533,6 @@ def test_get_run_params(
     assert actual == expected_run_params
 
     assert m.call_args_list == mock_call
-
-
-# _convert_step_counts()
-
-
-def test_convert_step_counts(mock_model):
-    # arrange
-    step_counts = {("a", "-"): [1, 2], ("b", "-"): [3, 4]}
-    expected = {
-        frozenset(
-            {
-                ("change_factor", "a"),
-                ("activity_type", "model_type"),
-                ("strategy", "-"),
-                ("measure", "admissions"),
-            }
-        ): 1.0,
-        frozenset(
-            {
-                ("change_factor", "a"),
-                ("activity_type", "model_type"),
-                ("strategy", "-"),
-                ("measure", "beddays"),
-            }
-        ): 2.0,
-        frozenset(
-            {
-                ("measure", "admissions"),
-                ("activity_type", "model_type"),
-                ("strategy", "-"),
-                ("change_factor", "b"),
-            }
-        ): 3.0,
-        frozenset(
-            {
-                ("measure", "beddays"),
-                ("activity_type", "model_type"),
-                ("strategy", "-"),
-                ("change_factor", "b"),
-            }
-        ): 4.0,
-    }
-    mock_model.model_type = "model_type"
-
-    # act
-    actual = mock_model._convert_step_counts(step_counts, ["admissions", "beddays"])
-
-    # assert
-    assert actual == expected
 
 
 # _create_agg()

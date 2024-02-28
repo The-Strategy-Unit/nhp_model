@@ -1,4 +1,5 @@
 """test inpatients model"""
+
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring,unnecessary-lambda-assignment
 
 from unittest.mock import Mock, call, mock_open, patch
@@ -90,6 +91,27 @@ def test_init_calls_super_init(mocker):
     # assert
     super_mock.assert_called_once()
     mdl._load_kh03_data.assert_called_once()
+
+
+def test_add_pod_to_data(mock_model):
+    # arrange
+    mock_model.data = pd.DataFrame(
+        {
+            "group": ["elective", "elective", "elective", "non-elective", "maternity"],
+            "classpat": ["1", "2", "3", "1", "1"],
+        }
+    )
+    # act
+    mock_model._add_pod_to_data()
+
+    # assert
+    assert mock_model.data["pod"].to_list() == [
+        "ip_elective_admission",
+        "ip_elective_daycase",
+        "ip_elective_daycase",
+        "ip_non-elective_admission",
+        "ip_maternity_admission",
+    ]
 
 
 def test_get_data_mask(mock_model):
@@ -203,21 +225,6 @@ def test_apply_resampling(mocker, mock_model):
     gdc_mock.assert_called_once()
 
 
-def test_convert_step_counts(mocker, mock_model):
-    # arrange
-    m = mocker.patch(
-        "model.outpatients.Model._convert_step_counts",
-        return_value="convert_step_counts",
-    )
-
-    # act
-    actual = mock_model.convert_step_counts("step_counts")
-
-    # assert
-    assert actual == "convert_step_counts"
-    m.assert_called_once_with("step_counts", ["admissions", "beddays"])
-
-
 def test_efficiencies(mocker, mock_model):
     """test that it runs the model steps"""
 
@@ -225,10 +232,12 @@ def test_efficiencies(mocker, mock_model):
 
     mock = mocker.patch("model.inpatients.InpatientEfficiencies")
     mock.return_value = mock
+
     mock.losr_all.return_value = mock
     mock.losr_aec.return_value = mock
     mock.losr_preop.return_value = mock
     mock.losr_bads.return_value = mock
+    mock.update_step_counts.return_value = mock
 
     mock_model_run = Mock()
     mock_model_run.empty = False
@@ -243,6 +252,7 @@ def test_efficiencies(mocker, mock_model):
     mock.losr_aec.assert_called_once()
     mock.losr_preop.assert_called_once()
     mock.losr_bads.assert_called_once()
+    mock.update_step_counts.assert_called_once()
 
 
 def test_efficiencies_no_params(mocker, mock_model):
@@ -477,8 +487,8 @@ def test_aggregate(mock_model):
     mdl._get_run_params = Mock(return_value={"bed_occupancy": "run_params"})
     mdl._bed_occupancy = Mock(return_value=2)
     xs = list(range(6)) * 2
-    mr_mock = Mock()
-    mr_mock.get_model_results.return_value = pd.DataFrame(
+
+    gmr_df = pd.DataFrame(
         {
             "sitetret": ["trust"] * 24,
             "age": list(range(12)) * 2,
@@ -494,6 +504,11 @@ def test_aggregate(mock_model):
             "bedday_rows": [False] * 12 + [True] * 12,
         }
     )
+
+    gmr_df["pod"] = "ip_" + gmr_df["group"] + "_admission"
+
+    mr_mock = Mock()
+    mr_mock.get_model_results.return_value = gmr_df
 
     expected_mr = {
         "sitetret": ["trust"] * 32,

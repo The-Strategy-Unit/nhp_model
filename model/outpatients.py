@@ -30,13 +30,25 @@ class OutpatientsModel(Model):
         params: dict,
         data_path: str,
         hsa: Any,
-        run_params: dict,
+        run_params: dict = None,
         save_full_model_results: bool = False,
     ) -> None:
         # call the parent init function
         super().__init__(
-            "op", params, data_path, hsa, run_params, save_full_model_results
+            "op",
+            ["attendances", "tele_attendances"],
+            params,
+            data_path,
+            hsa,
+            run_params,
+            save_full_model_results,
         )
+
+    def _add_pod_to_data(self) -> None:
+        """Adds the POD column to data"""
+        self.data.loc[self.data["is_first"], "pod"] = "op_first"
+        self.data.loc[~self.data["is_first"], "pod"] = "op_follow-up"
+        self.data.loc[self.data["has_procedures"], "pod"] = "op_procedure"
 
     def _get_data_counts(self, data) -> npt.ArrayLike:
         return (
@@ -96,7 +108,7 @@ class OutpatientsModel(Model):
         data["attendances"] -= tele_conversion
         data["tele_attendances"] += tele_conversion
         model_run.step_counts[("efficiencies", "convert_to_tele")] = (
-            np.array([-1, 1]) * tele_conversion.sum()
+            np.array([[-1], [1]]) * tele_conversion
         )
 
     def apply_resampling(
@@ -118,18 +130,6 @@ class OutpatientsModel(Model):
         data["tele_attendances"] = row_samples[1]
         # return the altered data and the amount of admissions/beddays after resampling
         return (data, self._get_data_counts(data))
-
-    def convert_step_counts(self, step_counts: dict) -> pd.DataFrame:
-        """Convert the step counts
-
-        :param step_counts: the step counts dictionary
-        :type step_counts: dict
-        :return: the step counts for uploading
-        :rtype: dict
-        """
-        return self._convert_step_counts(
-            step_counts, ["attendances", "tele_attendances"]
-        )
 
     def efficiencies(self, model_run: ModelRun) -> None:
         """Run the efficiencies steps of the model
@@ -153,10 +153,6 @@ class OutpatientsModel(Model):
         :rtype: dict
         """
         model_results = model_run.get_model_results()
-
-        model_results.loc[model_results["is_first"], "pod"] = "op_first"
-        model_results.loc[~model_results["is_first"], "pod"] = "op_follow-up"
-        model_results.loc[model_results["has_procedures"], "pod"] = "op_procedure"
 
         measures = model_results.melt(
             ["rn"], ["attendances", "tele_attendances"], "measure"

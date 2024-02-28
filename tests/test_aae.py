@@ -1,4 +1,5 @@
 """test a&e model"""
+
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring,unnecessary-lambda-assignment
 
 from unittest.mock import Mock, patch
@@ -90,6 +91,21 @@ def test_init_calls_super_init(mocker):
     super_mock.assert_called_once()
 
 
+def test_add_pod_to_data(mock_model):
+    # arrange
+    mock_model.data = pd.DataFrame({"aedepttype": ["01", "02", "03", "04"]})
+    # act
+    mock_model._add_pod_to_data()
+
+    # assert
+    assert mock_model.data["pod"].to_list() == [
+        "aae_type-01",
+        "aae_type-02",
+        "aae_type-03",
+        "aae_type-04",
+    ]
+
+
 def test_get_data_counts(mock_model):
     # arrange
     mdl = mock_model
@@ -146,35 +162,6 @@ def test_apply_resampling(mocker, mock_model):
     gdc_mock.assert_called_once()
 
 
-def test_convert_step_counts(mock_model):
-    # arrange
-    step_counts = {("a", "-"): [1], ("b", "-"): [2]}
-    expected = {
-        frozenset(
-            {
-                ("measure", "arrivals"),
-                ("strategy", "-"),
-                ("change_factor", "a"),
-                ("activity_type", "aae"),
-            }
-        ): 1.0,
-        frozenset(
-            {
-                ("measure", "arrivals"),
-                ("strategy", "-"),
-                ("change_factor", "b"),
-                ("activity_type", "aae"),
-            }
-        ): 2.0,
-    }
-
-    # act
-    actual = mock_model.convert_step_counts(step_counts)
-
-    # assert
-    assert actual == expected
-
-
 def test_efficiencies(mock_model):
     """test the efficiencies method (pass)"""
     # arrange
@@ -201,7 +188,7 @@ def test_aggregate(mock_model):
             "age": [1, 2, 3, 4],
             "age_group": [1] * 4,
             "sex": [1] * 4,
-            "aedepttype": ["01", "01", "02", "02"],
+            "pod": ["aae_type-01", "aae_type-01", "aae_type-02", "aae_type-02"],
             "is_ambulance": [True, False, True, False],
             "value": [1, 2, 3, 4],
         }

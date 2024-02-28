@@ -11,7 +11,7 @@ method.
 import os
 from datetime import datetime
 from functools import partial
-from typing import Any
+from typing import Any, List
 
 import numpy as np
 import numpy.typing as npt
@@ -56,6 +56,7 @@ class Model:
     def __init__(
         self,
         model_type: str,
+        measures: str,
         params: dict,
         data_path: str,
         hsa: Any,
@@ -88,6 +89,23 @@ class Model:
         self.data_mask = self._get_data_mask()
         # pylint: disable=assignment-from-no-return
         self.baseline_counts = self._get_data_counts(self.data)
+        #
+        self._measures = measures
+        #
+        self._add_pod_to_data()
+
+    def _add_pod_to_data(self) -> None:
+        """Adds the POD column to data"""
+        # to be implemented in ip/op/aae
+
+    @property
+    def measures(self) -> List[str]:
+        """The names of the measure columns
+
+        :return: the names of the measure columns
+        :rtype: List[str]
+        """
+        return self._measures
 
     def _load_parquet(self, file: str) -> pd.DataFrame:
         """Load a parquet file
@@ -309,29 +327,6 @@ class Model:
 
     def _get_data_mask(self) -> npt.ArrayLike:
         return np.array([1.0])
-
-    def _convert_step_counts(self, step_counts: dict, names: list) -> dict:
-        """Convert the step counts
-
-        :param step_counts: the step counts dictionary
-        :type step_counts: dict
-        :param names: the names of the items in the step counts
-        :type names: list
-        :return: the step counts for uploading
-        :rtype: dict
-        """
-        return {
-            frozenset(
-                {
-                    ("activity_type", self.model_type),
-                    ("change_factor", k0),
-                    ("strategy", k1),
-                    ("measure", k2),
-                }
-            ): float(v)
-            for (k0, k1), vs in step_counts.items()
-            for (k2, v) in zip(names, vs)
-        }
 
     @staticmethod
     def _create_agg(model_results, cols=None, name=None, include_measure=True):

@@ -4,7 +4,6 @@ Inpatients Module
 Implements the inpatients model.
 """
 
-import json
 from functools import partial
 from typing import Any, Callable, Tuple
 
@@ -12,7 +11,6 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from model.helpers import inrange
 from model.model import Model
 from model.model_run import ModelRun
 
@@ -40,10 +38,23 @@ class InpatientsModel(Model):
     ) -> None:
         # call the parent init function
         super().__init__(
-            "ip", params, data_path, hsa, run_params, save_full_model_results
+            "ip",
+            ["admissions", "beddays"],
+            params,
+            data_path,
+            hsa,
+            run_params,
+            save_full_model_results,
         )
         # load the kh03 data
         self._load_kh03_data()
+
+    def _add_pod_to_data(self) -> None:
+        """Adds the POD column to data"""
+        self.data["pod"] = "ip_" + self.data["group"] + "_admission"
+        self.data.loc[self.data["classpat"].isin(["2", "3"]), "pod"] = (
+            "ip_elective_daycase"
+        )
 
     def _get_data_mask(self) -> npt.ArrayLike:
         """get the data mask
@@ -137,16 +148,6 @@ class InpatientsModel(Model):
         # return the altered data and the amount of admissions/beddays after resampling
         return (data, self._get_data_counts(data) * mask)
 
-    def convert_step_counts(self, step_counts: dict) -> pd.DataFrame:
-        """Convert the step counts
-
-        :param step_counts: the step counts dictionary
-        :type step_counts: dict
-        :return: the step counts for uploading
-        :rtype: dict
-        """
-        return self._convert_step_counts(step_counts, ["admissions", "beddays"])
-
     def efficiencies(self, model_run: ModelRun) -> None:
         """Run the efficiencies steps of the model
 
@@ -161,6 +162,7 @@ class InpatientsModel(Model):
                 .losr_aec()
                 .losr_preop()
                 .losr_bads()
+                .update_step_counts()
             )
 
     def _bedday_summary(self, data, year):
@@ -298,6 +300,7 @@ class InpatientsModel(Model):
                     "age_group",
                     "sex",
                     "group",
+                    "pod",
                     "classpat",
                     "tretspef",
                     "tretspef_raw",
@@ -317,11 +320,10 @@ class InpatientsModel(Model):
             .reset_index()
         )
 
-        model_results["pod"] = "ip_" + model_results["group"] + "_admission"
         # quick dq fix: convert any "non-elective" daycases to "elective"
-        model_results.loc[
-            model_results["classpat"].isin(["2", "3"]), "pod"
-        ] = "ip_elective_daycase"
+        model_results.loc[model_results["classpat"].isin(["2", "3"]), "pod"] = (
+            "ip_elective_daycase"
+        )
 
         # handle the outpatients rows
         op_rows = model_results.classpat == "-1"
@@ -373,6 +375,7 @@ class InpatientEfficiencies:
         self.step_counts = model_run.step_counts
         self._select_single_strategy()
         self._generate_losr_df()
+        self.speldur_before = self.data["speldur"].copy()
 
     @property
     def data(self):
@@ -408,22 +411,6 @@ class InpatientEfficiencies:
         losr["losr_f"] = [run_params[i] for i in losr.index]
         self.losr = losr
 
-    def _update(self, i, new):
-        mask = ~self.data.loc[i, "bedday_rows"]
-        pre_los = self.data.loc[i, "speldur"]
-        self.data.loc[i, "speldur"] = new
-        change_los = (
-            ((self.data.loc[i, "speldur"] - pre_los) * mask)
-            .groupby(level=0)
-            .sum()
-            .astype(int)
-        ).to_dict()
-
-        for k in change_los.keys():
-            self.step_counts[("efficiencies", k)] = np.array([0, change_los[k]])
-
-        return self
-
     def losr_all(self):
         """Length of Stay Reduction: All
 
@@ -443,7 +430,10 @@ class InpatientEfficiencies:
         new = rng.binomial(
             data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"]
         )
-        return self._update(i, new)
+
+        self.data.loc[i, "speldur"] = new
+
+        return self
 
     def losr_aec(self):
         """
@@ -463,7 +453,10 @@ class InpatientEfficiencies:
         new = data.loc[i, "speldur"] * rng.binomial(
             1, losr.loc[data.loc[i].index, "losr_f"]
         )
-        return self._update(i, new)
+
+        self.data.loc[i, "speldur"] = new
+
+        return self
 
     def losr_preop(self):
         """
@@ -484,7 +477,9 @@ class InpatientEfficiencies:
             rng.binomial(1, 1 - losr.loc[data.loc[i].index, "losr_f"])
             * losr.loc[data.loc[i].index, "pre-op_days"]
         )
-        return self._update(i, new)
+        self.data.loc[i, "speldur"] = new
+
+        return self
 
     def losr_bads(self) -> None:
         """
@@ -517,12 +512,6 @@ class InpatientEfficiencies:
             right_index=True,
         )["losr_f"]
 
-        beddays_before = (
-            (data.loc[i, "speldur"] * ~data.loc[i, "bedday_rows"])
-            .groupby(level=0)
-            .sum()
-        )
-
         dont_change_classpat = rng.binomial(1, factor).astype(bool)
         data.loc[i, "speldur"] *= dont_change_classpat
 
@@ -533,30 +522,47 @@ class InpatientEfficiencies:
             np.where(data.loc[i].index.str[5:12] == "daycase", "2", "-1"),
         )
 
-        step_counts_admissions = -(
-            ((data.loc[i, "classpat"] == "-1") * ~data.loc[i, "bedday_rows"])
-            .groupby(level=0)
-            .sum()
-            .astype(int)
-        )
-        step_counts_beddays = (
-            (
-                (
-                    (data.loc[i, "speldur"] * ~data.loc[i, "bedday_rows"])
-                    .groupby(level=0)
-                    .sum()
-                    - beddays_before
-                    + step_counts_admissions
-                )
+        return self
+
+    def update_step_counts(self):
+        """Updates the step counts object
+
+        After running the efficiencies, update the model runs step counts object.
+        """
+        df = (
+            self.data.assign(
+                admissions=lambda x: np.where(x["classpat"] == "-1", -1, 0)
             )
-            .astype(int)
-            .to_dict()
+            .assign(
+                beddays=lambda x: x["speldur"]
+                - self.speldur_before
+                # any admissions that are converted to outpatients will reduce 1 bedday per
+                # admission this column is negative values, so we need to add in order to subtract
+                + x["admissions"]
+            )[["rn", "admissions", "beddays"]]
+            .reset_index()
+            .rename(columns={"index": "strategy"})
+            .groupby(["rn", "strategy"], as_index=False)
+            .sum()
+            .melt(["rn", "strategy"], var_name="measure")
+            .pivot(index=["measure", "rn"], columns="strategy", values="value")
         )
 
-        step_counts_admissions = step_counts_admissions.to_dict()
-        for k in step_counts_admissions.keys():
-            self.step_counts[("efficiencies", k)] = np.array(
-                [step_counts_admissions[k], step_counts_beddays[k]]
+        model_run = self._model_run
+        rn = pd.Index(model_run.model.data["rn"])
+        # make sure to exclude the bedday_rows lines, which are oversampled rows for capacity
+        # conversion only
+        mask = (~model_run.model.data["bedday_rows"]).astype(int).to_numpy()
+        for s in df.columns:
+            model_run.step_counts[("efficiencies", s)] = (
+                np.array(
+                    [
+                        rn.map(df.loc[(m, slice(None))][s]).fillna(0.0).to_numpy()
+                        for m in df.index.levels[0]
+                    ]
+                )
+                # this removes the bedday_rows from the sums
+                * mask
             )
 
         return self
