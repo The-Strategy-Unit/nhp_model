@@ -3,6 +3,8 @@
 Scripts to migrate from a previous version of the model to a new version
 """
 
+import gzip
+import json
 import os
 from typing import Callable
 
@@ -10,6 +12,27 @@ from tqdm.auto import tqdm
 
 import run_model as rm
 from migration.azure_storage import upload_results
+
+
+def rerun_all_files_in_folder(path: str, dest: str) -> None:
+    """Re-run all files in folder
+
+    To be used to re-run the model without changing the parameters. Useful if you need to re-run the model without
+    updating parameters.
+
+    :param path: the folder which contains the old results
+    :type path: str
+    :param dest: the destination to save new results to in azure
+    :type dest: str
+    """
+
+    def rerun(filename):
+        with gzip.open(filename) as gzf:
+            params = json.load(gzf)["params"]
+
+        return params
+
+    _convert_all_files_in_folder(path, dest, rerun)
 
 
 def _convert_all_files_in_folder(
@@ -31,7 +54,7 @@ def _convert_all_files_in_folder(
         pbar.set_description(i)
         params = migration(i)
 
-        results_file = rm.run_all(params, "data", lambda: lambda _: None)
+        results_file = rm.run_all(params, "data", lambda: lambda _: None, False)
 
         metadata = {
             k: str(v)
