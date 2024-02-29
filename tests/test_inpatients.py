@@ -498,7 +498,7 @@ def test_aggregate(mock_model):
             "tretspef_raw": list(range(12)) * 2,
             "rn": [1] * 24,
             "has_procedure": [0, 1] * 12,
-            "speldur": list(range(12)) * 2,
+            "speldur": list(range(24)),
             "bedday_rows": [False] * 12 + [True] * 12,
         }
     )
@@ -543,6 +543,10 @@ def test_aggregate(mock_model):
             "ip_non-elective_admission",
         ]
         * 4,
+        "los_group": ["0-day"]
+        + ["1-7 days"] * 7
+        + ["8-14 days"] * 4
+        + (["0-day"] + ["1-7 days"] * 6 + ["8-14 days"] * 3) * 2,
     }
 
     # act
@@ -553,6 +557,7 @@ def test_aggregate(mock_model):
     assert results == {
         "sex+tretspef": expected_mr,
         "tretspef_raw": expected_mr,
+        "los_group": expected_mr,
         "bed_occupancy": 2,
     }
 
