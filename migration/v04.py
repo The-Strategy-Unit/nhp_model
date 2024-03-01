@@ -34,6 +34,8 @@ def v03_to_v04(filename: str) -> dict:
     with gzip.open(filename) as gzf:
         params = json.load(gzf)["params"]
 
+    params["app_version"] = "v0.4"
+
     if "health_status_adkustment" in params:
         params.pop("health_status_adjustment")
         params.pop("life_expectancy")
