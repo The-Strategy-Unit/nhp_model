@@ -292,6 +292,21 @@ class InpatientsModel(Model):
 
         model_results = (
             model_results[~model_results["bedday_rows"]]
+            .assign(
+                los_group=lambda x: np.where(
+                    x["speldur"] == 0,
+                    "0-day",
+                    np.where(
+                        x["speldur"] <= 7,
+                        "1-7 days",
+                        np.where(
+                            x["speldur"] <= 14,
+                            "8-14 days",
+                            np.where(x["speldur"] <= 21, "15-21 days", "22+ days"),
+                        ),
+                    ),
+                )
+            )
             .groupby(
                 [
                     "sitetret",
@@ -303,6 +318,7 @@ class InpatientsModel(Model):
                     "classpat",
                     "tretspef",
                     "tretspef_raw",
+                    "los_group",
                 ],
                 # as_index = False
             )
@@ -340,6 +356,7 @@ class InpatientsModel(Model):
             {
                 **agg(["sex", "tretspef"]),
                 **agg(["tretspef_raw"]),
+                **agg(["los_group"]),
                 "bed_occupancy": bed_occupancy,
             },
         )
