@@ -114,7 +114,7 @@ class ModelRun:
                 {
                     k: pd.concat(
                         [
-                            self.model.data[["sitetret", "pod"]],
+                            self.model.data[["sitetret", "pod"]].reset_index(drop=True),
                             pd.DataFrame(v.transpose(), columns=self.model.measures),
                         ],
                         axis=1,
