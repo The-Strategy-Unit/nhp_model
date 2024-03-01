@@ -15,11 +15,11 @@ def convert_all_files_in_folder(path: str) -> None:
     :param path: the folder which contains the old results
     :type path: str
     """
-    _convert_all_files_in_folder(path, "v0.6", v05_to_v06)
+    _convert_all_files_in_folder(path, "v1.0", v06_to_v10)
 
 
-def v05_to_v06(filename: str) -> dict:
-    """Convert v0.5 to v0.6 results
+def v06_to_v10(filename: str) -> dict:
+    """Convert v0.6 to v1.0 results
 
     :param filename: the path to the old results file which contains the parameters
     :type filename: str
@@ -30,13 +30,6 @@ def v05_to_v06(filename: str) -> dict:
     with gzip.open(filename) as gzf:
         params = json.load(gzf)["params"]
 
-    params["app_version"] = "v0.6"
-
-    # drop theatres
-    params.drop("theatres")
-    # drop a key that was sometimes incorrectly added
-    params.drop("non_demographic_adjustment")
-    # waiting list data needs to be dropped, this was recalculated in the inputs app
-    params["waiting_list_adjustment"] = {"ip": {}, "op": {}}
+    params["app_version"] = "v1.0"
 
     return params

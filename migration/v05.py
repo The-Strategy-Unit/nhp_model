@@ -47,6 +47,8 @@ def v04_to_v05(filename: str) -> dict:
     with gzip.open(filename) as gzf:
         params = json.load(gzf)["params"]
 
+    params["app_version"] = "v0.5"
+
     if "non-demographic_adjustment" in params:
         p = params.pop("non-demographic_adjustment")
         params["non-demographic_adjustment"] = {
