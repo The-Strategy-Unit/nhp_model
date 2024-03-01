@@ -121,7 +121,7 @@ class RunWithAzureStorage:
 
         with open(f"results/{results_file}.json", "rb") as file:
             container.upload_blob(
-                f"{self._app_version}/{results_file}.json.gz",
+                f"prod/{self._app_version}/{results_file}.json.gz",
                 gzip.compress(file.read()),
                 metadata=metadata,
                 overwrite=True,

@@ -1,4 +1,5 @@
 """test docker run"""
+
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name, missing-function-docstring
 
 from unittest.mock import Mock, call, mock_open, patch
@@ -203,7 +204,7 @@ def test_RunWithAzureStorage_upload_results(mock_run_with_azure_storage, mocker)
     mock_file.assert_called_once_with("results/filename.json", "rb")
     m.assert_called_once_with("results")
     m().upload_blob.assert_called_once_with(
-        "dev/filename.json.gz", "gzdata", metadata="metadata", overwrite=True
+        "prod/dev/filename.json.gz", "gzdata", metadata="metadata", overwrite=True
     )
 
 
