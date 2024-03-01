@@ -46,7 +46,7 @@ jobs:
 
       - name: Get version (dev)
         if: ${{ !inputs.latest }}
-        run: VERSION=dev`
+        run: VERSION=dev
 
       - name: 'Build and push image'
         run: |
