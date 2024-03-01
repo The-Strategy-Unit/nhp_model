@@ -42,11 +42,13 @@ jobs:
 
       - name: Get version (latest)
         if: ${{ inputs.latest }}
-        run: VERSION=`echo ${{ github.ref_name }} | awk 'BEGIN { FS="."; } { print ""$1"-"$2; }'`
+        run: |
+          VERSION=`echo ${{ github.ref_name }} | awk 'BEGIN { FS="."; } { print ""$1"-"$2; }'`
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Get version (dev)
         if: ${{ !inputs.latest }}
-        run: VERSION=dev
+        run: echo "VERSION=dev" >> $GITHUB_ENV
 
       - name: 'Build and push image'
         run: |
