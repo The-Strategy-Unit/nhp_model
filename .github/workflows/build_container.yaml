@@ -24,6 +24,9 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      # replaced progamatically if deploying to production
+      VERSION: dev
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@main
@@ -40,15 +43,11 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: Get version (latest)
+      - name: Update version (production)
         if: ${{ inputs.latest }}
         run: |
           VERSION=`echo ${{ github.ref_name }} | awk 'BEGIN { FS="."; } { print ""$1"-"$2; }'`
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-      - name: Get version (dev)
-        if: ${{ !inputs.latest }}
-        run: echo "VERSION=dev" >> $GITHUB_ENV
 
       - name: 'Build and push image'
         run: |
