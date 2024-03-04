@@ -109,28 +109,42 @@ class ModelRun:
         if not self.step_counts:
             return {}
 
+        def get_counts(data, values):
+            return (
+                pd.concat(
+                    [
+                        data,
+                        pd.DataFrame(values.transpose(), columns=self.model.measures),
+                    ],
+                    axis=1,
+                )
+                .groupby(["sitetret", "pod"], as_index=False)[self.model.measures]
+                .sum()
+                .melt(["sitetret", "pod"], var_name="measure")
+                .set_index(["sitetret", "pod", "measure"])
+                .sort_index()["value"]
+            )
+
+        sitetret_pod = self.model.data[["sitetret", "pod"]].reset_index(drop=True)
+        counts_before = get_counts(
+            sitetret_pod, (self.model.baseline_counts * self.model.data_mask)
+        )
+
+        counts_after = get_counts(
+            self.data[["sitetret", "pod"]].reset_index(drop=True),
+            (
+                self.model.get_data_counts(self.data)
+                * self.model.get_data_mask(self.data)
+            ),
+        )
+
         step_counts = (
             pd.concat(
-                {
-                    k: pd.concat(
-                        [
-                            self.model.data[["sitetret", "pod"]].reset_index(drop=True),
-                            pd.DataFrame(v.transpose(), columns=self.model.measures),
-                        ],
-                        axis=1,
-                    )
-                    for k, v in self.step_counts.items()
-                }
+                {k: get_counts(sitetret_pod, v) for k, v in self.step_counts.items()}
             )
             .reset_index()
             .rename(columns={"level_0": "change_factor", "level_1": "strategy"})
-            .drop(columns="level_2")
-            .assign(activity_type=self.model.model_type)
-            .groupby(["activity_type", "sitetret", "pod", "change_factor", "strategy"])
-            .sum()
-            .melt(var_name="measure", ignore_index=False)
-            .reset_index()
-            .set_index(
+            .assign(activity_type=self.model.model_type)[
                 [
                     "activity_type",
                     "sitetret",
@@ -138,7 +152,55 @@ class ModelRun:
                     "change_factor",
                     "strategy",
                     "measure",
+                    "value",
                 ]
+            ]
+        )
+
+        counts_est = (
+            step_counts.assign(
+                efficiencies=lambda x: x["change_factor"] == "efficiencies"
+            )
+            .groupby(["efficiencies", "sitetret", "pod", "measure"])["value"]
+            .sum()
+            .sort_index()
+        )
+
+        if True in counts_est.index.levels[0]:
+            counts_efficiencies = counts_est.loc[
+                (True, slice(None), slice(None), slice(None))
+            ]
+        else:
+            counts_efficiencies = 0
+
+        counts_est = counts_est.loc[(False, slice(None), slice(None), slice(None))]
+
+        slack = 1 + np.divide(
+            counts_after - counts_est - counts_efficiencies,
+            counts_est - counts_before,
+            out=np.zeros_like(counts_before),
+            where=counts_est != counts_before,
+        )
+
+        slack = step_counts.drop(columns="value").merge(
+            slack, left_on=slack.index.names, right_index=True
+        )["value"]
+
+        step_counts.loc[
+            ~step_counts["change_factor"].isin(["baseline", "efficiencies"]), "value"
+        ] *= slack
+
+        (
+            step_counts.set_index(
+                [
+                    "activity_type",
+                    "sitetret",
+                    "pod",
+                    "change_factor",
+                    "strategy",
+                    "measure",
+                ],
+                inplace=True,
             )
         )
 

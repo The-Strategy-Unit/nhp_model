@@ -262,27 +262,6 @@ class ActivityAvoidance:
         rng = self._model_run.rng
         row_samples = rng.poisson(self._row_counts)
         # apply the random sampling, update the data and get the counts
-        self._model_run.data, counts = self._model_run.model.apply_resampling(
+        self._model_run.data = self._model_run.model.apply_resampling(
             row_samples, self.data
         )
-        sum_after = counts.sum(axis=1)
-        # after resampling we will have a different amount of rows (sa) from the expectation
-        # calculated in the step counts. work out the "slack" we are left with, and adjust all
-        # of the steps for this slack.
-        # this will result in the sum of the step counts equalling the sum of the rows after
-        # resampling
-        sum_before = self._baseline_counts.sum(axis=1)
-        sum_est = np.array(list(self.step_counts.values())).sum(axis=0).sum(axis=1)
-        # create the slack to add to each step
-        # note: simple division will cause an issue in the case that there is
-        #   no change, i.e. sum_est == sum_before. this ensures that if that is
-        #   the case, then we get a value of 1 for the slack
-        slack = 1 + np.divide(
-            sum_after - sum_est,
-            sum_est - sum_before,
-            out=np.zeros_like(sum_before),
-            where=sum_est != sum_before,
-        ).reshape(len(sum_before), 1)
-        for k in self.step_counts.keys():
-            if k != ("baseline", "-"):
-                self.step_counts[k] *= slack

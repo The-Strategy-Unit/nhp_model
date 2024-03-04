@@ -1,9 +1,9 @@
 """test helper methods"""
 
-import json
 from unittest.mock import Mock, mock_open, patch
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from model.helpers import age_groups, create_time_profiles, inrange, load_params, rnorm
@@ -35,10 +35,11 @@ def test_rnorm():
 
 def test_age_groups():
     """test that the age_groups function returns expected values"""
-    ages = list(range(0, 90))
+    ages = pd.Series([np.nan] + list(range(0, 90)))
     expected = list(
         np.concatenate(
             [
+                ["Unknown"],
                 [" 0- 4"] * 5,
                 [" 5-14"] * 10,
                 ["15-34"] * 20,

@@ -50,7 +50,7 @@ class OutpatientsModel(Model):
         self.data.loc[~self.data["is_first"], "pod"] = "op_follow-up"
         self.data.loc[self.data["has_procedures"], "pod"] = "op_procedure"
 
-    def _get_data_counts(self, data) -> npt.ArrayLike:
+    def get_data_counts(self, data) -> npt.ArrayLike:
         return (
             data[["attendances", "tele_attendances"]]
             .to_numpy()
@@ -113,7 +113,7 @@ class OutpatientsModel(Model):
 
     def apply_resampling(
         self, row_samples: npt.ArrayLike, data: pd.DataFrame
-    ) -> Tuple[pd.DataFrame, npt.ArrayLike]:
+    ) -> pd.DataFrame:
         """Apply row resampling
 
         Called from within `model.activity_avoidance.ActivityAvoidance.apply_resampling`
@@ -124,12 +124,12 @@ class OutpatientsModel(Model):
         :param data: the data that we want to update
         :type data: pd.DataFrame
         :return: the updated data
-        :rtype: Tuple[pd.DataFrame, npt.ArrayLike]
+        :rtype: pd.DataFrame
         """
         data["attendances"] = row_samples[0]
         data["tele_attendances"] = row_samples[1]
-        # return the altered data and the amount of admissions/beddays after resampling
-        return (data, self._get_data_counts(data))
+        # return the altered data
+        return data
 
     def efficiencies(self, model_run: ModelRun) -> None:
         """Run the efficiencies steps of the model

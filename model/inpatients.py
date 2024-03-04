@@ -56,7 +56,7 @@ class InpatientsModel(Model):
             "ip_elective_daycase"
         )
 
-    def _get_data_mask(self) -> npt.ArrayLike:
+    def get_data_mask(self, data) -> npt.ArrayLike:
         """get the data mask
 
         Some data is oversampled for modelling purposes, but should not be included in any counts.
@@ -65,7 +65,7 @@ class InpatientsModel(Model):
         :return: a boolean array the length of the data
         :rtype: npt.ArrayLike
         """
-        return ~self.data["bedday_rows"].to_numpy()
+        return ~data["bedday_rows"].to_numpy()
 
     def _load_kh03_data(self):
         # load the kh03 data
@@ -115,7 +115,7 @@ class InpatientsModel(Model):
             k: load_fn(k) for k in ["activity_avoidance", "efficiencies"]
         }
 
-    def _get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
+    def get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
         """Get row counts of data
 
         :param data: the data to get the counts of
@@ -129,7 +129,7 @@ class InpatientsModel(Model):
 
     def apply_resampling(
         self, row_samples: npt.ArrayLike, data: pd.DataFrame
-    ) -> Tuple[pd.DataFrame, npt.ArrayLike]:
+    ) -> pd.DataFrame:
         """Apply row resampling
 
         Called from within `model.activity_avoidance.ActivityAvoidance.apply_resampling`
@@ -140,13 +140,9 @@ class InpatientsModel(Model):
         :param data: the data that we want to update
         :type data: pd.DataFrame
         :return: the updated data
-        :rtype: Tuple[pd.DataFrame, npt.ArrayLike]
+        :rtype: pd.DataFrame
         """
-        data = data.loc[data.index.repeat(row_samples[0])].reset_index(drop=True)
-        # filter out the "oversampled" rows from the counts
-        mask = (~data["bedday_rows"]).to_numpy().astype(float)
-        # return the altered data and the amount of admissions/beddays after resampling
-        return (data, self._get_data_counts(data) * mask)
+        return data.loc[data.index.repeat(row_samples[0])].reset_index(drop=True)
 
     def efficiencies(self, model_run: ModelRun) -> None:
         """Run the efficiencies steps of the model
@@ -305,7 +301,10 @@ class InpatientsModel(Model):
                             np.where(x["speldur"] <= 21, "15-21 days", "22+ days"),
                         ),
                     ),
-                )
+                ),
+                admissions=1,
+                beddays=lambda x: x["speldur"] + 1,
+                procedures=lambda x: x["has_procedure"],
             )
             .groupby(
                 [
@@ -320,17 +319,9 @@ class InpatientsModel(Model):
                     "tretspef_raw",
                     "los_group",
                 ],
-                # as_index = False
-            )
-            .agg({"rn": len, "has_procedure": sum, "speldur": sum})
-            .assign(speldur=lambda x: x.speldur + x.rn)
-            .rename(
-                columns={
-                    "rn": "admissions",
-                    "has_procedure": "procedures",
-                    "speldur": "beddays",
-                }
-            )
+                dropna=False,
+            )[["admissions", "beddays", "procedures"]]
+            .sum()
             .melt(ignore_index=False, var_name="measure")
             .reset_index()
         )
