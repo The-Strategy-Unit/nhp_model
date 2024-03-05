@@ -214,148 +214,176 @@ def test_get_step_counts_empty(mock_model_run):
 def test_get_step_counts(mock_model_run):
     # arrange
     step_counts = {
-        ("baseline", "-"): np.array([[1, 2, 3], [4, 5, 6]]),
-        ("x", "-"): np.array([[3, 2, 1], [6, 5, 4]]),
+        ("baseline", "-"): np.array([[1, 2, 3, 1], [4, 5, 6, 1]]),
+        ("x", "-"): np.array([[3, 2, 1, 1], [6, 5, 4, 1]]),
+        ("y", "a"): np.array([[2, 1, 3, 1], [5, 4, 6, 1]]),
+        ("z", "a"): np.array([[-2, -1, -3, -1], [-5, -4, -6, -1]]),
+        ("efficiencies", "-"): np.array([[-1, -2, 0, -1], [-4, -5, 0, -1]]),
     }
 
     mr = mock_model_run
     mr.step_counts = step_counts
     mr.model = Mock()
-    mr.step_counts = step_counts
-    mr.model.data = pd.DataFrame({"sitetret": ["a", "a", "b"], "pod": ["a", "b", "a"]})
+    mr.model.data = pd.DataFrame(
+        {"sitetret": ["a", "a", "b", "b"], "pod": ["a", "b", "a", "b"]}
+    )
     mr.model.measures = ["x", "y"]
     mr.model.model_type = "ip"
+    mr.model.baseline_counts = np.array([[1, 2, 3, 1], [4, 5, 6, 1]])
+    mr.model.data_mask = np.array([1, 1, 1, 0])
+
+    mr.data = pd.DataFrame(
+        {"sitetret": ["a", "a", "b", "b", "b"], "pod": ["a", "b", "a", "b", "b"]}
+    )
+    mr.model.get_data_counts.return_value = np.array(
+        [[3, 2, 4, 1, 5], [6, 5, 10, 1, 5]]
+    )
+    mr.model.get_data_mask.return_value = np.array([[1, 1, 1, 0, 0], [1, 1, 1, 0, 0]])
 
     expected = {
-        "step_counts": {
-            frozenset(
-                {
-                    ("activity_type", "ip"),
-                    ("sitetret", "a"),
-                    ("pod", "a"),
-                    ("change_factor", "baseline"),
-                    ("strategy", "-"),
-                    ("measure", "x"),
-                }
-            ): 1,
-            frozenset(
-                {
-                    ("activity_type", "ip"),
-                    ("sitetret", "a"),
-                    ("pod", "a"),
-                    ("change_factor", "x"),
-                    ("strategy", "-"),
-                    ("measure", "x"),
-                }
-            ): 3,
-            frozenset(
-                {
-                    ("activity_type", "ip"),
-                    ("sitetret", "a"),
-                    ("pod", "b"),
-                    ("change_factor", "baseline"),
-                    ("strategy", "-"),
-                    ("measure", "x"),
-                }
-            ): 2,
-            frozenset(
-                {
-                    ("activity_type", "ip"),
-                    ("sitetret", "a"),
-                    ("pod", "b"),
-                    ("change_factor", "x"),
-                    ("strategy", "-"),
-                    ("measure", "x"),
-                }
-            ): 2,
-            frozenset(
-                {
-                    ("activity_type", "ip"),
-                    ("sitetret", "b"),
-                    ("pod", "a"),
-                    ("change_factor", "baseline"),
-                    ("strategy", "-"),
-                    ("measure", "x"),
-                }
-            ): 3,
-            frozenset(
-                {
-                    ("activity_type", "ip"),
-                    ("sitetret", "b"),
-                    ("pod", "a"),
-                    ("change_factor", "x"),
-                    ("strategy", "-"),
-                    ("measure", "x"),
-                }
-            ): 1,
-            frozenset(
-                {
-                    ("activity_type", "ip"),
-                    ("pod", "a"),
-                    ("sitetret", "a"),
-                    ("change_factor", "baseline"),
-                    ("strategy", "-"),
-                    ("measure", "y"),
-                }
-            ): 4,
-            frozenset(
-                {
-                    ("activity_type", "ip"),
-                    ("pod", "a"),
-                    ("sitetret", "a"),
-                    ("change_factor", "x"),
-                    ("strategy", "-"),
-                    ("measure", "y"),
-                }
-            ): 6,
-            frozenset(
-                {
-                    ("activity_type", "ip"),
-                    ("pod", "b"),
-                    ("sitetret", "a"),
-                    ("change_factor", "baseline"),
-                    ("strategy", "-"),
-                    ("measure", "y"),
-                }
-            ): 5,
-            frozenset(
-                {
-                    ("activity_type", "ip"),
-                    ("pod", "b"),
-                    ("sitetret", "a"),
-                    ("change_factor", "x"),
-                    ("strategy", "-"),
-                    ("measure", "y"),
-                }
-            ): 5,
-            frozenset(
-                {
-                    ("activity_type", "ip"),
-                    ("pod", "a"),
-                    ("sitetret", "b"),
-                    ("change_factor", "baseline"),
-                    ("strategy", "-"),
-                    ("measure", "y"),
-                }
-            ): 6,
-            frozenset(
-                {
-                    ("activity_type", "ip"),
-                    ("pod", "a"),
-                    ("sitetret", "b"),
-                    ("change_factor", "x"),
-                    ("strategy", "-"),
-                    ("measure", "y"),
-                }
-            ): 4,
-        }
+        "change_factor": [
+            x for x in ["baseline", "x", "y", "z", "efficiencies"] for _ in range(8)
+        ],
+        "strategy": [x for x in ["-", "-", "a", "a", "-"] for _ in range(8)],
+        "sitetret": [x for x in ["a", "b"] for _ in range(4)] * 5,
+        "activity_type": ["ip"] * 40,
+        "pod": ["a", "a", "b", "b"] * 10,
+        "measure": ["x", "y"] * 20,
+        "value": [
+            1,
+            4,
+            2,
+            5,
+            3,
+            6,
+            1,
+            1,
+            3,
+            6,
+            2,
+            5,
+            1,
+            4,
+            1,
+            1,
+            2,
+            5,
+            1,
+            4,
+            3,
+            6,
+            1,
+            1,
+            -2,
+            -5,
+            -1,
+            -4,
+            -3,
+            -6,
+            -1,
+            -1,
+            -1,
+            -4,
+            -2,
+            -5,
+            0,
+            0,
+            -1,
+            -1,
+        ],
     }
-
     # act
-    actual = mr.get_step_counts()
+    actual = pd.DataFrame(
+        [
+            {**dict(k), "value": v}
+            for k, v in mr.get_step_counts()["step_counts"].items()
+        ]
+    )
 
     # assert
-    assert actual == expected
+    assert actual.to_dict("list") == expected
+
+
+def test_get_step_counts_no_efficiencies(mock_model_run):
+    # arrange
+    step_counts = {
+        ("baseline", "-"): np.array([[1, 2, 3, 1], [4, 5, 6, 1]]),
+        ("x", "-"): np.array([[3, 2, 1, 1], [6, 5, 4, 1]]),
+        ("y", "a"): np.array([[2, 1, 3, 1], [5, 4, 6, 1]]),
+        ("z", "a"): np.array([[-2, -1, -3, -1], [-5, -4, -6, -1]]),
+    }
+
+    mr = mock_model_run
+    mr.step_counts = step_counts
+    mr.model = Mock()
+    mr.model.data = pd.DataFrame(
+        {"sitetret": ["a", "a", "b", "b"], "pod": ["a", "b", "a", "b"]}
+    )
+    mr.model.measures = ["x", "y"]
+    mr.model.model_type = "ip"
+    mr.model.baseline_counts = np.array([[1, 2, 3, 1], [4, 5, 6, 1]])
+    mr.model.data_mask = np.array([1, 1, 1, 0])
+
+    mr.data = pd.DataFrame(
+        {"sitetret": ["a", "a", "b", "b", "b"], "pod": ["a", "b", "a", "b", "b"]}
+    )
+    mr.model.get_data_counts.return_value = np.array(
+        [[3, 2, 4, 1, 5], [6, 5, 10, 1, 5]]
+    )
+    mr.model.get_data_mask.return_value = np.array([[1, 1, 1, 0, 0], [1, 1, 1, 0, 0]])
+
+    expected = {
+        "change_factor": [x for x in ["baseline", "x", "y", "z"] for _ in range(8)],
+        "strategy": [x for x in ["-", "-", "a", "a"] for _ in range(8)],
+        "sitetret": [x for x in ["a", "b"] for _ in range(4)] * 4,
+        "activity_type": ["ip"] * 32,
+        "pod": ["a", "a", "b", "b"] * 8,
+        "measure": ["x", "y"] * 16,
+        "value": [
+            1,
+            4,
+            2,
+            5,
+            3,
+            6,
+            1,
+            1,
+            3,
+            6,
+            0,
+            0,
+            1,
+            4,
+            0,
+            0,
+            2,
+            5,
+            0,
+            0,
+            3,
+            6,
+            0,
+            0,
+            -2,
+            -5,
+            0,
+            0,
+            -3,
+            -6,
+            0,
+            0,
+        ],
+    }
+    # act
+    actual = pd.DataFrame(
+        [
+            {**dict(k), "value": v}
+            for k, v in mr.get_step_counts()["step_counts"].items()
+        ]
+    )
+
+    # assert
+    assert actual.to_dict("list") == expected
 
 
 def test_get_model_results(mock_model_run):

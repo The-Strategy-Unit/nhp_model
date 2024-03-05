@@ -112,7 +112,7 @@ def test_get_data_counts(mock_model):
     data = mdl.data
     data["arrivals"] = list(range(1, 21))
     # act
-    actual = mdl._get_data_counts(data)
+    actual = mdl.get_data_counts(data)
     # assert
     assert actual.tolist() == [[float(i) for i in range(1, 21)]]
 
@@ -153,13 +153,10 @@ def test_load_strategies(mock_model):
 def test_apply_resampling(mocker, mock_model):
     # arrange
     row_samples = np.array([[1, 2, 3, 4]])
-    gdc_mock = mocker.patch("model.aae.AaEModel._get_data_counts", return_value=1)
     # act
-    data, counts = mock_model.apply_resampling(row_samples, pd.DataFrame())
+    data = mock_model.apply_resampling(row_samples, pd.DataFrame())
     # assert
     assert data["arrivals"].to_list() == [1, 2, 3, 4]
-    assert counts == 1
-    gdc_mock.assert_called_once()
 
 
 def test_efficiencies(mock_model):

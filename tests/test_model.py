@@ -146,8 +146,8 @@ def test_model_init_sets_values(mocker, model_type):
     mocker.patch("model.model.Model._load_strategies")
     mocker.patch("model.model.Model._load_demog_factors")
     mocker.patch("model.model.Model.generate_run_params")
-    mocker.patch("model.model.Model._get_data_mask", return_value="data_mask")
-    mocker.patch("model.model.Model._get_data_counts", return_value="data_counts")
+    mocker.patch("model.model.Model.get_data_mask", return_value="data_mask")
+    mocker.patch("model.model.Model.get_data_counts", return_value="data_counts")
     mocker.patch("model.model.Model._add_pod_to_data")
 
     # act
@@ -169,7 +169,7 @@ def test_model_init_sets_values(mocker, model_type):
     assert mdl.run_params == "run_params"
     assert mdl.data_mask == "data_mask"
     assert mdl.baseline_counts == "data_counts"
-    mdl._get_data_counts.call_args_list[0][0][0].equals(mdl.data)
+    mdl.get_data_counts.call_args_list[0][0][0].equals(mdl.data)
     mdl._add_pod_to_data.assert_called_once_with()
 
 
@@ -188,8 +188,8 @@ def test_model_init_calls_generate_run_params(mocker):
     mocker.patch("model.model.Model._load_strategies")
     mocker.patch("model.model.Model._load_demog_factors")
     mocker.patch("model.model.Model.generate_run_params", return_value="generated")
-    mocker.patch("model.model.Model._get_data_mask", return_value="data_mask")
-    mocker.patch("model.model.Model._get_data_counts", return_value="data_counts")
+    mocker.patch("model.model.Model.get_data_mask", return_value="data_mask")
+    mocker.patch("model.model.Model.get_data_counts", return_value="data_counts")
 
     # act
     mdl = Model("aae", "arrivals", params, "data", "hsa")

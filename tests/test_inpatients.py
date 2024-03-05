@@ -117,10 +117,10 @@ def test_add_pod_to_data(mock_model):
 def test_get_data_mask(mock_model):
     # arrange
     expected = [True] * 3 + [False] * 2
-    mock_model.data = pd.DataFrame({"bedday_rows": [not i for i in expected]})
+    data = pd.DataFrame({"bedday_rows": [not i for i in expected]})
 
     # act
-    actual = mock_model._get_data_mask()
+    actual = mock_model.get_data_mask(data)
 
     # assert
     assert actual.tolist() == expected
@@ -201,7 +201,7 @@ def test_get_data_counts(mock_model):
     data = pd.DataFrame({"rn": [1, 2, 3], "speldur": [0, 1, 2]})
 
     # act
-    actual = mdl._get_data_counts(data)
+    actual = mdl.get_data_counts(data)
 
     # assert
     assert actual.tolist() == [[1.0, 1.0, 1.0], [1.0, 2.0, 3.0]]
@@ -210,19 +210,13 @@ def test_get_data_counts(mock_model):
 def test_apply_resampling(mocker, mock_model):
     # arrange
     row_samples = np.array([[0, 1, 2, 3], [4, 5, 6, 7]])
-    gdc_mock = mocker.patch(
-        "model.inpatients.InpatientsModel._get_data_counts",
-        return_value=np.array([1, 1, 1, 1, 1, 1]),
-    )
     data = pd.DataFrame(
         {"rn": [0, 1, 2, 3], "bedday_rows": [False, False, False, True]}
     )
     # act
-    data, counts = mock_model.apply_resampling(row_samples, data)
+    data = mock_model.apply_resampling(row_samples, data)
     # assert
     assert data["rn"].to_list() == [1, 2, 2, 3, 3, 3]
-    assert counts.sum() == 3.0
-    gdc_mock.assert_called_once()
 
 
 def test_efficiencies(mocker, mock_model):
@@ -523,9 +517,9 @@ def test_aggregate(mock_model):
         "tretspef": list(range(6)) * 2 + list(range(5)) * 4,
         "tretspef_raw": list(range(12)) + [i for i in range(11) if i != 5] * 2,
         "measure": (["admissions"] * 5 + ["attendances"]) * 2
-        + ["procedures"] * 10
-        + ["beddays"] * 10,
-        "value": [1] * 12 + [0, 1, 0, 1, 0] * 2 + [i for i in range(1, 12) if i != 6],
+        + ["beddays"] * 10
+        + ["procedures"] * 10,
+        "value": [1] * 12 + [i for i in range(1, 12) if i != 6] + [0, 1, 0, 1, 0] * 2,
         "pod": [
             "ip_elective_admission",
             "ip_elective_daycase",

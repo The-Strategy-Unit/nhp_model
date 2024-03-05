@@ -47,7 +47,7 @@ class AaEModel(Model):
         """Adds the POD column to data"""
         self.data["pod"] = "aae_type-" + self.data["aedepttype"]
 
-    def _get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
+    def get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
         """Get row counts of data
 
         :param data: the data to get the counts of
@@ -78,7 +78,7 @@ class AaEModel(Model):
 
     def apply_resampling(
         self, row_samples: npt.ArrayLike, data: pd.DataFrame
-    ) -> Tuple[pd.DataFrame, npt.ArrayLike]:
+    ) -> pd.DataFrame:
         """Apply row resampling
 
         Called from within `model.activity_avoidance.ActivityAvoidance.apply_resampling`
@@ -89,11 +89,11 @@ class AaEModel(Model):
         :param data: the data that we want to update
         :type data: pd.DataFrame
         :return: the updated data
-        :rtype: Tuple[pd.DataFrame, npt.ArrayLike]
+        :rtype: pd.DataFrame
         """
         data["arrivals"] = row_samples[0]
-        # return the altered data and the amount of admissions/beddays after resampling
-        return (data, self._get_data_counts(data))
+        # return the altered data
+        return data
 
     def efficiencies(self, model_run: ModelRun) -> None:
         """Run the efficiencies steps of the model

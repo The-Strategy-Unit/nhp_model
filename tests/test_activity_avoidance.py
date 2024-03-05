@@ -611,7 +611,7 @@ def test_apply_resampling(mock_activity_avoidance):
 
     mr.data = "data"
     mr.rng.poisson.return_value = "poisson"
-    mr.model.apply_resampling.return_value = ("data", np.array([[30.0, 50.0]]))
+    mr.model.apply_resampling.return_value = "data"
 
     aa_mock.step_counts = {
         ("baseline", "-"): np.array([[20.0], [30.0]]),
@@ -622,9 +622,9 @@ def test_apply_resampling(mock_activity_avoidance):
 
     expected = {
         ("baseline", "-"): [[20.0], [30.0]],
-        ("a", "-"): [[23.33333333333333], [38.57142857142857]],
-        ("b", "-"): [[46.66666666666666], [19.285714285714285]],
-        ("c", "-"): [[-46.66666666666666], [-19.285714285714285]],
+        ("a", "-"): [[5.0], [10.0]],
+        ("b", "-"): [[10.0], [5.0]],
+        ("c", "-"): [[-10.0], [-5.0]],
     }
 
     # act
