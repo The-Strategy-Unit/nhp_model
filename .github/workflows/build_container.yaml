@@ -40,10 +40,6 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: Update version (production)
-        if: ${{ inputs.latest }}
-        run: |
-
       - name: 'Build and push image'
         if: ${{ !inputs.latest }}
         run: |
