@@ -24,6 +24,9 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      # replaced progamatically if deploying to production
+      VERSION: dev
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@main
@@ -40,23 +43,22 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: 'Build and push image'
-        if: ${{ !inputs.latest }}
+      - name: Update version (production)
+        if: ${{ inputs.latest }}
         run: |
-          docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:dev \
+          VERSION=`echo ${{ github.ref_name }} | awk 'BEGIN { FS="."; } { print ""$1"."$2; }'`
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: 'Build and push image'
+        run: |
+          docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ env.VERSION }} \
             --build-arg app_version=${{ inputs.app-version }} \
             --build-arg data_version=${{ inputs.data-version }} \
             --build-arg storage_account=${{ secrets.NHP_STORAGE_ACCOUNT }}
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:dev
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ env.VERSION }}
           
       - name: 'Push latest'
         if: ${{ inputs.latest }}
         run: |
-          VERSION=`echo ${{ github.ref_name }} | awk 'BEGIN { FS="."; } { print ""$1"."$2; }'`
-          docker image pull ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:dev
-          # tag version
-          docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:dev ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:$VERSION
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:$VERSION
-          # tag latest
-          docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:dev ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
+          docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ env.VERSION }} ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
