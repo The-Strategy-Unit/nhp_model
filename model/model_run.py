@@ -130,12 +130,17 @@ class ModelRun:
             sitetret_pod, (self.model.baseline_counts * self.model.data_mask)
         )
 
-        counts_after = get_counts(
-            self.data[["sitetret", "pod"]].reset_index(drop=True),
-            (
-                self.model.get_data_counts(self.data)
-                * self.model.get_data_mask(self.data)
-            ),
+        counts_after = (
+            get_counts(
+                self.data[["sitetret", "pod"]].reset_index(drop=True),
+                (
+                    self.model.get_data_counts(self.data)
+                    * self.model.get_data_mask(self.data)
+                ),
+            )
+            # if any activity is completely avoided, then we need to impute as 0
+            .reindex_like(counts_before)
+            .fillna(0.0)
         )
 
         step_counts = (
