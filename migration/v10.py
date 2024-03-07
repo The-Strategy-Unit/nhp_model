@@ -31,5 +31,6 @@ def v06_to_v10(filename: str) -> dict:
         params = json.load(gzf)["params"]
 
     params["app_version"] = "v1.0"
+    params["time_profile_mappings"]["non-demographic_adjustment"] = "none"
 
     return params
