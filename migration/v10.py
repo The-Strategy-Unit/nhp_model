@@ -15,7 +15,7 @@ def convert_all_files_in_folder(path: str) -> None:
     :param path: the folder which contains the old results
     :type path: str
     """
-    _convert_all_files_in_folder(path, "v1.0", v06_to_v10)
+    _convert_all_files_in_folder(path, "prod/v1.0", v06_to_v10)
 
 
 def v06_to_v10(filename: str) -> dict:
