@@ -333,46 +333,16 @@ def test_get_step_counts_no_efficiencies(mock_model_run):
     mr.model.get_data_mask.return_value = np.array([[1, 1, 1, 0, 0], [1, 1, 1, 0, 0]])
 
     expected = {
-        "change_factor": [x for x in ["baseline", "x", "y", "z"] for _ in range(8)],
-        "strategy": [x for x in ["-", "-", "a", "a"] for _ in range(8)],
+        "pod": [x for x in ["a", "b"] for _ in range(2)] * 8,
         "sitetret": [x for x in ["a", "b"] for _ in range(4)] * 4,
+        "change_factor": [x for x in ["baseline", "x", "y", "z"] for _ in range(8)],
         "activity_type": ["ip"] * 32,
-        "pod": ["a", "a", "b", "b"] * 8,
         "measure": ["x", "y"] * 16,
-        "value": [
-            1,
-            4,
-            2,
-            5,
-            3,
-            6,
-            1,
-            1,
-            3,
-            6,
-            0,
-            0,
-            1,
-            4,
-            0,
-            0,
-            2,
-            5,
-            0,
-            0,
-            3,
-            6,
-            0,
-            0,
-            -2,
-            -5,
-            0,
-            0,
-            -3,
-            -6,
-            0,
-            0,
-        ],
+        "strategy": ["-"] * 16 + ["a"] * 16,
+        "value": [1, 4, 2, 5, 3, 6, 1, 1]
+        + [3, 6, 2, 5, 1, 4, 1, 1]
+        + [2, 5, 1, 4, 3, 6, 1, 1]
+        + [-2, -5, -1, -4, -3, -6, -1, -1],
     }
     # act
     actual = pd.DataFrame(
