@@ -181,7 +181,7 @@ create_provider_ip_strategies <- function(params) {
     dplyr::inner_join(strategy_lookups, by = c("strategy")) |>
     dplyr::select(rn = "EPIKEY", "strategy", "strategy_type", "sample_rate") |>
     # old strategy that should be removed
-    dplyr::filter(.data$strategy == "improved_discharge_planning_emergency")
+    dplyr::filter(.data$strategy != "improved_discharge_planning_emergency")
 
   # bads records where we wont convert daycases
   tb_bads_strategies_to_remove <- tb_strategies |>
