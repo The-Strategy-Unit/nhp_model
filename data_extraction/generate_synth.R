@@ -64,7 +64,7 @@ create_ip_synth <- function(ip_files) {
     dplyr::semi_join(ds_sample, by = "rn") |>
     dplyr::summarise(
       .by = c("rn", "strategy"),
-      dplyr::across("sample_rate", min, na.rm = TRUE)
+      dplyr::across("sample_rate", \(.x) min(.x, na.rm = TRUE))
     )
 
   ip_s_a <- dplyr::collect(ds_s_a)
@@ -74,7 +74,7 @@ create_ip_synth <- function(ip_files) {
     dplyr::semi_join(ds_sample, by = "rn") |>
     dplyr::summarise(
       .by = c("rn", "strategy"),
-      dplyr::across("sample_rate", min, na.rm = TRUE)
+      dplyr::across("sample_rate", \(.x) min(.x, na.rm = TRUE))
     )
 
   ip_s_e <- dplyr::collect(ds_s_e)
@@ -109,3 +109,5 @@ create_synth_gams <- function(ip_data, op_data, aae_data, demographic_factors) {
     )
   )
 }
+
+create_ip_synth(targets::tar_read(ip_data))
