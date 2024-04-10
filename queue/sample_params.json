@@ -1137,6 +1137,18 @@
           0.95
         ]
       },
+      "virtual_wards_activity_avoidance_ari": {
+        "interval": [
+          0.85,
+          0.95
+        ]
+      },
+      "virtual_wards_activity_avoidance_heart_failure": {
+        "interval": [
+          0.85,
+          0.95
+        ]
+      },
       "zero_los_no_procedure_adult": {
         "interval": [
           0.85,
@@ -1402,6 +1414,18 @@
         "interval": [
           0.91,
           0.93
+        ]
+      },
+      "virtual_wards_efficiencies_ari": {
+        "interval": [
+          0.85,
+          0.95
+        ]
+      },
+      "virtual_wards_efficiencies_heart_failure": {
+        "interval": [
+          0.85,
+          0.95
         ]
       }
     },

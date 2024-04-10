@@ -15,105 +15,11 @@ extract_ip_data <- function(start_date, end_date, providers) {
       .data$PROCODE3 %in% providers
     )
 
-  inpatients <- tb_inpatients |>
+  tb_inpatients |>
     dplyr::arrange(.data$EPIKEY) |>
     dplyr::collect() |>
     janitor::clean_names() |>
     dplyr::rename(rn = "epikey")
-
-  strategy_lookups <- dplyr::tbl(con, dbplyr::in_schema("nhp_modelling_reference", "strategy_lookups"))
-
-  strategies <- dplyr::tbl(con, dbplyr::in_schema("nhp_modelling", "strategies")) |>
-    dplyr::semi_join(tb_inpatients, by = "EPIKEY") |>
-    dplyr::inner_join(strategy_lookups, by = c("strategy")) |>
-    dplyr::select(rn = "EPIKEY", "strategy", "strategy_type", "sample_rate") |>
-    dplyr::collect()
-
-  list(
-    data = inpatients,
-    strategies = strategies
-  )
-}
-
-extract_ip_sample_data <- function(start_date, end_date, ...) {
-  con <- DBI::dbConnect(
-    odbc::odbc(),
-    .connection_string = Sys.getenv("CONSTR"), timeout = 10
-  )
-  withr::defer(DBI::dbDisconnect(con))
-
-  # only select organisations that had on average at least 50 people admitted
-  # per day and also had day cases
-  tbl_providers_of_interest <- dplyr::tbl(con, dbplyr::in_schema("nhp_modelling_reference", "org_code_type")) |>
-    dplyr::filter(
-      .data$org_type == "Acute",
-      .data$org_subtype %in% c("Small", "Medium", "Large")
-    ) |>
-    dplyr::select("org_code")
-
-  tbl_inpatients <- dplyr::tbl(con, dbplyr::in_schema("nhp_modelling", "inpatients")) |>
-    dplyr::filter(
-      .data$DISDATE >= start_date,
-      .data$DISDATE <= end_date
-    ) |>
-    dplyr::semi_join(tbl_providers_of_interest, by = c("PROCODE3" = "org_code"))
-
-  n_rows <- tbl_inpatients |>
-    dplyr::count(.data$PROCODE3) |>
-    dplyr::collect() |>
-    dplyr::pull(.data$n) |>
-    median() |>
-    round()
-
-  main_icb_rate <- tbl_inpatients |>
-    dplyr::summarise(
-      dplyr::across("is_main_icb", ~ mean(.x * 1.0, na.rm = TRUE))
-    ) |>
-    dplyr::collect() |>
-    dplyr::pull("is_main_icb")
-
-  inpatients <- tbl_inpatients |>
-    dplyr::arrange(x = NEWID()) |> # nolint
-    head(n_rows) |>
-    dplyr::collect() |>
-    janitor::clean_names() |>
-    dplyr::mutate(
-      # create a pseudo provider field
-      procode3 = "RXX",
-      # make 3 sites
-      sitetret = paste0("RXX0", sample(1:3, dplyr::n(), TRUE)),
-      is_main_icb = rbinom(dplyr::n(), 1, main_icb_rate)
-    ) |>
-    dplyr::mutate(
-      rn = dplyr::row_number(),
-      .before = tidyselect::everything()
-    )
-
-  ip_sample <- dplyr::copy_to(
-    con,
-    dplyr::select(inpatients, "epikey"),
-    "inpatients_random_sample"
-  )
-
-  strategy_lookups <- dplyr::tbl(con, dbplyr::in_schema("nhp_modelling_reference", "strategy_lookups"))
-
-  strategies <- dplyr::tbl(con, dbplyr::in_schema("nhp_modelling", "strategies")) |>
-    dplyr::semi_join(ip_sample, by = c("EPIKEY" = "epikey")) |>
-    dplyr::inner_join(strategy_lookups, by = c("strategy")) |>
-    dplyr::select("EPIKEY", "strategy", "strategy_type", "sample_rate") |>
-    dplyr::collect() |>
-    janitor::clean_names() |>
-    dplyr::inner_join(
-      dplyr::select(inpatients, "epikey", "rn"),
-      by = "epikey"
-    ) |>
-    dplyr::relocate("rn", .before = tidyselect::everything()) |>
-    dplyr::select(-"epikey")
-
-  list(
-    data = inpatients,
-    strategies = strategies
-  )
 }
 
 # -------------------------------------------------------------------------------
@@ -207,59 +113,21 @@ create_ip_data <- function(inpatients, specialties) {
     tidyr::drop_na("hsagrp", "speldur")
 }
 
-create_ip_synth_from_data <- function(data) {
-  data |>
-    dplyr::group_by(.data$classpat) |>
-    dplyr::mutate(
-      dplyr::across(c("age", "admidate"), ~ .x + sample(-5:5, dplyr::n(), TRUE)),
-      dplyr::across(c("speldur", "imd04_decile", "ethnos"), ~ sample(.x, dplyr::n(), TRUE)),
-      speldur = ifelse(.data$classpat == 5 & .data$speldur > 10, 10, .data$speldur),
-      disdate = .data$admidate + .data$speldur,
-      # "fix" age field
-      age = dplyr::case_when(
-        hsagrp == "birth" ~ 0L,
-        age < 0L ~ 0L,
-        age > 90L ~ 90L,
-        TRUE ~ age
+union_bed_days_rows <- function(data, start_date) {
+  dplyr::bind_rows(
+    .id = "bedday_rows",
+    "FALSE" = data,
+    "TRUE" = data |>
+      dplyr::filter(.data$admidate < start_date) |>
+      dplyr::mutate(
+        dplyr::across(dplyr::ends_with("date"), ~ lubridate::`%m+%`(.x, lubridate::years(1)))
       )
-    ) |>
-    dplyr::ungroup() |>
-    # randomly shuffle the specialty: ignore paeds/maternity/birth, and handle
-    # each classpat separately
-    (\(data) {
-      a <- data |>
-        dplyr::filter(.data$hsagrp %in% c("paeds", "maternity", "birth"))
-
-      b <- data |>
-        dplyr::anti_join(a, by = "rn") |>
-        dplyr::group_by(.data$classpat) |>
-        dplyr::mutate(
-          dplyr::across(c("mainspef", "tretspef"), ~ sample(.x, dplyr::n(), TRUE))
-        )
-
-      dplyr::bind_rows(a, b)
-    })()
+  ) |>
+    dplyr::mutate(dplyr::across("bedday_rows", as.logical)) |>
+    dplyr::relocate("bedday_rows", .after = dplyr::everything())
 }
 
-union_bed_days_rows <- function(start_date) {
-  force(start_date)
-
-  function(data) {
-    dplyr::bind_rows(
-      .id = "bedday_rows",
-      "FALSE" = data,
-      "TRUE" = data |>
-        dplyr::filter(.data$admidate < start_date) |>
-        dplyr::mutate(
-          dplyr::across(dplyr::ends_with("date"), ~ lubridate::`%m+%`(.x, lubridate::years(1)))
-        )
-    ) |>
-      dplyr::mutate(dplyr::across("bedday_rows", as.logical)) |>
-      dplyr::relocate("bedday_rows", .after = dplyr::everything())
-  }
-}
-
-save_ip_data <- function(data, strategies, name, path) {
+save_ip_data <- function(data, name, path) {
   ip_fn <- file.path(path, name, "ip.parquet")
 
   data |>
@@ -275,25 +143,62 @@ save_ip_data <- function(data, strategies, name, path) {
     ) |>
     arrow::write_parquet(ip_fn)
 
-  strategies_to_remove <- dplyr::bind_rows(
-    # bads records where we wont convert daycases
-    strategies |>
-      dplyr::filter(
-        .data$strategy |> stringr::str_detect("bads_"),
-        .data$strategy != "bads_outpatients"
-      ) |>
-      dplyr::semi_join(
-        data |>
-          dplyr::filter(.data$classpat != 1),
-        by = "rn"
-      ),
-    strategies |>
-      dplyr::filter(.data$strategy == "improved_discharge_planning_emergency")
-  )
+  ip_fn
+}
 
-  strategies_fns <- strategies |>
-    dplyr::anti_join(strategies_to_remove, by = c("rn", "strategy")) |>
-    tidyr::drop_na("strategy_type") |>
+# ------------------------------------------------------------------------------
+
+create_provider_ip_extract <- function(params, specialties = NULL) {
+  cat(paste("    [ip] running:", params$name))
+
+  extract_ip_data(params$start_date, params$end_date, params$providers) |>
+    create_ip_data(specialties) |>
+    union_bed_days_rows(params$start_date) |>
+    save_ip_data(params$name, params$path)
+}
+
+create_provider_ip_strategies <- function(params) {
+  cat(paste("    [ip (strategies)] running:", params$name))
+
+  con <- DBI::dbConnect(
+    odbc::odbc(),
+    .connection_string = Sys.getenv("CONSTR"), timeout = 10
+  )
+  withr::defer(DBI::dbDisconnect(con))
+
+  strategy_lookups <- dplyr::tbl(con, dbplyr::in_schema("nhp_modelling_reference", "strategy_lookups")) |>
+    dplyr::filter(!is.na(.data[["strategy_type"]]))
+
+  tb_inpatients <- dplyr::tbl(con, dbplyr::in_schema("nhp_modelling", "inpatients")) |>
+    dplyr::filter(
+      .data$DISDATE >= !!(params$start_date),
+      .data$DISDATE <= !!(params$end_date),
+      .data$PROCODE3 %in% !!(params$providers)
+    )
+
+  tb_strategies <- dplyr::tbl(con, dbplyr::in_schema("nhp_modelling", "strategies")) |>
+    dplyr::semi_join(tb_inpatients, by = "EPIKEY") |>
+    dplyr::inner_join(strategy_lookups, by = c("strategy")) |>
+    dplyr::select(rn = "EPIKEY", "strategy", "strategy_type", "sample_rate") |>
+    # old strategy that should be removed
+    dplyr::filter(.data$strategy != "improved_discharge_planning_emergency")
+
+  # bads records where we wont convert daycases
+  tb_bads_strategies_to_remove <- tb_strategies |>
+    dplyr::filter(
+      .data$strategy %LIKE% "bads_%", # nolint
+      .data$strategy != "bads_outpatients"
+    ) |>
+    dplyr::semi_join(
+      tb_inpatients |>
+        dplyr::filter(.data$classpat != "1") |>
+        dplyr::select("rn" = "EPIKEY"),
+      by = "rn"
+    )
+
+  tb_strategies |>
+    dplyr::anti_join(tb_bads_strategies_to_remove, by = c("rn", "strategy")) |>
+    dplyr::collect() |>
     dplyr::group_nest(.data$strategy_type) |>
     dplyr::mutate(
       dplyr::across(
@@ -306,7 +211,7 @@ save_ip_data <- function(data, strategies, name, path) {
       )
     ) |>
     purrr::pmap_chr(\(strategy_type, data) {
-      fn <- file.path(path, name, glue::glue("ip_{strategy_type}_strategies.parquet"))
+      fn <- file.path(params$path, params$name, glue::glue("ip_{strategy_type}_strategies.parquet"))
 
       data |>
         dplyr::arrange(.data$strategy, .data$rn) |>
@@ -314,64 +219,4 @@ save_ip_data <- function(data, strategies, name, path) {
 
       fn
     })
-
-  c(ip_fn, strategies_fns)
-}
-
-# ------------------------------------------------------------------------------
-
-create_ip_extract <- function(start_date,
-                              end_date,
-                              providers,
-                              specialties,
-                              name,
-                              extract_fn,
-                              synth_fn,
-                              path,
-                              ...) {
-  inpatients <- strategies <- NULL # for lint
-  c(inpatients, strategies) %<-% extract_fn(start_date, end_date, providers)
-
-  # partially apply the function
-  ubdr <- union_bed_days_rows(start_date)
-
-  inpatients |>
-    create_ip_data(specialties) |>
-    synth_fn() |>
-    ubdr() |>
-    save_ip_data(strategies, name, path)
-}
-
-create_synthetic_ip_extract <- function(start_date,
-                                        end_date,
-                                        ...,
-                                        name = "synthetic",
-                                        specialties = NULL,
-                                        path = "data") {
-  create_ip_extract(
-    start_date,
-    end_date,
-    NULL,
-    specialties,
-    name,
-    extract_ip_sample_data,
-    create_ip_synth_from_data,
-    path,
-    ...
-  )
-}
-
-create_provider_ip_extract <- function(params, specialties = NULL) {
-  cat(paste("    [ip] running:", params$name))
-
-  create_ip_extract(
-    params$start_date,
-    params$end_date,
-    params$providers,
-    specialties,
-    params$name,
-    extract_ip_data,
-    identity,
-    params$path,
-  )
 }

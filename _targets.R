@@ -89,6 +89,14 @@ list(
     format = "file"
   ),
   tar_target(
+    ip_strategies,
+    create_provider_ip_strategies(
+      params
+    ),
+    pattern = map(params),
+    format = "file"
+  ),
+  tar_target(
     op_data,
     create_provider_op_extract(
       params,
@@ -208,7 +216,7 @@ list(
         fn = create_gams,
         p = params$providers,
         b = as.character(lubridate::year(params$start_date)),
-        stringr::str_subset(ip_data, "ip\\.parquet$"),
+        ip_data,
         op_data,
         aae_data,
         demographic_factors,
@@ -257,6 +265,7 @@ list(
     all_files,
     c(
       ip_data,
+      ip_strategies,
       op_data,
       aae_data,
       demographic_factors,
