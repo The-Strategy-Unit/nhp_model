@@ -106,11 +106,22 @@ list(
     format = "file"
   ),
   tar_target(
+    ecds_2019,
+    "data/raw/ecds_2019.parquet",
+    format = "file"
+  ),
+  tar_target(
+    successors_file,
+    "data/reference/successors.csv",
+    format = "file"
+  ),
+  tar_target(
     aae_data,
-    create_provider_aae_extract(
-      params
+    generate_aae_from_ecds(
+      params,
+      ecds_2019,
+      successors_file
     ),
-    pattern = map(params),
     format = "file"
   ),
   # kh03 data
