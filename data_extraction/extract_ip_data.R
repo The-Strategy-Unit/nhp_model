@@ -176,28 +176,10 @@ create_provider_ip_strategies <- function(params) {
       .data$PROCODE3 %in% !!(params$providers)
     )
 
-  tb_strategies <- dplyr::tbl(con, dbplyr::in_schema("nhp_modelling", "strategies")) |>
+  dplyr::tbl(con, dbplyr::in_schema("nhp_modelling", "strategies")) |>
     dplyr::semi_join(tb_inpatients, by = "EPIKEY") |>
     dplyr::inner_join(strategy_lookups, by = c("strategy")) |>
     dplyr::select(rn = "EPIKEY", "strategy", "strategy_type", "sample_rate") |>
-    # old strategy that should be removed
-    dplyr::filter(.data$strategy != "improved_discharge_planning_emergency")
-
-  # bads records where we wont convert daycases
-  tb_bads_strategies_to_remove <- tb_strategies |>
-    dplyr::filter(
-      .data$strategy %LIKE% "bads_%", # nolint
-      .data$strategy != "bads_outpatients"
-    ) |>
-    dplyr::semi_join(
-      tb_inpatients |>
-        dplyr::filter(.data$classpat != "1") |>
-        dplyr::select("rn" = "EPIKEY"),
-      by = "rn"
-    )
-
-  tb_strategies |>
-    dplyr::anti_join(tb_bads_strategies_to_remove, by = c("rn", "strategy")) |>
     dplyr::collect() |>
     dplyr::group_nest(.data$strategy_type) |>
     dplyr::mutate(
