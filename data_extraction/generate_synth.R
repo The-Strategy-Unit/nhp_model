@@ -48,7 +48,7 @@ create_ip_synth <- function(ip_files) {
   ip_s_e_files <- ip_s_e_files[f]
 
   con <- DBI::dbConnect(duckdb::duckdb())
-  withr::defer(DBI::dbDisconnect(con))
+  withr::defer(DBI::dbDisconnect(con, shutdown = TRUE))
 
   ds <- arrow::open_dataset(ip_files) |>
     arrow::to_duckdb(table_name = "ip", con = con) |>
