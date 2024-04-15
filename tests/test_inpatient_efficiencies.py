@@ -57,22 +57,44 @@ def test_init(mocker):
     actual._generate_losr_df.assert_called_once()
 
 
-def test_select_single_strategy(mock_ipe):
+@pytest.mark.parametrize(
+    "strategy, x",
+    [
+        ("general_los_reduction_emergency", True),
+        ("general_los_reduction_elective", False),
+    ],
+)
+def test_select_single_strategy(mock_ipe, strategy, x):
     # arrange
     m = mock_ipe
     m._model_run.rng = np.random.default_rng(0)
-    m._model_run.data = pd.DataFrame({"rn": [1, 2, 3, 4]})
+    m._model_run.data = pd.DataFrame(
+        {
+            "rn": list(range(9)),
+            "admimeth": ["0"] * 4 + ["3"] + ["2"] * 2 + ["1"] * 2,
+            "speldur": [0] * 5 + [0, 1] * 2,
+        }
+    )
     m._model_run.model.strategies = {
         "efficiencies": pd.DataFrame(
             {"strategy": ["a"] * 3 + ["b"] * 3}, index=[1, 2, 3] * 2
         )
+    }
+    m._model_run.params = {
+        "efficiencies": {"ip": {"a": 2, "b": 3, "c": 4, strategy: 5}}
     }
 
     # act
     m._select_single_strategy()
 
     # assert
-    assert m._model_run.data.index.to_list() == ["b", "b", "a", "NULL"]
+    assert m._model_run.data.index.fillna("NULL").to_list() == [
+        "NULL",
+        "b",
+        "b",
+        "a",
+        "NULL",
+    ] + ["NULL", strategy if x else "NULL"] + ["NULL", strategy if not x else "NULL"]
 
 
 def test_generate_losr_df(mock_ipe):

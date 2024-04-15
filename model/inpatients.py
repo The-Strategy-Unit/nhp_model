@@ -405,10 +405,20 @@ class InpatientEfficiencies:
                 .head(1),
                 na_action="ignore",
             )
-            .fillna("NULL")
-            # .loc[self.data["rn"]]
             .rename(None)
         )
+        # set admissions without a strategy selected to general_los_reduction_X
+        # where applicable
+        for i, j in [("1", "elective"), ("2", "emergency")]:
+            j = f"general_los_reduction_{j}"
+            if j not in self._model_run.params["efficiencies"]["ip"]:
+                continue
+            selected_strategy[
+                self.data["admimeth"].str.startswith(i)
+                & (self.data["speldur"] > 0)
+                & selected_strategy.isna()
+            ] = j
+        # assign the selected strategies
         self.data.set_index(selected_strategy, inplace=True)
 
     def _generate_losr_df(self):
