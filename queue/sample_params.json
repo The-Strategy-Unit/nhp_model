@@ -1374,29 +1374,29 @@
           0.95
         ]
       },
-      "bads_daycase_occasional": {
-        "type": "bads_daycase",
+      "day_procedures_occasionally_dc": {
+        "type": "day_procedures_daycase",
         "interval": [
           0.85,
           0.95
         ]
       },
-      "bads_daycase": {
-        "type": "bads_daycase",
+      "day_procedures_occasionally_op": {
+        "type": "day_procedures_outpatients",
         "interval": [
           0.85,
           0.95
         ]
       },
-      "bads_outpatients": {
-        "type": "bads_outpatients",
+      "day_procedures_usually_dc": {
+        "type": "day_procedures_daycase",
         "interval": [
           0.85,
           0.95
         ]
       },
-      "bads_outpatients_or_daycase": {
-        "type": "bads_outpatients",
+      "day_procedures_usually_op": {
+        "type": "day_procedures_outpatients",
         "interval": [
           0.89,
           0.95
@@ -1715,10 +1715,10 @@
         "pre-op_los_2-day": "linear",
         "raid_ip": "linear",
         "stroke_early_supported_discharge": "linear",
-        "bads_daycase_occasional": "linear",
-        "bads_daycase": "linear",
-        "bads_outpatients": "linear",
-        "bads_outpatients_or_daycase": "linear",
+        "day_procedures_occasionally_dc": "linear",
+        "day_procedures_occasionally_op": "linear",
+        "day_procedures_usually_dc": "linear",
+        "day_procedures_usually_op": "linear",
         "general_los_reduction_non-elective": "linear",
         "general_los_reduction_elective": "linear"
       },
