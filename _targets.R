@@ -250,7 +250,7 @@ list(
         py_gam_file_path
       )
     ),
-    pattern = map(params, ip_data, op_data, aae_data, demographic_factors)
+    pattern = map(params, ip_data, op_data, demographic_factors)
   ),
   tar_target(
     gams,
