@@ -113,6 +113,11 @@ list(
     format = "file"
   ),
   tar_target(
+    ip_synth,
+    create_ip_synth(ip_data),
+    format = "file"
+  ),
+  tar_target(
     op_data,
     create_provider_op_extract(
       params,

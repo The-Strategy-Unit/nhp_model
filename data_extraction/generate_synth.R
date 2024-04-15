@@ -48,6 +48,7 @@ create_ip_synth <- function(ip_files) {
   ip_s_e_files <- ip_s_e_files[f]
 
   con <- DBI::dbConnect(duckdb::duckdb())
+  withr::defer(DBI::dbDisconnect(con))
 
   ds <- arrow::open_dataset(ip_files) |>
     arrow::to_duckdb(table_name = "ip", con = con) |>
@@ -109,5 +110,3 @@ create_synth_gams <- function(ip_data, op_data, aae_data, demographic_factors) {
     )
   )
 }
-
-create_ip_synth(targets::tar_read(ip_data))
