@@ -230,6 +230,7 @@ def test_efficiencies(mocker, mock_model):
     mock.losr_all.return_value = mock
     mock.losr_aec.return_value = mock
     mock.losr_preop.return_value = mock
+    mock.losr_day_procedures.return_value = mock
     mock.update_step_counts.return_value = mock
 
     mock_model_run = Mock()
@@ -244,6 +245,11 @@ def test_efficiencies(mocker, mock_model):
     mock.losr_all.assert_called_once()
     mock.losr_aec.assert_called_once()
     mock.losr_preop.assert_called_once()
+    assert mock.losr_day_procedures.call_count == 2
+    assert mock.losr_day_procedures.call_args_list == [
+        call("day_procedures_daycase"),
+        call("day_procedures_outpatients"),
+    ]
     mock.update_step_counts.assert_called_once()
 
 
