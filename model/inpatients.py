@@ -157,6 +157,8 @@ class InpatientsModel(Model):
                 .losr_all()
                 .losr_aec()
                 .losr_preop()
+                .losr_day_procedures("day_procedures_daycase")
+                .losr_day_procedures("day_procedures_outpatients")
                 .update_step_counts()
             )
 
@@ -488,15 +490,12 @@ class InpatientEfficiencies:
 
         return self
 
-    def losr_bads(self) -> None:
+    def losr_day_procedures(self, day_procedure_type: str) -> None:
         """
-        Length of Stay Reduction: British Association of Day Surgery
+        Length of Stay Reduction: Day Procedures
 
         This will swap rows between elective admissions and daycases into either daycases or
-        outpatients, based on the given parameter values. We have a baseline target rate, this is
-        the rate in the baseline that rows are of the given target type (i.e. either daycase,
-        outpatients, daycase or outpatients). Our interval will alter the target_rate by setting
-        some rows which are not the target type to be the target type.
+        outpatients, based on the given parameter values.
 
         Rows that are converted to daycase have the patient classification set to 2. Rows that are
         converted to outpatients have a patient classification of -1 (these rows need to be filtered
@@ -509,7 +508,7 @@ class InpatientEfficiencies:
         data = self.data
         rng = self._model_run.rng
 
-        losr = losr[losr.type.str[:4] == "bads"]
+        losr = losr[losr.type == day_procedure_type]
 
         i = losr.index
 
@@ -526,7 +525,7 @@ class InpatientEfficiencies:
         data.loc[i, "classpat"] = np.where(
             dont_change_classpat,
             data.loc[i, "classpat"],
-            np.where(data.loc[i].index.str[5:12] == "daycase", "2", "-1"),
+            "2" if day_procedure_type == "day_procedures_daycase" else "-1",
         )
 
         return self
