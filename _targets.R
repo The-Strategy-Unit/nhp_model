@@ -69,8 +69,24 @@ list(
   tar_target(
     rtt_specs,
     c(
-      "100", "101", "110", "120", "130", "140", "160", "300", "320", "330",
-      "400", "410", "430", "502"
+      "100",
+      "101",
+      "110",
+      "120",
+      "130",
+      "140",
+      "150",
+      "160",
+      "170",
+      "300",
+      "301",
+      "320",
+      "330",
+      "340",
+      "400",
+      "410",
+      "430",
+      "502"
     )
   ),
   # targets ----
@@ -97,6 +113,11 @@ list(
     format = "file"
   ),
   tar_target(
+    ip_synth,
+    create_ip_synth(ip_data),
+    format = "file"
+  ),
+  tar_target(
     op_data,
     create_provider_op_extract(
       params,
@@ -106,11 +127,22 @@ list(
     format = "file"
   ),
   tar_target(
+    ecds_2019,
+    "data/raw/ecds_2019.parquet",
+    format = "file"
+  ),
+  tar_target(
+    successors_file,
+    "data/reference/successors.csv",
+    format = "file"
+  ),
+  tar_target(
     aae_data,
-    create_provider_aae_extract(
-      params
+    generate_aae_from_ecds(
+      params,
+      ecds_2019,
+      successors_file
     ),
-    pattern = map(params),
     format = "file"
   ),
   # kh03 data
@@ -223,7 +255,7 @@ list(
         py_gam_file_path
       )
     ),
-    pattern = map(params, ip_data, op_data, aae_data, demographic_factors)
+    pattern = map(params, ip_data, op_data, demographic_factors)
   ),
   tar_target(
     gams,
