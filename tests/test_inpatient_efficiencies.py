@@ -59,18 +59,27 @@ def test_select_single_strategy(mock_ipe):
     # arrange
     m = mock_ipe
     m._model_run.rng = np.random.default_rng(0)
-    m._model_run.data = pd.DataFrame({"rn": [1, 2, 3, 4]})
+    m._model_run.data = pd.DataFrame(
+        {"rn": list(range(5)), "admimeth": ["0"] * 4 + ["3"]}
+    )
     m._model_run.model.strategies = {
         "efficiencies": pd.DataFrame(
             {"strategy": ["a"] * 3 + ["b"] * 3}, index=[1, 2, 3] * 2
         )
     }
+    m._model_run.params = {"efficiencies": {"ip": {"a": 2, "b": 3, "c": 4}}}
 
     # act
     m._select_single_strategy()
 
     # assert
-    assert m._model_run.data.index.to_list() == ["b", "b", "a", "NULL"]
+    assert m._model_run.data.index.fillna("NULL").to_list() == [
+        "NULL",
+        "b",
+        "b",
+        "a",
+        "NULL",
+    ]
 
 
 def test_generate_losr_df(mock_ipe):

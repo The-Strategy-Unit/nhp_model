@@ -115,6 +115,35 @@ class InpatientsModel(Model):
             k: load_fn(k) for k in ["activity_avoidance", "efficiencies"]
         }
 
+        def append_general_los(i, j):
+            j = f"general_los_reduction_{j}"
+            if j not in self.params["efficiencies"]["ip"]:
+                return None
+
+            return (
+                self.data.query(f"admimeth.str.startswith('{i}') & (speldur > 0)")
+                .set_index("rn")[[]]
+                .drop_duplicates()
+                .drop_duplicates()
+                .merge(
+                    self.strategies["efficiencies"],
+                    how="left",
+                    left_index=True,
+                    right_index=True,
+                    indicator=True,
+                )
+                .query("_merge != 'both'")
+                .drop(columns="_merge")
+                .fillna({"strategy": j, "sample_rate": 1.0})
+            )
+
+        # set admissions without a strategy selected to general_los_reduction_X
+        # where applicable
+        self.strategies["efficiencies"] = pd.concat(
+            [self.strategies["efficiencies"]]
+            + [append_general_los(*x) for x in [("1", "elective"), ("2", "emergency")]]
+        )
+
     def get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
         """Get row counts of data
 
@@ -407,10 +436,9 @@ class InpatientEfficiencies:
                 .head(1),
                 na_action="ignore",
             )
-            .fillna("NULL")
-            # .loc[self.data["rn"]]
             .rename(None)
         )
+        # assign the selected strategies
         self.data.set_index(selected_strategy, inplace=True)
 
     def _generate_losr_df(self):

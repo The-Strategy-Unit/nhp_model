@@ -169,13 +169,22 @@ def test_load_kh03_data(mocker, mock_model):
     assert mdl._beds_baseline == "beds_baseline"
 
 
-def test_load_strategies(mock_model):
+@pytest.mark.parametrize(
+    "gen_los_type, expected",
+    [
+        ("general_los_reduction_elective", [1, 3, 7, 9]),
+        ("general_los_reduction_emergency", [2, 4, 8, 10]),
+    ],
+)
+def test_load_strategies(mock_model, gen_los_type, expected):
     """test that the method returns a dataframe"""
     # arrange
     mdl = mock_model
+    mdl.data["speldur"] = np.repeat([1, 0], 10)
+    mdl.data["admimeth"] = np.tile(["1", "2"], 10)
     mdl.params = {
         "activity_avoidance": {"ip": {"a": 1, "b": 2}},
-        "efficiencies": {"ip": {"b": 3, "c": 4}},
+        "efficiencies": {"ip": {"b": 3, "c": 4, gen_los_type: 5}},
     }
 
     mdl._load_parquet = Mock()
@@ -187,11 +196,14 @@ def test_load_strategies(mock_model):
     ]
     expected = {
         "activity_avoidance": {"strategy": {1: "a", 2: "b"}},
-        "efficiencies": {"strategy": {5: "b", 6: "c"}},
+        "efficiencies": {
+            "strategy": {5: "b", 6: "c", **{i: gen_los_type for i in expected}}
+        },
     }
     # act
     mdl._load_strategies()
     # assert
+
     assert {k: v.to_dict() for k, v in mdl.strategies.items()} == expected
 
 
