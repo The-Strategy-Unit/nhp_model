@@ -179,6 +179,7 @@ create_provider_ip_strategies <- function(params) {
   dplyr::tbl(con, dbplyr::in_schema("nhp_modelling", "strategies")) |>
     dplyr::semi_join(tb_inpatients, by = "EPIKEY") |>
     dplyr::inner_join(strategy_lookups, by = c("strategy")) |>
+    dplyr::filter(!.data[["strategy"]] %LIKE% "general_los_reduction%") |> # nolint
     dplyr::select(rn = "EPIKEY", "strategy", "strategy_type", "sample_rate") |>
     dplyr::collect() |>
     dplyr::group_nest(.data$strategy_type) |>
