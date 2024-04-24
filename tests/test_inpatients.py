@@ -172,8 +172,8 @@ def test_load_kh03_data(mocker, mock_model):
 @pytest.mark.parametrize(
     "gen_los_type, expected",
     [
-        ("general_los_reduction_elective", [1, 3, 7, 9]),
-        ("general_los_reduction_emergency", [2, 4, 8, 10]),
+        ("general_los_reduction_elective", [7, 9]),
+        ("general_los_reduction_emergency", [8, 10]),
     ],
 )
 def test_load_strategies(mock_model, gen_los_type, expected):
@@ -182,11 +182,12 @@ def test_load_strategies(mock_model, gen_los_type, expected):
     mdl = mock_model
     mdl.data["speldur"] = np.repeat([1, 0], 10)
     mdl.data["admimeth"] = np.tile(["1", "2"], 10)
+    mdl.data["classpat"] = "1"
+    mdl.data.loc[[0, 1, 2, 3], "classpat"] = "2"
     mdl.params = {
         "activity_avoidance": {"ip": {"a": 1, "b": 2}},
         "efficiencies": {"ip": {"b": 3, "c": 4, gen_los_type: 5}},
     }
-
     mdl._load_parquet = Mock()
     mdl._load_parquet.side_effect = [
         pd.DataFrame(
@@ -200,10 +201,11 @@ def test_load_strategies(mock_model, gen_los_type, expected):
             "strategy": {5: "b", 6: "c", **{i: gen_los_type for i in expected}}
         },
     }
+
     # act
     mdl._load_strategies()
-    # assert
 
+    # assert
     assert {k: v.to_dict() for k, v in mdl.strategies.items()} == expected
 
 

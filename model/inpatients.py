@@ -121,7 +121,9 @@ class InpatientsModel(Model):
                 return None
 
             return (
-                self.data.query(f"admimeth.str.startswith('{i}') & (speldur > 0)")
+                self.data.query(
+                    f"admimeth.str.startswith('{i}') & (speldur > 0) & classpat == '1'"
+                )
                 .set_index("rn")[[]]
                 .drop_duplicates()
                 .drop_duplicates()
