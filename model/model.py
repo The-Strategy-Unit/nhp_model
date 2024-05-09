@@ -21,7 +21,7 @@ from model.health_status_adjustment import (
     HealthStatusAdjustment,
     HealthStatusAdjustmentInterpolated,
 )
-from model.helpers import age_groups, create_time_profiles, inrange, rnorm
+from model.helpers import age_groups, create_time_profiles, inrange, load_params, rnorm
 from model.model_run import ModelRun
 
 
@@ -33,8 +33,8 @@ class Model:
 
     :param model_type: the type of model, either "aae", "ip", or "op"
     :type model_type: str
-    :param params: the parameters to run the model with
-    :type params: dict
+    :param params: the parameters to run the model with, or the path to a params file to load
+    :type params: dict or string
     :param data_path: the path to where the data files live
     :type data_path: str
     :param columns_to_load: a list of columns to load from the data
@@ -72,6 +72,8 @@ class Model:
         ), "Model type must be one of 'aae', 'ip', or 'op'"
         self.model_type = model_type
         #
+        if isinstance(params, str):
+            params = load_params(params)
         self.params = params
         # add model runtime if it doesn't exist
         if not "create_datetime" in self.params:
