@@ -17,7 +17,10 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from model.health_status_adjustment import HealthStatusAdjustment
+from model.health_status_adjustment import (
+    HealthStatusAdjustment,
+    HealthStatusAdjustmentInterpolated,
+)
 from model.helpers import age_groups, create_time_profiles, inrange, rnorm
 from model.model_run import ModelRun
 
@@ -59,7 +62,7 @@ class Model:
         measures: str,
         params: dict,
         data_path: str,
-        hsa: Any,
+        hsa: Any = None,
         run_params: dict = None,
         save_full_model_results: bool = False,
     ) -> None:
@@ -80,7 +83,11 @@ class Model:
         self.data["age_group"] = age_groups(self.data["age"])
         self._load_strategies()
         self._load_demog_factors()
-        self.hsa = hsa
+        # create HSA object if it hasn't been passed in
+        year = params["start_year"]
+        self.hsa = hsa or HealthStatusAdjustmentInterpolated(
+            f"data/{year}/{params['dataset']}", str(year)
+        )
         # generate the run parameters if they haven't been passed in
         self.run_params = run_params or self.generate_run_params(params)
         #

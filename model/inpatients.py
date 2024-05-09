@@ -32,7 +32,7 @@ class InpatientsModel(Model):
         self,
         params: dict,
         data_path: str,
-        hsa: Any,
+        hsa: Any = None,
         run_params: dict = None,
         save_full_model_results: bool = False,
     ) -> None:

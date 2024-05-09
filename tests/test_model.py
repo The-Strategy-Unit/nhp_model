@@ -149,6 +149,7 @@ def test_model_init_sets_values(mocker, model_type):
     mocker.patch("model.model.Model.get_data_mask", return_value="data_mask")
     mocker.patch("model.model.Model.get_data_counts", return_value="data_counts")
     mocker.patch("model.model.Model._add_pod_to_data")
+    hsa_m = mocker.patch("model.model.HealthStatusAdjustmentInterpolated")
 
     # act
     mdl = Model(model_type, ["measures"], params, "data", "hsa", "run_params")
@@ -171,6 +172,7 @@ def test_model_init_sets_values(mocker, model_type):
     assert mdl.baseline_counts == "data_counts"
     mdl.get_data_counts.call_args_list[0][0][0].equals(mdl.data)
     mdl._add_pod_to_data.assert_called_once_with()
+    hsa_m.assert_not_called()
 
 
 def test_model_init_calls_generate_run_params(mocker):
@@ -202,7 +204,7 @@ def test_model_init_calls_generate_run_params(mocker):
 def test_model_init_validates_model_type():
     """it raises an exception if an invalid model_type is passed"""
     with pytest.raises(AssertionError):
-        Model("", None, None, None, None)
+        Model("", None, None, None)
 
 
 def test_model_init_sets_create_datetime(mocker):
@@ -217,10 +219,30 @@ def test_model_init_sets_create_datetime(mocker):
     mocker.patch("model.model.Model.generate_run_params")
 
     # act
-    mdl = Model("aae", "arrivals", params, "data", "run_params")
+    mdl = Model("aae", "arrivals", params, "data", "hsa", "run_params")
 
     # assert
     assert re.match("^\\d{8}_\\d{6}$", mdl.params["create_datetime"])
+
+
+def test_model_init_initialises_hsa_if_none(mocker):
+    # arrange
+    params = {"dataset": "synthetic", "start_year": "2020"}
+    mock_data = pd.DataFrame({"rn": [2, 1], "age": [2, 1]})
+
+    mocker.patch("model.model.Model._load_parquet", return_value=mock_data)
+    mocker.patch("model.model.age_groups", return_value="age_groups")
+    mocker.patch("model.model.Model._load_demog_factors")
+    mocker.patch("model.model.Model.generate_run_params")
+    hsa_m = mocker.patch("model.model.HealthStatusAdjustmentInterpolated")
+    hsa_m.return_value = "hsa"
+
+    # act
+    mdl = Model("aae", "arrivals", params, "data")
+
+    # assert
+    hsa_m.assert_called_once_with("data/2020/synthetic", "2020")
+    mdl.hsa = "hsa"
 
 
 # measures
