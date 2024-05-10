@@ -1676,6 +1676,8 @@
         "raid_ae": "linear",
         "readmission_within_28_days": "linear",
         "smoking": "linear",
+        "virtual_wards_activity_avoidance_ari": "linear",
+        "virtual_wards_activity_avoidance_heart_failure": "linear",
         "zero_los_no_procedure_adult": "linear",
         "zero_los_no_procedure_child": "linear"
       },
@@ -1720,7 +1722,9 @@
         "day_procedures_usually_dc": "linear",
         "day_procedures_usually_op": "linear",
         "general_los_reduction_non-elective": "linear",
-        "general_los_reduction_elective": "linear"
+        "general_los_reduction_elective": "linear",
+        "virtual_wards_efficiencies_ari": "linear",
+        "virtual_wards_efficiencies_heart_failure": "linear"
       },
       "op": {
         "convert_to_tele_adult_surgical": "linear",
