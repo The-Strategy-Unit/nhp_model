@@ -572,6 +572,7 @@ def test_aggregate(mock_model):
         "sex+tretspef": expected_mr,
         "tretspef_raw": expected_mr,
         "los_group": expected_mr,
+        "tretspef_raw+los_group": expected_mr,
         "bed_occupancy": 2,
     }
 
