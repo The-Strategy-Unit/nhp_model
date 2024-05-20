@@ -570,8 +570,6 @@ def test_aggregate(mock_model):
     assert agg() == {"default": expected_mr}
     assert results == {
         "sex+tretspef": expected_mr,
-        "tretspef_raw": expected_mr,
-        "los_group": expected_mr,
         "tretspef_raw+los_group": expected_mr,
         "bed_occupancy": 2,
     }
