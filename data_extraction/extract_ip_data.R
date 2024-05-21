@@ -113,20 +113,6 @@ create_ip_data <- function(inpatients, specialties) {
     tidyr::drop_na("hsagrp", "speldur")
 }
 
-union_bed_days_rows <- function(data, start_date) {
-  dplyr::bind_rows(
-    .id = "bedday_rows",
-    "FALSE" = data,
-    "TRUE" = data |>
-      dplyr::filter(.data$admidate < start_date) |>
-      dplyr::mutate(
-        dplyr::across(dplyr::ends_with("date"), ~ lubridate::`%m+%`(.x, lubridate::years(1)))
-      )
-  ) |>
-    dplyr::mutate(dplyr::across("bedday_rows", as.logical)) |>
-    dplyr::relocate("bedday_rows", .after = dplyr::everything())
-}
-
 save_ip_data <- function(data, name, path) {
   ip_fn <- file.path(path, name, "ip.parquet")
 
@@ -153,7 +139,6 @@ create_provider_ip_extract <- function(params, specialties = NULL) {
 
   extract_ip_data(params$start_date, params$end_date, params$providers) |>
     create_ip_data(specialties) |>
-    union_bed_days_rows(params$start_date) |>
     save_ip_data(params$name, params$path)
 }
 
