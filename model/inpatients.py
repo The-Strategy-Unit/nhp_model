@@ -379,8 +379,7 @@ class InpatientsModel(Model):
             agg,
             {
                 **agg(["sex", "tretspef"]),
-                **agg(["tretspef_raw"]),
-                **agg(["los_group"]),
+                **agg(["tretspef_raw", "los_group"]),
                 "bed_occupancy": bed_occupancy,
             },
         )
