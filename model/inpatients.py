@@ -54,17 +54,6 @@ class InpatientsModel(Model):
             "ip_elective_daycase"
         )
 
-    def get_data_mask(self, data) -> npt.ArrayLike:
-        """get the data mask
-
-        Some data is oversampled for modelling purposes, but should not be included in any counts.
-        This method get's the appropriate data mask for the data
-
-        :return: a boolean array the length of the data
-        :rtype: npt.ArrayLike
-        """
-        return ~data["bedday_rows"].to_numpy()
-
     def _load_strategies(self) -> None:
         """Load a set of strategies"""
 
@@ -178,8 +167,7 @@ class InpatientsModel(Model):
         model_results = model_run.get_model_results()
 
         model_results = (
-            model_results[~model_results["bedday_rows"]]
-            .assign(
+            model_results.assign(
                 los_group=lambda x: np.where(
                     x["speldur"] == 0,
                     "0-day",
@@ -442,9 +430,6 @@ class InpatientEfficiencies:
 
         model_run = self._model_run
         rn = pd.Index(model_run.model.data["rn"])
-        # make sure to exclude the bedday_rows lines, which are oversampled rows for capacity
-        # conversion only
-        mask = (~model_run.model.data["bedday_rows"]).astype(int).to_numpy()
         for s in df.columns:
             model_run.step_counts[("efficiencies", s)] = (
                 np.array(
@@ -453,8 +438,6 @@ class InpatientEfficiencies:
                         for m in df.index.levels[0]
                     ]
                 )
-                # this removes the bedday_rows from the sums
-                * mask
             )
 
         return self

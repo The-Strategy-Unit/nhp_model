@@ -108,18 +108,6 @@ def test_add_pod_to_data(mock_model):
     ]
 
 
-def test_get_data_mask(mock_model):
-    # arrange
-    expected = [True] * 3 + [False] * 2
-    data = pd.DataFrame({"bedday_rows": [not i for i in expected]})
-
-    # act
-    actual = mock_model.get_data_mask(data)
-
-    # assert
-    assert actual.tolist() == expected
-
-
 @pytest.mark.parametrize(
     "gen_los_type, expected",
     [
@@ -176,7 +164,7 @@ def test_apply_resampling(mocker, mock_model):
     # arrange
     row_samples = np.array([[0, 1, 2, 3], [4, 5, 6, 7]])
     data = pd.DataFrame(
-        {"rn": [0, 1, 2, 3], "bedday_rows": [False, False, False, True]}
+        {"rn": [0, 1, 2, 3]}
     )
     # act
     data = mock_model.apply_resampling(row_samples, data)
@@ -251,18 +239,17 @@ def test_aggregate(mock_model):
 
     gmr_df = pd.DataFrame(
         {
-            "sitetret": ["trust"] * 24,
-            "age": list(range(12)) * 2,
-            "age_group": xs * 2,
-            "sex": xs * 2,
-            "group": ["elective", "non-elective", "maternity"] * 8,
-            "classpat": ["1", "2", "3", "4", "5", "-1"] * 4,
-            "tretspef": xs * 2,
-            "tretspef_raw": list(range(12)) * 2,
-            "rn": [1] * 24,
-            "has_procedure": [0, 1] * 12,
-            "speldur": list(range(24)),
-            "bedday_rows": [False] * 12 + [True] * 12,
+            "sitetret": ["trust"] * 12,
+            "age": list(range(12)) ,
+            "age_group": xs ,
+            "sex": xs ,
+            "group": ["elective", "non-elective", "maternity"] * 4,
+            "classpat": ["1", "2", "3", "4", "5", "-1"] * 2,
+            "tretspef": xs ,
+            "tretspef_raw": list(range(12)) ,
+            "rn": [1] * 12,
+            "has_procedure": [0, 1] * 6,
+            "speldur": list(range(12)),
         }
     )
 
