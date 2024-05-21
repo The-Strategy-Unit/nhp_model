@@ -5,6 +5,7 @@ Methods for handling row resampling"""
 from typing import List, Tuple
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 
@@ -33,9 +34,7 @@ class ActivityAvoidance:
 
         self._row_counts = self._model_run.model.baseline_counts.copy()
         # initialise step counts
-        self.step_counts = model_run.step_counts
-
-        self.step_counts[("baseline", "-")] = self._baseline_counts
+        self.step_counts = {}
 
     @property
     def _baseline_counts(self):
@@ -90,16 +89,14 @@ class ActivityAvoidance:
         )
 
         self._row_counts *= factor
-        self.step_counts[(step, "-")] = (factor - 1) * self._baseline_counts
+        self.step_counts[(step, "-")] = factor
 
         return self
 
     def _update_rn(self, factor: pd.Series, group: str):
         factor = self.data["rn"].map(factor).fillna(1).to_numpy()
         self._row_counts *= factor
-        self.step_counts[("activity_avoidance", group)] = (
-            factor - 1
-        ) * self._baseline_counts
+        self.step_counts[("activity_avoidance", group)] = factor
 
         return self
 
@@ -266,3 +263,46 @@ class ActivityAvoidance:
         self._model_run.data = self._model_run.model.apply_resampling(
             row_samples, self.data
         )
+
+        # TODO: can this be improved?
+        if self._model_run.model.model_type == "ip":
+            future = row_samples[0] * self._baseline_counts
+        else:
+            future = row_samples
+
+        self._fix_step_counts(future)
+
+    def _fix_step_counts(self, future: npt.ArrayLike) -> None:
+        """Calculate the step counts
+
+        Calculates the step counts for the current model run, saving back to
+        self._model_run.step_counts.
+
+        :param future: The future row counts after running the poisson resampling.
+        :type future: npt.ArrayLike
+        """
+
+        # convert the paramater values from a dict of 2d numpy arrays to a 3d numpy array
+        baseline = self._baseline_counts
+        param_values = np.array(list(self.step_counts.values()))
+        # later on we want to be able to multiply by baseline, we need to have compatible
+        # numpy shapes
+        # our param values has shape of (x, y). baseline has shape of (z, y).
+        # (x, 1, y) will allow (x, y) * (z, y)
+        shape = (param_values.shape[0], 1, param_values.shape[1])
+        # calculate the simple effect of each parameter, if it was performed in isolation to all
+        # other parameters
+        param_simple_effects = (param_values - 1).reshape(shape) * baseline
+        # what is the difference left over from the expected changes
+        diff = future - (baseline + param_simple_effects.sum(axis=0))
+        # create ratios of each parameter to the lambda value, then calculate the
+        # proporitions
+        param_ratios = param_values / param_values.prod(axis=0)
+        param_proportions = param_ratios / param_ratios.sum(axis=0)
+        # calculate the effect of each parameter by scaling the difference proporitionally for each
+        # parameter, adding back in the original param value
+        effect = param_proportions.reshape(shape) * diff + param_simple_effects
+        # convert the 3d numpy array back to a dict of 2d numpy arrays
+        self._model_run.step_counts = {
+            k: v for k, v in zip(self.step_counts.keys(), effect)
+        }

@@ -121,92 +121,32 @@ class ModelRun:
                 .groupby(["sitetret", "pod"], as_index=False)[self.model.measures]
                 .sum()
                 .melt(["sitetret", "pod"], var_name="measure")
-                .set_index(["sitetret", "pod", "measure"])
+                .assign(activity_type=self.model.model_type)
+                .set_index(["activity_type", "sitetret", "pod", "measure"])
                 .sort_index()["value"]
             )
 
         sitetret_pod = self.model.data[["sitetret", "pod"]].reset_index(drop=True)
-        counts_before = get_counts(sitetret_pod, self.model.baseline_counts)
 
-        counts_after = (
-            get_counts(
-                self.data[["sitetret", "pod"]].reset_index(drop=True),
-                self.model.get_data_counts(self.data),
-            )
-            # if any activity is completely avoided, then we need to impute as 0
-            .reindex_like(counts_before).fillna(0.0)
+        step_counts = pd.concat(
+            {
+                k: get_counts(sitetret_pod, v)
+                for k, v in {
+                    ("baseline", "-"): self.model.baseline_counts,
+                    **self.step_counts,
+                }.items()
+            }
         )
-
-        step_counts = (
-            pd.concat(
-                {k: get_counts(sitetret_pod, v) for k, v in self.step_counts.items()}
-            )
-            .reset_index()
-            .rename(columns={"level_0": "change_factor", "level_1": "strategy"})
-            .assign(activity_type=self.model.model_type)[
-                [
-                    "activity_type",
-                    "sitetret",
-                    "pod",
-                    "change_factor",
-                    "strategy",
-                    "measure",
-                    "value",
-                ]
-            ]
-        )
-
-        counts_est = (
-            step_counts.assign(
-                efficiencies=lambda x: x["change_factor"] == "efficiencies"
-            )
-            .groupby(["efficiencies", "sitetret", "pod", "measure"])["value"]
-            .sum()
-            .sort_index()
-        )
-
-        if True in counts_est.index.levels[0]:
-            counts_efficiencies = counts_est.loc[
-                (True, slice(None), slice(None), slice(None))
-            ]
-        else:
-            counts_efficiencies = 0
-
-        counts_est = counts_est.loc[(False, slice(None), slice(None), slice(None))]
-
-        slack = 1 + np.divide(
-            counts_after - counts_est - counts_efficiencies,
-            counts_est - counts_before,
-            out=np.zeros_like(counts_before),
-            where=counts_est != counts_before,
-        )
-
-        slack = step_counts.drop(columns="value").merge(
-            slack, left_on=slack.index.names, right_index=True
-        )["value"]
-
-        step_counts.loc[
-            ~step_counts["change_factor"].isin(["baseline", "efficiencies"]), "value"
-        ] *= slack
-
-        (
-            step_counts.set_index(
-                [
-                    "activity_type",
-                    "sitetret",
-                    "pod",
-                    "change_factor",
-                    "strategy",
-                    "measure",
-                ],
-                inplace=True,
-            )
+        step_counts.index.names = (
+            ["change_factor", "strategy", "activity_type"]
+            + list(sitetret_pod.columns)
+            + ["measure"]
         )
 
         return {
             "step_counts": {
                 frozenset(zip(step_counts.index.names, k)): v
-                for k, v in step_counts["value"].to_dict().items()
+                for k, v in step_counts.to_dict().items()
             }
         }
 
