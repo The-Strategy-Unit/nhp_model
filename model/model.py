@@ -247,15 +247,6 @@ class Model:
                     ("efficiencies", inrange_0_1),
                 ]
             },
-            # handle this case separately as we need to filter the params list
-            "bed_occupancy": generate_param_values(
-                {
-                    k: v
-                    for k, v in params["bed_occupancy"].items()
-                    if k != "specialty_mapping"
-                },
-                inrange_0_1,
-            ),
         }
 
     def _get_run_params(self, model_run: int) -> dict:

@@ -46,8 +46,6 @@ class InpatientsModel(Model):
             run_params,
             save_full_model_results,
         )
-        # load the kh03 data
-        self._load_kh03_data()
 
     def _add_pod_to_data(self) -> None:
         """Adds the POD column to data"""
@@ -66,35 +64,6 @@ class InpatientsModel(Model):
         :rtype: npt.ArrayLike
         """
         return ~data["bedday_rows"].to_numpy()
-
-    def _load_kh03_data(self):
-        # load the kh03 data
-        self._ward_groups = pd.concat(
-            [
-                pd.DataFrame(
-                    {"ward_type": k, "ward_group": list(v.values())},
-                    index=list(v.keys()),
-                )
-                for k, v in self.params["bed_occupancy"]["specialty_mapping"].items()
-            ]
-        )
-        self._kh03_data = (
-            pd.read_csv(
-                f"{self._data_path}/kh03.csv",
-                dtype={
-                    "quarter": np.character,
-                    "specialty_code": np.character,
-                    "specialty_group": np.character,
-                    "available": np.int64,
-                    "occupied": np.int64,
-                },
-            )
-            .merge(self._ward_groups, left_on="specialty_code", right_index=True)
-            .groupby(["quarter", "ward_type", "ward_group"])[["available", "occupied"]]
-            .agg(lambda x: sum(np.round(x).astype(int)))
-        )
-        # get the baseline data
-        self._beds_baseline = self._bedday_summary(self.data, self.params["start_year"])
 
     def _load_strategies(self) -> None:
         """Load a set of strategies"""
@@ -193,115 +162,6 @@ class InpatientsModel(Model):
                 .update_step_counts()
             )
 
-    def _bedday_summary(self, data, year):
-        """Summarise data to count how many beddays per quarter
-
-        Calculated midnight bed occupancy per day, summarises to mean in quarter.
-
-        :param data: the baseline data, or results of running the model
-        :type data: pandas.DataFrame
-        :param year: the year that the data represents
-        :type year: int
-        :return: a DataFrame containing a summary per quarter/ward group of maximum number of beds
-            used in a quarter
-        :rtype: pandas.DataFrame
-        """
-        return (
-            data.query("(speldur > 0) & (classpat == '1')")
-            .groupby(["admidate", "speldur", "mainspef"], as_index=False)
-            .size()
-            .rename(columns={"size": "nx"})
-            .assign(day_n=lambda x: x.speldur.apply(np.arange))
-            .explode("day_n")
-            .groupby(["admidate", "day_n", "mainspef", "nx"], as_index=False)
-            .size()
-            .assign(
-                date=lambda x: pd.to_datetime(x.admidate)
-                + pd.to_timedelta(x.day_n, unit="d"),
-                size=lambda x: x["nx"] * x["size"],
-            )
-            .merge(self._ward_groups, left_on="mainspef", right_index=True)
-            .groupby(["date", "ward_type", "ward_group"], as_index=False)
-            .agg({"size": sum})
-            .assign(quarter=lambda x: x.date.dt.to_period("Q-MAR"))
-            .query(f"quarter.dt.qyear == {year + 1}")
-            .groupby(["quarter", "ward_type", "ward_group"], as_index=False)
-            .agg({"size": np.mean})
-            .assign(quarter=lambda x: x.quarter.astype(str).str[4:].str.lower())
-        )
-
-    def _bed_occupancy(self, data: pd.DataFrame, model_run: ModelRun) -> dict:
-        """Calculate bed occupancy
-
-        :param data: the baseline data, or the model results
-        :type data: pandas.DataFrame
-        :param bed_occupancy_params: the bed occupancy parameters from run_params
-        :type bed_occupancy_params: dict
-        :param model_run: the current model run
-        :type model_run: int
-
-        :returns: a dictionary of a named tuple to an integer. The named tuple contains the pod,
-            measure, and the ward group. The value is the number of beds available
-        :rtype: dict
-        """
-        bed_occupancy_params = model_run.run_params["bed_occupancy"]
-
-        def create_dict_key(quarter, ward_type, ward_group):
-            return frozenset(
-                {
-                    ("pod", "ip"),
-                    ("measure", "day+night"),
-                    ("quarter", quarter),
-                    ("ward_type", ward_type),
-                    ("ward_group", ward_group),
-                }
-            )
-
-        if model_run.model_run == -1:
-            return {
-                create_dict_key(*k): np.round(v).astype(int).tolist()
-                for k, v in self._kh03_data["available"].items()
-            }
-
-        target_bed_occupancy_rates = pd.Series(bed_occupancy_params["day+night"])
-        target_bed_occupancy_rates.name = "target_occupancy_rate"
-
-        beddays_model = (
-            self._bedday_summary(data, self.params["start_year"])
-            .rename(columns={"size": "model"})
-            .merge(
-                self._kh03_data["occupied"],
-                left_on=["quarter", "ward_type", "ward_group"],
-                right_index=True,
-                how="outer",
-            )
-            .fillna(value={"occupied": 0})
-            .set_index(["quarter", "ward_type", "ward_group"])
-        )
-        beddays_baseline = (
-            self._beds_baseline.rename(columns={"size": "baseline"})
-            .merge(target_bed_occupancy_rates, left_on="ward_group", right_index=True)
-            .set_index(["quarter", "ward_type", "ward_group"])
-        )
-
-        beddays_results = (
-            (
-                (beddays_model["model"] * beddays_model["occupied"])
-                / (
-                    beddays_baseline["baseline"]
-                    * beddays_baseline["target_occupancy_rate"]
-                )
-            )
-            .fillna(0)
-            .to_dict()
-        )
-
-        # return the results
-        return {
-            create_dict_key(*k): np.round(v).astype(int).tolist()
-            for k, v in beddays_results.items()
-        }
-
     def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
         """Aggregate the model results
 
@@ -316,8 +176,6 @@ class InpatientsModel(Model):
         """
         # get the run params: use principal run for baseline
         model_results = model_run.get_model_results()
-
-        bed_occupancy = self._bed_occupancy(model_results, model_run)
 
         model_results = (
             model_results[~model_results["bedday_rows"]]
@@ -380,7 +238,6 @@ class InpatientsModel(Model):
             {
                 **agg(["sex", "tretspef"]),
                 **agg(["tretspef_raw", "los_group"]),
-                "bed_occupancy": bed_occupancy,
             },
         )
 

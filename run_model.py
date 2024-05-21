@@ -132,7 +132,7 @@ def _split_model_runs_out(agg_type: str, results: dict) -> None:
         result["median"] = median
         result["upr_ci"] = upr
 
-        if not agg_type in ["default", "bed_occupancy"]:
+        if agg_type != "default":
             result.pop("model_runs")
         else:
             result["model_runs"] = [int(i) for i in result["model_runs"]]
