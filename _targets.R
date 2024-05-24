@@ -92,10 +92,6 @@ list(
   # targets ----
   # sql data
   tar_target(
-    reference_data,
-    extract_reference_data("../nhp_documentation/data")
-  ),
-  tar_target(
     ip_data,
     create_provider_ip_extract(
       params,
@@ -234,7 +230,7 @@ list(
       gams,
       # bit of a cheat, the gams only returns a single file name (of the pkl object)
       # add in the hsa_activity_table.csv files
-      stringr::str_replace(gams, "_gams.pkl", "_activity_table.csv"),
+      stringr::str_replace(gams, "_gams.pkl", "_activity_table.csv")
     )
   ),
   tar_target(
