@@ -233,7 +233,6 @@ def test_losr_day_procedures(
         {
             "speldur": list(range(9)) * 2,
             "classpat": ["1"] * 18,
-            "bedday_rows": [True] * 9 + [False] * 9,
         },
         index=[x for x in ["x"] + strats for _ in range(3)] * 2,
     )
@@ -269,7 +268,7 @@ def test_update_step_counts(mock_ipe):
     mock_ipe.speldur_before = [3, 4, 5, 6]
     mock_ipe._model_run.step_counts = {}
     mock_ipe._model_run.model.data = pd.DataFrame(
-        {"rn": ["1", "2", "3", "4"], "bedday_rows": [False, False, True, False]}
+        {"rn": ["1", "2", "3", "4"]}
     )
 
     # act
@@ -278,6 +277,6 @@ def test_update_step_counts(mock_ipe):
     # assert
     assert actual == mock_ipe
     assert {k: v.tolist() for k, v in actual._model_run.step_counts.items()} == {
-        ("efficiencies", "a"): [[-1.0, 0.0, 0.0, 0.0], [-5.0, 0.0, -0.0, 0.0]],
+        ("efficiencies", "a"): [[-1.0, 0.0, 0.0, 0.0], [-5.0, 0.0, -2.0, 0.0]],
         ("efficiencies", "b"): [[0.0, 0.0, 0.0, 0.0], [0.0, -2.0, 0.0, 0.0]],
     }

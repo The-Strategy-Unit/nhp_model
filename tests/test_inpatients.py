@@ -55,10 +55,6 @@ def mock_model():
             "a": {"a_a": {"interval": [0.4, 0.6]}, "a_b": {"interval": [0.4, 0.6]}},
             "b": {"b_a": {"interval": [0.4, 0.6]}, "b_b": {"interval": [0.4, 0.6]}},
         },
-        "bed_occupancy": {
-            "a": {"a": [0.4, 0.6], "b": 0.7},
-            "b": {"a": [0.4, 0.6], "b": 0.8},
-        },
     }
     mdl._data_path = "data/synthetic"
     # create a mock object for the hsa gams
@@ -85,12 +81,10 @@ def test_init_calls_super_init(mocker):
     """test that the model calls the super method and loads the strategies"""
     # arrange
     super_mock = mocker.patch("model.inpatients.super")
-    mocker.patch("model.inpatients.InpatientsModel._load_kh03_data")
     # act
-    mdl = InpatientsModel("params", "data_path", "hsa", "run_params")
+    InpatientsModel("params", "data_path", "hsa", "run_params")
     # assert
     super_mock.assert_called_once()
-    mdl._load_kh03_data.assert_called_once()
 
 
 def test_add_pod_to_data(mock_model):
@@ -112,61 +106,6 @@ def test_add_pod_to_data(mock_model):
         "ip_non-elective_admission",
         "ip_maternity_admission",
     ]
-
-
-def test_get_data_mask(mock_model):
-    # arrange
-    expected = [True] * 3 + [False] * 2
-    data = pd.DataFrame({"bedday_rows": [not i for i in expected]})
-
-    # act
-    actual = mock_model.get_data_mask(data)
-
-    # assert
-    assert actual.tolist() == expected
-
-
-def test_load_kh03_data(mocker, mock_model):
-    """test that the kh03 data is loaded correctly"""
-    # arrange
-    mdl = mock_model
-    mdl.params["bed_occupancy"] = {
-        "specialty_mapping": {
-            "General and Acute": {"100": "a", "200": "b", "300": "b", "500": "_"},
-            "Maternity": {"501": "c"},
-        }
-    }
-    mdl._bedday_summary = Mock(return_value="beds_baseline")
-    mocker.patch(
-        "pandas.read_csv",
-        return_value=pd.DataFrame(
-            {
-                "quarter": ["q1"] * 4 + ["q2"],
-                "specialty_code": ["100", "200", "300", "501", "100"],
-                "available": [1, 2, 3, 4, 5],
-                "occupied": [4, 5, 6, 7, 8],
-            }
-        ),
-    )
-    mdl.data = "data"
-    # act
-    mdl._load_kh03_data()
-    # assert
-    assert mdl._ward_groups.to_dict("index") == {
-        "100": {"ward_type": "General and Acute", "ward_group": "a"},
-        "200": {"ward_type": "General and Acute", "ward_group": "b"},
-        "300": {"ward_type": "General and Acute", "ward_group": "b"},
-        "500": {"ward_type": "General and Acute", "ward_group": "_"},
-        "501": {"ward_type": "Maternity", "ward_group": "c"},
-    }
-    assert mdl._kh03_data.to_dict("index") == {
-        ("q1", "General and Acute", "a"): {"available": 1, "occupied": 4},
-        ("q1", "General and Acute", "b"): {"available": 5, "occupied": 11},
-        ("q1", "Maternity", "c"): {"available": 4, "occupied": 7},
-        ("q2", "General and Acute", "a"): {"available": 5, "occupied": 8},
-    }
-    mdl._bedday_summary.assert_called_once_with("data", 2018)
-    assert mdl._beds_baseline == "beds_baseline"
 
 
 @pytest.mark.parametrize(
@@ -225,7 +164,7 @@ def test_apply_resampling(mocker, mock_model):
     # arrange
     row_samples = np.array([[0, 1, 2, 3], [4, 5, 6, 7]])
     data = pd.DataFrame(
-        {"rn": [0, 1, 2, 3], "bedday_rows": [False, False, False, True]}
+        {"rn": [0, 1, 2, 3]}
     )
     # act
     data = mock_model.apply_resampling(row_samples, data)
@@ -286,206 +225,6 @@ def test_efficiencies_no_params(mocker, mock_model):
     mock.assert_not_called()
 
 
-def test_bedday_summary(mock_model):
-    """test that it aggregates the data to the maximum beds occupied in a day per quarter"""
-    # arrange
-    mdl = mock_model
-    mdl._ward_groups = pd.DataFrame(
-        {
-            "ward_type": ["general_and_acute"] * 3,
-            "ward_group": ["A", "A", "B"],
-        },
-        index=["a", "b", "c"],
-    )
-    data = pd.DataFrame(
-        {
-            "admidate": [f"2022-04-0{d}" for d in range(1, 7)] * 2,
-            "speldur": list(range(6)) * 2,
-            "mainspef": ["a", "b", "c"] * 4,
-            "classpat": (["1"] * 5 + ["2"]) * 2,
-        }
-    )
-    # act
-    actual = mdl._bedday_summary(data, 2022)
-    # assert
-    assert actual.to_dict("list") == {
-        "quarter": ["q1", "q1"],
-        "ward_type": ["general_and_acute", "general_and_acute"],
-        "ward_group": ["A", "B"],
-        "size": [2.6666666666666665, 2.0],
-    }
-
-
-def test_bed_occupancy(mock_model):
-    """test that it aggregates the bed occupancy data"""
-    # arrange
-    mdl = mock_model
-
-    mr_mock = Mock()
-    mr_mock.run_params = {
-        "bed_occupancy": {"day+night": {"A": 0.75, "B": 0.875, "C": 0.5}}
-    }
-    mr_mock.model_run = 0
-
-    mdl._bedday_summary = Mock(
-        return_value=pd.DataFrame(
-            {
-                "quarter": ["q1"] * 3 + ["q2"] * 3,
-                "ward_type": ["general_and_acute"] * 6,
-                "ward_group": ["A", "B", "C"] * 2,
-                "size": [4, 2, 1, 8, 4, 2],
-            }
-        )
-    )
-    mdl._kh03_data = pd.DataFrame(
-        {
-            "available": [10, 50, 20, 100],
-            "occupied": [5, 40, 10, 80],
-        },
-        index=pd.MultiIndex.from_tuples(
-            [(q, "general_and_acute", k) for q in ["q1", "q2"] for k in ["A", "B"]]
-        ),
-    )
-    mdl._beds_baseline = pd.DataFrame(
-        {
-            "quarter": ["q1"] * 3 + ["q2"] * 3,
-            "ward_type": ["general_and_acute"] * 6,
-            "ward_group": ["A", "B", "C"] * 2,
-            "size": [2, 1, 1, 4, 2, 2],
-        }
-    )
-
-    expected = {
-        frozenset(
-            {
-                ("ward_group", "A"),
-                ("ward_type", "general_and_acute"),
-                ("pod", "ip"),
-                ("measure", "day+night"),
-                ("quarter", "q1"),
-            }
-        ): 13,
-        frozenset(
-            {
-                ("ward_group", "B"),
-                ("ward_type", "general_and_acute"),
-                ("pod", "ip"),
-                ("measure", "day+night"),
-                ("quarter", "q1"),
-            }
-        ): 91,
-        frozenset(
-            {
-                ("ward_group", "C"),
-                ("ward_type", "general_and_acute"),
-                ("pod", "ip"),
-                ("measure", "day+night"),
-                ("quarter", "q1"),
-            }
-        ): 0,
-        frozenset(
-            {
-                ("quarter", "q2"),
-                ("ward_type", "general_and_acute"),
-                ("pod", "ip"),
-                ("measure", "day+night"),
-                ("ward_group", "A"),
-            }
-        ): 27,
-        frozenset(
-            {
-                ("ward_group", "B"),
-                ("ward_type", "general_and_acute"),
-                ("quarter", "q2"),
-                ("pod", "ip"),
-                ("measure", "day+night"),
-            }
-        ): 183,
-        frozenset(
-            {
-                ("ward_group", "C"),
-                ("ward_type", "general_and_acute"),
-                ("quarter", "q2"),
-                ("pod", "ip"),
-                ("measure", "day+night"),
-            }
-        ): 0,
-    }
-
-    # act
-    actual = mdl._bed_occupancy("model_results", mr_mock)
-
-    # assert
-    assert actual == expected
-    mdl._bedday_summary.assert_called_once_with("model_results", 2018)
-
-
-def test_bed_occupancy_baseline(mock_model):
-    """test that it just uses the kh03 available data"""
-    # arrange
-    mdl = mock_model
-
-    mr_mock = Mock()
-    mr_mock.run_params = {
-        "bed_occupancy": {"day+night": {"A": 0.75, "B": 0.875, "C": 0.5}}
-    }
-    mr_mock.model_run = -1
-
-    mdl._kh03_data = pd.DataFrame(
-        {
-            "available": [10, 50, 20, 100],
-            "occupied": [5, 40, 10, 80],
-        },
-        index=pd.MultiIndex.from_tuples(
-            [(q, "general_and_acute", k) for q in ["q1", "q2"] for k in ["A", "B"]]
-        ),
-    )
-    expected = {
-        frozenset(
-            {
-                ("pod", "ip"),
-                ("measure", "day+night"),
-                ("quarter", "q1"),
-                ("ward_type", "general_and_acute"),
-                ("ward_group", "A"),
-            }
-        ): 10,
-        frozenset(
-            {
-                ("pod", "ip"),
-                ("measure", "day+night"),
-                ("quarter", "q1"),
-                ("ward_type", "general_and_acute"),
-                ("ward_group", "B"),
-            }
-        ): 50,
-        frozenset(
-            {
-                ("pod", "ip"),
-                ("measure", "day+night"),
-                ("quarter", "q2"),
-                ("ward_type", "general_and_acute"),
-                ("ward_group", "A"),
-            }
-        ): 20,
-        frozenset(
-            {
-                ("pod", "ip"),
-                ("measure", "day+night"),
-                ("quarter", "q2"),
-                ("ward_type", "general_and_acute"),
-                ("ward_group", "B"),
-            }
-        ): 100,
-    }
-
-    # act
-    actual = mock_model._bed_occupancy("model_results", mr_mock)
-
-    # assert
-    assert actual == expected
-
-
 def test_aggregate(mock_model):
     """test that it aggregates the results correctly"""
 
@@ -496,24 +235,21 @@ def test_aggregate(mock_model):
 
     mdl = mock_model
     mdl._create_agg = Mock(wraps=create_agg_stub)
-    mdl._get_run_params = Mock(return_value={"bed_occupancy": "run_params"})
-    mdl._bed_occupancy = Mock(return_value=2)
     xs = list(range(6)) * 2
 
     gmr_df = pd.DataFrame(
         {
-            "sitetret": ["trust"] * 24,
-            "age": list(range(12)) * 2,
-            "age_group": xs * 2,
-            "sex": xs * 2,
-            "group": ["elective", "non-elective", "maternity"] * 8,
-            "classpat": ["1", "2", "3", "4", "5", "-1"] * 4,
-            "tretspef": xs * 2,
-            "tretspef_raw": list(range(12)) * 2,
-            "rn": [1] * 24,
-            "has_procedure": [0, 1] * 12,
-            "speldur": list(range(24)),
-            "bedday_rows": [False] * 12 + [True] * 12,
+            "sitetret": ["trust"] * 12,
+            "age": list(range(12)) ,
+            "age_group": xs ,
+            "sex": xs ,
+            "group": ["elective", "non-elective", "maternity"] * 4,
+            "classpat": ["1", "2", "3", "4", "5", "-1"] * 2,
+            "tretspef": xs ,
+            "tretspef_raw": list(range(12)) ,
+            "rn": [1] * 12,
+            "has_procedure": [0, 1] * 6,
+            "speldur": list(range(12)),
         }
     )
 
@@ -571,7 +307,6 @@ def test_aggregate(mock_model):
     assert results == {
         "sex+tretspef": expected_mr,
         "tretspef_raw+los_group": expected_mr,
-        "bed_occupancy": 2,
     }
 
 

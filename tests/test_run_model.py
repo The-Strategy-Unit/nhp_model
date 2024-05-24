@@ -245,11 +245,7 @@ def test_combine_results(mocker):
     assert m.call_args_list == [call(k, v) for k, v in expected.items()]
 
 
-@pytest.mark.parametrize(
-    "agg_type",
-    ["default", "bed_occupancy"],
-)
-def test_split_model_runs_out_default(agg_type):
+def test_split_model_runs_out_default():
     # arrange
     results = [
         {
@@ -274,7 +270,7 @@ def test_split_model_runs_out_default(agg_type):
     ]
 
     # act
-    _split_model_runs_out(agg_type, results)
+    _split_model_runs_out("default", results)
 
     # assert
     assert results == expected

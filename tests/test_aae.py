@@ -57,10 +57,6 @@ def mock_model():
             "a": {"a_a": {"interval": [0.4, 0.6]}, "a_b": {"interval": [0.4, 0.6]}},
             "b": {"b_a": {"interval": [0.4, 0.6]}, "b_b": {"interval": [0.4, 0.6]}},
         },
-        "bed_occupancy": {
-            "a": {"a": [0.4, 0.6], "b": 0.7},
-            "b": {"a": [0.4, 0.6], "b": 0.8},
-        },
     }
     mdl._data_path = "data/synthetic"
     # create a mock object for the hsa gams

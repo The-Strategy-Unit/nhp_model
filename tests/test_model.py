@@ -58,10 +58,6 @@ def mock_model():
             },
             "op": {"b_a": {"interval": [0.4, 0.6]}, "b_b": {"interval": [0.4, 0.6]}},
         },
-        "bed_occupancy": {
-            "a": {"a": [0.4, 0.6], "b": 0.7},
-            "b": {"a": [0.4, 0.6], "b": 0.8},
-        },
     }
     mdl._data_path = "data/synthetic"
     # create a minimal data object for testing
@@ -104,10 +100,6 @@ def mock_run_params():
         "efficiencies": {
             "ip": {"b_a": [0.5, 46, 47, 48], "b_b": [0.5, 49, 50, 51]},
             "op": {"b_a": [0.5, 52, 53, 54], "b_b": [0.5, 55, 56, 57]},
-        },
-        "bed_occupancy": {
-            "a": {"a": [0.5, 58, 59, 60], "b": [0.7, 0.7, 0.7, 0.7]},
-            "b": {"a": [0.5, 61, 62, 63], "b": [0.8, 0.8, 0.8, 0.8]},
         },
     }
 
@@ -414,7 +406,6 @@ def test_get_run_params_invalid_time_profiles(mocker, mock_model, mock_run_param
         "non-demographic_adjustment": "none",
         "activity_avoidance": "linear",
         "efficiencies": "linear",
-        "bed_occupancy": "linear",
         "waiting_list_adjustment": "step2025",
     }
 
@@ -458,10 +449,6 @@ def test_get_run_params_invalid_time_profiles(mocker, mock_model, mock_run_param
                     "ip": {"b_a": 0.5, "b_b": 0.5},
                     "op": {"b_a": 0.5, "b_b": 0.5},
                 },
-                "bed_occupancy": {
-                    "a": {"a": 0.5, "b": 0.7},
-                    "b": {"a": 0.5, "b": 0.8},
-                },
                 "waiting_list_adjustment": {
                     "ip": {"100": 1, "120": 2},
                     "op": {"100": 3, "120": 4},
@@ -493,10 +480,6 @@ def test_get_run_params_invalid_time_profiles(mocker, mock_model, mock_run_param
                 "efficiencies": {
                     "ip": {"b_a": 47, "b_b": 50},
                     "op": {"b_a": 53, "b_b": 56},
-                },
-                "bed_occupancy": {
-                    "a": {"a": 59, "b": 0.7},
-                    "b": {"a": 62, "b": 0.8},
                 },
                 "waiting_list_adjustment": {
                     "ip": {"100": 1, "120": 2},
@@ -530,10 +513,6 @@ def test_get_run_params_invalid_time_profiles(mocker, mock_model, mock_run_param
                     "ip": {"b_a": 0.75, "b_b": 0.75},
                     "op": {"b_a": 0.75, "b_b": 0.75},
                 },
-                "bed_occupancy": {
-                    "a": {"a": 0.75, "b": 0.85},
-                    "b": {"a": 0.75, "b": 0.9},
-                },
                 "waiting_list_adjustment": {
                     "ip": {"100": 1, "120": 2},
                     "op": {"100": 3, "120": 4},
@@ -561,7 +540,6 @@ def test_get_run_params(
         "non-demographic_adjustment": "none",
         "activity_avoidance": "linear",
         "efficiencies": "linear",
-        "bed_occupancy": "linear",
         "waiting_list_adjustment": "step2025",
     }
 

@@ -145,48 +145,6 @@ list(
     ),
     format = "file"
   ),
-  # kh03 data
-  tar_target(
-    kh03_base_url,
-    "https://www.england.nhs.uk/statistics/statistical-work-areas/bed-availability-and-occupancy"
-  ),
-  tar_target(
-    kh03_files_overnight,
-    kh03_get_files(paste(kh03_base_url, "bed-data-overnight", sep = "/"))
-  ),
-  tar_target(
-    kh03_files_dayonly,
-    kh03_get_files(paste(kh03_base_url, "bed-data-day-only", sep = "/"))
-  ),
-  tar_target(
-    kh03_overnight,
-    kh03_get_file(kh03_files_overnight[[1]]),
-    pattern = map(kh03_files_overnight)
-  ),
-  tar_target(
-    kh03_dayonly,
-    kh03_get_file(kh03_files_dayonly[[1]]) |>
-      dplyr::select("quarter", "org_code", "specialty_group", available_dayonly = "available_total"),
-    pattern = map(kh03_files_dayonly)
-  ),
-  tar_target(
-    kh03_all,
-    kh03_combine(kh03_overnight, kh03_dayonly)
-  ),
-  tar_target(
-    kh03_processed,
-    kh03_process(kh03_all, extract_years),
-    pattern = map(extract_years)
-  ),
-  tar_target(
-    kh03_save,
-    kh03_save_trust(
-      kh03_processed,
-      params
-    ),
-    pattern = map(params),
-    format = "file"
-  ),
   # demographic factors
   tar_target(
     trust_wt_catchment_pops,
@@ -263,35 +221,6 @@ list(
     pattern = map(gams_file_paths),
     format = "file"
   ),
-  # theatres
-  tar_target(theatres_data_path, "_scratch/theatres_data.csv", format = "file"),
-  tar_target(qmco_data_path, "_scratch/qmco.xlsx", format = "file"),
-  tar_target(
-    theatres_four_hour_sessions,
-    theatres_get_four_hour_sessions(
-      theatres_data_path,
-      start_date
-    )
-  ),
-  tar_target(
-    theatres_available,
-    theatres_get_available(qmco_data_path)
-  ),
-  tar_target(
-    theatres_file_paths,
-    theatres_save_data(
-      theatres_four_hour_sessions,
-      theatres_available,
-      params
-    ),
-    pattern = map(params)
-  ),
-  tar_target(
-    theatres,
-    theatres_file_paths,
-    pattern = map(theatres_file_paths),
-    format = "file"
-  ),
   # files upload
   tar_files(
     all_files,
@@ -306,8 +235,6 @@ list(
       # bit of a cheat, the gams only returns a single file name (of the pkl object)
       # add in the hsa_activity_table.csv files
       stringr::str_replace(gams, "_gams.pkl", "_activity_table.csv"),
-      kh03_save,
-      theatres
     )
   ),
   tar_target(
