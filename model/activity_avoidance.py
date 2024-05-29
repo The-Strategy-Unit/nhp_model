@@ -35,10 +35,11 @@ class ActivityAvoidance:
         # initialise step counts
         self.step_counts = model_run.step_counts
 
-        self._baseline_counts = (
-            self._model_run.model.data_mask * self._model_run.model.baseline_counts
-        )
         self.step_counts[("baseline", "-")] = self._baseline_counts
+
+    @property
+    def _baseline_counts(self):
+        return self._model_run.model.baseline_counts
 
     @property
     def _activity_type(self):

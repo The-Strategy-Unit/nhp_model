@@ -230,7 +230,6 @@ def test_get_step_counts(mock_model_run):
     mr.model.measures = ["x", "y"]
     mr.model.model_type = "ip"
     mr.model.baseline_counts = np.array([[1, 2, 3, 1], [4, 5, 6, 1]])
-    mr.model.data_mask = np.array([1, 1, 1, 0])
 
     mr.data = pd.DataFrame(
         {"sitetret": ["a", "a", "b", "b", "b"], "pod": ["a", "b", "a", "b", "b"]}
@@ -238,7 +237,6 @@ def test_get_step_counts(mock_model_run):
     mr.model.get_data_counts.return_value = np.array(
         [[3, 2, 4, 1, 5], [6, 5, 10, 1, 5]]
     )
-    mr.model.get_data_mask.return_value = np.array([[1, 1, 1, 0, 0], [1, 1, 1, 0, 0]])
 
     expected = {
         "change_factor": [
@@ -264,24 +262,24 @@ def test_get_step_counts(mock_model_run):
             5,
             1,
             4,
-            1,
-            1,
+            6,
+            6,
             2,
             5,
             1,
             4,
             3,
             6,
-            1,
-            1,
+            6,
+            6,
             -2,
             -5,
             -1,
             -4,
             -3,
             -6,
-            -1,
-            -1,
+            -6,
+            -6,
             -1,
             -4,
             -2,
@@ -322,7 +320,6 @@ def test_get_step_counts_no_efficiencies(mock_model_run):
     mr.model.measures = ["x", "y"]
     mr.model.model_type = "ip"
     mr.model.baseline_counts = np.array([[1, 2, 3, 1], [4, 5, 6, 1]])
-    mr.model.data_mask = np.array([1, 1, 1, 0])
 
     mr.data = pd.DataFrame(
         {"sitetret": ["a", "a", "b", "b", "b"], "pod": ["a", "b", "a", "b", "b"]}
@@ -330,7 +327,6 @@ def test_get_step_counts_no_efficiencies(mock_model_run):
     mr.model.get_data_counts.return_value = np.array(
         [[3, 2, 4, 1, 5], [6, 5, 10, 1, 5]]
     )
-    mr.model.get_data_mask.return_value = np.array([[1, 1, 1, 0, 0], [1, 1, 1, 0, 0]])
 
     expected = {
         "change_factor": [x for x in ["baseline", "x", "y", "z"] for _ in range(8)],
@@ -354,24 +350,24 @@ def test_get_step_counts_no_efficiencies(mock_model_run):
             0,
             1,
             4,
-            0,
-            0,
+            5,
+            5,
             2,
             5,
             0,
             0,
             3,
             6,
-            0,
-            0,
+            5,
+            5,
             -2,
             -5,
             0,
             0,
             -3,
             -6,
-            0,
-            0,
+            -5,
+            -5,
         ],
     }
     # act

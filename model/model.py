@@ -94,8 +94,6 @@ class Model:
         self.run_params = run_params or self.generate_run_params(params)
         #
         self.save_full_model_results = save_full_model_results
-        # get the data mask and baseline counts
-        self.data_mask = self.get_data_mask(self.data)
         # pylint: disable=assignment-from-no-return
         self.baseline_counts = self.get_data_counts(self.data)
         #
@@ -324,9 +322,6 @@ class Model:
 
     def get_data_counts(self, data) -> npt.ArrayLike:
         pass
-
-    def get_data_mask(self, data) -> npt.ArrayLike:
-        return np.ones_like(data.index)
 
     @staticmethod
     def _create_agg(model_results, cols=None, name=None, include_measure=True):
