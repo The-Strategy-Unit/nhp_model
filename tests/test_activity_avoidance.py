@@ -18,7 +18,9 @@ def mock_activity_avoidance():
     with patch.object(ActivityAvoidance, "__init__", lambda m, c: None):
         mdl = ActivityAvoidance(None)
     mdl._model_run = Mock()
-    mdl._baseline_counts = np.array([[1, 2, 3, 4], [5, 6, 7, 8]]).astype(float)
+    mdl._model_run.model.baseline_counts = np.array(
+        [[1, 2, 3, 4], [5, 6, 7, 8]]
+    ).astype(float)
     mdl.step_counts = {}
     return mdl
 
@@ -29,7 +31,6 @@ def test_init():
     model_run.data = "data"
     model_run.model.model_type = "ip"
     model_run.model.baseline_counts = np.array([[1, 2, 3], [4, 5, 6]])
-    model_run.model.data_mask = [2]
     model_run.params = "params"
     model_run.run_params = "run_params"
     model_run.step_counts = {}
@@ -47,14 +48,14 @@ def test_init():
     assert actual.params == "params"
     assert actual.run_params == "run_params"
     assert {k: v.tolist() for k, v in actual.step_counts.items()} == {
-        ("baseline", "-"): [[2, 4, 6], [8, 10, 12]]
+        ("baseline", "-"): [[1, 2, 3], [4, 5, 6]]
     }
     assert actual.demog_factors == "demog_factors"
     assert actual.birth_factors == "birth_factors"
     assert actual.hsa == "hsa"
     assert actual.strategies == "activity_avoidance"
     assert actual._row_counts.tolist() == [[1, 2, 3], [4, 5, 6]]
-    assert actual._baseline_counts.tolist() == [[2, 4, 6], [8, 10, 12]]
+    assert actual._baseline_counts.tolist() == [[1, 2, 3], [4, 5, 6]]
 
 
 def test_update(mock_activity_avoidance):
