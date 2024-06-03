@@ -110,7 +110,7 @@ list(
   ),
   tar_target(
     ip_synth,
-    create_ip_synth(ip_data),
+    create_ip_synth(ip_data, rtt_specs),
     format = "file"
   ),
   tar_target(
