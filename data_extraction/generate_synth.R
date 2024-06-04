@@ -1,6 +1,21 @@
 .data <- rlang::.data
 
-create_ip_synth <- function(ip_files) {
+create_ip_synth <- function(ip_files, specialties) {
+  specialty_fn <- if (is.null(specialties)) {
+    identity
+  } else {
+    function(.x) {
+      dplyr::case_when(
+        .x %in% specialties ~ .x,
+        stringr::str_detect(.x, "^1(?!80|9[02])") ~
+          "Other (Surgical)",
+        stringr::str_detect(.x, "^(1(80|9[02])|[2346]|5(?!60)|83[134])") ~
+          "Other (Medical)",
+        TRUE ~ "Other"
+      )
+    }
+  }
+
   create_ip_synth_from_data <- function(data) {
     data |>
       dplyr::group_by(.data$classpat) |>
@@ -31,7 +46,8 @@ create_ip_synth <- function(ip_files) {
           dplyr::anti_join(a, by = "rn") |>
           dplyr::group_by(.data$classpat) |>
           dplyr::mutate(
-            dplyr::across(c("mainspef", "tretspef"), ~ sample(.x, dplyr::n(), TRUE))
+            dplyr::across(c("mainspef", "tretspef_raw"), ~ sample(.x, dplyr::n(), TRUE)),
+            tretspef = specialty_fn(.data[["tretspef_raw"]])
           )
 
         dplyr::bind_rows(a, b)
