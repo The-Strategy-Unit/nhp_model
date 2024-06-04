@@ -245,7 +245,7 @@ def test_combine_results(mocker):
     assert m.call_args_list == [call(k, v) for k, v in expected.items()]
 
 
-def test_split_model_runs_out_default():
+def test_split_model_runs_out():
     # arrange
     results = [
         {
@@ -271,36 +271,6 @@ def test_split_model_runs_out_default():
 
     # act
     _split_model_runs_out("default", results)
-
-    # assert
-    assert results == expected
-
-
-def test_split_model_runs_out_other():
-    # arrange
-    results = [
-        {
-            "pod": "a",
-            "measure": "a",
-            "baseline": 1,
-            "principal": 2,
-            "model_runs": list(range(101)),
-        }
-    ]
-    expected = [
-        {
-            "pod": "a",
-            "measure": "a",
-            "baseline": 1,
-            "principal": 2,
-            "lwr_ci": 10.0,
-            "median": 50.0,
-            "upr_ci": 90.0,
-        }
-    ]
-
-    # act
-    _split_model_runs_out("other", results)
 
     # assert
     assert results == expected
