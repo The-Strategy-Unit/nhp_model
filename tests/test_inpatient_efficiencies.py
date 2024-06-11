@@ -209,7 +209,7 @@ def test_losr_preop(mock_ipe):
         (
             "day_procedures_daycase",
             [0, 1, 2, 3, 0, 5, 6, 7, 8] * 2,
-            (["1"] * 4 + ["2"] + ["1"] * 4) * 2,
+            (["1"] * 4 + ["-2"] + ["1"] * 4) * 2,
         ),
         (
             "day_procedures_outpatients",
@@ -267,9 +267,7 @@ def test_update_step_counts(mock_ipe):
     )
     mock_ipe.speldur_before = [3, 4, 5, 6]
     mock_ipe._model_run.step_counts = {}
-    mock_ipe._model_run.model.data = pd.DataFrame(
-        {"rn": ["1", "2", "3", "4"]}
-    )
+    mock_ipe._model_run.model.data = pd.DataFrame({"rn": ["1", "2", "3", "4"]})
 
     # act
     actual = mock_ipe.update_step_counts()

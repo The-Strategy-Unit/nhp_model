@@ -146,15 +146,7 @@ class ModelRun:
         # remove any steps that have 0 effect
         step_counts = step_counts[step_counts != 0]
 
-        step_counts.sort_index(inplace=True)
-
-        step_counts = pd.concat(
-            [
-                step_counts,
-                self._step_counts_get_type_change_daycase(step_counts),
-                self._step_counts_get_type_change_outpatients(step_counts),
-            ]
-        )
+        step_counts = self._step_counts_get_type_changes(step_counts)
 
         return {
             "step_counts": {
@@ -162,6 +154,17 @@ class ModelRun:
                 for k, v in step_counts.to_dict().items()
             }
         }
+
+    def _step_counts_get_type_changes(self, step_counts):
+        step_counts.sort_index(inplace=True)
+
+        return pd.concat(
+            [
+                step_counts,
+                self._step_counts_get_type_change_daycase(step_counts),
+                self._step_counts_get_type_change_outpatients(step_counts),
+            ]
+        )
 
     def _step_counts_get_type_change_daycase(self, step_counts):
         # get the daycase conversion values
