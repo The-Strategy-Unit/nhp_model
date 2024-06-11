@@ -294,7 +294,7 @@ def run_single_model_run(
         .loc[cf_values]
     )
     step_counts.loc["total"] = step_counts.sum()
-    print(step_counts.astype(int))
+    print(step_counts.fillna(0).astype(int))
     #
     print()
     print("aggregated (default) results:")

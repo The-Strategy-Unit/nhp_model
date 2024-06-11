@@ -143,12 +143,61 @@ class ModelRun:
             + ["measure"]
         )
 
+        # remove any steps that have 0 effect
+        step_counts = step_counts[step_counts != 0]
+
+        step_counts.sort_index(inplace=True)
+
+        step_counts = pd.concat(
+            [
+                step_counts,
+                self._step_counts_get_type_change_daycase(step_counts),
+                self._step_counts_get_type_change_outpatients(step_counts),
+            ]
+        )
+
         return {
             "step_counts": {
                 frozenset(zip(step_counts.index.names, k)): v
                 for k, v in step_counts.to_dict().items()
             }
         }
+
+    def _step_counts_get_type_change_daycase(self, step_counts):
+        # get the daycase conversion values
+        x = step_counts[
+            step_counts.index.isin(
+                ["day_procedures_usually_dc", "day_procedures_occasionally_dc"], level=1
+            )
+        ]
+        # set the beddays equal to admissions
+        x[x.index.get_level_values(5) == "beddays"] = x[
+            x.index.get_level_values(5) == "admissions"
+        ].to_list()
+        # update the pod level
+        x.index = x.index.set_levels(["ip_elective_daycase"], level=4)
+        # invert the values
+        return x * -1
+
+    def _step_counts_get_type_change_outpatients(self, step_counts):
+        # get the outpatient conversion values
+        x = (
+            step_counts[
+                step_counts.index.isin(
+                    ["day_procedures_usually_op", "day_procedures_occasionally_op"],
+                    level=1,
+                )
+                & (step_counts.index.get_level_values(5) == "admissions")
+            ]
+            .to_frame()
+            .reset_index()
+        )
+
+        x["activity_type"] = "op"
+        x["pod"] = "op_procedure"
+        x["measure"] = "attendances"
+
+        return x.groupby(step_counts.index.names)["value"].sum() * -1
 
     def get_model_results(self):
         """get the model results of a model run"""
