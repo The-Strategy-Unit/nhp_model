@@ -264,11 +264,7 @@ class ActivityAvoidance:
             row_samples, self.data
         )
 
-        # TODO: can this be improved?
-        if self._model_run.model.model_type == "ip":
-            future = row_samples[0] * self._baseline_counts
-        else:
-            future = row_samples
+        future = self._model_run.model.get_future_from_row_samples(row_samples)
 
         self._fix_step_counts(future)
 

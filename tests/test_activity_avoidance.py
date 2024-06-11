@@ -613,6 +613,8 @@ def test_apply_resampling(mock_activity_avoidance):
     mr.model.apply_resampling.return_value = "data"
     aa_mock._fix_step_counts = Mock()
 
+    mr.model.get_future_from_row_samples.return_value = "future"
+
     # act
     aa_mock.apply_resampling()
 
@@ -622,7 +624,8 @@ def test_apply_resampling(mock_activity_avoidance):
 
     assert mr.data == "data"
 
-    aa_mock._fix_step_counts.assert_called_once_with("poisson")
+    mr.model.get_future_from_row_samples.assert_called_once_with("poisson")
+    aa_mock._fix_step_counts.assert_called_once_with("future")
 
 
 def test_fix_step_counts(mock_activity_avoidance):

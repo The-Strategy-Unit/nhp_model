@@ -160,16 +160,28 @@ def test_get_data_counts(mock_model):
     assert actual.tolist() == [[1.0, 1.0, 1.0], [1.0, 2.0, 3.0]]
 
 
-def test_apply_resampling(mocker, mock_model):
+def test_apply_resampling(mock_model):
     # arrange
     row_samples = np.array([[0, 1, 2, 3], [4, 5, 6, 7]])
-    data = pd.DataFrame(
-        {"rn": [0, 1, 2, 3]}
-    )
+    data = pd.DataFrame({"rn": [0, 1, 2, 3]})
     # act
     data = mock_model.apply_resampling(row_samples, data)
     # assert
     assert data["rn"].to_list() == [1, 2, 2, 3, 3, 3]
+
+
+def test_get_future_from_row_samples(mock_model):
+    # arrange
+    mdl = mock_model
+    mdl.baseline_counts = np.array([1, 2, 3])
+    row_samples = np.array([[1, 2, 3], [4, 5, 6]])
+    expected = [1, 4, 9]
+
+    # act
+    actual = mdl.get_future_from_row_samples(row_samples)
+
+    # assert
+    assert actual.tolist() == expected
 
 
 def test_efficiencies(mocker, mock_model):
@@ -240,13 +252,13 @@ def test_aggregate(mock_model):
     gmr_df = pd.DataFrame(
         {
             "sitetret": ["trust"] * 12,
-            "age": list(range(12)) ,
-            "age_group": xs ,
-            "sex": xs ,
+            "age": list(range(12)),
+            "age_group": xs,
+            "sex": xs,
             "group": ["elective", "non-elective", "maternity"] * 4,
             "classpat": ["1", "2", "3", "4", "5", "-1"] * 2,
-            "tretspef": xs ,
-            "tretspef_raw": list(range(12)) ,
+            "tretspef": xs,
+            "tretspef_raw": list(range(12)),
             "rn": [1] * 12,
             "has_procedure": [0, 1] * 6,
             "speldur": list(range(12)),

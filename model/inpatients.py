@@ -133,6 +133,13 @@ class InpatientsModel(Model):
         """
         return data.loc[data.index.repeat(row_samples[0])].reset_index(drop=True)
 
+    def get_future_from_row_samples(self, row_samples):
+        """Get the future counts from row samples
+
+        Called from within `model.activity_avoidance.ActivityAvoidance.apply_resampling`
+        """
+        return row_samples[0] * self.baseline_counts
+
     def efficiencies(self, model_run: ModelRun) -> None:
         """Run the efficiencies steps of the model
 
