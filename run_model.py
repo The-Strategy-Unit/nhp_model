@@ -128,11 +128,6 @@ def _split_model_runs_out(agg_type: str, results: dict) -> None:
                 result["value"] = v
             continue
 
-        [lwr, median, upr] = np.quantile(result["model_runs"], [0.1, 0.5, 0.9])
-        result["lwr_ci"] = lwr
-        result["median"] = median
-        result["upr_ci"] = upr
-
         result["model_runs"] = [int(i) for i in result["model_runs"]]
 
         result["baseline"] = int(result["baseline"])

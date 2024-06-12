@@ -262,9 +262,6 @@ def test_split_model_runs_out():
             "measure": "a",
             "baseline": 1,
             "model_runs": list(range(101)),
-            "lwr_ci": 10.0,
-            "median": 50.0,
-            "upr_ci": 90.0,
         }
     ]
 
