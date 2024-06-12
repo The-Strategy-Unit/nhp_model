@@ -133,6 +133,13 @@ class InpatientsModel(Model):
         """
         return data.loc[data.index.repeat(row_samples[0])].reset_index(drop=True)
 
+    def get_future_from_row_samples(self, row_samples):
+        """Get the future counts from row samples
+
+        Called from within `model.activity_avoidance.ActivityAvoidance.apply_resampling`
+        """
+        return row_samples[0] * self.baseline_counts
+
     def efficiencies(self, model_run: ModelRun) -> None:
         """Run the efficiencies steps of the model
 
@@ -205,8 +212,8 @@ class InpatientsModel(Model):
             .reset_index()
         )
 
-        # quick dq fix: convert any "non-elective" daycases to "elective"
-        model_results.loc[model_results["classpat"].isin(["2", "3"]), "pod"] = (
+        # convert any "daycase" like rows after type conversion to the correct pod
+        model_results.loc[model_results["classpat"].isin(["-2", "2", "3"]), "pod"] = (
             "ip_elective_daycase"
         )
 
@@ -399,7 +406,7 @@ class InpatientEfficiencies:
         data.loc[i, "classpat"] = np.where(
             dont_change_classpat,
             data.loc[i, "classpat"],
-            "2" if day_procedure_type == "day_procedures_daycase" else "-1",
+            "-2" if day_procedure_type == "day_procedures_daycase" else "-1",
         )
 
         return self
@@ -410,8 +417,10 @@ class InpatientEfficiencies:
         After running the efficiencies, update the model runs step counts object.
         """
         df = (
-            self.data.assign(
-                admissions=lambda x: np.where(x["classpat"] == "-1", -1, 0)
+            self.data
+            # handle the changes of activity type
+            .assign(
+                admissions=lambda x: np.where(x["classpat"].isin(["-1", "-2"]), -1, 0)
             )
             .assign(
                 beddays=lambda x: x["speldur"]
@@ -431,13 +440,11 @@ class InpatientEfficiencies:
         model_run = self._model_run
         rn = pd.Index(model_run.model.data["rn"])
         for s in df.columns:
-            model_run.step_counts[("efficiencies", s)] = (
-                np.array(
-                    [
-                        rn.map(df.loc[(m, slice(None))][s]).fillna(0.0).to_numpy()
-                        for m in df.index.levels[0]
-                    ]
-                )
+            model_run.step_counts[("efficiencies", s)] = np.array(
+                [
+                    rn.map(df.loc[(m, slice(None))][s]).fillna(0.0).to_numpy()
+                    for m in df.index.levels[0]
+                ]
             )
 
         return self

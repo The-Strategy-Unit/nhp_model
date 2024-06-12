@@ -284,7 +284,7 @@ def run_single_model_run(
     print("change factors:")
     step_counts = pd.DataFrame(
         [{**dict(k), "value": v} for k, v, in agg_results["step_counts"].items()]
-    ).drop(columns=["strategy", "activity_type"])
+    ).drop(columns=["strategy"])
     # pylint: disable=unsubscriptable-object
     cf_values = step_counts["change_factor"].unique()
     step_counts = (
@@ -294,7 +294,7 @@ def run_single_model_run(
         .loc[cf_values]
     )
     step_counts.loc["total"] = step_counts.sum()
-    print(step_counts.astype(int))
+    print(step_counts.fillna(0).astype(int))
     #
     print()
     print("aggregated (default) results:")

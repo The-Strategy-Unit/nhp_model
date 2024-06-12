@@ -323,6 +323,13 @@ class Model:
     def get_data_counts(self, data) -> npt.ArrayLike:
         pass
 
+    def get_future_from_row_samples(self, row_samples):
+        """Get the future counts from row samples
+
+        Called from within `model.activity_avoidance.ActivityAvoidance.apply_resampling`
+        """
+        return row_samples
+
     @staticmethod
     def _create_agg(model_results, cols=None, name=None, include_measure=True):
         """Create an aggregation

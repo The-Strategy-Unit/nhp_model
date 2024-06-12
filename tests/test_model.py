@@ -554,6 +554,13 @@ def test_get_run_params(
     assert m.call_args_list == mock_call
 
 
+# get_future_from_row_samples
+
+
+def test_get_future_from_row_samples(mock_model):
+    assert mock_model.get_future_from_row_samples("row_samples") == "row_samples"
+
+
 # _create_agg()
 
 

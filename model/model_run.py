@@ -121,94 +121,86 @@ class ModelRun:
                 .groupby(["sitetret", "pod"], as_index=False)[self.model.measures]
                 .sum()
                 .melt(["sitetret", "pod"], var_name="measure")
-                .set_index(["sitetret", "pod", "measure"])
+                .assign(activity_type=self.model.model_type)
+                .set_index(["activity_type", "sitetret", "pod", "measure"])
                 .sort_index()["value"]
             )
 
         sitetret_pod = self.model.data[["sitetret", "pod"]].reset_index(drop=True)
-        counts_before = get_counts(sitetret_pod, self.model.baseline_counts)
 
-        counts_after = (
-            get_counts(
-                self.data[["sitetret", "pod"]].reset_index(drop=True),
-                self.model.get_data_counts(self.data),
-            )
-            # if any activity is completely avoided, then we need to impute as 0
-            .reindex_like(counts_before).fillna(0.0)
+        step_counts = pd.concat(
+            {
+                k: get_counts(sitetret_pod, v)
+                for k, v in {
+                    ("baseline", "-"): self.model.baseline_counts,
+                    **self.step_counts,
+                }.items()
+            }
+        )
+        step_counts.index.names = (
+            ["change_factor", "strategy", "activity_type"]
+            + list(sitetret_pod.columns)
+            + ["measure"]
         )
 
-        step_counts = (
-            pd.concat(
-                {k: get_counts(sitetret_pod, v) for k, v in self.step_counts.items()}
-            )
-            .reset_index()
-            .rename(columns={"level_0": "change_factor", "level_1": "strategy"})
-            .assign(activity_type=self.model.model_type)[
-                [
-                    "activity_type",
-                    "sitetret",
-                    "pod",
-                    "change_factor",
-                    "strategy",
-                    "measure",
-                    "value",
-                ]
-            ]
-        )
+        # remove any steps that have 0 effect
+        step_counts = step_counts[step_counts != 0]
 
-        counts_est = (
-            step_counts.assign(
-                efficiencies=lambda x: x["change_factor"] == "efficiencies"
-            )
-            .groupby(["efficiencies", "sitetret", "pod", "measure"])["value"]
-            .sum()
-            .sort_index()
-        )
-
-        if True in counts_est.index.levels[0]:
-            counts_efficiencies = counts_est.loc[
-                (True, slice(None), slice(None), slice(None))
-            ]
-        else:
-            counts_efficiencies = 0
-
-        counts_est = counts_est.loc[(False, slice(None), slice(None), slice(None))]
-
-        slack = 1 + np.divide(
-            counts_after - counts_est - counts_efficiencies,
-            counts_est - counts_before,
-            out=np.zeros_like(counts_before),
-            where=counts_est != counts_before,
-        )
-
-        slack = step_counts.drop(columns="value").merge(
-            slack, left_on=slack.index.names, right_index=True
-        )["value"]
-
-        step_counts.loc[
-            ~step_counts["change_factor"].isin(["baseline", "efficiencies"]), "value"
-        ] *= slack
-
-        (
-            step_counts.set_index(
-                [
-                    "activity_type",
-                    "sitetret",
-                    "pod",
-                    "change_factor",
-                    "strategy",
-                    "measure",
-                ],
-                inplace=True,
-            )
-        )
+        step_counts = self._step_counts_get_type_changes(step_counts)
 
         return {
             "step_counts": {
                 frozenset(zip(step_counts.index.names, k)): v
-                for k, v in step_counts["value"].to_dict().items()
+                for k, v in step_counts.to_dict().items()
             }
         }
+
+    def _step_counts_get_type_changes(self, step_counts):
+        step_counts.sort_index(inplace=True)
+
+        return pd.concat(
+            [
+                step_counts,
+                self._step_counts_get_type_change_daycase(step_counts),
+                self._step_counts_get_type_change_outpatients(step_counts),
+            ]
+        )
+
+    def _step_counts_get_type_change_daycase(self, step_counts):
+        # get the daycase conversion values
+        x = step_counts[
+            step_counts.index.isin(
+                ["day_procedures_usually_dc", "day_procedures_occasionally_dc"], level=1
+            )
+        ]
+        # set the beddays equal to admissions
+        x[x.index.get_level_values(5) == "beddays"] = x[
+            x.index.get_level_values(5) == "admissions"
+        ].to_list()
+        # update the pod level
+        x.index = x.index.set_levels(["ip_elective_daycase"], level=4)
+        # invert the values
+        return x * -1
+
+    def _step_counts_get_type_change_outpatients(self, step_counts):
+        # get the outpatient conversion values
+        x = (
+            step_counts[
+                step_counts.index.isin(
+                    ["day_procedures_usually_op", "day_procedures_occasionally_op"],
+                    level=1,
+                )
+                & (step_counts.index.get_level_values(5) == "admissions")
+            ]
+            .to_frame()
+            .reset_index()
+        )
+
+        x["activity_type"] = "op"
+        x["pod"] = "op_procedure"
+        x["measure"] = "attendances"
+
+        return x.groupby(step_counts.index.names)["value"].sum() * -1
 
     def get_model_results(self):
         """get the model results of a model run"""

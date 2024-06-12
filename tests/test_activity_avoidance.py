@@ -47,9 +47,7 @@ def test_init():
     assert actual._activity_type == "ip"
     assert actual.params == "params"
     assert actual.run_params == "run_params"
-    assert {k: v.tolist() for k, v in actual.step_counts.items()} == {
-        ("baseline", "-"): [[1, 2, 3], [4, 5, 6]]
-    }
+    assert not actual.step_counts
     assert actual.demog_factors == "demog_factors"
     assert actual.birth_factors == "birth_factors"
     assert actual.hsa == "hsa"
@@ -74,7 +72,7 @@ def test_update(mock_activity_avoidance):
     assert aa_mock._row_counts.tolist() == [3, 8, 15, 6]
     assert actual == aa_mock
     assert {k: v.tolist() for k, v in actual.step_counts.items()} == {
-        ("f", "-"): [[0.0, 2.0, 6.0, 0.0], [0.0, 6.0, 14.0, 0.0]]
+        ("f", "-"): [1.0, 2.0, 3.0, 1.0]
     }
 
 
@@ -94,7 +92,7 @@ def test_update_rn(mock_activity_avoidance):
     assert aa_mock._row_counts.tolist() == [3, 8, 15, 6]
     assert actual == aa_mock
     assert {k: v.tolist() for k, v in actual.step_counts.items()} == {
-        ("activity_avoidance", "a"): [[0.0, 2.0, 6.0, 0.0], [0.0, 6.0, 14.0, 0.0]]
+        ("activity_avoidance", "a"): [1.0, 2.0, 3.0, 1.0]
     }
 
 
@@ -613,20 +611,9 @@ def test_apply_resampling(mock_activity_avoidance):
     mr.data = "data"
     mr.rng.poisson.return_value = "poisson"
     mr.model.apply_resampling.return_value = "data"
+    aa_mock._fix_step_counts = Mock()
 
-    aa_mock.step_counts = {
-        ("baseline", "-"): np.array([[20.0], [30.0]]),
-        ("a", "-"): np.array([[5.0], [10.0]]),  # 25, 40
-        ("b", "-"): np.array([[10.0], [5.0]]),  # 45, 45
-        ("c", "-"): np.array([[-10.0], [-5.0]]),  # 25, 40
-    }
-
-    expected = {
-        ("baseline", "-"): [[20.0], [30.0]],
-        ("a", "-"): [[5.0], [10.0]],
-        ("b", "-"): [[10.0], [5.0]],
-        ("c", "-"): [[-10.0], [-5.0]],
-    }
+    mr.model.get_future_from_row_samples.return_value = "future"
 
     # act
     aa_mock.apply_resampling()
@@ -637,4 +624,29 @@ def test_apply_resampling(mock_activity_avoidance):
 
     assert mr.data == "data"
 
-    assert {k: v.tolist() for k, v in aa_mock.step_counts.items()} == expected
+    mr.model.get_future_from_row_samples.assert_called_once_with("poisson")
+    aa_mock._fix_step_counts.assert_called_once_with("future")
+
+
+def test_fix_step_counts(mock_activity_avoidance):
+    # arrange
+    baseline = np.array([[1, 1, 1], [1, 2, 3]])
+    future = np.array([[0, 1, 2], [0, 2, 6]])
+
+    aa_mock = mock_activity_avoidance
+    aa_mock._model_run.model.baseline_counts = baseline
+
+    aa_mock.step_counts = {
+        k: v * np.ones_like(baseline[0])
+        for k, v in {("a", "-"): 1.5, ("b", "-"): 2.0, ("c", "-"): 0.5}.items()
+    }
+
+    # act
+    aa_mock._fix_step_counts(future)
+
+    # assert
+    assert {k: v.tolist() for k, v in aa_mock._model_run.step_counts.items()} == {
+        ("a", "-"): [[-0.25, 0.125, 0.5], [-0.25, 0.25, 1.5]],
+        ("b", "-"): [[0.0, 0.5, 1.0], [0.0, 1.0, 3.0]],
+        ("c", "-"): [[-0.75, -0.625, -0.5], [-0.75, -1.25, -1.5]],
+    }

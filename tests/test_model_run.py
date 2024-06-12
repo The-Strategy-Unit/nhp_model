@@ -214,7 +214,6 @@ def test_get_step_counts_empty(mock_model_run):
 def test_get_step_counts(mock_model_run):
     # arrange
     step_counts = {
-        ("baseline", "-"): np.array([[1, 2, 3, 1], [4, 5, 6, 1]]),
         ("x", "-"): np.array([[3, 2, 1, 1], [6, 5, 4, 1]]),
         ("y", "a"): np.array([[2, 1, 3, 1], [5, 4, 6, 1]]),
         ("z", "a"): np.array([[-2, -1, -3, -1], [-5, -4, -6, -1]]),
@@ -224,162 +223,167 @@ def test_get_step_counts(mock_model_run):
     mr = mock_model_run
     mr.step_counts = step_counts
     mr.model = Mock()
-    mr.model.data = pd.DataFrame(
-        {"sitetret": ["a", "a", "b", "b"], "pod": ["a", "b", "a", "b"]}
-    )
+
     mr.model.measures = ["x", "y"]
     mr.model.model_type = "ip"
-    mr.model.baseline_counts = np.array([[1, 2, 3, 1], [4, 5, 6, 1]])
-
-    mr.data = pd.DataFrame(
+    mr.model.data = pd.DataFrame(
         {"sitetret": ["a", "a", "b", "b", "b"], "pod": ["a", "b", "a", "b", "b"]}
     )
-    mr.model.get_data_counts.return_value = np.array(
-        [[3, 2, 4, 1, 5], [6, 5, 10, 1, 5]]
-    )
+    mr.model.baseline_counts = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
 
-    expected = {
-        "change_factor": [
-            x for x in ["baseline", "x", "y", "z", "efficiencies"] for _ in range(8)
-        ],
-        "strategy": [x for x in ["-", "-", "a", "a", "-"] for _ in range(8)],
-        "sitetret": [x for x in ["a", "b"] for _ in range(4)] * 5,
-        "activity_type": ["ip"] * 40,
-        "pod": ["a", "a", "b", "b"] * 10,
-        "measure": ["x", "y"] * 20,
-        "value": [
-            1,
-            4,
-            2,
-            5,
-            3,
-            6,
-            1,
-            1,
-            3,
-            6,
-            2,
-            5,
-            1,
-            4,
-            6,
-            6,
-            2,
-            5,
-            1,
-            4,
-            3,
-            6,
-            6,
-            6,
-            -2,
-            -5,
-            -1,
-            -4,
-            -3,
-            -6,
-            -6,
-            -6,
-            -1,
-            -4,
-            -2,
-            -5,
-            0,
-            0,
-            -1,
-            -1,
-        ],
-    }
+    mr._step_counts_get_type_changes = Mock(side_effect=lambda x: x)
+
     # act
+    r = mr.get_step_counts()
     actual = pd.DataFrame(
-        [
-            {**dict(k), "value": v}
-            for k, v in mr.get_step_counts()["step_counts"].items()
-        ]
-    )
+        [{**dict(k), "value": v} for k, v in r["step_counts"].items()]
+    ).to_dict("list")
 
     # assert
-    assert actual.to_dict("list") == expected
+    mr._step_counts_get_type_changes.assert_called_once()
+
+    assert actual["pod"] == ["a", "a", "b", "b"] * 9 + ["b", "b"]
+    assert actual["measure"] == ["x", "y"] * 19
+    assert actual["sitetret"] == [x for x in ["a", "b"] for _ in range(4)] * 4 + [
+        "a"
+    ] * 4 + ["b", "b"]
+    assert actual["activity_type"] == ["ip"] * 38
+    assert (
+        actual["strategy"]
+        == [x for x in ["-", "-", "a", "a"] for _ in range(8)] + ["-"] * 6
+    )
+    assert (
+        actual["change_factor"]
+        == ["baseline"] * 8
+        + [x for x in ["x", "y", "z"] for _ in range(8)]
+        + ["efficiencies"] * 6
+    )
+    assert actual["value"] == (
+        [1.0, 5.0, 2.0, 6.0, 3.0, 7.0, 4.0, 8.0]
+        + [3.0, 6.0, 2.0, 5.0, 1.0, 4.0, 1.0, 1.0]
+        + [2.0, 5.0, 1.0, 4.0, 3.0, 6.0, 1.0, 1.0]
+        + [-2.0, -5.0, -1.0, -4.0, -3.0, -6.0, -1.0, -1.0]
+        + [-1.0, -4.0, -2.0, -5.0, -1.0, -1.0]
+    )
 
 
-def test_get_step_counts_no_efficiencies(mock_model_run):
+def test_step_counts_get_changes(mock_model_run):
     # arrange
-    step_counts = {
-        ("baseline", "-"): np.array([[1, 2, 3, 1], [4, 5, 6, 1]]),
-        ("x", "-"): np.array([[3, 2, 1, 1], [6, 5, 4, 1]]),
-        ("y", "a"): np.array([[2, 1, 3, 1], [5, 4, 6, 1]]),
-        ("z", "a"): np.array([[-2, -1, -3, -1], [-5, -4, -6, -1]]),
-    }
-
     mr = mock_model_run
-    mr.step_counts = step_counts
-    mr.model = Mock()
-    mr.model.data = pd.DataFrame(
-        {"sitetret": ["a", "a", "b", "b"], "pod": ["a", "b", "a", "b"]}
-    )
-    mr.model.measures = ["x", "y"]
-    mr.model.model_type = "ip"
-    mr.model.baseline_counts = np.array([[1, 2, 3, 1], [4, 5, 6, 1]])
+    mr._step_counts_get_type_change_daycase = Mock(return_value=pd.Series([4]))
+    mr._step_counts_get_type_change_outpatients = Mock(return_value=pd.Series([5]))
 
-    mr.data = pd.DataFrame(
-        {"sitetret": ["a", "a", "b", "b", "b"], "pod": ["a", "b", "a", "b", "b"]}
-    )
-    mr.model.get_data_counts.return_value = np.array(
-        [[3, 2, 4, 1, 5], [6, 5, 10, 1, 5]]
-    )
+    sc = pd.Series([1, 2, 3], index=[3, 2, 1])
 
-    expected = {
-        "change_factor": [x for x in ["baseline", "x", "y", "z"] for _ in range(8)],
-        "strategy": [x for x in ["-", "-", "a", "a"] for _ in range(8)],
-        "sitetret": [x for x in ["a", "b"] for _ in range(4)] * 4,
-        "activity_type": ["ip"] * 32,
-        "pod": ["a", "a", "b", "b"] * 8,
-        "measure": ["x", "y"] * 16,
-        "value": [
-            1,
-            4,
-            2,
-            5,
-            3,
-            6,
-            1,
-            1,
-            3,
-            6,
-            0,
-            0,
-            1,
-            4,
-            5,
-            5,
-            2,
-            5,
-            0,
-            0,
-            3,
-            6,
-            5,
-            5,
-            -2,
-            -5,
-            0,
-            0,
-            -3,
-            -6,
-            -5,
-            -5,
-        ],
-    }
     # act
-    actual = pd.DataFrame(
-        [
-            {**dict(k), "value": v}
-            for k, v in mr.get_step_counts()["step_counts"].items()
-        ]
-    )
+    actual = mr._step_counts_get_type_changes(sc)
 
     # assert
-    assert actual.to_dict("list") == expected
+    assert actual.to_list() == [3, 2, 1, 4, 5]
+    mr._step_counts_get_type_change_daycase.assert_called_once_with(sc)
+    mr._step_counts_get_type_change_outpatients.assert_called_once_with(sc)
+
+
+def test_step_counts_get_type_change_daycase(mock_model_run):
+    # arrange
+    mr = mock_model_run
+
+    sc = pd.Series(
+        [-i for i in range(10)],
+        index=pd.MultiIndex.from_tuples(
+            [
+                ("a", strategy, "ip", "c", "ip_elective_admission", measure)
+                for strategy in [
+                    "x",
+                    "day_procedures_usually_dc",
+                    "day_procedures_occasionally_dc",
+                    "day_procedures_usually_op",
+                    "day_procedures_occasionally_op",
+                ]
+                for measure in ["admissions", "beddays"]
+            ]
+        ),
+        name="value",
+    )
+
+    expected = pd.Series(
+        [2, 2, 4, 4],
+        index=pd.MultiIndex.from_tuples(
+            ("a", strategy, "ip", "c", "ip_elective_daycase", measure)
+            for strategy in [
+                "day_procedures_usually_dc",
+                "day_procedures_occasionally_dc",
+            ]
+            for measure in ["admissions", "beddays"]
+        ),
+        name="value",
+    )
+
+    expected.index.names = sc.index.names = [
+        "change_factor",
+        "strategy",
+        "activity_type",
+        "sitetret",
+        "pod",
+        "measure",
+    ]
+
+    # act
+    actual = mr._step_counts_get_type_change_daycase(sc)
+
+    # assert
+    assert actual.equals(expected)
+
+
+def test_step_counts_get_type_change_outpatients(mock_model_run):
+    # arrange
+    mr = mock_model_run
+
+    sc = pd.Series(
+        [-i for i in range(20)],
+        index=pd.MultiIndex.from_tuples(
+            [
+                ("a", strategy, "ip", "c", pod, measure)
+                for strategy in [
+                    "x",
+                    "day_procedures_usually_dc",
+                    "day_procedures_occasionally_dc",
+                    "day_procedures_usually_op",
+                    "day_procedures_occasionally_op",
+                ]
+                for pod in ["ip_elective_admission", "ip_elective_daycase"]
+                for measure in ["admissions", "beddays"]
+            ]
+        ),
+        name="value",
+    )
+
+    expected = pd.Series(
+        [34, 26],
+        index=pd.MultiIndex.from_tuples(
+            ("a", strategy, "op", "c", "op_procedure", "attendances")
+            for strategy in [
+                "day_procedures_occasionally_op",
+                "day_procedures_usually_op",
+            ]
+        ),
+        name="value",
+    )
+
+    expected.index.names = sc.index.names = [
+        "change_factor",
+        "strategy",
+        "activity_type",
+        "sitetret",
+        "pod",
+        "measure",
+    ]
+
+    # act
+    actual = mr._step_counts_get_type_change_outpatients(sc)
+
+    # assert
+    assert actual.equals(expected)
 
 
 def test_get_model_results(mock_model_run):
