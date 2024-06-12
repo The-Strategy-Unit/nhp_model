@@ -174,7 +174,7 @@ def _run_model(
     # model run 1:n are the monte carlo sims
     # model run >n are the time profile years
     years = params["end_year"] - params["start_year"]
-    model_runs = list(range(-1, params["model_runs"] + years))
+    model_runs = list(range(params["model_runs"] + years))
 
     cpus = os.cpu_count()
     batch_size = int(os.getenv("BATCH_SIZE", "1"))
