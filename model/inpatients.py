@@ -170,7 +170,6 @@ class InpatientsModel(Model):
         :returns: a dictionary containing the different aggregations of this data
         :rtype: dict
         """
-        # get the run params: use principal run for baseline
         model_results = model_run.get_model_results()
 
         model_results = (
