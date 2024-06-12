@@ -212,7 +212,7 @@ class InpatientsModel(Model):
             .reset_index()
         )
 
-        # quick dq fix: convert any "non-elective" daycases to "elective"
+        # convert any "daycase" like rows after type conversion to the correct pod
         model_results.loc[model_results["classpat"].isin(["-2", "2", "3"]), "pod"] = (
             "ip_elective_daycase"
         )
