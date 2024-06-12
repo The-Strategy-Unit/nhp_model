@@ -121,10 +121,11 @@ def _split_model_runs_out(agg_type: str, results: dict) -> None:
             if result["strategy"] == "-":
                 result.pop("strategy")
             result.pop("baseline")
-            result["value"] = result.pop("principal")
+            v = result.pop("principal")
             if result["change_factor"] == "baseline":
                 result.pop("model_runs")
                 result.pop("time_profiles")
+                result["value"] = v
             continue
 
         [lwr, median, upr] = np.quantile(result["model_runs"], [0.1, 0.5, 0.9])
@@ -135,7 +136,7 @@ def _split_model_runs_out(agg_type: str, results: dict) -> None:
         result["model_runs"] = [int(i) for i in result["model_runs"]]
 
         result["baseline"] = int(result["baseline"])
-        result["principal"] = int(result["principal"])
+        result.pop("principal")
 
 
 def _run_model(

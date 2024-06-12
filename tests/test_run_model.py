@@ -261,7 +261,6 @@ def test_split_model_runs_out():
             "pod": "a",
             "measure": "a",
             "baseline": 1,
-            "principal": 2,
             "model_runs": list(range(101)),
             "lwr_ci": 10.0,
             "median": 50.0,
