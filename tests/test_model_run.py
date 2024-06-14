@@ -110,7 +110,7 @@ def test_run(mocker, mock_model_run):
     """test run calls the _run method correctly"""
     # arrange
     mr_mock = mock_model_run
-    mr_mock.model_run = 0
+    mr_mock.model_run = 1
 
     rr_mock = mocker.patch("model.model_run.ActivityAvoidance")
     rr_mock.return_value = rr_mock
@@ -150,7 +150,7 @@ def test_run_baseline(mocker, mock_model_run):
     """test run calls the _run method correctly"""
     # arrange
     mr_mock = mock_model_run
-    mr_mock.model_run = -1
+    mr_mock.model_run = 0
 
     rr_mock = mocker.patch("model.model_run.ActivityAvoidance")
 

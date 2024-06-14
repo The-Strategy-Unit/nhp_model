@@ -92,9 +92,8 @@ def _combine_results(results: list, model_runs: int) -> dict:
             {
                 **dict(k1),
                 "baseline": v1[0],
-                "principal": v1[1],
-                "model_runs": v1[2 : (model_runs + 2)],
-                "time_profiles": v1[(model_runs + 2) :],
+                "model_runs": v1[1 : (model_runs + 1)],
+                "time_profiles": v1[(model_runs + 1) :],
             }
             for k1, v1 in v0.items()
         ]
@@ -108,8 +107,7 @@ def _combine_results(results: list, model_runs: int) -> dict:
 
 
 def _split_model_runs_out(agg_type: str, results: dict) -> None:
-    """updates a single result so the baseline and principal runs are split out
-    and summary statistics are generated
+    """updates a single result to be correct
 
     :param agg_type: which aggregate type are we using
     :type key: string
@@ -118,24 +116,17 @@ def _split_model_runs_out(agg_type: str, results: dict) -> None:
     """
     for result in results:
         if agg_type == "step_counts":
+            result.pop("baseline")
             if result["strategy"] == "-":
                 result.pop("strategy")
-            result.pop("baseline")
-            result["value"] = result.pop("principal")
             if result["change_factor"] == "baseline":
-                result.pop("model_runs")
+                result["model_runs"] = result["model_runs"][:1]
                 result.pop("time_profiles")
             continue
-
-        [lwr, median, upr] = np.quantile(result["model_runs"], [0.1, 0.5, 0.9])
-        result["lwr_ci"] = lwr
-        result["median"] = median
-        result["upr_ci"] = upr
 
         result["model_runs"] = [int(i) for i in result["model_runs"]]
 
         result["baseline"] = int(result["baseline"])
-        result["principal"] = int(result["principal"])
 
 
 def _run_model(
@@ -178,7 +169,7 @@ def _run_model(
     # model run 1:n are the monte carlo sims
     # model run >n are the time profile years
     years = params["end_year"] - params["start_year"]
-    model_runs = list(range(-1, params["model_runs"] + years))
+    model_runs = list(range(params["model_runs"] + years))
 
     cpus = os.cpu_count()
     batch_size = int(os.getenv("BATCH_SIZE", "1"))

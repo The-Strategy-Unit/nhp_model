@@ -376,7 +376,7 @@ class Model:
         """
         mr = ModelRun(self, model_run)
 
-        if self.save_full_model_results:
+        if self.save_full_model_results and model_run > 0:
             dataset = self.params["dataset"]
             model_id = self.params["id"]
 

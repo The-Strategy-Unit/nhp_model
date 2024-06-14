@@ -58,7 +58,7 @@ class ModelRun:
         }
 
     def _run(self):
-        if self.model_run == -1:
+        if self.model_run == 0:
             return
 
         (
