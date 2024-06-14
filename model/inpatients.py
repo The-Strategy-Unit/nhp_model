@@ -173,6 +173,12 @@ class InpatientsModel(Model):
         # get the run params: use principal run for baseline
         model_results = model_run.get_model_results()
 
+        # convert any "daycase" like rows after type conversion to the correct pod
+        model_results.loc[model_results["classpat"].isin(["-2", "2", "3"]), "pod"] = (
+            "ip_elective_daycase"
+        )
+        model_results.loc[model_results["classpat"] == "-1", "pod"] = "op_procedure"
+
         model_results = (
             model_results.assign(
                 los_group=lambda x: np.where(
@@ -198,9 +204,7 @@ class InpatientsModel(Model):
                     "age",
                     "age_group",
                     "sex",
-                    "group",
                     "pod",
-                    "classpat",
                     "tretspef",
                     "tretspef_raw",
                     "los_group",
@@ -208,24 +212,19 @@ class InpatientsModel(Model):
                 dropna=False,
             )[["admissions", "beddays", "procedures"]]
             .sum()
-            .melt(ignore_index=False, var_name="measure")
-            .reset_index()
-        )
-
-        # convert any "daycase" like rows after type conversion to the correct pod
-        model_results.loc[model_results["classpat"].isin(["-2", "2", "3"]), "pod"] = (
-            "ip_elective_daycase"
         )
 
         # handle the outpatients rows
-        op_rows = model_results.classpat == "-1"
-        # filter out op_rows we don't care for
-        model_results = model_results[
-            ~op_rows | (model_results.measure == "admissions")
-        ]
-        # update the columns
-        model_results.loc[op_rows, "measure"] = "attendances"
-        model_results.loc[op_rows, "pod"] = "op_procedure"
+        model_results.loc[
+            model_results.index.get_level_values("pod") == "op_procedure",
+            ["beddays", "procedures"],
+        ] = 0
+        model_results = model_results.melt(ignore_index=False, var_name="measure")
+        model_results.loc[
+            model_results.index.get_level_values("pod") == "op_procedure", "measure"
+        ] = "attendances"
+        # remove any row where the measure value is 0
+        model_results = model_results[model_results["value"] > 0].reset_index()
 
         agg = partial(self._create_agg, model_results)
         return (

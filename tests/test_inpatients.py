@@ -271,23 +271,18 @@ def test_aggregate(mock_model):
     mr_mock.get_model_results.return_value = gmr_df
 
     expected_mr = {
-        "sitetret": ["trust"] * 32,
-        "age": list(range(12)) + [i for i in range(11) if i != 5] * 2,
-        "age_group": list(range(6)) * 2 + list(range(5)) * 4,
-        "sex": list(range(6)) * 2 + list(range(5)) * 4,
-        "group": ["elective", "non-elective", "maternity"] * 5
-        + ["elective", "non-elective", "elective", "non-elective", "maternity"] * 3
-        + [
-            "elective",
-            "non-elective",
-        ],
-        "classpat": ["1", "2", "3", "4", "5", "-1"] * 2 + ["1", "2", "3", "4", "5"] * 4,
-        "tretspef": list(range(6)) * 2 + list(range(5)) * 4,
-        "tretspef_raw": list(range(12)) + [i for i in range(11) if i != 5] * 2,
+        "sitetret": ["trust"] * 26,
+        "age": list(range(12)) + [i for i in range(11) if i != 5] + [1, 3, 7, 9],
+        "age_group": list(range(6)) * 2 + list(range(5)) * 2 + [1, 3] * 2,
+        "sex": list(range(6)) * 2 + list(range(5)) * 2 + [1, 3] * 2,
+        "tretspef": list(range(6)) * 2 + list(range(5)) * 2 + [1, 3] * 2,
+        "tretspef_raw": list(range(12))
+        + [i for i in range(11) if i != 5]
+        + [1, 3, 7, 9],
         "measure": (["admissions"] * 5 + ["attendances"]) * 2
         + ["beddays"] * 10
-        + ["procedures"] * 10,
-        "value": [1] * 12 + [i for i in range(1, 12) if i != 6] + [0, 1, 0, 1, 0] * 2,
+        + ["procedures"] * 4,
+        "value": [1] * 12 + [i for i in range(1, 12) if i != 6] + [1] * 4,
         "pod": [
             "ip_elective_admission",
             "ip_elective_daycase",
@@ -304,11 +299,21 @@ def test_aggregate(mock_model):
             "ip_elective_admission",
             "ip_non-elective_admission",
         ]
-        * 4,
+        * 2
+        + [
+            "ip_elective_daycase",
+            "ip_elective_admission",
+            "ip_elective_daycase",
+            "ip_elective_admission",
+        ],
         "los_group": ["0-day"]
         + ["1-7 days"] * 7
         + ["8-14 days"] * 4
-        + (["0-day"] + ["1-7 days"] * 6 + ["8-14 days"] * 3) * 2,
+        + ["0-day"]
+        + ["1-7 days"] * 6
+        + ["8-14 days"] * 3
+        + ["1-7 days"] * 3
+        + ["8-14 days"],
     }
 
     # act
