@@ -158,9 +158,10 @@ def test_birth_adjustment(mocker, mock_activity_avoidance):
 # _health_status_adjustment()
 
 
-def test_health_status_adjustment(mocker, mock_activity_avoidance):
+def test_health_status_adjustment_when_enabled(mocker, mock_activity_avoidance):
     # arrange
     aa_mock = mock_activity_avoidance
+    aa_mock._model_run.params = {"health_status_adjustment": True}
     aa_mock._model_run.run_params = {"health_status_adjustment": 2}
 
     aa_mock._model_run.model.hsa.run.return_value = "hsa"
@@ -176,6 +177,22 @@ def test_health_status_adjustment(mocker, mock_activity_avoidance):
     assert actual == "update"
     aa_mock.hsa.run.assert_called_once_with({"health_status_adjustment": 2})
     u_mock.assert_called_once_with("hsa", ["hsagrp", "sex", "age"])
+
+
+def test_health_status_adjustmen_when_disabled(mock_activity_avoidance):
+    # arrange
+    aa_mock = mock_activity_avoidance
+    aa_mock._model_run.params = {"health_status_adjustment": False}
+    aa_mock._model_run.run_params = {"health_status_adjustment": 2}
+
+    aa_mock._model_run.model.hsa.run.return_value = "hsa"
+
+    # act
+    actual = aa_mock.health_status_adjustment()
+
+    # assert
+    assert actual == aa_mock
+    aa_mock.hsa.run.assert_not_called()
 
 
 def test_covid_adjustment(mocker, mock_activity_avoidance):

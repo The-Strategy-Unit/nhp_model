@@ -133,6 +133,9 @@ class ActivityAvoidance:
 
     def health_status_adjustment(self):
         """perform the health status adjustment"""
+        if not self.params["health_status_adjustment"]:
+            return self
+
         return self._update(
             self.hsa.run(self.run_params),
             ["hsagrp", "sex", "age"],
