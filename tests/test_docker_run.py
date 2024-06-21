@@ -2,6 +2,7 @@
 
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name, missing-function-docstring
 
+import time
 from unittest.mock import Mock, call, mock_open, patch
 
 import pytest
@@ -12,6 +13,7 @@ from docker_run import RunWithAzureStorage, RunWithLocalStorage, main, parse_arg
 config.STORAGE_ACCOUNT = "sa"
 config.APP_VERSION = "dev"
 config.DATA_VERSION = "dev"
+config.CONTAINER_TIMEOUT_SECONDS = 0.1
 
 # RunWithLocalStorage
 
@@ -439,6 +441,15 @@ def test_main_azure(mocker):
     s.finish.assert_called_once_with("results.json", False)
 
 
+def test_exit(mocker):
+    m = mocker.patch("os._exit")
+    import docker_run as r  # pylint: disable=import-outside-toplevel
+
+    r.exit()
+
+    m.assert_called_once_with(1)
+
+
 def test_init(mocker):
     """it should run the main method if __name__ is __main__"""
     import docker_run as r  # pylint: disable=import-outside-toplevel
@@ -451,3 +462,27 @@ def test_init(mocker):
     with patch.object(r, "__name__", "__main__"):
         r.init()  # should call main
         main_mock.assert_called_once()
+
+
+def test_init_timeout_call_exit(mocker):
+    import docker_run as r  # pylint: disable=import-outside-toplevel
+
+    main_mock = mocker.patch("docker_run.main")
+    exit_mock = mocker.patch("docker_run.exit")
+    main_mock.side_effect = lambda: time.sleep(0.2)
+    with patch.object(r, "__name__", "__main__"):
+        r.init()
+
+    exit_mock.assert_called_once()
+
+
+def test_init_timeout_dont_call_exit(mocker):
+    import docker_run as r  # pylint: disable=import-outside-toplevel
+
+    main_mock = mocker.patch("docker_run.main")
+    exit_mock = mocker.patch("docker_run.exit")
+    main_mock.side_effect = lambda: time.sleep(0.02)
+    with patch.object(r, "__name__", "__main__"):
+        r.init()
+
+    exit_mock.assert_not_called()

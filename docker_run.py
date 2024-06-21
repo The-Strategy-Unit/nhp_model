@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import re
+import threading
 from pathlib import Path
 
 from azure.identity import DefaultAzureCredential
@@ -246,10 +247,21 @@ def main():
     logging.info("complete")
 
 
+def exit():
+    logging.error("Timed out, killing container")
+    os._exit(1)
+
+
 def init():
     """method for calling main"""
     if __name__ == "__main__":
+        # start a timer to kill the container if we reach a timeout
+        t = threading.Timer(config.CONTAINER_TIMEOUT_SECONDS, exit)
+        t.start()
+        # run the model
         main()
+        # cancel the timer
+        t.cancel()
 
 
 init()
