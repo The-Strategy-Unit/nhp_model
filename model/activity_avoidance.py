@@ -277,7 +277,6 @@ class ActivityAvoidance:
         :param future: The future row counts after running the poisson resampling.
         :type future: npt.ArrayLike
         """
-
         # convert the paramater values from a dict of 2d numpy arrays to a 3d numpy array
         baseline = self._baseline_counts
         param_values = np.array(list(self.step_counts.values()))
@@ -289,16 +288,10 @@ class ActivityAvoidance:
         # calculate the simple effect of each parameter, if it was performed in isolation to all
         # other parameters
         param_simple_effects = (param_values - 1).reshape(shape) * baseline
-        # what is the difference left over from the expected changes
+        # what is the difference left over from the expected changes (model interaction term)
         diff = future - (baseline + param_simple_effects.sum(axis=0))
-        # create ratios of each parameter to the lambda value, then calculate the
-        # proporitions
-        param_ratios = param_values / param_values.prod(axis=0)
-        param_proportions = param_ratios / param_ratios.sum(axis=0)
-        # calculate the effect of each parameter by scaling the difference proporitionally for each
-        # parameter, adding back in the original param value
-        effect = param_proportions.reshape(shape) * diff + param_simple_effects
         # convert the 3d numpy array back to a dict of 2d numpy arrays
         self._model_run.step_counts = {
-            k: v for k, v in zip(self.step_counts.keys(), effect)
+            **{k: v for k, v in zip(self.step_counts.keys(), param_simple_effects)},
+            ("model_interaction_term", "-"): diff,
         }
