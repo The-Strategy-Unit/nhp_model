@@ -232,6 +232,7 @@ def main():
         runner = RunWithAzureStorage(args.params_file, config.APP_VERSION)
 
     logging.info("running model for: %s", args.params_file)
+    logging.info("container timeout: %ds", config.CONTAINER_TIMEOUT_SECONDS)
     logging.info("submitted by: %s", runner.params.get("user"))
     logging.info("model_runs:   %s", runner.params["model_runs"])
     logging.info("start_year:   %s", runner.params["start_year"])
@@ -248,7 +249,7 @@ def main():
 
 
 def _exit_container():
-    logging.error("Timed out, killing container")
+    logging.error("\nTimed out, killing container")
     os._exit(1)
 
 
