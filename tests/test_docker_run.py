@@ -468,7 +468,7 @@ def test_init_timeout_call_exit(mocker):
     import docker_run as r  # pylint: disable=import-outside-toplevel
 
     main_mock = mocker.patch("docker_run.main")
-    exit_mock = mocker.patch("docker_run.exit")
+    exit_mock = mocker.patch("docker_run._exit_container")
     main_mock.side_effect = lambda: time.sleep(0.2)
     with patch.object(r, "__name__", "__main__"):
         r.init()
@@ -480,7 +480,7 @@ def test_init_timeout_dont_call_exit(mocker):
     import docker_run as r  # pylint: disable=import-outside-toplevel
 
     main_mock = mocker.patch("docker_run.main")
-    exit_mock = mocker.patch("docker_run.exit")
+    exit_mock = mocker.patch("docker_run._exit_container")
     main_mock.side_effect = lambda: time.sleep(0.02)
     with patch.object(r, "__name__", "__main__"):
         r.init()
