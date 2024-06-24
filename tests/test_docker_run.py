@@ -441,11 +441,11 @@ def test_main_azure(mocker):
     s.finish.assert_called_once_with("results.json", False)
 
 
-def test_exit(mocker):
+def test_exit_container(mocker):
     m = mocker.patch("os._exit")
     import docker_run as r  # pylint: disable=import-outside-toplevel
 
-    r.exit()
+    r._exit_container()
 
     m.assert_called_once_with(1)
 

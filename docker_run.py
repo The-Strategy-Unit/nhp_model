@@ -247,7 +247,7 @@ def main():
     logging.info("complete")
 
 
-def exit():
+def _exit_container():
     logging.error("Timed out, killing container")
     os._exit(1)
 
@@ -256,7 +256,7 @@ def init():
     """method for calling main"""
     if __name__ == "__main__":
         # start a timer to kill the container if we reach a timeout
-        t = threading.Timer(config.CONTAINER_TIMEOUT_SECONDS, exit)
+        t = threading.Timer(config.CONTAINER_TIMEOUT_SECONDS, _exit_container)
         t.start()
         # run the model
         main()
