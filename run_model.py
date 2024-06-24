@@ -312,7 +312,7 @@ def _run_model_argparser() -> argparse.Namespace:  # pragma: no cover
     )
     parser.add_argument("-d", "--data-path", help="Path to the data", default="data")
     parser.add_argument(
-        "-r", "--model-run", help="Which model iteration to run", default=0, type=int
+        "-r", "--model-run", help="Which model iteration to run", default=1, type=int
     )
     parser.add_argument(
         "-t",
