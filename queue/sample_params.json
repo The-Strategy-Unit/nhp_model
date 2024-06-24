@@ -18,6 +18,7 @@
       "var_proj_low_intl_migration": 0.15
     }
   },
+  "health_status_adjustment": true,
   "covid_adjustment": {
     "aae": {
       "ambulance": [
