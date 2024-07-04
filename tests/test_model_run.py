@@ -242,28 +242,26 @@ def test_get_step_counts(mock_model_run):
     # assert
     mr._step_counts_get_type_changes.assert_called_once()
 
-    assert actual["pod"] == ["a", "a", "b", "b"] * 9 + ["b", "b"]
-    assert actual["measure"] == ["x", "y"] * 19
-    assert actual["sitetret"] == [x for x in ["a", "b"] for _ in range(4)] * 4 + [
-        "a"
-    ] * 4 + ["b", "b"]
-    assert actual["activity_type"] == ["ip"] * 38
+    assert actual["pod"] == ["a", "a", "b", "b"] * 10
+    assert actual["measure"] == ["x", "y"] * 20
+    assert actual["sitetret"] == [x for x in ["a", "b"] for _ in range(4)] * 5
+    assert actual["activity_type"] == ["ip"] * 40
     assert (
         actual["strategy"]
-        == [x for x in ["-", "-", "a", "a"] for _ in range(8)] + ["-"] * 6
+        == [x for x in ["-", "-", "a", "a"] for _ in range(8)] + ["-"] * 8
     )
     assert (
         actual["change_factor"]
         == ["baseline"] * 8
         + [x for x in ["x", "y", "z"] for _ in range(8)]
-        + ["efficiencies"] * 6
+        + ["efficiencies"] * 8
     )
     assert actual["value"] == (
         [1.0, 5.0, 2.0, 6.0, 3.0, 7.0, 4.0, 8.0]
         + [3.0, 6.0, 2.0, 5.0, 1.0, 4.0, 1.0, 1.0]
         + [2.0, 5.0, 1.0, 4.0, 3.0, 6.0, 1.0, 1.0]
         + [-2.0, -5.0, -1.0, -4.0, -3.0, -6.0, -1.0, -1.0]
-        + [-1.0, -4.0, -2.0, -5.0, -1.0, -1.0]
+        + [-1.0, -4.0, -2.0, -5.0, 0.0, 0.0, -1.0, -1.0]
     )
 
 

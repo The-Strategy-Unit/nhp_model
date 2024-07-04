@@ -143,9 +143,6 @@ class ModelRun:
             + ["measure"]
         )
 
-        # remove any steps that have 0 effect
-        step_counts = step_counts[step_counts != 0]
-
         step_counts = self._step_counts_get_type_changes(step_counts)
 
         return {
