@@ -251,7 +251,7 @@ class InpatientsModel(Model):
             f"{path_fn('op_conversion')}/0.parquet"
         )
         # remove the op converted rows
-        model_results.loc[~ip_op_row_ix, ["speldur", "classpat"]].to_parquet(
+        model_results.loc[~ip_op_row_ix, ["rn", "speldur", "classpat"]].to_parquet(
             f"{path_fn('ip')}/0.parquet"
         )
 
