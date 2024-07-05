@@ -165,19 +165,18 @@ class ModelRun:
 
     def _step_counts_get_type_change_daycase(self, step_counts):
         # get the daycase conversion values
-        x = step_counts[
-            step_counts.index.isin(
-                ["day_procedures_usually_dc", "day_procedures_occasionally_dc"], level=1
-            )
-        ]
-        # set the beddays equal to admissions
-        x[x.index.get_level_values(5) == "beddays"] = x[
-            x.index.get_level_values(5) == "admissions"
-        ].to_list()
-        # update the pod level
-        x.index = x.index.set_levels(["ip_elective_daycase"], level=4)
-        # invert the values
-        return x * -1
+        x = (
+            step_counts[
+                step_counts.index.isin(
+                    ["day_procedures_usually_dc", "day_procedures_occasionally_dc"],
+                    level=1,
+                )
+            ]
+            .to_frame()
+            .reset_index()
+        )
+        x["pod"] = "ip_elective_daycase"
+        return x.groupby(step_counts.index.names)["value"].sum() * -1
 
     def _step_counts_get_type_change_outpatients(self, step_counts):
         # get the outpatient conversion values
