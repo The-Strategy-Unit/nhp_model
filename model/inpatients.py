@@ -245,9 +245,11 @@ class InpatientsModel(Model):
         model_results = model_run.get_model_results()
         ip_op_row_ix = model_results["classpat"] == "-1"
         # save the op converted rows
-        model_results[ip_op_row_ix].groupby(["age", "sex", "tretspef"]).size().to_frame(
-            "attendances"
-        ).assign(tele_attendances=0).reset_index().to_parquet(
+        model_results[ip_op_row_ix].groupby(
+            ["age", "sex", "tretspef", "tretspef_raw", "sitetret"]
+        ).size().to_frame("attendances").assign(
+            tele_attendances=0
+        ).reset_index().to_parquet(
             f"{path_fn('op_conversion')}/0.parquet"
         )
         # remove the op converted rows

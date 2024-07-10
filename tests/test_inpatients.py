@@ -341,6 +341,8 @@ def test_save_results(mocker, mock_model):
             "sex": [3],
             "tretspef": [4],
             "speldur": [5],
+            "tretspef_raw": [6],
+            "sitetret": [7]
         }
     )
 
