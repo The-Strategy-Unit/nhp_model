@@ -88,7 +88,7 @@ class Model:
         # create HSA object if it hasn't been passed in
         year = params["start_year"]
         self.hsa = hsa or HealthStatusAdjustmentInterpolated(
-            f"data/{year}/{params['dataset']}", str(year)
+            f"{data_path}/{year}/{params['dataset']}", str(year)
         )
         # generate the run parameters if they haven't been passed in
         self.run_params = run_params or self.generate_run_params(params)
