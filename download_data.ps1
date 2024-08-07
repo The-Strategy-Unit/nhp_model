@@ -1,18 +1,19 @@
-param ($dataversion)
-$saname = 'nhpsa'
+param (
+  $dataversion = "dev",
+  $dataset = "synthetic",
+  $year = "2019"
+)
 
-if ($dataversion -eq $null) {
-  Write-Host "Missing argument: data version 
-}
+$saname = 'nhpsa'
 
 az storage blob download-batch `
   -d data `
-  --pattern "$($dataversion)/synthetic/*" `
+  --pattern "$dataversion/$year/$dataset/*" `
   -s data `
   --account-name nhpsa `
   --auth-mode login `
   --overwrite true
 
-rm -rf data/synthetic
-mv "data/$($dataversion)/synthetic" data
-rmdir "data/$($dataversion)"
+Remove-Item -Recurse -Force "data/$year/$dataset"
+Move-Item "data/$dataversion/$year/$dataset" "data/$year/$dataset"
+Remove-Item -Recurse -Force "data/$dataversion"
