@@ -25,16 +25,27 @@ generate_aae_from_ecds <- function(params, ecds_extract, successors_file) {
       .before = tidyselect::everything()
     )
 
-  df |>
-    dplyr::group_nest(.data[["procode"]]) |>
-    purrr::pmap(\(procode, data) {
-      path <- glue::glue("data/2019/{procode}")
+  params <- params |>
+    tibble::enframe() |>
+    tidyr::separate("name", c("x", "y", "z"), "_", extra = "merge") |>
+    tidyr::pivot_wider(names_from = "z", values_from = "value") |>
+    dplyr::select(-"x", -"y") |>
+    tidyr::unnest(tidyselect::everything()) |>
+    dplyr::mutate(year = lubridate::year(.data[["start_date"]])) |>
+    dplyr::select(procode = "name", "year", "path")
 
-      if (!dir.exists(path)) {
+  df |>
+    dplyr::group_nest(.data[["procode"]], .data[["fyear"]]) |>
+    dplyr::mutate(year = as.numeric(stringr::str_sub(.data[["fyear"]], 1, 4))) |>
+    dplyr::inner_join(params, by = dplyr::join_by("procode", "year")) |>
+    purrr::pmap(\(procode, data, path, ...) {
+      p <- glue::glue("{path}/{procode}")
+
+      if (!dir.exists(p)) {
         return()
       }
 
-      fn <- glue::glue("{path}/aae.parquet")
+      fn <- glue::glue("{p}/aae.parquet")
       arrow::write_parquet(data, fn)
       fn
     }) |>

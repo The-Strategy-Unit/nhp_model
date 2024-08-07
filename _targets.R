@@ -25,7 +25,7 @@ list(
   # take they year and turn it into a date
   tar_target(
     extract_years,
-    c(2019)
+    c(2019, 2022)
   ),
   tar_target(
     start_date,
@@ -123,8 +123,8 @@ list(
     format = "file"
   ),
   tar_target(
-    ecds_2019,
-    "data/raw/ecds_2019.parquet",
+    ecds_raw,
+    "data/raw/ecds.parquet",
     format = "file"
   ),
   tar_target(
@@ -136,7 +136,7 @@ list(
     aae_data,
     generate_aae_from_ecds(
       params,
-      ecds_2019,
+      ecds_raw,
       successors_file
     ),
     format = "file"
