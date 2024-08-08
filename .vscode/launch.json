@@ -6,7 +6,7 @@
   "configurations": [
     {
       "name": "Inpatients (principal) Run Model",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "run_model.py",
       "args": [
@@ -17,7 +17,7 @@
     },
     {
       "name": "Outpatients (principal) Run Model",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "run_model.py",
       "args": [
@@ -28,7 +28,7 @@
     },
     {
       "name": "A&E (principal) Run Model",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "run_model.py",
       "args": [
@@ -39,7 +39,7 @@
     },
     {
       "name": "Full Model Run",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "run_model.py",
       "args": [
@@ -50,7 +50,7 @@
     },
     {
       "name": "Inpatients (Time Profile Year + 2) Run Model",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "run_model.py",
       "args": [
