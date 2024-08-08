@@ -4,20 +4,25 @@ set -eo pipefail
 
 export saname=nhpsa
 
-if [ $# -eq 0 ]
+if [ $# != 3 ]
 then
-  echo "Missing argument: data version"
+  echo "Missing arguments: data_version, dataset, year"
   exit
 fi
 
+data_version=$1
+dataset=$2
+year=$3
+data_path="$data_version/$year/$dataset"
+
 az storage blob download-batch \
   -d data \
-  --pattern "$1/synthetic/*" \
+  --pattern "$data_path/*" \
   -s data \
   --account-name nhpsa \
   --auth-mode login \
   --overwrite true
 
-rm -rf data/synthetic
-mv "data/$1/synthetic" data
-rmdir "data/$1"
+rm -rf "data/$year/$dataset"
+mv "data/$data_version/$year/$dataset" "data/$year/$dataset"
+rm -rf "data/$data_version"
