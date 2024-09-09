@@ -50,9 +50,11 @@ class InpatientsModel(Model):
     def _add_pod_to_data(self) -> None:
         """Adds the POD column to data"""
         self.data["pod"] = "ip_" + self.data["group"] + "_admission"
-        self.data.loc[self.data["classpat"].isin(["2", "3"]), "pod"] = (
-            "ip_elective_daycase"
-        )
+        # update pod for daycases/regular attenders
+        classpat = self.data["classpat"]
+        self.data.loc[classpat == "2", "pod"] = "ip_elective_daycase"
+        self.data.loc[classpat == "3", "pod"] = "ip_regular_day_attender"
+        self.data.loc[classpat == "4", "pod"] = "ip_regular_night_attender"
 
     def _load_strategies(self) -> None:
         """Load a set of strategies"""

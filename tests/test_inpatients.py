@@ -91,8 +91,16 @@ def test_add_pod_to_data(mock_model):
     # arrange
     mock_model.data = pd.DataFrame(
         {
-            "group": ["elective", "elective", "elective", "non-elective", "maternity"],
-            "classpat": ["1", "2", "3", "1", "1"],
+            "group": [
+                "elective",
+                "elective",
+                "elective",
+                "non-elective",
+                "maternity",
+                "elective",
+                "maternity",
+            ],
+            "classpat": ["1", "2", "3", "1", "1", "4", "5"],
         }
     )
     # act
@@ -102,8 +110,10 @@ def test_add_pod_to_data(mock_model):
     assert mock_model.data["pod"].to_list() == [
         "ip_elective_admission",
         "ip_elective_daycase",
-        "ip_elective_daycase",
+        "ip_regular_day_attender",
         "ip_non-elective_admission",
+        "ip_maternity_admission",
+        "ip_regular_night_attender",
         "ip_maternity_admission",
     ]
 
@@ -342,7 +352,7 @@ def test_save_results(mocker, mock_model):
             "tretspef": [4],
             "speldur": [5],
             "tretspef_raw": [6],
-            "sitetret": [7]
+            "sitetret": [7],
         }
     )
 
