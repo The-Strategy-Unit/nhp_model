@@ -53,8 +53,13 @@ class InpatientsModel(Model):
         # update pod for daycases/regular attenders
         classpat = self.data["classpat"]
         self.data.loc[classpat == "2", "pod"] = "ip_elective_daycase"
-        self.data.loc[classpat == "3", "pod"] = "ip_regular_day_attender"
-        self.data.loc[classpat == "4", "pod"] = "ip_regular_night_attender"
+
+        # handle regular attenders
+        self.data.loc[classpat == "3", "pod"], self.data.loc[classpat == "4", "pod"] = (
+            ("ip_regular_day_attender", "ip_regular_night_attender")
+            if self.params.get("separate_regular_attenders", True)
+            else ("ip_elective_daycase", "ip_elective_admission")
+        )
 
     def _load_strategies(self) -> None:
         """Load a set of strategies"""
