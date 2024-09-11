@@ -50,8 +50,15 @@ class InpatientsModel(Model):
     def _add_pod_to_data(self) -> None:
         """Adds the POD column to data"""
         self.data["pod"] = "ip_" + self.data["group"] + "_admission"
-        self.data.loc[self.data["classpat"].isin(["2", "3"]), "pod"] = (
-            "ip_elective_daycase"
+        # update pod for daycases/regular attenders
+        classpat = self.data["classpat"]
+        self.data.loc[classpat == "2", "pod"] = "ip_elective_daycase"
+
+        # handle regular attenders
+        self.data.loc[classpat == "3", "pod"], self.data.loc[classpat == "4", "pod"] = (
+            ("ip_regular_day_attender", "ip_regular_night_attender")
+            if self.params.get("separate_regular_attenders", True)
+            else ("ip_elective_daycase", "ip_elective_admission")
         )
 
     def _load_strategies(self) -> None:
@@ -172,8 +179,8 @@ class InpatientsModel(Model):
         """
         model_results = model_run.get_model_results()
 
-        # convert any "daycase" like rows after type conversion to the correct pod
-        model_results.loc[model_results["classpat"].isin(["-2", "2", "3"]), "pod"] = (
+        # handle the type conversions: change the pod's
+        model_results.loc[model_results["classpat"] == "-2", "pod"] = (
             "ip_elective_daycase"
         )
         model_results.loc[model_results["classpat"] == "-1", "pod"] = "op_procedure"

@@ -91,8 +91,16 @@ def test_add_pod_to_data(mock_model):
     # arrange
     mock_model.data = pd.DataFrame(
         {
-            "group": ["elective", "elective", "elective", "non-elective", "maternity"],
-            "classpat": ["1", "2", "3", "1", "1"],
+            "group": [
+                "elective",
+                "elective",
+                "elective",
+                "non-elective",
+                "maternity",
+                "elective",
+                "maternity",
+            ],
+            "classpat": ["1", "2", "3", "1", "1", "4", "5"],
         }
     )
     # act
@@ -102,9 +110,56 @@ def test_add_pod_to_data(mock_model):
     assert mock_model.data["pod"].to_list() == [
         "ip_elective_admission",
         "ip_elective_daycase",
-        "ip_elective_daycase",
+        "ip_regular_day_attender",
         "ip_non-elective_admission",
         "ip_maternity_admission",
+        "ip_regular_night_attender",
+        "ip_maternity_admission",
+    ]
+
+
+@pytest.mark.parametrize(
+    "test, expected",
+    [
+        (True, ["ip_regular_day_attender", "ip_regular_night_attender"]),
+        (False, ["ip_elective_daycase", "ip_elective_admission"]),
+    ],
+)
+def test_add_pod_to_data_separate_regular_day_attenders_param(
+    mock_model, test, expected
+):
+    # arrange
+    mock_model.data = pd.DataFrame(
+        {
+            "group": ["elective", "elective"],
+            "classpat": ["3", "4"],
+        }
+    )
+    mock_model.params["separate_regular_attenders"] = test
+
+    # act
+    mock_model._add_pod_to_data()
+
+    # assert
+    assert mock_model.data["pod"].to_list() == expected
+
+
+def test_add_pod_to_data_no_regular_attenders(mock_model):
+    # arrange
+    mock_model.data = pd.DataFrame(
+        {
+            "group": ["elective", "elective"],
+            "classpat": ["1", "2"],
+        }
+    )
+
+    # act
+    mock_model._add_pod_to_data()
+
+    # assert
+    assert mock_model.data["pod"].to_list() == [
+        "ip_elective_admission",
+        "ip_elective_daycase",
     ]
 
 
@@ -256,7 +311,7 @@ def test_aggregate(mock_model):
             "age_group": xs,
             "sex": xs,
             "group": ["elective", "non-elective", "maternity"] * 4,
-            "classpat": ["1", "2", "3", "4", "5", "-1"] * 2,
+            "classpat": ["1", "-2", "3", "4", "5", "-1"] * 2,
             "tretspef": xs,
             "tretspef_raw": list(range(12)),
             "rn": [1] * 12,
@@ -286,7 +341,7 @@ def test_aggregate(mock_model):
         "pod": [
             "ip_elective_admission",
             "ip_elective_daycase",
-            "ip_elective_daycase",
+            "ip_maternity_admission",
             "ip_elective_admission",
             "ip_non-elective_admission",
             "op_procedure",
@@ -295,7 +350,7 @@ def test_aggregate(mock_model):
         + [
             "ip_elective_admission",
             "ip_elective_daycase",
-            "ip_elective_daycase",
+            "ip_maternity_admission",
             "ip_elective_admission",
             "ip_non-elective_admission",
         ]
@@ -342,7 +397,7 @@ def test_save_results(mocker, mock_model):
             "tretspef": [4],
             "speldur": [5],
             "tretspef_raw": [6],
-            "sitetret": [7]
+            "sitetret": [7],
         }
     )
 
