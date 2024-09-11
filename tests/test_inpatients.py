@@ -311,7 +311,7 @@ def test_aggregate(mock_model):
             "age_group": xs,
             "sex": xs,
             "group": ["elective", "non-elective", "maternity"] * 4,
-            "classpat": ["1", "2", "3", "4", "5", "-1"] * 2,
+            "classpat": ["1", "-2", "3", "4", "5", "-1"] * 2,
             "tretspef": xs,
             "tretspef_raw": list(range(12)),
             "rn": [1] * 12,
@@ -341,7 +341,7 @@ def test_aggregate(mock_model):
         "pod": [
             "ip_elective_admission",
             "ip_elective_daycase",
-            "ip_elective_daycase",
+            "ip_maternity_admission",
             "ip_elective_admission",
             "ip_non-elective_admission",
             "op_procedure",
@@ -350,7 +350,7 @@ def test_aggregate(mock_model):
         + [
             "ip_elective_admission",
             "ip_elective_daycase",
-            "ip_elective_daycase",
+            "ip_maternity_admission",
             "ip_elective_admission",
             "ip_non-elective_admission",
         ]

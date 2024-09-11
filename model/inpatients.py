@@ -179,8 +179,8 @@ class InpatientsModel(Model):
         """
         model_results = model_run.get_model_results()
 
-        # convert any "daycase" like rows after type conversion to the correct pod
-        model_results.loc[model_results["classpat"].isin(["-2", "2", "3"]), "pod"] = (
+        # handle the type conversions: change the pod's
+        model_results.loc[model_results["classpat"] == "-2", "pod"] = (
             "ip_elective_daycase"
         )
         model_results.loc[model_results["classpat"] == "-1", "pod"] = "op_procedure"
