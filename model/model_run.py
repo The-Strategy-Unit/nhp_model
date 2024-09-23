@@ -176,6 +176,9 @@ class ModelRun:
             .reset_index()
         )
         x["pod"] = "ip_elective_daycase"
+        x.loc[x["measure"] == "beddays", "value"] = x.loc[
+            x["measure"] == "admissions", "value"
+        ].tolist()
         return x.groupby(step_counts.index.names)["value"].sum() * -1
 
     def _step_counts_get_type_change_outpatients(self, step_counts):
