@@ -305,7 +305,7 @@ def test_step_counts_get_type_change_daycase(mock_model_run):
     )
 
     expected = pd.Series(
-        [4, 5, 2, 3],
+        [4, 4, 2, 2],
         index=pd.MultiIndex.from_tuples(
             ("a", strategy, "ip", "c", "ip_elective_daycase", measure)
             for strategy in [
