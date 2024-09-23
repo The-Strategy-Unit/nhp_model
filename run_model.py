@@ -35,6 +35,8 @@ from model.helpers import load_params
 from model.inpatients import InpatientsModel
 from model.model import Model
 from model.model_run import ModelRun
+from model.nhp_data import NHPData
+from model.nhp_data_local import NHPDataLocal
 from model.outpatients import OutpatientsModel
 
 
@@ -132,7 +134,7 @@ def _split_model_runs_out(agg_type: str, results: dict) -> None:
 def _run_model(
     model_type: Model,
     params: dict,
-    path: str,
+    nhp_data: NHPData,
     hsa: Any,
     run_params: dict,
     progress_callback,
@@ -158,7 +160,7 @@ def _run_model(
     model_class = model_type.__name__[:-5]  # pylint: disable=protected-access
     logging.info("%s", model_class)
     logging.info(" * instantiating")
-    model = model_type(params, path, hsa, run_params, save_full_model_results)
+    model = model_type(params, nhp_data, hsa, run_params, save_full_model_results)
     logging.info(" * running")
 
     # set the progress callback for this run
@@ -210,10 +212,11 @@ def run_all(
     model_types = [InpatientsModel, OutpatientsModel, AaEModel]
     run_params = Model.generate_run_params(params)
 
+    nhp_data = NHPDataLocal.create(data_path)
+
     # set the data path in the HealthStatusAdjustment class
-    HealthStatusAdjustment.data_path = data_path
     hsa = HealthStatusAdjustmentInterpolated(
-        f"{data_path}/{params['start_year']}/{params['dataset']}", params["start_year"]
+        nhp_data(params["start_year"], params["dataset"]), params["start_year"]
     )
 
     pcallback = progress_callback()
@@ -223,7 +226,7 @@ def run_all(
             _run_model(
                 m,
                 params,
-                data_path,
+                nhp_data,
                 hsa,
                 run_params,
                 pcallback(m.__name__[:-5]),
@@ -256,16 +259,10 @@ def run_single_model_run(
     """
     Runs a single model iteration for easier debugging in vscode
     """
-    run_params = Model.generate_run_params(params)
-    # set the data path in the HealthStatusAdjustment class
-    HealthStatusAdjustment.data_path = data_path
-    hsa = HealthStatusAdjustmentInterpolated(
-        f"{data_path}/{params['start_year']}/{params['dataset']}",
-        params["start_year"],
-    )
+    nhp_data = NHPDataLocal.create(data_path)
 
     print("initialising model...  ", end="")
-    model = timeit(model_type, params, data_path, hsa, run_params)
+    model = timeit(model_type, params, nhp_data)
     print("running model...       ", end="")
     m_run = timeit(ModelRun, model, model_run)
     print("aggregating results... ", end="")

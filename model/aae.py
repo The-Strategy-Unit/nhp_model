@@ -13,6 +13,7 @@ import pandas as pd
 
 from model.model import Model
 from model.model_run import ModelRun
+from model.nhp_data import NHPData
 
 
 class AaEModel(Model):
@@ -20,14 +21,22 @@ class AaEModel(Model):
 
     Implementation of the Model for Accident and Emergency attendances.
 
-    :param params: the parameters to run the model with
-    :param data_path: the path to where the data files live
+    :param params: the parameters to run the model with, or the path to a params file to load
+    :type params: dict or string
+    :param nhp_data: a NHPData class ready to be constructed
+    :type data_path: NHPData
+    :param hsa: An instance of the HealthStatusAdjustment class. If left as None an instance is created
+    :type hsa: HealthStatusAdjustment, optional
+    :param run_params: the parameters to use for each model run. generated automatically if left as None
+    :type run_params: dict
+    :param save_full_model_results: whether to save the full model results or not
+    :type save_full_model_results: bool, optional
     """
 
     def __init__(
         self,
         params: dict,
-        data_path: str,
+        nhp_data: NHPData,
         hsa: Any = None,
         run_params: dict = None,
         save_full_model_results: bool = False,
@@ -37,11 +46,14 @@ class AaEModel(Model):
             "aae",
             ["arrivals"],
             params,
-            data_path,
+            nhp_data,
             hsa,
             run_params,
             save_full_model_results,
         )
+
+    def _get_data(self) -> pd.DataFrame:
+        return self._nhp_data.get_aae()
 
     def _add_pod_to_data(self) -> None:
         """Adds the POD column to data"""

@@ -23,6 +23,7 @@ from model.health_status_adjustment import (
 )
 from model.helpers import age_groups, create_time_profiles, inrange, load_params, rnorm
 from model.model_run import ModelRun
+from model.nhp_data import NHPData
 
 
 class Model:
@@ -33,12 +34,16 @@ class Model:
 
     :param model_type: the type of model, either "aae", "ip", or "op"
     :type model_type: str
+    :param measures: the names of the measures in the model
+    :type measures: str
     :param params: the parameters to run the model with, or the path to a params file to load
     :type params: dict or string
-    :param data_path: the path to where the data files live
-    :type data_path: str
-    :param columns_to_load: a list of columns to load from the data
-    :type columns_to_load: str, optional
+    :param nhp_data: a NHPData class ready to be constructed
+    :type data_path: NHPData
+    :param hsa: An instance of the HealthStatusAdjustment class. If left as None an instance is created
+    :type hsa: HealthStatusAdjustment, optional
+    :param run_params: the parameters to use for each model run. generated automatically if left as None
+    :type run_params: dict
     :param save_full_model_results: whether to save the full model results or not
     :type save_full_model_results: bool, optional
 
@@ -61,7 +66,7 @@ class Model:
         model_type: str,
         measures: str,
         params: dict,
-        data_path: str,
+        nhp_data: NHPData,
         hsa: Any = None,
         run_params: dict = None,
         save_full_model_results: bool = False,
@@ -78,28 +83,20 @@ class Model:
         # add model runtime if it doesn't exist
         if not "create_datetime" in self.params:
             self.params["create_datetime"] = f"{datetime.now():%Y%m%d_%H%M%S}"
-        # store the path where the data is stored and the results are stored
-        self._data_path = f"{data_path}/{params['start_year']}/{self.params['dataset']}"
+        self._nhp_data = nhp_data(params["start_year"], params["dataset"])
         # load the data. we only need some of the columns for the model, so just load what we need
-        self.data = self._load_parquet(self.model_type).sort_values("rn")
-        self.data["age_group"] = age_groups(self.data["age"])
+        self._load_data()
         self._load_strategies()
         self._load_demog_factors()
         # create HSA object if it hasn't been passed in
         year = params["start_year"]
-        self.hsa = hsa or HealthStatusAdjustmentInterpolated(
-            f"{data_path}/{year}/{params['dataset']}", str(year)
-        )
+        self.hsa = hsa or HealthStatusAdjustmentInterpolated(self._nhp_data, str(year))
         # generate the run parameters if they haven't been passed in
         self.run_params = run_params or self.generate_run_params(params)
         #
         self.save_full_model_results = save_full_model_results
-        # pylint: disable=assignment-from-no-return
-        self.baseline_counts = self.get_data_counts(self.data)
         #
         self._measures = measures
-        #
-        self._add_pod_to_data()
 
     def _add_pod_to_data(self) -> None:
         """Adds the POD column to data"""
@@ -114,22 +111,16 @@ class Model:
         """
         return self._measures
 
-    def _load_parquet(self, file: str) -> pd.DataFrame:
-        """Load a parquet file
+    def _get_data(self) -> None:
+        """Load the data"""
+        # to be implemented by the concrete classes
 
-        Helper method for loading a parquet file into a pandas DataFrame.
-
-        You can selectively load columns by passing an array of column names to `args`.
-
-        :param file: the name of the file to load (without the .parquet file extension)
-        :type file: str
-        :param args: the list of columns to load. If left blank, it loads all available columns
-        :type args: [str]
-
-        :returns: the contents of the file
-        :rtype: pandas.DataFrame
-        """
-        return pd.read_parquet(os.path.join(self._data_path, f"{file}.parquet"))
+    def _load_data(self) -> None:
+        self.data = self._get_data().sort_values("rn")
+        self.data["age_group"] = age_groups(self.data["age"])
+        # pylint: disable=assignment-from-no-return
+        self.baseline_counts = self.get_data_counts(self.data)
+        self._add_pod_to_data()
 
     def _load_strategies(self) -> None:
         """Load a set of strategies"""
@@ -149,7 +140,6 @@ class Model:
             | available
           * `self._probabilities`: a list containing the probability of selecting a given variant
         """
-        dfp = self.params["demographic_factors"]
         start_year = str(self.params["start_year"])
         years = (
             np.arange(self.params["start_year"], self.params["end_year"]) + 1
@@ -157,15 +147,14 @@ class Model:
 
         merge_cols = ["age", "sex"]
 
-        def load_factors(filename):
-            factors = pd.read_csv(os.path.join(self._data_path, filename))
+        def load_factors(factors):
             factors[merge_cols] = factors[merge_cols].astype(int)
             factors.set_index(["variant"] + merge_cols, inplace=True)
 
             return factors[years].apply(lambda x: x / factors[start_year])
 
-        self.demog_factors = load_factors(dfp["file"])
-        self.birth_factors = load_factors("birth_factors.csv")
+        self.demog_factors = load_factors(self._nhp_data.get_demographic_factors())
+        self.birth_factors = load_factors(self._nhp_data.get_birth_factors())
 
     @staticmethod
     def generate_run_params(params):
@@ -320,8 +309,15 @@ class Model:
             },
         }
 
-    def get_data_counts(self, data) -> npt.ArrayLike:
-        pass
+    def get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
+        """Get row counts of data
+
+        :param data: the data to get the counts of
+        :type data: pd.DataFrame
+        :return: the counts of the data, required for activity avoidance steps
+        :rtype: npt.ArrayLike
+        """
+        raise NotImplementedError()
 
     def get_future_from_row_samples(self, row_samples):
         """Get the future counts from row samples

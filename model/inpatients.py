@@ -13,15 +13,22 @@ import pandas as pd
 
 from model.model import Model
 from model.model_run import ModelRun
+from model.nhp_data import NHPData
 
 
 class InpatientsModel(Model):
     """Inpatients Model
 
-    :param params: the parameters to run the model with
-    :type params: dict
-    :param data_path: the path to where the data files live
-    :type data_path: str
+    :param params: the parameters to run the model with, or the path to a params file to load
+    :type params: dict or string
+    :param nhp_data: a NHPData class ready to be constructed
+    :type data_path: NHPData
+    :param hsa: An instance of the HealthStatusAdjustment class. If left as None an instance is created
+    :type hsa: HealthStatusAdjustment, optional
+    :param run_params: the parameters to use for each model run. generated automatically if left as None
+    :type run_params: dict
+    :param save_full_model_results: whether to save the full model results or not
+    :type save_full_model_results: bool, optional
 
     Inherits from the Model class.
     """
@@ -31,7 +38,7 @@ class InpatientsModel(Model):
     def __init__(
         self,
         params: dict,
-        data_path: str,
+        nhp_data: NHPData,
         hsa: Any = None,
         run_params: dict = None,
         save_full_model_results: bool = False,
@@ -41,7 +48,7 @@ class InpatientsModel(Model):
             "ip",
             ["admissions", "beddays"],
             params,
-            data_path,
+            nhp_data,
             hsa,
             run_params,
             save_full_model_results,
@@ -61,24 +68,20 @@ class InpatientsModel(Model):
             else ("ip_elective_daycase", "ip_elective_admission")
         )
 
+    def _get_data(self) -> pd.DataFrame:
+        return self._nhp_data.get_ip()
+
     def _load_strategies(self) -> None:
         """Load a set of strategies"""
 
-        def load_fn(strategy_type):
-            # load the file
-            strats = self._load_parquet(f"ip_{strategy_type}_strategies").set_index(
-                ["rn"]
-            )
+        def filter_valid(strategy_type, strats):
+            strats.set_index(["rn"], inplace=True)
             # get the valid set of valid strategies from the params
             valid_strats = self.params[strategy_type]["ip"].keys()
             # subset the strategies
             return strats[strats.iloc[:, 0].isin(valid_strats)].rename(
                 columns={strats.columns[0]: "strategy"}
             )
-
-        self.strategies = {
-            k: load_fn(k) for k in ["activity_avoidance", "efficiencies"]
-        }
 
         def append_general_los(i, j):
             j = f"general_los_reduction_{j}"
@@ -103,6 +106,10 @@ class InpatientsModel(Model):
                 .drop(columns="_merge")
                 .fillna({"strategy": j, "sample_rate": 1.0})
             )
+
+        self.strategies = {
+            k: filter_valid(k, v) for k, v in self._nhp_data.get_ip_strategies().items()
+        }
 
         # set admissions without a strategy selected to general_los_reduction_X
         # where applicable
