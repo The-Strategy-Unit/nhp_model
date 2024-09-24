@@ -78,3 +78,4 @@ _targets*/
 
 # override the data rule for model/data
 !model/data
+!tests/data
