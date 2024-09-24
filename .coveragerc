@@ -2,3 +2,4 @@
 omit =
   tests/*
   migration/*
+  model/data/databricks.py
