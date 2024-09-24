@@ -15,6 +15,8 @@ dataset=$2
 year=$3
 data_path="$data_version/$year/$dataset"
 
+mkdir -p "$data_version/$year"
+
 az storage blob download-batch \
   -d data \
   --pattern "$data_path/*" \
