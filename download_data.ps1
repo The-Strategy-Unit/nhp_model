@@ -4,6 +4,8 @@ param (
   $year = "2019"
 )
 
+New-Item -ItemType Directory -Path "data/$year" -Force
+
 $saname = 'nhpsa'
 
 az storage blob download-batch `
