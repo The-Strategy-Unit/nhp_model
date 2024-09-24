@@ -17,7 +17,7 @@ def mock_model():
     """create a mock Model instance"""
     with patch.object(AaEModel, "__init__", lambda s, p, d, h, r: None):
         mdl = AaEModel(None, None, None, None)
-    mdl._nhp_data = Mock()
+    mdl._data_loader = Mock()
     mdl.model_type = "aae"
     mdl.params = {
         "dataset": "synthetic",
@@ -91,14 +91,14 @@ def test_init_calls_super_init(mocker):
 def test_get_data(mock_model):
     # arrange
     mdl = mock_model
-    mdl._nhp_data.get_aae.return_value = "aae data"
+    mdl._data_loader.get_aae.return_value = "aae data"
 
     # act
     actual = mdl._get_data()
 
     # assert
     assert actual == "aae data"
-    mdl._nhp_data.get_aae.assert_called_once_with()
+    mdl._data_loader.get_aae.assert_called_once_with()
 
 
 def test_add_pod_to_data(mock_model):

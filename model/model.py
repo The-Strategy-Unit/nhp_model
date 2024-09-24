@@ -17,13 +17,13 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from model.data import Data
 from model.health_status_adjustment import (
     HealthStatusAdjustment,
     HealthStatusAdjustmentInterpolated,
 )
 from model.helpers import age_groups, create_time_profiles, inrange, load_params, rnorm
 from model.model_run import ModelRun
-from model.nhp_data import NHPData
 
 
 class Model:
@@ -38,11 +38,13 @@ class Model:
     :type measures: str
     :param params: the parameters to run the model with, or the path to a params file to load
     :type params: dict or string
-    :param nhp_data: a NHPData class ready to be constructed
-    :type data_path: NHPData
-    :param hsa: An instance of the HealthStatusAdjustment class. If left as None an instance is created
+    :param data: a Data class ready to be constructed
+    :type data: Data
+    :param hsa: An instance of the HealthStatusAdjustment class. If left as None an instance is
+    created
     :type hsa: HealthStatusAdjustment, optional
-    :param run_params: the parameters to use for each model run. generated automatically if left as None
+    :param run_params: the parameters to use for each model run. generated automatically if left as
+    None
     :type run_params: dict
     :param save_full_model_results: whether to save the full model results or not
     :type save_full_model_results: bool, optional
@@ -66,7 +68,7 @@ class Model:
         model_type: str,
         measures: str,
         params: dict,
-        nhp_data: NHPData,
+        data: Data,
         hsa: Any = None,
         run_params: dict = None,
         save_full_model_results: bool = False,
@@ -83,14 +85,16 @@ class Model:
         # add model runtime if it doesn't exist
         if not "create_datetime" in self.params:
             self.params["create_datetime"] = f"{datetime.now():%Y%m%d_%H%M%S}"
-        self._nhp_data = nhp_data(params["start_year"], params["dataset"])
+        self._data_loader = data(params["start_year"], params["dataset"])
         # load the data. we only need some of the columns for the model, so just load what we need
         self._load_data()
         self._load_strategies()
         self._load_demog_factors()
         # create HSA object if it hasn't been passed in
         year = params["start_year"]
-        self.hsa = hsa or HealthStatusAdjustmentInterpolated(self._nhp_data, str(year))
+        self.hsa = hsa or HealthStatusAdjustmentInterpolated(
+            self._data_loader, str(year)
+        )
         # generate the run parameters if they haven't been passed in
         self.run_params = run_params or self.generate_run_params(params)
         #
@@ -153,8 +157,8 @@ class Model:
 
             return factors[years].apply(lambda x: x / factors[start_year])
 
-        self.demog_factors = load_factors(self._nhp_data.get_demographic_factors())
-        self.birth_factors = load_factors(self._nhp_data.get_birth_factors())
+        self.demog_factors = load_factors(self._data_loader.get_demographic_factors())
+        self.birth_factors = load_factors(self._data_loader.get_birth_factors())
 
     @staticmethod
     def generate_run_params(params):

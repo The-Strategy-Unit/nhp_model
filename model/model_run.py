@@ -165,7 +165,7 @@ class ModelRun:
 
     def _step_counts_get_type_change_daycase(self, step_counts):
         # get the daycase conversion values
-        x = (
+        sc_tc_df = (
             step_counts[
                 step_counts.index.isin(
                     ["day_procedures_usually_dc", "day_procedures_occasionally_dc"],
@@ -175,15 +175,15 @@ class ModelRun:
             .to_frame()
             .reset_index()
         )
-        x["pod"] = "ip_elective_daycase"
-        x.loc[x["measure"] == "beddays", "value"] = x.loc[
-            x["measure"] == "admissions", "value"
+        sc_tc_df["pod"] = "ip_elective_daycase"
+        sc_tc_df.loc[sc_tc_df["measure"] == "beddays", "value"] = sc_tc_df.loc[
+            sc_tc_df["measure"] == "admissions", "value"
         ].tolist()
-        return x.groupby(step_counts.index.names)["value"].sum() * -1
+        return sc_tc_df.groupby(step_counts.index.names)["value"].sum() * -1
 
     def _step_counts_get_type_change_outpatients(self, step_counts):
         # get the outpatient conversion values
-        x = (
+        sc_tc_df = (
             step_counts[
                 step_counts.index.isin(
                     ["day_procedures_usually_op", "day_procedures_occasionally_op"],
@@ -195,11 +195,11 @@ class ModelRun:
             .reset_index()
         )
 
-        x["activity_type"] = "op"
-        x["pod"] = "op_procedure"
-        x["measure"] = "attendances"
+        sc_tc_df["activity_type"] = "op"
+        sc_tc_df["pod"] = "op_procedure"
+        sc_tc_df["measure"] = "attendances"
 
-        return x.groupby(step_counts.index.names)["value"].sum() * -1
+        return sc_tc_df.groupby(step_counts.index.names)["value"].sum() * -1
 
     def get_model_results(self):
         """get the model results of a model run"""

@@ -9,10 +9,10 @@ from typing import Any, Callable, Dict
 
 import pandas as pd
 
-from model.nhp_data import NHPData
+from model.data import Data
 
 
-class NHPDataLocal(NHPData):
+class Local(Data):
     """Load NHP data from local storage"""
 
     def __init__(self, data_path: str, year: int, dataset: str):
@@ -20,14 +20,14 @@ class NHPDataLocal(NHPData):
 
     @staticmethod
     def create(data_path: str) -> Callable[[int, str], Any]:
-        """Create NHPDataLocal object
+        """Create Local Data object
 
         :param data_path: the path to where the data is stored locally
         :type data_path: str
         :return: a function to initialise the object
-        :rtype: Callable[[str, str], NHPDataLocal]
+        :rtype: Callable[[str, str], Local]
         """
-        return lambda year, dataset: NHPDataLocal(data_path, year, dataset)
+        return lambda year, dataset: Local(data_path, year, dataset)
 
     def get_ip(self) -> pd.DataFrame:
         """Get the inpatients dataframe

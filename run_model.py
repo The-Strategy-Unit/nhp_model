@@ -22,21 +22,16 @@ from collections import defaultdict
 from multiprocessing import Pool
 from typing import Any, Callable
 
-import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm as base_tqdm
 
 from model.aae import AaEModel
-from model.health_status_adjustment import (
-    HealthStatusAdjustment,
-    HealthStatusAdjustmentInterpolated,
-)
+from model.data import Data, Local
+from model.health_status_adjustment import HealthStatusAdjustmentInterpolated
 from model.helpers import load_params
 from model.inpatients import InpatientsModel
 from model.model import Model
 from model.model_run import ModelRun
-from model.nhp_data import NHPData
-from model.nhp_data_local import NHPDataLocal
 from model.outpatients import OutpatientsModel
 
 
@@ -134,7 +129,7 @@ def _split_model_runs_out(agg_type: str, results: dict) -> None:
 def _run_model(
     model_type: Model,
     params: dict,
-    nhp_data: NHPData,
+    data: Data,
     hsa: Any,
     run_params: dict,
     progress_callback,
@@ -160,7 +155,7 @@ def _run_model(
     model_class = model_type.__name__[:-5]  # pylint: disable=protected-access
     logging.info("%s", model_class)
     logging.info(" * instantiating")
-    model = model_type(params, nhp_data, hsa, run_params, save_full_model_results)
+    model = model_type(params, data, hsa, run_params, save_full_model_results)
     logging.info(" * running")
 
     # set the progress callback for this run
@@ -212,7 +207,7 @@ def run_all(
     model_types = [InpatientsModel, OutpatientsModel, AaEModel]
     run_params = Model.generate_run_params(params)
 
-    nhp_data = NHPDataLocal.create(data_path)
+    nhp_data = Local.create(data_path)
 
     # set the data path in the HealthStatusAdjustment class
     hsa = HealthStatusAdjustmentInterpolated(
@@ -259,10 +254,10 @@ def run_single_model_run(
     """
     Runs a single model iteration for easier debugging in vscode
     """
-    nhp_data = NHPDataLocal.create(data_path)
+    data = Local.create(data_path)
 
     print("initialising model...  ", end="")
-    model = timeit(model_type, params, nhp_data)
+    model = timeit(model_type, params, data)
     print("running model...       ", end="")
     m_run = timeit(ModelRun, model, model_run)
     print("aggregating results... ", end="")

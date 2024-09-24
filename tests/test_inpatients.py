@@ -17,7 +17,7 @@ def mock_model():
     """create a mock Model instance"""
     with patch.object(InpatientsModel, "__init__", lambda s, p, d, h, r: None):
         mdl = InpatientsModel(None, None, None, None)
-    mdl._nhp_data = Mock()
+    mdl._data_loader = Mock()
     mdl.model_type = "ip"
     mdl.params = {
         "dataset": "synthetic",
@@ -167,14 +167,14 @@ def test_add_pod_to_data_no_regular_attenders(mock_model):
 def test_get_data(mock_model):
     # arrange
     mdl = mock_model
-    mdl._nhp_data.get_ip.return_value = "ip data"
+    mdl._data_loader.get_ip.return_value = "ip data"
 
     # act
     actual = mdl._get_data()
 
     # assert
     assert actual == "ip data"
-    mdl._nhp_data.get_ip.assert_called_once_with()
+    mdl._data_loader.get_ip.assert_called_once_with()
 
 
 @pytest.mark.parametrize(
@@ -196,7 +196,7 @@ def test_load_strategies(mock_model, gen_los_type, expected):
         "activity_avoidance": {"ip": {"a": 1, "b": 2}},
         "efficiencies": {"ip": {"b": 3, "c": 4, gen_los_type: 5}},
     }
-    mdl._nhp_data.get_ip_strategies.return_value = {
+    mdl._data_loader.get_ip_strategies.return_value = {
         "activity_avoidance": pd.DataFrame(
             {"rn": [1, 2, 3], "admission_avoidance_strategy": ["a", "b", "c"]}
         ),

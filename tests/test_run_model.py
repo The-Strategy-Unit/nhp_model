@@ -7,7 +7,6 @@ from unittest.mock import Mock, call, mock_open, patch
 import pytest
 
 from model.aae import AaEModel
-from model.health_status_adjustment import HealthStatusAdjustment
 from model.inpatients import InpatientsModel
 from model.outpatients import OutpatientsModel
 from run_model import (
@@ -323,7 +322,7 @@ def test_run_all(mocker):
 
     rm_m = mocker.patch("run_model._run_model", side_effect=["ip", "op", "aae"])
     cr_m = mocker.patch("run_model._combine_results", return_value="combined_results")
-    nd_m = mocker.patch("run_model.NHPDataLocal")
+    nd_m = mocker.patch("run_model.Local")
 
     os_m = mocker.patch("os.makedirs")
 
@@ -397,7 +396,7 @@ def test_run_single_model_run(mocker, capsys):
     """it should run the model and display outputs"""
     # arrange
     mr_mock = Mock()
-    ndl_mock = mocker.patch("run_model.NHPDataLocal")
+    ndl_mock = mocker.patch("run_model.Local")
     ndl_mock.create.return_value = "nhp_data"
 
     timeit_mock = mocker.patch(

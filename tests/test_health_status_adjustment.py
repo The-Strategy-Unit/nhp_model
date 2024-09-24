@@ -2,7 +2,7 @@
 
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name, missing-function-docstring
 
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pandas as pd
@@ -24,7 +24,7 @@ def mock_hsa():
         hsa = HealthStatusAdjustment(None, None)
 
     hsa._all_ages = np.arange(0, 101)
-    hsa._nhp_data = Mock()
+    hsa._data_loader = Mock()
     hsa._cache = dict()
 
     return hsa
@@ -45,51 +45,11 @@ def test_hsa_init(mocker):
 
     # assert
     assert hsa._all_ages.tolist() == list(range(0, 101))
-    assert hsa._nhp_data == "nhp_data"
+    assert hsa._data_loader == "nhp_data"
     assert hsa._cache == dict()
 
     lle_mock.assert_called_once_with(2020)
     laa_mock.assert_called_once_with()
-
-    # check the static values
-    # as these are based on reference data, validate that the values haven't changed
-    variants = {"lle", "hle", "ppp"}
-
-    ## VARIANT_LOOKUP
-    vl = HealthStatusAdjustment.VARIANT_LOOKUP
-    assert len(vl) == 20
-    assert set(vl.values()) == variants
-
-    ## LIFE_EXPECTANCY
-    le = HealthStatusAdjustment.LIFE_EXPECTANCY
-    assert len(le) == 276
-    assert list(le.columns) == ["var", "sex", "age"] + [
-        str(i) for i in range(2018, 2044)
-    ]
-    assert set(le["var"]) == variants
-    assert set(le["sex"]) == {1, 2}
-    assert list(le["age"]) == list(range(55, 101)) * 6
-    assert le[[str(i) for i in range(2018, 2043)]].sum().sum() == 89323.6
-
-    ## SPLIT_NORMAL_PARAMS
-    snp = HealthStatusAdjustment.SPLIT_NORMAL_PARAMS
-    assert len(snp) == 144
-    assert list(snp.columns) == [
-        "var",
-        "sex",
-        "year",
-        "mode",
-        "sd1",
-        "sd2",
-    ]
-    assert set(snp["var"]) == variants
-    assert set(snp["sex"]) == {"f", "m"}
-    assert snp["year"].to_list() == list(range(2020, 2044)) * 6
-    assert snp[["mode", "sd1", "sd2"]].sum().to_list() == [
-        12.159496878354162,
-        55.57842646603717,
-        140.31508181965998,
-    ]
 
 
 @pytest.mark.parametrize(
@@ -113,10 +73,9 @@ def test_hsa_init(mocker):
         ),
     ],
 )
-def test_hsa_load_life_expectancy_series(mock_hsa, year, expectation):
+def test_hsa_load_life_expectancy_series(mocker, mock_hsa, year, expectation):
     # arrange
-    prior_life_expectancy = HealthStatusAdjustment.LIFE_EXPECTANCY
-    HealthStatusAdjustment.LIFE_EXPECTANCY = pd.DataFrame(
+    life_expectancy = pd.DataFrame(
         {
             "var": ["a", "b"],
             "sex": [1, 2],
@@ -126,23 +85,21 @@ def test_hsa_load_life_expectancy_series(mock_hsa, year, expectation):
             "2022": [5, 21],
         }
     )
+    ref_mock = mocker.patch("model.health_status_adjustment.reference")
+    ref_mock.life_expectancy.return_value = life_expectancy
 
     # act
-    try:
-        mock_hsa._load_life_expectancy_series(year)
-    finally:
-        # make sure to reset this value
-        HealthStatusAdjustment.LIFE_EXPECTANCY = prior_life_expectancy
+    mock_hsa._load_life_expectancy_series(year)
 
     # assert
     assert mock_hsa._ages.tolist() == np.arange(55, 91).tolist()
     assert mock_hsa._life_expectancy.to_dict() == expectation
+    ref_mock.life_expectancy.assert_called_once_with()
 
 
-def test_hsa_load_life_expectancy_series_filters_ages(mock_hsa):
+def test_hsa_load_life_expectancy_series_filters_ages(mocker, mock_hsa):
     # arrange
-    prior_life_expectancy = HealthStatusAdjustment.LIFE_EXPECTANCY
-    HealthStatusAdjustment.LIFE_EXPECTANCY = pd.DataFrame(
+    life_expectancy = pd.DataFrame(
         {
             "var": ["a"] * 100,
             "sex": [1] * 100,
@@ -151,13 +108,11 @@ def test_hsa_load_life_expectancy_series_filters_ages(mock_hsa):
             "2022": [i * 2 for i in range(100)],
         }
     )
+    ref_mock = mocker.patch("model.health_status_adjustment.reference")
+    ref_mock.life_expectancy.return_value = life_expectancy
 
     # act
-    try:
-        mock_hsa._load_life_expectancy_series(2020)
-    finally:
-        # make sure to reset this value
-        HealthStatusAdjustment.LIFE_EXPECTANCY = prior_life_expectancy
+    mock_hsa._load_life_expectancy_series(2020)
 
     # assert
     assert list(mock_hsa._life_expectancy.to_dict()["2020"].keys()) == [
@@ -167,7 +122,7 @@ def test_hsa_load_life_expectancy_series_filters_ages(mock_hsa):
 
 def test_load_activity_ages(mock_hsa):
     # arrange
-    mock_hsa._nhp_data.get_hsa_activity_table.return_value = pd.DataFrame(
+    mock_hsa._data_loader.get_hsa_activity_table.return_value = pd.DataFrame(
         {
             "hsagrp": ["a"] * 4 + ["b"] * 4,
             "sex": [1, 2] * 4,
@@ -206,8 +161,7 @@ def test_generate_params(mocker, year, expected_results, expected_call):
     )
     m.return_value = list(range(1, 11))
 
-    prior_snp = HealthStatusAdjustment.SPLIT_NORMAL_PARAMS
-    HealthStatusAdjustment.SPLIT_NORMAL_PARAMS = pd.DataFrame(
+    split_normal_params = pd.DataFrame(
         {
             "var": ["ppp"] * 8,
             "sex": ["m"] * 4 + ["f"] * 4,
@@ -217,20 +171,23 @@ def test_generate_params(mocker, year, expected_results, expected_call):
             "sd2": [0, 7, 8, 9] * 2,
         }
     )
+    ref_mock = mocker.patch("model.health_status_adjustment.reference")
+    ref_mock.split_normal_params.return_value = split_normal_params
+    ref_mock.variant_lookup.return_value = {"principal_proj": "ppp"}
 
     # act
-    try:
-        actual = HealthStatusAdjustment.generate_params(
-            2020, year, ["principal_proj"] * 11, "rng", 10
-        )
-    finally:
-        HealthStatusAdjustment.SPLIT_NORMAL_PARAMS = prior_snp
+    actual = HealthStatusAdjustment.generate_params(
+        2020, year, ["principal_proj"] * 11, "rng", 10
+    )
 
     # assert
     assert [i[0] for i in actual] == expected_results
     assert [i[1] for i in actual] == expected_results
     m.assert_called_with("rng", 10, *expected_call)
     assert m.call_count == 2
+
+    ref_mock.split_normal_params.assert_called_once_with()
+    ref_mock.variant_lookup.assert_called_once_with()
 
 
 def test_random_splitnorm():
@@ -259,7 +216,7 @@ def test_random_splitnorm():
     np.testing.assert_almost_equal(actual, expected, 6)
 
 
-def test_hsa_run_not_cached(mock_hsa):
+def test_hsa_run_not_cached(mocker, mock_hsa):
     # arrange
     mock_hsa._ages = [1, 2]
     mock_hsa._life_expectancy = pd.DataFrame(
@@ -309,7 +266,9 @@ def test_hsa_run_not_cached(mock_hsa):
         }
     ).rename_axis(["hsagrp", "sex", "age"])
     mock_hsa._predict_activity = Mock(return_value=activity)
-    mock_hsa._variant_lookup = {"principal_proj": "ppp"}
+
+    ref_mock = mocker.patch("model.health_status_adjustment.reference")
+    ref_mock.variant_lookup.return_value = {"principal_proj": "ppp"}
 
     # act
     actual = mock_hsa.run(
@@ -330,10 +289,12 @@ def test_hsa_run_not_cached(mock_hsa):
     assert mock_hsa._cache[(2, 3, 2020, "ppp")].equals(actual)
 
 
-def test_hsa_run_cached(mock_hsa):
+def test_hsa_run_cached(mocker, mock_hsa):
     # arrange
     mock_hsa._cache[(1, 2, 2020, "ppp")] = "a"
-    mock_hsa._variant_lookup = {"principal_proj": "ppp"}
+
+    ref_mock = mocker.patch("model.health_status_adjustment.reference")
+    ref_mock.variant_lookup.return_value = {"principal_proj": "ppp"}
 
     # act
     actual = mock_hsa.run(
@@ -412,7 +373,7 @@ def mock_hsa_interpolated():
     with patch.object(
         HealthStatusAdjustmentInterpolated, "__init__", lambda *args: None
     ):
-        hsa = HealthStatusAdjustmentInterpolated(None, None, None)
+        hsa = HealthStatusAdjustmentInterpolated(None, None)
 
     hsa._activity_ages = pd.Series(
         {

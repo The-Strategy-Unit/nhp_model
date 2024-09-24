@@ -7,7 +7,7 @@ such as from local storage or directly from DataBricks.
 import pandas as pd
 
 
-class NHPData:
+class Data:
     """Load NHP data
 
     Interface for loading data for the NHP model. This interface should have no concrete

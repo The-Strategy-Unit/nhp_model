@@ -147,7 +147,7 @@ def test_model_init_sets_values(mocker, model_type):
     # assert
     assert mdl.model_type == model_type
     assert mdl.params == params
-    assert mdl._nhp_data == "nhp_data"
+    assert mdl._data_loader == "nhp_data"
     nhp_data_mock.assert_called_once_with("2020", "synthetic")
     mdl._load_data.assert_called_once()
     mdl._load_strategies.assert_called_once()
@@ -327,7 +327,7 @@ def test_demog_factors_loads_correctly(
         }
     )
     mdl = mock_model
-    mdl._nhp_data = nhp_data_mock
+    mdl._data_loader = nhp_data_mock
     mdl.params["start_year"] = year
 
     # act

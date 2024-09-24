@@ -11,9 +11,9 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from model.data import Data
 from model.model import Model
 from model.model_run import ModelRun
-from model.nhp_data import NHPData
 
 
 class OutpatientsModel(Model):
@@ -24,11 +24,13 @@ class OutpatientsModel(Model):
 
     :param params: the parameters to run the model with, or the path to a params file to load
     :type params: dict or string
-    :param nhp_data: a NHPData class ready to be constructed
-    :type data_path: NHPData
-    :param hsa: An instance of the HealthStatusAdjustment class. If left as None an instance is created
+    :param data: a Data class ready to be constructed
+    :type data: Data
+    :param hsa: An instance of the HealthStatusAdjustment class. If left as None an instance is
+    created
     :type hsa: HealthStatusAdjustment, optional
-    :param run_params: the parameters to use for each model run. generated automatically if left as None
+    :param run_params: the parameters to use for each model run. generated automatically if left as
+    None
     :type run_params: dict
     :param save_full_model_results: whether to save the full model results or not
     :type save_full_model_results: bool, optional
@@ -37,7 +39,7 @@ class OutpatientsModel(Model):
     def __init__(
         self,
         params: dict,
-        nhp_data: NHPData,
+        data: Data,
         hsa: Any = None,
         run_params: dict = None,
         save_full_model_results: bool = False,
@@ -47,14 +49,14 @@ class OutpatientsModel(Model):
             "op",
             ["attendances", "tele_attendances"],
             params,
-            nhp_data,
+            data,
             hsa,
             run_params,
             save_full_model_results,
         )
 
     def _get_data(self) -> pd.DataFrame:
-        return self._nhp_data.get_op()
+        return self._data_loader.get_op()
 
     def _add_pod_to_data(self) -> None:
         """Adds the POD column to data"""

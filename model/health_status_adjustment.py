@@ -3,8 +3,6 @@
 # pylint: disable=too-few-public-methods
 
 
-import json
-from importlib.resources import files
 from math import pi, sqrt
 from typing import List
 
@@ -12,8 +10,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats as spt
 
-from model import reference_data
-from model.nhp_data import NHPData
+from model.data import Data, reference
 
 
 class HealthStatusAdjustment:
@@ -22,18 +19,10 @@ class HealthStatusAdjustment:
     handles the logic for the health status adjustment in the model"""
 
     # load the static reference data files
-    @staticmethod
-    def _ref_path(filename):
-        return files(reference_data).joinpath(filename)
 
-    with _ref_path("variant_lookup.json").open("r", encoding="UTF-8") as vlup_file:
-        VARIANT_LOOKUP = json.load(vlup_file)
-    LIFE_EXPECTANCY = pd.read_csv(_ref_path("life_expectancy.csv"))
-    SPLIT_NORMAL_PARAMS = pd.read_csv(_ref_path("hsa_split_normal_params.csv"))
-
-    def __init__(self, nhp_data: NHPData, base_year: str):
+    def __init__(self, data: Data, base_year: str):
         self._all_ages = np.arange(0, 101)
-        self._nhp_data = nhp_data
+        self._data_loader = data
 
         self._load_life_expectancy_series(base_year)
         self._load_activity_ages()
@@ -44,14 +33,16 @@ class HealthStatusAdjustment:
         # hardcoded to max out at 90 as ages >90 are mapped to 90
         self._ages = np.arange(55, 91)
         # load the life expectancy file, only select the rows for the ages we are interested in
-        lexc = HealthStatusAdjustment.LIFE_EXPECTANCY.set_index(["var", "sex", "age"])
+        lexc = reference.life_expectancy().set_index(["var", "sex", "age"])
         lexc = lexc[lexc.index.isin(self._ages, level=2)]
         # calculate the life expectancy (change) between the model year and base year
         self._life_expectancy = lexc.apply(lambda x: x - lexc[str(base_year)])
 
     def _load_activity_ages(self):
         self._activity_ages = (
-            self._nhp_data.get_hsa_activity_table().set_index(["hsagrp", "sex", "age"])
+            self._data_loader.get_hsa_activity_table().set_index(
+                ["hsagrp", "sex", "age"]
+            )
         )["activity"]
 
     @staticmethod
@@ -76,9 +67,7 @@ class HealthStatusAdjustment:
         :rtype: np.array
         """
 
-        hsa_snp = HealthStatusAdjustment.SPLIT_NORMAL_PARAMS.set_index(
-            ["var", "sex", "year"]
-        )
+        hsa_snp = reference.split_normal_params().set_index(["var", "sex", "year"])
 
         def gen(variant, sex):
             mode, sd1, sd2 = hsa_snp.loc[(variant, sex, end_year)]
@@ -99,8 +88,9 @@ class HealthStatusAdjustment:
             v: np.transpose([gen(v, "m"), gen(v, "f")]) for v in hsa_snp.index.levels[0]
         }
 
+        variant_lookup = reference.variant_lookup()
         return [
-            values[HealthStatusAdjustment.VARIANT_LOOKUP[v]][i]
+            values[variant_lookup[v]][i]
             for i, v in enumerate(
                 variants + variants[0:1] * (end_year - start_year - 1)
             )
@@ -156,7 +146,7 @@ class HealthStatusAdjustment:
         :rtype: _type_
         """
         hsa_param = run_params["health_status_adjustment"]
-        selected_variant = HealthStatusAdjustment.VARIANT_LOOKUP[run_params["variant"]]
+        selected_variant = reference.variant_lookup()[run_params["variant"]]
         cache_key = (*hsa_param, run_params["year"], selected_variant)
         if cache_key in self._cache:
             return self._cache[cache_key]
@@ -185,10 +175,10 @@ class HealthStatusAdjustment:
 class HealthStatusAdjustmentGAM(HealthStatusAdjustment):
     """_summary_"""
 
-    def __init__(self, nhp_data: NHPData, base_year: str):
-        self._gams = nhp_data.get_hsa_gams()
+    def __init__(self, data: Data, base_year: str):
+        self._gams = data.get_hsa_gams()
 
-        super().__init__(nhp_data, base_year)
+        super().__init__(data, base_year)
 
     def _predict_activity(self, adjusted_ages):
         return pd.concat(
@@ -205,8 +195,8 @@ class HealthStatusAdjustmentGAM(HealthStatusAdjustment):
 class HealthStatusAdjustmentInterpolated(HealthStatusAdjustment):
     """_summary_"""
 
-    def __init__(self, nhp_data: NHPData, base_year: str):
-        super().__init__(nhp_data, base_year)
+    def __init__(self, data: Data, base_year: str):
+        super().__init__(data, base_year)
         self._load_activity_ages_lists()
 
     def _load_activity_ages_lists(self):

@@ -75,3 +75,6 @@ docs/_build
 
 # ignore targets meta data
 _targets*/
+
+# override the data rule for model/data
+!model/data
