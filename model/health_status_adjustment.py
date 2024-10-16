@@ -27,6 +27,7 @@ class HealthStatusAdjustment:
         self._load_life_expectancy_series(base_year)
         self._load_activity_ages()
         self._cache = {}
+        self._data_loader = None
 
     def _load_life_expectancy_series(self, base_year: str):
         # the age range that health status adjustment runs for
