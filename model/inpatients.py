@@ -11,6 +11,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from model.data import Data
 from model.model import Model
 from model.model_run import ModelRun
 
@@ -18,10 +19,18 @@ from model.model_run import ModelRun
 class InpatientsModel(Model):
     """Inpatients Model
 
-    :param params: the parameters to run the model with
-    :type params: dict
-    :param data_path: the path to where the data files live
-    :type data_path: str
+    :param params: the parameters to run the model with, or the path to a params file to load
+    :type params: dict or string
+    :param data: a Data class ready to be constructed
+    :type data: Data
+    :param hsa: An instance of the HealthStatusAdjustment class. If left as None an instance is
+    created
+    :type hsa: HealthStatusAdjustment, optional
+    :param run_params: the parameters to use for each model run. generated automatically if left as
+    None
+    :type run_params: dict
+    :param save_full_model_results: whether to save the full model results or not
+    :type save_full_model_results: bool, optional
 
     Inherits from the Model class.
     """
@@ -31,7 +40,7 @@ class InpatientsModel(Model):
     def __init__(
         self,
         params: dict,
-        data_path: str,
+        data: Data,
         hsa: Any = None,
         run_params: dict = None,
         save_full_model_results: bool = False,
@@ -41,7 +50,7 @@ class InpatientsModel(Model):
             "ip",
             ["admissions", "beddays"],
             params,
-            data_path,
+            data,
             hsa,
             run_params,
             save_full_model_results,
@@ -61,24 +70,20 @@ class InpatientsModel(Model):
             else ("ip_elective_daycase", "ip_elective_admission")
         )
 
+    def _get_data(self) -> pd.DataFrame:
+        return self._data_loader.get_ip()
+
     def _load_strategies(self) -> None:
         """Load a set of strategies"""
 
-        def load_fn(strategy_type):
-            # load the file
-            strats = self._load_parquet(f"ip_{strategy_type}_strategies").set_index(
-                ["rn"]
-            )
+        def filter_valid(strategy_type, strats):
+            strats.set_index(["rn"], inplace=True)
             # get the valid set of valid strategies from the params
             valid_strats = self.params[strategy_type]["ip"].keys()
             # subset the strategies
             return strats[strats.iloc[:, 0].isin(valid_strats)].rename(
                 columns={strats.columns[0]: "strategy"}
             )
-
-        self.strategies = {
-            k: load_fn(k) for k in ["activity_avoidance", "efficiencies"]
-        }
 
         def append_general_los(i, j):
             j = f"general_los_reduction_{j}"
@@ -103,6 +108,11 @@ class InpatientsModel(Model):
                 .drop(columns="_merge")
                 .fillna({"strategy": j, "sample_rate": 1.0})
             )
+
+        self.strategies = {
+            k: filter_valid(k, v)
+            for k, v in self._data_loader.get_ip_strategies().items()
+        }
 
         # set admissions without a strategy selected to general_los_reduction_X
         # where applicable
@@ -423,7 +433,7 @@ class InpatientEfficiencies:
 
         After running the efficiencies, update the model runs step counts object.
         """
-        df = (
+        sc_df = (
             self.data
             # handle the changes of activity type
             .assign(
@@ -445,12 +455,12 @@ class InpatientEfficiencies:
         )
 
         model_run = self._model_run
-        rn = pd.Index(model_run.model.data["rn"])
-        for s in df.columns:
-            model_run.step_counts[("efficiencies", s)] = np.array(
+        rn_col = pd.Index(model_run.model.data["rn"])
+        for i in sc_df.columns:
+            model_run.step_counts[("efficiencies", i)] = np.array(
                 [
-                    rn.map(df.loc[(m, slice(None))][s]).fillna(0.0).to_numpy()
-                    for m in df.index.levels[0]
+                    rn_col.map(sc_df.loc[(m, slice(None))][i]).fillna(0.0).to_numpy()
+                    for m in sc_df.index.levels[0]
                 ]
             )
 

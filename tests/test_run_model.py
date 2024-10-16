@@ -7,7 +7,6 @@ from unittest.mock import Mock, call, mock_open, patch
 import pytest
 
 from model.aae import AaEModel
-from model.health_status_adjustment import HealthStatusAdjustment
 from model.inpatients import InpatientsModel
 from model.outpatients import OutpatientsModel
 from run_model import (
@@ -323,6 +322,7 @@ def test_run_all(mocker):
 
     rm_m = mocker.patch("run_model._run_model", side_effect=["ip", "op", "aae"])
     cr_m = mocker.patch("run_model._combine_results", return_value="combined_results")
+    nd_m = mocker.patch("run_model.Local")
 
     os_m = mocker.patch("os.makedirs")
 
@@ -349,6 +349,10 @@ def test_run_all(mocker):
     # assert
     assert actual == "synthetic/test-20230123_012345"
 
+    nd_m.create.assert_called_once_with("data_path")
+    nd_c = nd_m.create()
+    nd_c.assert_called_once_with(2020, "synthetic")
+
     pc_m.assert_called_once_with()
     assert pc_m().call_args_list == [
         call("Inpatients"),
@@ -357,14 +361,13 @@ def test_run_all(mocker):
     ]
 
     grp_m.assert_called_once_with(params)
-    hsa_m.assert_called_once_with("data_path/2020/synthetic", 2020)
-    assert HealthStatusAdjustment.data_path == "data_path"
+    hsa_m.assert_called_once_with(nd_c(2020, "synthetic"), 2020)
 
     assert rm_m.call_args_list == [
         call(
             m,
             params,
-            "data_path",
+            nd_c,
             "hsa",
             {"variant": "variants"},
             "progress callback",
@@ -393,13 +396,9 @@ def test_run_single_model_run(mocker, capsys):
     """it should run the model and display outputs"""
     # arrange
     mr_mock = Mock()
-    grp_mock = mocker.patch(
-        "run_model.Model.generate_run_params", return_value="run_params"
-    )
-    hsa_mock = mocker.patch(
-        "run_model.HealthStatusAdjustmentInterpolated",
-        return_value="hsa",
-    )
+    ndl_mock = mocker.patch("run_model.Local")
+    ndl_mock.create.return_value = "nhp_data"
+
     timeit_mock = mocker.patch(
         "run_model.timeit",
         side_effect=[
@@ -476,17 +475,13 @@ def test_run_single_model_run(mocker, capsys):
     params = {"dataset": "synthetic", "start_year": 2020, "end_year": 2025}
 
     # act
-    run_single_model_run(params, "data_path", "model_type", 0)
+    run_single_model_run(params, "data", "model_type", 0)
 
     # assert
-    grp_mock.assert_called_once_with(params)
-    hsa_mock.assert_called_once_with("data_path/2020/synthetic", 2020)
-    assert HealthStatusAdjustment.data_path == "data_path"
+    ndl_mock.create.assert_called_once_with("data")
 
     assert timeit_mock.call_count == 3
-    assert timeit_mock.call_args_list[0] == call(
-        "model_type", params, "data_path", "hsa", "run_params"
-    )
+    assert timeit_mock.call_args_list[0] == call("model_type", params, "nhp_data")
     assert timeit_mock.call_args_list[2] == call(mr_mock.get_aggregate_results)
 
     assert capsys.readouterr().out == "\n".join(

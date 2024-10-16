@@ -2,7 +2,7 @@
 
 Methods for handling row resampling"""
 
-from typing import List, Tuple
+from typing import List
 
 import numpy as np
 import numpy.typing as npt
@@ -295,6 +295,6 @@ class ActivityAvoidance:
         diff = future - (baseline + param_simple_effects.sum(axis=0))
         # convert the 3d numpy array back to a dict of 2d numpy arrays
         self._model_run.step_counts = {
-            **{k: v for k, v in zip(self.step_counts.keys(), param_simple_effects)},
+            **dict(zip(self.step_counts.keys(), param_simple_effects)),
             ("model_interaction_term", "-"): diff,
         }

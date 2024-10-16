@@ -131,38 +131,30 @@ def test_model_init_sets_values(mocker, model_type):
         "start_year": "2020",
         "create_datetime": "20220101_012345",
     }
-    mock_data = pd.DataFrame({"rn": [2, 1], "age": [2, 1]})
 
-    mocker.patch("model.model.Model._load_parquet", return_value=mock_data)
-    mocker.patch("model.model.age_groups", return_value="age_groups")
+    mocker.patch("model.model.Model._load_data")
     mocker.patch("model.model.Model._load_strategies")
     mocker.patch("model.model.Model._load_demog_factors")
     mocker.patch("model.model.Model.generate_run_params")
-    mocker.patch("model.model.Model.get_data_counts", return_value="data_counts")
-    mocker.patch("model.model.Model._add_pod_to_data")
     lp_m = mocker.patch("model.model.load_params")
     hsa_m = mocker.patch("model.model.HealthStatusAdjustmentInterpolated")
+    nhp_data_mock = Mock()
+    nhp_data_mock.return_value = "nhp_data"
 
     # act
-    mdl = Model(model_type, ["measures"], params, "data", "hsa", "run_params")
+    mdl = Model(model_type, ["measures"], params, nhp_data_mock, "hsa", "run_params")
 
     # assert
     assert mdl.model_type == model_type
     assert mdl.params == params
-    assert mdl._data_path == "data/2020/synthetic"
-    assert mdl.data.to_dict(orient="list") == {
-        "rn": [1, 2],
-        "age": [1, 2],
-        "age_group": ["age_groups"] * 2,
-    }
+    assert mdl._data_loader == "nhp_data"
+    nhp_data_mock.assert_called_once_with("2020", "synthetic")
+    mdl._load_data.assert_called_once()
     mdl._load_strategies.assert_called_once()
     mdl._load_demog_factors.assert_called_once()
     assert mdl.hsa == "hsa"
     mdl.generate_run_params.assert_not_called()
     assert mdl.run_params == "run_params"
-    assert mdl.baseline_counts == "data_counts"
-    mdl.get_data_counts.call_args_list[0][0][0].equals(mdl.data)
-    mdl._add_pod_to_data.assert_called_once_with()
     lp_m.assert_not_called()
     hsa_m.assert_not_called()
 
@@ -175,17 +167,14 @@ def test_model_init_calls_generate_run_params(mocker):
         "start_year": "2020",
         "create_datetime": "20220101_012345",
     }
-    mock_data = pd.DataFrame({"rn": [2, 1], "age": [2, 1]})
 
-    mocker.patch("model.model.Model._load_parquet", return_value=mock_data)
-    mocker.patch("model.model.age_groups", return_value="age_groups")
+    mocker.patch("model.model.Model._load_data")
     mocker.patch("model.model.Model._load_strategies")
     mocker.patch("model.model.Model._load_demog_factors")
     mocker.patch("model.model.Model.generate_run_params", return_value="generated")
-    mocker.patch("model.model.Model.get_data_counts", return_value="data_counts")
 
     # act
-    mdl = Model("aae", "arrivals", params, "data", "hsa")
+    mdl = Model("aae", "arrivals", params, Mock(), "hsa")
 
     # assert
     mdl.generate_run_params.assert_called_once()
@@ -202,15 +191,14 @@ def test_model_init_sets_create_datetime(mocker):
     """it sets the create_datetime item in params if not already set"""
     # arrange
     params = {"dataset": "synthetic", "start_year": "2020"}
-    mock_data = pd.DataFrame({"rn": [2, 1], "age": [2, 1]})
 
-    mocker.patch("model.model.Model._load_parquet", return_value=mock_data)
-    mocker.patch("model.model.age_groups", return_value="age_groups")
+    mocker.patch("model.model.Model._load_data")
+    mocker.patch("model.model.Model._load_strategies")
     mocker.patch("model.model.Model._load_demog_factors")
     mocker.patch("model.model.Model.generate_run_params")
 
     # act
-    mdl = Model("aae", "arrivals", params, "data", "hsa", "run_params")
+    mdl = Model("aae", "arrivals", params, Mock(), "hsa", "run_params")
 
     # assert
     assert re.match("^\\d{8}_\\d{6}$", mdl.params["create_datetime"])
@@ -219,17 +207,16 @@ def test_model_init_sets_create_datetime(mocker):
 def test_model_init_loads_params_if_string(mocker):
     # arrange
     params = {"dataset": "synthetic", "start_year": "2020"}
-    mock_data = pd.DataFrame({"rn": [2, 1], "age": [2, 1]})
 
-    mocker.patch("model.model.Model._load_parquet", return_value=mock_data)
-    mocker.patch("model.model.age_groups", return_value="age_groups")
+    mocker.patch("model.model.Model._load_data")
+    mocker.patch("model.model.Model._load_strategies")
     mocker.patch("model.model.Model._load_demog_factors")
     mocker.patch("model.model.Model.generate_run_params")
     lp_m = mocker.patch("model.model.load_params")
     lp_m.return_value = params
 
     # act
-    mdl = Model("aae", "arrivals", "params_path", "data", "hsa")
+    mdl = Model("aae", "arrivals", "params_path", Mock(), "hsa")
 
     # assert
     lp_m.assert_called_once_with("params_path")
@@ -239,20 +226,19 @@ def test_model_init_loads_params_if_string(mocker):
 def test_model_init_initialises_hsa_if_none(mocker):
     # arrange
     params = {"dataset": "synthetic", "start_year": "2020"}
-    mock_data = pd.DataFrame({"rn": [2, 1], "age": [2, 1]})
 
-    mocker.patch("model.model.Model._load_parquet", return_value=mock_data)
-    mocker.patch("model.model.age_groups", return_value="age_groups")
+    mocker.patch("model.model.Model._load_data")
+    mocker.patch("model.model.Model._load_strategies")
     mocker.patch("model.model.Model._load_demog_factors")
     mocker.patch("model.model.Model.generate_run_params")
     hsa_m = mocker.patch("model.model.HealthStatusAdjustmentInterpolated")
     hsa_m.return_value = "hsa"
 
     # act
-    mdl = Model("aae", "arrivals", params, "data")
+    mdl = Model("aae", "arrivals", params, Mock(return_value="nhp_data"))
 
     # assert
-    hsa_m.assert_called_once_with("data/2020/synthetic", "2020")
+    hsa_m.assert_called_once_with("nhp_data", "2020")
     assert mdl.hsa == "hsa"
 
 
@@ -271,21 +257,29 @@ def test_measures(mock_model):
     assert actual == ["x", "y"]
 
 
-# _load_parquet()
+# _load_data
 
 
-def test_load_parquet(mocker, mock_model):
-    """test that load parquet properly loads files"""
+def test_load_data(mocker, mock_model):
     # arrange
-    m = mocker.patch("pandas.read_parquet", return_value="read_parquet")
     mdl = mock_model
+    mocker.patch("model.model.age_groups", return_value="age_groups")
+    mocker.patch("model.model.Model.get_data_counts", return_value="data_counts")
+    mocker.patch("model.model.Model._add_pod_to_data")
+    mdl._get_data = Mock(return_value=pd.DataFrame({"rn": [2, 1], "age": [2, 1]}))
 
     # act
-    actual = mdl._load_parquet("ip")
+    mdl._load_data()
 
     # assert
-    assert actual == "read_parquet"
-    m.expect_called_with_args("data/ip.parquet")
+    assert mdl.data.to_dict(orient="list") == {
+        "rn": [1, 2],
+        "age": [1, 2],
+        "age_group": ["age_groups"] * 2,
+    }
+    assert mdl.baseline_counts == "data_counts"
+    mdl.get_data_counts.call_args_list[0][0][0].equals(mdl.data)
+    mdl._add_pod_to_data.assert_called_once_with()
 
 
 # _load_demog_factors()
@@ -307,12 +301,12 @@ def test_load_parquet(mocker, mock_model):
     ],
 )
 def test_demog_factors_loads_correctly(
-    mocker, mock_model, year, expected_demog, expected_birth
+    mock_model, year, expected_demog, expected_birth
 ):
     """test that the demographic factors are loaded correctly"""
     # arrange
-    mock_read_csv = Mock()
-    demog_factors = pd.DataFrame(
+    nhp_data_mock = Mock()
+    nhp_data_mock.get_demographic_factors.return_value = pd.DataFrame(
         {
             "variant": ["a"] * 10 + ["b"] * 10,
             "age": list(range(1, 6)) * 4,
@@ -322,7 +316,7 @@ def test_demog_factors_loads_correctly(
             "2020": list(range(21, 41)),
         }
     )
-    birth_factors = pd.DataFrame(
+    nhp_data_mock.get_birth_factors.return_value = pd.DataFrame(
         {
             "variant": ["a"] * 5 + ["b"] * 5,
             "age": list(range(1, 6)) * 2,
@@ -332,9 +326,8 @@ def test_demog_factors_loads_correctly(
             "2020": list(range(21, 31)),
         }
     )
-    mock_read_csv.side_effect = [demog_factors, birth_factors]
-    mocker.patch("pandas.read_csv", mock_read_csv)
     mdl = mock_model
+    mdl._data_loader = nhp_data_mock
     mdl.params["start_year"] = year
 
     # act
@@ -343,6 +336,9 @@ def test_demog_factors_loads_correctly(
     # assert
     assert np.equal(mdl.demog_factors["2020"], expected_demog).all()
     assert np.equal(mdl.birth_factors["2020"], expected_birth).all()
+
+    nhp_data_mock.get_demographic_factors.assert_called_once_with()
+    nhp_data_mock.get_birth_factors.assert_called_once_with()
 
 
 # _generate_run_params()
@@ -552,6 +548,14 @@ def test_get_run_params(
     assert actual == expected_run_params
 
     assert m.call_args_list == mock_call
+
+
+# get_data_counts
+
+
+def test_get_data_counts(mock_model):
+    with pytest.raises(NotImplementedError):
+        mock_model.get_data_counts(None)
 
 
 # get_future_from_row_samples

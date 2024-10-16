@@ -1,12 +1,16 @@
 """_summary_"""
+
 # pylint: disable=too-few-public-methods
 
-import json
+
 from math import pi, sqrt
+from typing import List
 
 import numpy as np
 import pandas as pd
 import scipy.stats as spt
+
+from model.data import Data, reference
 
 
 class HealthStatusAdjustment:
@@ -14,52 +18,38 @@ class HealthStatusAdjustment:
 
     handles the logic for the health status adjustment in the model"""
 
-    # static variable for where data is stored
-    data_path = "data"
+    # load the static reference data files
 
-    def __init__(self, data_path: str, base_year: str):
+    def __init__(self, data: Data, base_year: str):
         self._all_ages = np.arange(0, 101)
-        self._activity_table_path = f"{data_path}/hsa_activity_table.csv"
+        self._data_loader = data
 
         self._load_life_expectancy_series(base_year)
-        self._load_variant_lookup()
         self._load_activity_ages()
         self._cache = {}
-
-    @staticmethod
-    def _reference_path():
-        return f"{HealthStatusAdjustment.data_path}/reference"
 
     def _load_life_expectancy_series(self, base_year: str):
         # the age range that health status adjustment runs for
         # hardcoded to max out at 90 as ages >90 are mapped to 90
         self._ages = np.arange(55, 91)
         # load the life expectancy file, only select the rows for the ages we are interested in
-        lexc = pd.read_csv(
-            f"{HealthStatusAdjustment._reference_path()}/life_expectancy.csv"
-        ).set_index(["var", "sex", "age"])
+        lexc = reference.life_expectancy().set_index(["var", "sex", "age"])
         lexc = lexc[lexc.index.isin(self._ages, level=2)]
         # calculate the life expectancy (change) between the model year and base year
         self._life_expectancy = lexc.apply(lambda x: x - lexc[str(base_year)])
 
-    def _load_variant_lookup(self):
-        with open(
-            f"{HealthStatusAdjustment._reference_path()}/variant_lookup.json",
-            "r",
-            encoding="UTF-8",
-        ) as vlup_file:
-            self._variant_lookup = json.load(vlup_file)
-
     def _load_activity_ages(self):
         self._activity_ages = (
-            pd.read_csv(self._activity_table_path).set_index(["hsagrp", "sex", "age"])
+            self._data_loader.get_hsa_activity_table().set_index(
+                ["hsagrp", "sex", "age"]
+            )
         )["activity"]
 
     @staticmethod
     def generate_params(
         start_year: int,
         end_year: int,
-        variants: [str],
+        variants: List[str],
         rng: np.random.BitGenerator,
         model_runs: int,
     ) -> np.array:
@@ -77,17 +67,7 @@ class HealthStatusAdjustment:
         :rtype: np.array
         """
 
-        hsa_snp = pd.read_csv(
-            f"{HealthStatusAdjustment._reference_path()}/hsa_split_normal_params.csv"
-        ).set_index(["var", "sex", "year"])
-
-        # TODO: reimplements the function above... not DRY
-        with open(
-            f"{HealthStatusAdjustment._reference_path()}/variant_lookup.json",
-            "r",
-            encoding="UTF-8",
-        ) as vlup_file:
-            variant_lookup = json.load(vlup_file)
+        hsa_snp = reference.split_normal_params().set_index(["var", "sex", "year"])
 
         def gen(variant, sex):
             mode, sd1, sd2 = hsa_snp.loc[(variant, sex, end_year)]
@@ -108,6 +88,7 @@ class HealthStatusAdjustment:
             v: np.transpose([gen(v, "m"), gen(v, "f")]) for v in hsa_snp.index.levels[0]
         }
 
+        variant_lookup = reference.variant_lookup()
         return [
             values[variant_lookup[v]][i]
             for i, v in enumerate(
@@ -165,7 +146,7 @@ class HealthStatusAdjustment:
         :rtype: _type_
         """
         hsa_param = run_params["health_status_adjustment"]
-        selected_variant = self._variant_lookup[run_params["variant"]]
+        selected_variant = reference.variant_lookup()[run_params["variant"]]
         cache_key = (*hsa_param, run_params["year"], selected_variant)
         if cache_key in self._cache:
             return self._cache[cache_key]
@@ -194,13 +175,10 @@ class HealthStatusAdjustment:
 class HealthStatusAdjustmentGAM(HealthStatusAdjustment):
     """_summary_"""
 
-    def __init__(self, data_path: str, base_year: str):
-        import pickle  # pylint: disable=import-outside-toplevel
+    def __init__(self, data: Data, base_year: str):
+        self._gams = data.get_hsa_gams()
 
-        with open(f"{data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
-            self._gams = pickle.load(hsa_pkl)
-
-        super().__init__(data_path, base_year)
+        super().__init__(data, base_year)
 
     def _predict_activity(self, adjusted_ages):
         return pd.concat(
@@ -217,8 +195,8 @@ class HealthStatusAdjustmentGAM(HealthStatusAdjustment):
 class HealthStatusAdjustmentInterpolated(HealthStatusAdjustment):
     """_summary_"""
 
-    def __init__(self, data_path: str, base_year: str):
-        super().__init__(data_path, base_year)
+    def __init__(self, data: Data, base_year: str):
+        super().__init__(data, base_year)
         self._load_activity_ages_lists()
 
     def _load_activity_ages_lists(self):
