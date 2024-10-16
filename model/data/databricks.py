@@ -18,7 +18,7 @@ class Databricks(Data):
 
     def __init__(self, spark: SparkContext, fyear: int, dataset: str):
         self._spark = spark
-        self._fyear = fyear
+        self._fyear = fyear * 100 + (fyear + 1) % 100
         self._dataset = dataset
 
     @staticmethod
@@ -39,6 +39,7 @@ class Databricks(Data):
             .filter(F.col("provider") == self._dataset)
             .filter(F.col("fyear") == self._fyear)
             .withColumnRenamed("epikey", "rn")
+            .withColumn("sex", F.col("sex").cast("string"))
         )
 
     def get_ip(self) -> pd.DataFrame:
@@ -59,6 +60,7 @@ class Databricks(Data):
             self._spark.read.table("apc_mitigators")
             .withColumnRenamed("epikey", "rn")
             .join(self._apc, "rn", "semi")
+            .select("rn", "type", "strategy", "sample_rate")
         )
 
         return {
