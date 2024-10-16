@@ -3,14 +3,28 @@ generate_aae_from_ecds <- function(params, ecds_extract, successors_file) {
 
   successors <- readr::read_csv(successors_file, col_types = "cc")
 
-  df <- arrow::read_parquet(ecds_extract) |>
+  acuity_mapping <- c(
+    "1077251000000100" = "non-urgent",
+    "1077241000000103" = "standard",
+    "1064901000000108" = "urgent",
+    "1064911000000105" = "very-urgent",
+    "1064891000000107" = "immediate-resuscitation"
+  )
+
+  df <- ecds_extract |>
+    arrow::read_parquet() |>
+    dtplyr::lazy_dt() |>
     dplyr::filter(.data[["attendance_category"]] == "1") |>
-    tibble::as_tibble() |>
-    dplyr::inner_join(successors, by = dplyr::join_by("procode" == "old_code")) |>
+    dplyr::inner_join(successors, by = c("procode" = "old_code")) |>
     dplyr::mutate(
-      procode = dplyr::case_when(
-        .data[["sitetret"]] %in% c("RW602", "RM318") ~ "R0A",
-        .default = .data[["new_code"]]
+      procode = ifelse(
+        .data[["sitetret"]] %in% c("RW602", "RM318"),
+        "R0A",
+        .data[["new_code"]]
+      ),
+      dplyr::across(
+        "acuity",
+        \(.x) tidyr::replace_na(acuity_mapping[.x], "unknown")
       )
     ) |>
     dplyr::select(-"new_code", -"rn") |>
@@ -23,7 +37,8 @@ generate_aae_from_ecds <- function(params, ecds_extract, successors_file) {
       rn = dplyr::row_number(),
       .by = "procode",
       .before = tidyselect::everything()
-    )
+    ) |>
+    dplyr::collect()
 
   params <- params |>
     tibble::enframe() |>

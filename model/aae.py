@@ -140,12 +140,12 @@ class AaEModel(Model):
         model_results = model_results.groupby(
             # note: any columns used in the calls to _create_agg, including pod and measure
             # must be included below
-            ["pod", "sitetret", "measure", "sex", "age", "age_group"],
+            ["pod", "sitetret", "acuity", "measure", "sex", "age", "age_group"],
             as_index=False,
         ).agg({"value": "sum"})
 
         agg = partial(self._create_agg, model_results)
-        return (agg, {})
+        return (agg, {**agg(["acuity"])})
 
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model

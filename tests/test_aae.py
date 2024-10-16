@@ -192,6 +192,7 @@ def test_aggregate(mock_model):
     mr_mock.get_model_results.return_value = pd.DataFrame(
         {
             "sitetret": ["trust"] * 4,
+            "acuity": ["a", "a", "b", "b"],
             "age": [1, 2, 3, 4],
             "age_group": [1] * 4,
             "sex": [1] * 4,
@@ -204,6 +205,7 @@ def test_aggregate(mock_model):
     expected_mr = {
         "pod": ["aae_type-01", "aae_type-01", "aae_type-02", "aae_type-02"],
         "sitetret": ["trust"] * 4,
+        "acuity": ["a", "a", "b", "b"],
         "measure": ["ambulance", "walk-in"] * 2,
         "sex": [1] * 4,
         "age": [1, 2, 3, 4],
@@ -216,7 +218,7 @@ def test_aggregate(mock_model):
 
     # assert
     assert agg() == {"default": expected_mr}
-    assert not results
+    assert results == {"acuity": expected_mr}
 
 
 def test_save_results(mocker, mock_model):
