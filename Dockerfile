@@ -19,13 +19,10 @@ RUN awk 'NR==1,/# dev dependencies/' /tmp/environment.yml | \
   micromamba clean --all --yes
 
 # copy the app code
-COPY model /opt/model
-COPY run_model.py /opt
-COPY docker_run.py /opt
-COPY config.py /opt
-
-# copy reference data
-COPY --chown=$MAMBA_USER:$MAMBA_USER data/reference data/reference
+COPY --chown=$MAMBA_USER:$MAMBA_USER model /opt/model
+COPY --chown=$MAMBA_USER:$MAMBA_USER run_model.py /opt
+COPY --chown=$MAMBA_USER:$MAMBA_USER docker_run.py /opt
+COPY --chown=$MAMBA_USER:$MAMBA_USER config.py /opt
 
 # define build arguments, these will set the environment variables in the container
 ARG app_version
