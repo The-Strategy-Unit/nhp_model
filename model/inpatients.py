@@ -4,6 +4,7 @@ Inpatients Module
 Implements the inpatients model.
 """
 
+from collections import defaultdict
 from functools import partial
 from typing import Any, Callable, Tuple
 
@@ -195,21 +196,22 @@ class InpatientsModel(Model):
         )
         model_results.loc[model_results["classpat"] == "-1", "pod"] = "op_procedure"
 
+        los_groups = defaultdict(
+            lambda: "22+ days",
+            {
+                0: "0 days",
+                1: "1 day",
+                2: "2 days",
+                3: "3 days",
+                **{i: "4-7 days" for i in range(4, 8)},
+                **{i: "8-14 days" for i in range(8, 15)},
+                **{i: "15-21 days" for i in range(15, 22)},
+            },
+        )
+
         model_results = (
             model_results.assign(
-                los_group=lambda x: np.where(
-                    x["speldur"] == 0,
-                    "0-day",
-                    np.where(
-                        x["speldur"] <= 7,
-                        "1-7 days",
-                        np.where(
-                            x["speldur"] <= 14,
-                            "8-14 days",
-                            np.where(x["speldur"] <= 21, "15-21 days", "22+ days"),
-                        ),
-                    ),
-                ),
+                los_group=lambda x: x["speldur"].map(los_groups),
                 admissions=1,
                 beddays=lambda x: x["speldur"] + 1,
                 procedures=lambda x: x["has_procedure"],

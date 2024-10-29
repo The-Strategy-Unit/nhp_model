@@ -376,14 +376,13 @@ def test_aggregate(mock_model):
             "ip_elective_daycase",
             "ip_elective_admission",
         ],
-        "los_group": ["0-day"]
-        + ["1-7 days"] * 7
+        "los_group": ["0 days", "1 day", "2 days", "3 days"]
+        + ["4-7 days"] * 4
         + ["8-14 days"] * 4
-        + ["0-day"]
-        + ["1-7 days"] * 6
+        + ["0 days", "1 day", "2 days", "3 days"]
+        + ["4-7 days"] * 3
         + ["8-14 days"] * 3
-        + ["1-7 days"] * 3
-        + ["8-14 days"],
+        + ["1 day", "3 days", "4-7 days", "8-14 days"],
     }
 
     # act
