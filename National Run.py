@@ -18,6 +18,15 @@ from model.data.local import Local
 
 # COMMAND ----------
 
+params = mdl.load_params("queue/sample_params.json")
+
+params["dataset"] = "national"
+params["demographic_factors"]["variant_probabilities"] = {"principal_proj": 1.0}
+
+nhp_data = Local.create("/tmp/data")
+
+# COMMAND ----------
+
 spark.catalog.setCurrentCatalog("su_data")
 spark.catalog.setCurrentDatabase("nhp")
 
@@ -195,9 +204,13 @@ class DatabricksNational(Data):
         """
 
         return (
-            self._spark.read.table("birth_factors")
-            .filter(F.col("provider") == self._dataset)
-            .drop("provider")
+            spark.read.parquet("/Volumes/su_data/nhp/population-projections/birth_data")
+            .filter(F.col("area_code").rlike("^E0[6-9]"))
+            .withColumn("sex", F.lit(2))
+            .groupBy("projection", "age", "sex")
+            .pivot("year")
+            .agg(F.sum("value").alias("value"))
+            .withColumnRenamed("projection", "variant")
             .toPandas()
         )
 
@@ -209,9 +222,12 @@ class DatabricksNational(Data):
         """
 
         return (
-            self._spark.read.table("demographic_factors")
-            .filter(F.col("provider") == self._dataset)
-            .drop("provider")
+            spark.read.parquet("/Volumes/su_data/nhp/population-projections/demographic_data")
+            .filter(F.col("area_code").rlike("^E0[6-9]"))
+            .groupBy("projection", "age", "sex")
+            .pivot("year")
+            .agg(F.sum("value").alias("value"))
+            .withColumnRenamed("projection", "variant")
             .toPandas()
         )
 
@@ -223,9 +239,9 @@ class DatabricksNational(Data):
         """
         return (
             self._spark.read.table("hsa_activity_tables")
-            .filter(F.col("provider") == self._dataset)
             .filter(F.col("fyear") == self._fyear)
-            .drop("provider", "fyear")
+            .groupBy("hsagrp", "sex", "age")
+            .agg(F.mean("activity").alias("activity"))
             .toPandas()
         )
 
@@ -246,28 +262,39 @@ class DatabricksNational(Data):
 
 data = DatabricksNational(spark, 2019, 0.01)
 
+# COMMAND ----------
+
 data.get_ip().to_parquet("/tmp/data/2019/national/ip.parquet")
-
-strats = data.get_ip_strategies()
-
-strats["activity_avoidance"].to_parquet("/tmp/data/2019/national/ip_activity_avoidance_strategies.parquet")
-strats["efficiencies"].to_parquet("/tmp/data/2019/national/ip_efficiencies_strategies.parquet")
-
-data.get_op().to_parquet("/tmp/data/2019/national/op.parquet")
-data.get_aae().to_parquet("/tmp/data/2019/national/aae.parquet")
-
-data.get_demographic_factors().to_csv("/tmp/data/2019/national/demographic_factors.csv")
-data.get_birth_factors().to_csv("/tmp/data/2019/national/birth_factors.csv")
-data.get_hsa_activity_table().to_csv("/tmp/data/2019/national/hsa_activity_table.csv")
 
 # COMMAND ----------
 
-params = mdl.load_params("queue/sample_params.json")
-params["health_status_adjustment"] = False
-params["dataset"] = "national"
-run_params = mdl.Model.generate_run_params(params)
+strats = data.get_ip_strategies()
+strats["activity_avoidance"].to_parquet("/tmp/data/2019/national/ip_activity_avoidance_strategies.parquet")
+strats["efficiencies"].to_parquet("/tmp/data/2019/national/ip_efficiencies_strategies.parquet")
 
-nhp_data = Local.create("/tmp/data")
+# COMMAND ----------
+
+data.get_op().to_parquet("/tmp/data/2019/national/op.parquet")
+
+# COMMAND ----------
+
+data.get_aae().to_parquet("/tmp/data/2019/national/aae.parquet")
+
+# COMMAND ----------
+
+data.get_demographic_factors().to_csv("/tmp/data/2019/national/demographic_factors.csv", index=False)
+
+# COMMAND ----------
+
+data.get_birth_factors().to_csv("/tmp/data/2019/national/birth_factors.csv", index=False)
+
+# COMMAND ----------
+
+data.get_hsa_activity_table().to_csv("/tmp/data/2019/national/hsa_activity_table.csv", index=False)
+
+# COMMAND ----------
+
+run_params = mdl.Model.generate_run_params(params)
 
 # set the data path in the HealthStatusAdjustment class
 hsa = mdl.HealthStatusAdjustmentInterpolated(
