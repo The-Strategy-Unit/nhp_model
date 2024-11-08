@@ -12,7 +12,7 @@ import pandas as pd
 import pyspark.sql.functions as F
 
 import model as mdl
-from model.data.local import Local
+from model.data.databricks import DatabricksNational
 from model.health_status_adjustment import HealthStatusAdjustmentInterpolated
 from run_model import _combine_results, _run_model
 
@@ -23,8 +23,6 @@ params = mdl.load_params("queue/sample_params.json")
 params["dataset"] = "national"
 params["demographic_factors"]["variant_probabilities"] = {"principal_proj": 1.0}
 
-nhp_data = Local.create("/tmp/data")
-
 # COMMAND ----------
 
 spark.catalog.setCurrentCatalog("su_data")
@@ -33,70 +31,22 @@ spark.catalog.setCurrentDatabase("nhp")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC # Get Data
-# MAGIC
-# MAGIC For now, load the data locally to `/tmp` because running with databricks itself causes weird issues...
+# MAGIC # Run Model
 
 # COMMAND ----------
 
-data = DatabricksNational(spark, 2019, 0.01)
+nhp_data = DatabricksNational.create(spark, 0.01)
 
 # COMMAND ----------
 
-data.get_ip().to_parquet("/tmp/data/2019/national/ip.parquet")
-
-# COMMAND ----------
-
-strats = data.get_ip_strategies()
-strats["activity_avoidance"].to_parquet(
-    "/tmp/data/2019/national/ip_activity_avoidance_strategies.parquet"
+hsa = mdl.HealthStatusAdjustmentInterpolated(
+    nhp_data(params["start_year"], None), params["start_year"]
 )
-strats["efficiencies"].to_parquet(
-    "/tmp/data/2019/national/ip_efficiencies_strategies.parquet"
-)
-
-# COMMAND ----------
-
-data.get_op().to_parquet("/tmp/data/2019/national/op.parquet")
-
-# COMMAND ----------
-
-data.get_aae().to_parquet("/tmp/data/2019/national/aae.parquet")
-
-# COMMAND ----------
-
-data.get_demographic_factors().to_csv(
-    "/tmp/data/2019/national/demographic_factors.csv", index=False
-)
-
-# COMMAND ----------
-
-data.get_birth_factors().to_csv(
-    "/tmp/data/2019/national/birth_factors.csv", index=False
-)
-
-# COMMAND ----------
-
-data.get_hsa_activity_table().to_csv(
-    "/tmp/data/2019/national/hsa_activity_table.csv", index=False
-)
-
-# COMMAND ----------
 
 run_params = mdl.Model.generate_run_params(params)
 
-# set the data path in the HealthStatusAdjustment class
-hsa = mdl.HealthStatusAdjustmentInterpolated(
-    nhp_data(params["start_year"], params["dataset"]), params["start_year"]
-)
-
 results_dict = {}
 pcallback = lambda _: None
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC # Run Model
 
 # COMMAND ----------
 
