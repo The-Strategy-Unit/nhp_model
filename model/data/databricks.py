@@ -170,7 +170,7 @@ class DatabricksNational(Data):
         self._dataset = "R0A"
 
     @staticmethod
-    def create(spark: SparkContext, sample_rate: float) -> Callable[[int, str], Any]:
+    def create(spark: SparkContext, sample_rate: float, seed: int) -> Callable[[int, str], Any]:
         """Create Databricks object
 
         :param spark: a SparkContext for selecting data
