@@ -2,8 +2,6 @@
 import json
 import os
 
-os.makedirs("/tmp/data/2019/national", exist_ok=True)
-
 os.environ["BATCH_SIZE"] = "8"
 
 # COMMAND ----------
@@ -52,16 +50,6 @@ pcallback = lambda _: None
 
 # MAGIC %md
 # MAGIC ## Run Inpatients Model
-# MAGIC
-# MAGIC There is some issue with day procedures, remove these from params for now
-
-# COMMAND ----------
-
-params["efficiencies"]["ip"] = {
-    k: v
-    for k, v in params["efficiencies"]["ip"].items()
-    if not k.startswith("day_procedures")
-}
 
 # COMMAND ----------
 
