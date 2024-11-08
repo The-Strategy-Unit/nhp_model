@@ -81,6 +81,7 @@ class Databricks(Data):
             self._spark.read.table("opa")
             .filter(F.col("provider") == self._dataset)
             .filter(F.col("fyear") == self._fyear)
+            .withColumn("tretspef_raw", F.col("tretspef"))
             .toPandas()
         )
         return (
