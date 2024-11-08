@@ -166,6 +166,7 @@ class DatabricksNational(Data):
         self._fyear = fyear * 100 + (fyear + 1) % 100
         self._sample_rate = sample_rate
         self._seed = seed
+
         # TODO: currently the demographic datasets are only created at provider levels, need to load a specific provider in
         self._dataset = "R0A"
 
