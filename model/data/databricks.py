@@ -40,6 +40,7 @@ class Databricks(Data):
             .filter(F.col("fyear") == self._fyear)
             .withColumnRenamed("epikey", "rn")
             .withColumn("sex", F.col("sex").cast("int"))
+            .persist()
         )
 
     def get_ip(self) -> pd.DataFrame:
@@ -167,11 +168,22 @@ class DatabricksNational(Data):
         self._sample_rate = sample_rate
         self._seed = seed
 
-        # TODO: currently the demographic datasets are only created at provider levels, need to load a specific provider in
-        self._dataset = "R0A"
+        self._apc = (
+            self._spark.read.table("apc")
+            .filter(F.col("fyear") == self._fyear)
+            .withColumnRenamed("epikey", "rn")
+            .withColumn("sex", F.col("sex").cast("int"))
+            .withColumn("provider", F.lit("NATIONAL"))
+            .withColumn("sitetret", F.lit("NATIONAL"))
+            .drop("fyear")
+            .sample(fraction=self._sample_rate, seed=self._seed)
+            .persist()
+        )
 
     @staticmethod
-    def create(spark: SparkContext, sample_rate: float, seed: int) -> Callable[[int, str], Any]:
+    def create(
+        spark: SparkContext, sample_rate: float, seed: int
+    ) -> Callable[[int, str], Any]:
         """Create Databricks object
 
         :param spark: a SparkContext for selecting data
@@ -182,19 +194,6 @@ class DatabricksNational(Data):
         :rtype: Callable[[str, str], Databricks]
         """
         return lambda fyear, _: DatabricksNational(spark, fyear, sample_rate, seed)
-
-    @property
-    def _apc(self):
-        return (
-            self._spark.read.table("apc")
-            .filter(F.col("fyear") == self._fyear)
-            .withColumnRenamed("epikey", "rn")
-            .withColumn("sex", F.col("sex").cast("int"))
-            .withColumn("provider", F.lit("NATIONAL"))
-            .withColumn("sitetret", F.lit("NATIONAL"))
-            .drop("fyear")
-            .sample(fraction=self._sample_rate, seed=self._seed)
-        )
 
     def get_ip(self) -> pd.DataFrame:
         """Get the inpatients dataframe
