@@ -1,5 +1,6 @@
 # Databricks notebook source
 dbutils.widgets.text("params_file", "sample_params.json", "Params File")
+dbutils.widgets.text("sample_rate", "0.01", "Sample Rate")
 
 # COMMAND ----------
 
@@ -24,7 +25,7 @@ os.environ["BATCH_SIZE"] = "8"
 
 # COMMAND ----------
 
-# Upload JSON params file to queue folder and provide filepath in the params_file widget above# Upload JSON params file to queue folder and provide filepath in the params_file widget above
+# Upload JSON params file to queue folder and provide filepath in the params_file widget above
 params = mdl.load_params(f"../queue/{dbutils.widgets.get('params_file')}")
 
 params["dataset"] = "national"
@@ -42,7 +43,12 @@ spark.catalog.setCurrentDatabase("nhp")
 
 # COMMAND ----------
 
-nhp_data = DatabricksNational.create(spark, 0.01, params["seed"])
+SAMPLE_RATE = float(dbutils.widgets.get("sample_rate"))
+
+if not 0 < SAMPLE_RATE <= 1:
+  raise ValueError("Sample rate must be between 0 and 1")
+
+nhp_data = DatabricksNational.create(spark, SAMPLE_RATE, params["seed"])
 runtime = datetime.now().strftime(format="%Y%m%d-%H%M%S")
 
 # COMMAND ----------
@@ -58,12 +64,12 @@ pcallback = lambda _: None
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC ## Run Inpatients Model
+params["model_runs"] = 8
 
 # COMMAND ----------
 
-mdl.
+# MAGIC %md
+# MAGIC ## Run Inpatients Model
 
 # COMMAND ----------
 
@@ -124,7 +130,41 @@ results = _combine_results(list(results_dict.values()), params["model_runs"])
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Scale results back up
+
+# COMMAND ----------
+
+def multiply_results_by_sample_rate(results, key, sample_rate):
+  for res in results[key]:
+    if key == "step_counts":
+      fn = lambda x: x / sample_rate
+    else:
+      fn = lambda x: round(x / sample_rate)
+
+    res["baseline"] = fn(res["baseline"])
+    res["model_runs"] = [fn(r) for r in res["model_runs"]]
+    if "time_profiles" in res:
+      res["time_profiles"] = [fn(r) for r in res["time_profiles"]]
+
+for k in results.keys():
+  multiply_results_by_sample_rate(results, "default", SAMPLE_RATE)
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC # Check results
+
+# COMMAND ----------
+
+(
+  pd.DataFrame(results["step_counts"])
+  .query("change_factor == 'activity_avoidance'")
+  .query("measure == 'admissions'")
+  .drop(columns="time_profiles")
+  .explode("model_runs")
+  .groupby("strategy")
+  ["model_runs"].mean()
+)
 
 # COMMAND ----------
 
