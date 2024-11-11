@@ -64,10 +64,6 @@ pcallback = lambda _: None
 
 # COMMAND ----------
 
-params["model_runs"] = 8
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC ## Run Inpatients Model
 
