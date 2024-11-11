@@ -39,7 +39,7 @@ class Databricks(Data):
             .filter(F.col("provider") == self._dataset)
             .filter(F.col("fyear") == self._fyear)
             .withColumnRenamed("epikey", "rn")
-            .withColumn("sex", F.col("sex").cast("string"))
+            .withColumn("sex", F.col("sex").cast("int"))
         )
 
     def get_ip(self) -> pd.DataFrame:
@@ -81,6 +81,7 @@ class Databricks(Data):
             self._spark.read.table("opa")
             .filter(F.col("provider") == self._dataset)
             .filter(F.col("fyear") == self._fyear)
+            .withColumn("tretspef_raw", F.col("tretspef"))
             .toPandas()
         )
         return (
@@ -160,15 +161,17 @@ class Databricks(Data):
 class DatabricksNational(Data):
     """Load NHP data from databricks"""
 
-    def __init__(self, spark: SparkContext, fyear: int, sample_rate: float):
+    def __init__(self, spark: SparkContext, fyear: int, sample_rate: float, seed: int):
         self._spark = spark
         self._fyear = fyear * 100 + (fyear + 1) % 100
         self._sample_rate = sample_rate
+        self._seed = seed
+
         # TODO: currently the demographic datasets are only created at provider levels, need to load a specific provider in
         self._dataset = "R0A"
 
     @staticmethod
-    def create(spark: SparkContext, sample_rate: float) -> Callable[[int, str], Any]:
+    def create(spark: SparkContext, sample_rate: float, seed: int) -> Callable[[int, str], Any]:
         """Create Databricks object
 
         :param spark: a SparkContext for selecting data
@@ -178,7 +181,7 @@ class DatabricksNational(Data):
         :return: a function to initialise the object
         :rtype: Callable[[str, str], Databricks]
         """
-        return lambda fyear, _: DatabricksNational(spark, fyear, sample_rate)
+        return lambda fyear, _: DatabricksNational(spark, fyear, sample_rate, seed)
 
     @property
     def _apc(self):
@@ -190,7 +193,7 @@ class DatabricksNational(Data):
             .withColumn("provider", F.lit("NATIONAL"))
             .withColumn("sitetret", F.lit("NATIONAL"))
             .drop("fyear")
-            .sample(fraction=self._sample_rate)
+            .sample(fraction=self._sample_rate, seed=self._seed)
         )
 
     def get_ip(self) -> pd.DataFrame:

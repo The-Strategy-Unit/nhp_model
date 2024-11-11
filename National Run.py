@@ -1,10 +1,9 @@
 # Databricks notebook source
 import json
 import os
-
-os.environ["BATCH_SIZE"] = "8"
-
-# COMMAND ----------
+import gzip
+from datetime import datetime
+from azure.storage.blob import ContainerClient
 
 import pandas as pd
 import pyspark.sql.functions as F
@@ -14,9 +13,14 @@ from model.data.databricks import DatabricksNational
 from model.health_status_adjustment import HealthStatusAdjustmentInterpolated
 from run_model import _combine_results, _run_model
 
+os.environ["BATCH_SIZE"] = "8"
+
 # COMMAND ----------
 
-params = mdl.load_params("queue/sample_params.json")
+# Upload JSON params file to queue folder and provide filepath below
+# Use queue/sample_params.json for testing
+
+params = mdl.load_params("")
 
 params["dataset"] = "national"
 params["demographic_factors"]["variant_probabilities"] = {"principal_proj": 1.0}
@@ -34,6 +38,7 @@ spark.catalog.setCurrentDatabase("nhp")
 # COMMAND ----------
 
 nhp_data = DatabricksNational.create(spark, 0.01)
+runtime = datetime.now().strftime(format="%Y%m%d-%H%M%S")
 
 # COMMAND ----------
 
@@ -130,19 +135,30 @@ df.groupby(["pod", "measure", "baseline"]).agg(value=("value", "mean"))
 # MAGIC %md
 # MAGIC # Save the results
 # MAGIC
-# MAGIC Push the results to a storage container we have configured. This should be replaced by a proper upload, compress to gzip, add metadata
+# MAGIC Push the results to storage
 
 # COMMAND ----------
 
-# filename = f"{params['dataset']}-{params['scenario']}-{params['create_datetime']}"
-# os.makedirs(f"results/{params['dataset']}", exist_ok=True)
+filename = f"{params['dataset']}-{params['scenario']}-{runtime}"
 
-# with open(f"/Volumes/su_data/nhp/reference_data/{filename}.json", "w", encoding="utf-8") as file:
-#     json.dump(
-#         {
-#             "params": params,
-#             "population_variants": run_params["variant"],
-#             "results": results,
-#         },
-#         file,
-#     )
+zipped_results = gzip.compress(json.dumps({
+            "params": params,
+            "population_variants": run_params["variant"],
+            "results": results,
+        }).encode("utf-8"))
+
+metadata = {
+    k: str(v)
+    for k, v in params.items()
+    if not isinstance(v, dict) and not isinstance(v, list)
+}
+
+# Metadata "scenario" needs to be SYNTHETIC otherwise it will not be viewable in outputs
+metadata['scenario'] = 'synthetic'
+
+# COMMAND ----------
+
+url = dbutils.secrets.get("nhpsa-results", "url")
+sas = dbutils.secrets.get("nhpsa-results", "sas-token")
+cont = ContainerClient.from_container_url(f"{url}?{sas}")
+cont.upload_blob(f'prod/dev/synthetic/{filename}.json.gz', zipped_results, metadata=metadata)
