@@ -29,15 +29,15 @@ jobs:
       VERSION: dev
     steps:
       - name: 'Checkout GitHub Action'
-        uses: actions/checkout@main
+        uses: actions/checkout@v4
         
       - name: 'Login via Azure CLI'
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       
       - name: 'Login to Container Registry'
-        uses: azure/docker-login@v1
+        uses: azure/docker-login@v2
         with:
           login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
           username: ${{ secrets.REGISTRY_USERNAME }}
