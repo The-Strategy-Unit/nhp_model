@@ -137,13 +137,14 @@ def multiply_results_by_sample_rate(results, key, sample_rate):
     else:
       fn = lambda x: round(x / sample_rate)
 
-    res["baseline"] = fn(res["baseline"])
+    if "baseline" in res:
+      res["baseline"] = fn(res["baseline"])
     res["model_runs"] = [fn(r) for r in res["model_runs"]]
     if "time_profiles" in res:
       res["time_profiles"] = [fn(r) for r in res["time_profiles"]]
 
 for k in results.keys():
-  multiply_results_by_sample_rate(results, "default", SAMPLE_RATE)
+  multiply_results_by_sample_rate(results, k, SAMPLE_RATE)
 
 # COMMAND ----------
 
