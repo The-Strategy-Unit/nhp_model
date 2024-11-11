@@ -37,7 +37,7 @@ spark.catalog.setCurrentDatabase("nhp")
 
 # COMMAND ----------
 
-nhp_data = DatabricksNational.create(spark, 0.01)
+nhp_data = DatabricksNational.create(spark, 0.01, params["seed"])
 runtime = datetime.now().strftime(format="%Y%m%d-%H%M%S")
 
 # COMMAND ----------
@@ -153,8 +153,8 @@ metadata = {
     if not isinstance(v, dict) and not isinstance(v, list)
 }
 
-# Metadata "scenario" needs to be SYNTHETIC otherwise it will not be viewable in outputs
-metadata['scenario'] = 'synthetic'
+# Metadata "dataset" needs to be SYNTHETIC otherwise it will not be viewable in outputs
+metadata['dataset'] = 'synthetic'
 
 # COMMAND ----------
 
