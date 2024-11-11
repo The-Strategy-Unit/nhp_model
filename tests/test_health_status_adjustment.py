@@ -45,8 +45,8 @@ def test_hsa_init(mocker):
 
     # assert
     assert hsa._all_ages.tolist() == list(range(0, 101))
-    assert hsa._data_loader == "nhp_data"
-    assert hsa._cache == dict()
+    assert hsa._data_loader is None
+    assert hsa._cache == {}
 
     lle_mock.assert_called_once_with(2020)
     laa_mock.assert_called_once_with()
