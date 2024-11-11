@@ -1,4 +1,33 @@
 # Databricks notebook source
+# MAGIC %md
+# MAGIC # National run - population based model
+# MAGIC
+# MAGIC 1. Run the first cell below. Once this has been done, a small widget will appear at the top of the notebook, allowing us to specify different params files, and sample rates for the scaling of the inpatients results. Upload your JSON params file to queue folder and provide the filename in the params_file widget. Defaults to sample_params.json.
+# MAGIC
+# MAGIC 2. To save model results, you will need to ensure that Databricks has a valid SAS token for Azure storage. The code below generates a key that is valid for one day, so this only needs to be run once per day.
+# MAGIC
+# MAGIC First, set up databricks CLI. [Instructions here](https://learn.microsoft.com/en-us/azure/databricks/dev-tools/auth/azure-cli); this only needs to be done once.
+# MAGIC
+# MAGIC Once authenticated, run the commands below in your terminal. Generates a SAS token that expires on the same day and saves it as a secret.
+# MAGIC
+# MAGIC ```
+# MAGIC $date = (Get-Date).AddDays(1).ToString("yyyy-MM-dd")
+# MAGIC
+# MAGIC $sas_token=az storage container generate-sas `
+# MAGIC     --account-name nhpsa `
+# MAGIC     --name results `
+# MAGIC     --permissions aclrw `
+# MAGIC     --expiry $date `
+# MAGIC     --auth-mode login `
+# MAGIC     --as-user `
+# MAGIC     --output tsv
+# MAGIC     
+# MAGIC
+# MAGIC echo $sas_token | databricks secrets put-secret nhpsa-results sas-token
+# MAGIC ```
+
+# COMMAND ----------
+
 dbutils.widgets.text("params_file", "sample_params.json", "Params File")
 dbutils.widgets.text("sample_rate", "0.01", "Sample Rate")
 
