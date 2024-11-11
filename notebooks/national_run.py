@@ -1,5 +1,5 @@
 # Databricks notebook source
-dbutils.widgets.text("params_file", "queue/sample_params.json", "Params File")
+dbutils.widgets.text("params_file", "sample_params.json", "Params File")
 
 # COMMAND ----------
 import sys
@@ -23,8 +23,8 @@ os.environ["BATCH_SIZE"] = "8"
 
 # COMMAND ----------
 
-# Upload JSON params file to queue folder and provide filepath in the params_file widget above
-params = mdl.load_params(dbutils.widgets.get("params_file"))
+# Upload JSON params file to queue folder and provide filepath in the params_file widget above# Upload JSON params file to queue folder and provide filepath in the params_file widget above
+params = mdl.load_params(f"../queue/{dbutils.widgets.get('params_file')}")
 
 params["dataset"] = "national"
 params["demographic_factors"]["variant_probabilities"] = {"principal_proj": 1.0}
