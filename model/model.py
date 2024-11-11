@@ -101,6 +101,8 @@ class Model:
         self.save_full_model_results = save_full_model_results
         #
         self._measures = measures
+        #
+        self._data_loader = None
 
     def _add_pod_to_data(self) -> None:
         """Adds the POD column to data"""
