@@ -83,6 +83,7 @@ class Databricks(Data):
             .filter(F.col("provider") == self._dataset)
             .filter(F.col("fyear") == self._fyear)
             .withColumn("tretspef_raw", F.col("tretspef"))
+            .withColumn("is_wla", F.lit(True))
             .toPandas()
         )
         return (

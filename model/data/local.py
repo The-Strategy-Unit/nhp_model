@@ -16,7 +16,14 @@ class Local(Data):
     """Load NHP data from local storage"""
 
     def __init__(self, data_path: str, year: int, dataset: str):
-        self._data_path = "/".join([data_path, str(year), dataset])
+        self._data_path = data_path
+        self._year = str(year)
+        self._dataset = dataset
+
+    def _file_path(self, file):
+        return "/".join(
+            [self._data_path, file, f"fyear={self._year}", f"dataset={self._dataset}"]
+        )
 
     @staticmethod
     def create(data_path: str) -> Callable[[int, str], Any]:
@@ -35,7 +42,7 @@ class Local(Data):
         :return: the inpatients dataframe
         :rtype: pd.DataFrame
         """
-        return self._get_parquet("ip.parquet")
+        return self._get_parquet("ip")
 
     def get_ip_strategies(self) -> Dict[str, pd.DataFrame]:
         """Get the inpatients strategies dataframe
@@ -44,7 +51,7 @@ class Local(Data):
         :rtype: pd.DataFrame
         """
         return {
-            i: self._get_parquet(f"ip_{i}_strategies.parquet")
+            i: self._get_parquet(f"ip_{i}_strategies")
             for i in ["activity_avoidance", "efficiencies"]
         }
 
@@ -54,7 +61,13 @@ class Local(Data):
         :return: the outpatients dataframe
         :rtype: pd.DataFrame
         """
-        return self._get_parquet("op.parquet")
+        op = self._get_parquet("op")
+        return (
+            op.sort_values(list(op.columns))
+            .reset_index(drop=True)
+            .reset_index()
+            .rename(columns={"index": "rn"})
+        )
 
     def get_aae(self) -> pd.DataFrame:
         """Get the A&E dataframe
@@ -62,7 +75,13 @@ class Local(Data):
         :return: the A&E dataframe
         :rtype: pd.DataFrame
         """
-        return self._get_parquet("aae.parquet")
+        aae = self._get_parquet("aae")
+        return (
+            aae.sort_values(list(aae.columns))
+            .reset_index(drop=True)
+            .reset_index()
+            .rename(columns={"index": "rn"})
+        )
 
     def get_birth_factors(self) -> pd.DataFrame:
         """Get the birth factors dataframe
@@ -70,7 +89,7 @@ class Local(Data):
         :return: the birth factors dataframe
         :rtype: pd.DataFrame
         """
-        return self._get_csv("birth_factors.csv")
+        return self._get_parquet("birth_factors")
 
     def get_demographic_factors(self) -> pd.DataFrame:
         """Get the demographic factors dataframe
@@ -78,7 +97,7 @@ class Local(Data):
         :return: the demographic factors dataframe
         :rtype: pd.DataFrame
         """
-        return self._get_csv("demographic_factors.csv")
+        return self._get_parquet("demographic_factors")
 
     def get_hsa_activity_table(self) -> pd.DataFrame:
         """Get the demographic factors dataframe
@@ -86,7 +105,7 @@ class Local(Data):
         :return: the demographic factors dataframe
         :rtype: pd.DataFrame
         """
-        return self._get_csv("hsa_activity_table.csv")
+        return self._get_parquet("hsa_activity_tables")
 
     def get_hsa_gams(self):
         """Get the health status adjustment gams
@@ -105,14 +124,5 @@ class Local(Data):
         :return: _description_
         :rtype: pd.DataFrame
         """
-        return pd.read_parquet(f"{self._data_path}/{file}")
 
-    def _get_csv(self, file) -> pd.DataFrame:
-        """_summary_
-
-        :param file: _description_
-        :type file: _type_
-        :return: _description_
-        :rtype: pd.DataFrame
-        """
-        return pd.read_csv(f"{self._data_path}/{file}")
+        return pd.read_parquet(self._file_path(file))
