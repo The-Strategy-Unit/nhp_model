@@ -2,6 +2,8 @@
 dbutils.widgets.text("params_file", "queue/sample_params.json", "Params File")
 
 # COMMAND ----------
+import sys
+sys.path.append(spark.conf.get("bundle.sourcePath", "."))
 
 import json
 import os
