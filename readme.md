@@ -6,7 +6,7 @@
 
 Welcome to the New Hospital Programme demand and capacity modelling tool. The methodology underpinning this model code is given in [the documentation](https://connect.strategyunitwm.nhs.uk/nhp/project_information/), along with a host of other technical information about the model and data that the model was built on.
 
-Please note that it is important that this model is parameterised with great care and with proper support. It is important also that healthcare system partners are appropriately involved in parameter setting. For a description of the full process and support provision that is necessary to ensure the model functions well please see LINK FORTHCOMING. 
+Please note that it is important that the parameters of the model are set with great care and with proper support. It is important also that healthcare system partners are appropriately involved in parameter setting. For a description of the full process and support provision that is necessary to ensure the model functions well please see LINK FORTHCOMING. 
 
 This repo contains the model code but there are several other repositories which contain useful tools to set the [parameters of and run the model](https://github.com/The-Strategy-Unit/nhp_inputs), as well as to [explore the output of the model](https://github.com/The-Strategy-Unit/nhp_outputs).
 
