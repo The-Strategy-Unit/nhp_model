@@ -140,7 +140,7 @@ class AaEModel(Model):
         model_results = model_results.groupby(
             # note: any columns used in the calls to _create_agg, including pod and measure
             # must be included below
-            ["pod", "sitetret", "acuity", "measure", "sex", "age", "age_group"],
+            ["pod", "sitetret", "acuity", "measure", "sex", "age", "age_group", "attendance_category"],
             as_index=False,
         ).agg({"value": "sum"})
 
