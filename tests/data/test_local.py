@@ -6,6 +6,8 @@ from unittest.mock import call, mock_open, patch
 
 from model.data import Local
 
+import pandas as pd
+
 
 def test_init_sets_values():
     # arrange
@@ -14,7 +16,17 @@ def test_init_sets_values():
     d = Local("data", 2019, "synthetic")
 
     # assert
-    assert d._data_path == "data/2019/synthetic"
+    assert d._data_path == "data"
+
+
+def test_file_path():
+    # arrange
+
+    # act
+    d = Local("data", 2019, "synthetic")
+
+    # assert
+    assert d._file_path("ip") == "data/ip/fyear=2019/dataset=synthetic"
 
 
 def test_create_returns_lambda():
@@ -24,7 +36,7 @@ def test_create_returns_lambda():
     d = Local.create("data")(2019, "synthetic")
 
     # assert
-    assert d._data_path == "data/2019/synthetic"
+    assert d._data_path == "data"
 
 
 def test_get_ip(mocker):
@@ -37,7 +49,7 @@ def test_get_ip(mocker):
 
     # assert
     assert actual == "data"
-    m.assert_called_once_with("ip.parquet")
+    m.assert_called_once_with("ip")
 
 
 def test_get_ip_strategies(mocker):
@@ -52,40 +64,44 @@ def test_get_ip_strategies(mocker):
     assert actual == {"activity_avoidance": "data", "efficiencies": "data"}
     assert m.call_count == 2
     assert list(m.call_args_list) == [
-        call("ip_activity_avoidance_strategies.parquet"),
-        call("ip_efficiencies_strategies.parquet"),
+        call("ip_activity_avoidance_strategies"),
+        call("ip_efficiencies_strategies"),
     ]
 
 
 def test_get_op(mocker):
     # arrange
-    m = mocker.patch("model.data.Local._get_parquet", return_value="data")
+    op_data = pd.DataFrame({"col_1": [6, 5], "col_2": [4, 3]}, index=[2, 1])
+    m = mocker.patch("model.data.Local._get_parquet", return_value=op_data)
     d = Local("data", 2019, "synthetic")
 
     # act
     actual = d.get_op()
 
     # assert
-    assert actual == "data"
-    m.assert_called_once_with("op.parquet")
+    assert actual.col_1.to_list() == [5, 6]
+    assert actual.rn.to_list() == [0, 1]
+    m.assert_called_once_with("op")
 
 
 def test_get_aae(mocker):
     # arrange
-    m = mocker.patch("model.data.Local._get_parquet", return_value="data")
+    ae_data = pd.DataFrame({"col_1": [6, 5], "col_2": [4, 3]}, index=[2, 1])
+    m = mocker.patch("model.data.Local._get_parquet", return_value=ae_data)
     d = Local("data", 2019, "synthetic")
 
     # act
     actual = d.get_aae()
 
     # assert
-    assert actual == "data"
-    m.assert_called_once_with("aae.parquet")
+    assert actual.col_1.to_list() == [5, 6]
+    assert actual.rn.to_list() == [0, 1]
+    m.assert_called_once_with("aae")
 
 
 def test_get_birth_factors(mocker):
     # arrange
-    m = mocker.patch("model.data.Local._get_csv", return_value="data")
+    m = mocker.patch("model.data.Local._get_parquet", return_value="data")
     d = Local("data", 2019, "synthetic")
 
     # act
@@ -93,12 +109,12 @@ def test_get_birth_factors(mocker):
 
     # assert
     assert actual == "data"
-    m.assert_called_once_with("birth_factors.csv")
+    m.assert_called_once_with("birth_factors")
 
 
 def test_get_demographic_factors(mocker):
     # arrange
-    m = mocker.patch("model.data.Local._get_csv", return_value="data")
+    m = mocker.patch("model.data.Local._get_parquet", return_value="data")
     d = Local("data", 2019, "synthetic")
 
     # act
@@ -106,12 +122,12 @@ def test_get_demographic_factors(mocker):
 
     # assert
     assert actual == "data"
-    m.assert_called_once_with("demographic_factors.csv")
+    m.assert_called_once_with("demographic_factors")
 
 
 def test_get_hsa_activity_table(mocker):
     # arrange
-    m = mocker.patch("model.data.Local._get_csv", return_value="data")
+    m = mocker.patch("model.data.Local._get_parquet", return_value="data")
     d = Local("data", 2019, "synthetic")
 
     # act
@@ -119,7 +135,7 @@ def test_get_hsa_activity_table(mocker):
 
     # assert
     assert actual == "data"
-    m.assert_called_once_with("hsa_activity_table.csv")
+    m.assert_called_once_with("hsa_activity_tables")
 
 
 def test_get_hsa_gams(mocker):
@@ -133,12 +149,13 @@ def test_get_hsa_gams(mocker):
 
     # assert
     assert actual == "data"
-    mock_file.assert_called_with("data/2019/synthetic/hsa_gams.pkl", "rb")
+    mock_file.assert_called_with("data/hsa_gams.pkl", "rb")
     m.assert_called_once_with(mock_file())
 
 
 def test_get_parquet(mocker):
     # arrange
+    fp = mocker.patch("model.data.Local._file_path", return_value="file_path")
     m = mocker.patch("pandas.read_parquet", return_value="data")
     d = Local("data", 2019, "synthetic")
 
@@ -147,17 +164,5 @@ def test_get_parquet(mocker):
 
     # assert
     assert actual == "data"
-    m.assert_called_once_with("data/2019/synthetic/file")
-
-
-def test_get_csv(mocker):
-    # arrange
-    m = mocker.patch("pandas.read_csv", return_value="data")
-    d = Local("data", 2019, "synthetic")
-
-    # act
-    actual = d._get_csv("file")
-
-    # assert
-    assert actual == "data"
-    m.assert_called_once_with("data/2019/synthetic/file")
+    fp.assert_called_once_with("file")
+    m.assert_called_once_with("file_path")
