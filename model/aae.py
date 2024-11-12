@@ -145,7 +145,7 @@ class AaEModel(Model):
         ).agg({"value": "sum"})
 
         agg = partial(self._create_agg, model_results)
-        return (agg, {**agg(["acuity"])})
+        return (agg, {**agg(["acuity"]), **agg(["attendance_category"])})
 
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model
