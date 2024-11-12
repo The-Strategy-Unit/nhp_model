@@ -218,7 +218,7 @@ def test_aggregate(mock_model):
 
     # assert
     assert agg() == {"default": expected_mr}
-    assert results == {"acuity": expected_mr}
+    assert results == {"acuity": expected_mr, "attendance_category": expected_mr}
 
 
 def test_save_results(mocker, mock_model):
