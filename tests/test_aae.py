@@ -193,6 +193,7 @@ def test_aggregate(mock_model):
         {
             "sitetret": ["trust"] * 4,
             "acuity": ["a", "a", "b", "b"],
+            "attendance_category": [1, 1, 2, 2],
             "age": [1, 2, 3, 4],
             "age_group": [1] * 4,
             "sex": [1] * 4,
@@ -206,6 +207,7 @@ def test_aggregate(mock_model):
         "pod": ["aae_type-01", "aae_type-01", "aae_type-02", "aae_type-02"],
         "sitetret": ["trust"] * 4,
         "acuity": ["a", "a", "b", "b"],
+        "attendance_category": [1, 1, 2, 2],
         "measure": ["ambulance", "walk-in"] * 2,
         "sex": [1] * 4,
         "age": [1, 2, 3, 4],
