@@ -56,7 +56,7 @@ class RunWithAzureStorage:
         self._app_version = re.sub("(\\d+\\.\\d+)\\..*", "\\1", app_version)
 
         self.params = self._get_params(filename)
-        self._get_data(f"{self.params['start_year']}/{self.params['dataset']}")
+        self._get_data(self.params["start_year"], self.params["dataset"])
 
     def _get_container(self, container_name: str):
         return BlobServiceClient(
@@ -80,33 +80,40 @@ class RunWithAzureStorage:
 
         return json.loads(params_content)
 
-    def _get_data(self, path: str) -> None:
+    def _get_data(self, year: str, dataset: str) -> None:
         """Get data to run the model
 
         for local storage, the data is already available, so do nothing.
 
-        :param path: the path to load the files from
-        :type path: str
+        :param year: the year of data to load
+        :type year: str
+        :param year: the year of data to load
+        :type year: str
         """
-        logging.info("downloading data (%s)", path)
+        logging.info("downloading data (%s / %s)", year, dataset)
         fs_client = DataLakeServiceClient(
             account_url=f"https://{config.STORAGE_ACCOUNT}.dfs.core.windows.net",
             credential=DefaultAzureCredential(),
         ).get_file_system_client("data")
 
         version = config.DATA_VERSION
-        directory_path = f"{version}/{path}"
 
-        paths = [p.name for p in fs_client.get_paths(directory_path)]
+        paths = [p.name for p in fs_client.get_paths(version, recursive=False)]
 
-        os.makedirs(f"data/{path}", exist_ok=True)
+        for p in paths:
+            subpath = f"{p}/fyear={year}/dataset={dataset}"
+            os.makedirs(f"data/new/{subpath.removeprefix(version)}", exist_ok=True)
 
-        for filename in paths:
-            logging.info(" * %s", filename)
-            local_name = "data" + filename.removeprefix(version)
-            with open(local_name, "wb") as local_file:
-                file_client = fs_client.get_file_client(filename)
-                local_file.write(file_client.download_file().readall())
+            for i in fs_client.get_paths(subpath):
+                filename = i.name
+                if not filename.endswith("parquet"):
+                    continue
+
+                logging.info(" * %s", filename)
+                local_name = "data" + filename.removeprefix(version)
+                with open(local_name, "wb") as local_file:
+                    file_client = fs_client.get_file_client(filename)
+                    local_file.write(file_client.download_file().readall())
 
     def _upload_results(self, results_file: str, metadata: dict) -> None:
         """Upload the results
