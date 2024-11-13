@@ -122,13 +122,4 @@ df.parquet(f"{save_path}/demographic_factors/fyear=2022")
 
 # COMMAND ----------
 
-(
-    spark.read.table("hsa_activity_tables")
-    .filter(F.col("fyear").isin([201920, 202223]))
-    .withColumnRenamed("provider", "dataset")
-    .withColumn("fyear", F.floor(F.col("fyear") / 100))
-    .repartition(1)
-    .write.mode("overwrite")
-    .partitionBy("fyear", "dataset")
-    .parquet(f"{save_path}/hsa_activity_tables")
-)
+dbutils.notebook.run("generate_gams", 0, {"version": dbutils.widgets.get("version")})
