@@ -1,4 +1,8 @@
 # Databricks notebook source
+dbutils.widgets.text("version", "dev")
+
+# COMMAND ----------
+
 import sys
 
 sys.path.append(spark.conf.get("bundle.sourcePath", "."))
@@ -16,7 +20,7 @@ spark.catalog.setCurrentDatabase("nhp")
 
 # COMMAND ----------
 
-save_path = "/Volumes/su_data/nhp/old_nhp_data/v3.0.0"
+save_path = f"/Volumes/su_data/nhp/old_nhp_data/{dbutils.widgets.get('version')}"
 
 # COMMAND ----------
 
@@ -36,7 +40,7 @@ apc = (
     apc.repartition(1)
     .write.mode("overwrite")
     .partitionBy(["fyear", "dataset"])
-    .parquet(f"{save_path}/apc")
+    .parquet(f"{save_path}/ip")
 )
 
 
