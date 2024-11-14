@@ -145,12 +145,10 @@ def test_RunWithAzureStorage_get_params(mock_run_with_azure_storage, mocker):
 
 
 def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
-    # TODO: FIX THIS TEST
-    return
     # arrange
     s = mock_run_with_azure_storage
 
-    files = [1, 2, 3, 4]
+    files = ["ip", "op", "aae"]
 
     def paths_helper(i):
         m = Mock()
@@ -161,7 +159,13 @@ def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
 
     mock = Mock()
     mock.get_file_system_client.return_value = mock
-    mock.get_paths.return_value = [paths_helper(i) for i in files]
+    mock.get_paths.side_effect = [
+        [paths_helper(f"dev/{i}") for i in files],
+        *[
+            [paths_helper("/".join(["dev", i, j])) for j in ["0.parquet", "file"]]
+            for i in files
+        ],
+    ]
     mock.get_file_client.return_value = mock
     mock.download_file.return_value = mock
     mock.readall.side_effect = files
@@ -172,7 +176,7 @@ def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
 
     # act
     with patch("builtins.open", mock_open()) as mock_file:
-        s._get_data("2020/synthetic")
+        s._get_data(2020, "synthetic")
 
     # assert
 
@@ -182,15 +186,28 @@ def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
     dac_m.assert_called_once_with()
 
     mock.get_file_system_client.assert_called_once_with("data")
-    mock.get_paths.assert_called_once_with("dev/2020/synthetic")
+    assert mock.get_paths.call_args_list == [
+        call("dev", recursive=False),
+        call("dev/ip/fyear=2020/dataset=synthetic"),
+        call("dev/op/fyear=2020/dataset=synthetic"),
+        call("dev/aae/fyear=2020/dataset=synthetic"),
+    ]
 
-    mkdir_m.assert_called_once_with("data/2020/synthetic", exist_ok=True)
+    assert mkdir_m.call_args_list == [
+        call("data/ip/fyear=2020/dataset=synthetic", exist_ok=True),
+        call("data/op/fyear=2020/dataset=synthetic", exist_ok=True),
+        call("data/aae/fyear=2020/dataset=synthetic", exist_ok=True),
+    ]
 
-    assert mock.get_file_client.call_args_list == [call(str(i)) for i in files]
+    assert mock.get_file_client.call_args_list == [
+        call(f"dev/{i}/0.parquet") for i in files
+    ]
     assert mock.download_file.call_args_list == [call() for _ in files]
     assert mock.readall.call_args_list == [call() for _ in files]
 
-    assert mock_file.call_args_list == [call(f"data{i}", "wb") for i in files]
+    assert mock_file.call_args_list == [
+        call(f"data/{i}/0.parquet", "wb") for i in files
+    ]
 
 
 def test_RunWithAzureStorage_upload_results(mock_run_with_azure_storage, mocker):
