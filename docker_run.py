@@ -102,7 +102,7 @@ class RunWithAzureStorage:
 
         for p in paths:
             subpath = f"{p}/fyear={year}/dataset={dataset}"
-            os.makedirs(f"data/{subpath.removeprefix(version)}", exist_ok=True)
+            os.makedirs(f"data{subpath.removeprefix(version)}", exist_ok=True)
 
             for i in fs_client.get_paths(subpath):
                 filename = i.name
