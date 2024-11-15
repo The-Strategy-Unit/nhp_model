@@ -235,7 +235,8 @@ def test_RunWithAzureStorage_upload_full_model_results(
     # arrange
     s = mock_run_with_azure_storage
     s.params["dataset"] = "synthetic"
-    s.params["id"] = "id"
+    s.params["scenario"] = "test"
+    s.params["create_datetime"] = "20240101_012345"
 
     def create_file_mock(name):
         fm = Mock()

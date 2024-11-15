@@ -380,10 +380,11 @@ class Model:
 
         if self.save_full_model_results and model_run > 0:
             dataset = self.params["dataset"]
-            model_id = self.params["id"]
+            scenario = self.params["scenario"]
+            create_datetime = self.params["create_datetime"]
 
             def path_fn(f):
-                path = f"results/{dataset}/{model_id}/{f}/model_run={model_run}/"
+                path = f"results/{dataset}/{scenario}/{create_datetime}/{f}/model_run={model_run}/"
                 os.makedirs(path, exist_ok=True)
                 return path
 
