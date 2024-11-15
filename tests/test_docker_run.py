@@ -259,7 +259,8 @@ def test_RunWithAzureStorage_upload_full_model_results(
 
     assert m().upload_blob.call_count == 3
     assert m().upload_blob.call_args_list == [
-        call(f"dev/{i}", "data", overwrite=True) for i in ["1", "2", "3"]
+        call(f"full-model-results/dev/{i}", "data", overwrite=True)
+        for i in ["1", "2", "3"]
     ]
 
 
