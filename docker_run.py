@@ -143,7 +143,9 @@ class RunWithAzureStorage:
             filename = file.as_posix()[8:]
             with open(file, "rb") as f:
                 container.upload_blob(
-                    f"{self._app_version}/{filename}", f.read(), overwrite=True
+                    f"full-model-results/{self._app_version}/{filename}",
+                    f.read(),
+                    overwrite=True,
                 )
 
     def _cleanup(self) -> None:
