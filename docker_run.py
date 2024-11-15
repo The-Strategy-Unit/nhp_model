@@ -137,7 +137,12 @@ class RunWithAzureStorage:
 
     def _upload_full_model_results(self) -> None:
         container = self._get_container("results")
-        path = Path(f"results/{self.params['dataset']}/{self.params['id']}")
+
+        dataset = self.params["dataset"]
+        scenario = self.params["scenario"]
+        create_datetime = self.params["create_datetime"]
+
+        path = Path(f"results/{dataset}/{scenario}/{create_datetime}")
 
         for file in path.glob("**/*.parquet"):
             filename = file.as_posix()[8:]

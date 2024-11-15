@@ -718,7 +718,8 @@ def test_go_save_full_model_results_true(mocker, mock_model):
     mdl = mock_model
     mdl.save_results = Mock()
     mdl.params["dataset"] = "synthetic"
-    mdl.params["id"] = "id"
+    mdl.params["scenario"] = "test"
+    mdl.params["create_datetime"] = "20240101_012345"
 
     makedirs_mock = mocker.patch("os.makedirs")
 
@@ -727,7 +728,7 @@ def test_go_save_full_model_results_true(mocker, mock_model):
     mocker.patch("model.model.ModelRun", return_value=mr_mock)
     mr_mock.get_aggregate_results.return_value = "aggregate_results"
 
-    expected_path = "results/synthetic/id/ip/model_run=1/"
+    expected_path = "results/synthetic/test/20240101_012345/ip/model_run=1/"
     # act
     actual = mdl.go(1)
 
