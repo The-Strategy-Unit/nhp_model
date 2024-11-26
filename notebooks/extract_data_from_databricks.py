@@ -119,7 +119,3 @@ df = (
 
 df.parquet(f"{save_path}/demographic_factors/fyear=2019")
 df.parquet(f"{save_path}/demographic_factors/fyear=2022")
-
-# COMMAND ----------
-
-dbutils.notebook.run("generate_gams", 0, {"version": dbutils.widgets.get("version")})
