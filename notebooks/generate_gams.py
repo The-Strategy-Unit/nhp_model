@@ -134,6 +134,13 @@ with open(f"{path}/all_gams.pkl", "wb") as f:
 
 # COMMAND ----------
 
+# re-load the gams file, allows us to skip generating the gams
+path = f"{save_path}/hsa_gams"
+with open(f"{path}/all_gams.pkl", "rb") as f:
+    all_gams = pkl.load(f)
+
+# COMMAND ----------
+
 all_ages = np.arange(0, 101)
 
 
@@ -187,7 +194,7 @@ hsa_activity_tables.write.mode("overwrite").saveAsTable("hsa_activity_tables")
 (
     spark.read.table("hsa_activity_tables")
     .filter(F.col("fyear").isin([201920, 202223]))
-    .withColumn("fyear", F.udf(from_fyear))
+    .withColumn("fyear", F.udf(from_fyear)("fyear"))
     .withColumnRenamed("provider", "dataset")
     .repartition(1)
     .write.mode("overwrite")
