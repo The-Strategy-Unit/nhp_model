@@ -98,18 +98,23 @@ dfr = (
 
 # COMMAND ----------
 
-all_gams = {
-    dataset: {
-        fyear: {
+all_gams = {}
+for dataset, v1 in tqdm(list(dfr.groupby("dataset"))):
+    all_gams[dataset] = {}
+    for fyear, v2 in list(v1.groupby("fyear")):
+        g = {
             k: GAM().gridsearch(
                 v[["age"]].to_numpy(), v["activity_rate"].to_numpy(), progress=False
             )
             for k, v in list(v2.groupby(["hsagrp", "sex"]))
         }
-        for fyear, v2 in list(v1.groupby("fyear"))
-    }
-    for dataset, v1 in tqdm(list(dfr.groupby("dataset")))
-}
+        all_gams[dataset][fyear] = g
+
+        path = f"{save_path}/hsa_gams/{fyear=}/dataset={dataset}"
+        os.makedirs(path, exist_ok=True)
+        with open(f"{path}/hsa_gams.pkl", "wb") as f:
+            pkl.dump(g, f)
+    print(f"completed {dataset=}")
 
 # COMMAND ----------
 
@@ -201,35 +206,3 @@ hsa_activity_tables.write.mode("overwrite").saveAsTable("hsa_activity_tables")
     .partitionBy("fyear", "dataset")
     .parquet(f"{save_path}/hsa_activity_tables")
 )
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC # Save individual GAMs
-# MAGIC
-# MAGIC save the individual GAMs out to the storage account the containers use
-
-# COMMAND ----------
-
-for dataset, v1 in tqdm(all_gams.items()):
-    for fyear, v2 in v1.items():
-        path = f"{save_path}/hsa_gams/{fyear=}/dataset={dataset}"
-        os.makedirs(path, exist_ok=True)
-        with open(f"{path}/hsa_gams.pkl", "wb") as f:
-            pkl.dump(v2, f)
-
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC # Check GAMs
-
-# COMMAND ----------
-
-
-pd.DataFrame(
-    {
-        "x": range(18, 91),
-        "y": all_gams["RNA"][2019][("daycase", 1)].predict(range(18, 91)),
-    }
-).plot(x="x", y="y", kind="line")
