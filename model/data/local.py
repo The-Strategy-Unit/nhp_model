@@ -61,13 +61,7 @@ class Local(Data):
         :return: the outpatients dataframe
         :rtype: pd.DataFrame
         """
-        op = self._get_parquet("op")
-        return (
-            op.sort_values(list(op.columns))
-            .reset_index(drop=True)
-            .reset_index()
-            .rename(columns={"index": "rn"})
-        )
+        return self._get_parquet("op").rename(columns={"index": "rn"})
 
     def get_aae(self) -> pd.DataFrame:
         """Get the A&E dataframe
@@ -75,13 +69,7 @@ class Local(Data):
         :return: the A&E dataframe
         :rtype: pd.DataFrame
         """
-        aae = self._get_parquet("aae")
-        return (
-            aae.sort_values(list(aae.columns))
-            .reset_index(drop=True)
-            .reset_index()
-            .rename(columns={"index": "rn"})
-        )
+        return self._get_parquet("aae").rename(columns={"index": "rn"})
 
     def get_birth_factors(self) -> pd.DataFrame:
         """Get the birth factors dataframe
