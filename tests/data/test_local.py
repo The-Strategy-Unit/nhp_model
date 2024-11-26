@@ -4,9 +4,9 @@
 
 from unittest.mock import call, mock_open, patch
 
-from model.data import Local
-
 import pandas as pd
+
+from model.data import Local
 
 
 def test_init_sets_values():
@@ -71,7 +71,9 @@ def test_get_ip_strategies(mocker):
 
 def test_get_op(mocker):
     # arrange
-    op_data = pd.DataFrame({"col_1": [6, 5], "col_2": [4, 3]}, index=[2, 1])
+    op_data = pd.DataFrame(
+        {"col_1": [1, 2], "col_2": [3, 4], "index": [5, 6]}, index=[2, 1]
+    )
     m = mocker.patch("model.data.Local._get_parquet", return_value=op_data)
     d = Local("data", 2019, "synthetic")
 
@@ -79,14 +81,17 @@ def test_get_op(mocker):
     actual = d.get_op()
 
     # assert
-    assert actual.col_1.to_list() == [5, 6]
-    assert actual.rn.to_list() == [0, 1]
+    assert actual.col_1.to_list() == [1, 2]
+    assert actual.col_2.to_list() == [3, 4]
+    assert actual.rn.to_list() == [5, 6]
     m.assert_called_once_with("op")
 
 
 def test_get_aae(mocker):
     # arrange
-    ae_data = pd.DataFrame({"col_1": [6, 5], "col_2": [4, 3]}, index=[2, 1])
+    ae_data = pd.DataFrame(
+        {"col_1": [1, 2], "col_2": [3, 4], "index": [5, 6]}, index=[2, 1]
+    )
     m = mocker.patch("model.data.Local._get_parquet", return_value=ae_data)
     d = Local("data", 2019, "synthetic")
 
@@ -94,8 +99,9 @@ def test_get_aae(mocker):
     actual = d.get_aae()
 
     # assert
-    assert actual.col_1.to_list() == [5, 6]
-    assert actual.rn.to_list() == [0, 1]
+    assert actual.col_1.to_list() == [1, 2]
+    assert actual.col_2.to_list() == [3, 4]
+    assert actual.rn.to_list() == [5, 6]
     m.assert_called_once_with("aae")
 
 

@@ -78,18 +78,13 @@ class Databricks(Data):
         :return: the outpatients dataframe
         :rtype: pd.DataFrame
         """
-        op = (
+        return (
             self._spark.read.table("opa")
             .filter(F.col("provider") == self._dataset)
             .filter(F.col("fyear") == self._fyear)
             .withColumn("tretspef_raw", F.col("tretspef"))
             .withColumn("is_wla", F.lit(True))
             .toPandas()
-        )
-        return (
-            op.sort_values(list(op.columns))
-            .reset_index(drop=True)
-            .reset_index()
             .rename(columns={"index": "rn"})
         )
 
@@ -99,16 +94,11 @@ class Databricks(Data):
         :return: the A&E dataframe
         :rtype: pd.DataFrame
         """
-        aae = (
+        return (
             self._spark.read.table("ecds")
             .filter(F.col("provider") == self._dataset)
             .filter(F.col("fyear") == self._fyear)
             .toPandas()
-        )
-        return (
-            aae.sort_values(list(aae.columns))
-            .reset_index(drop=True)
-            .reset_index()
             .rename(columns={"index": "rn"})
         )
 
@@ -231,7 +221,7 @@ class DatabricksNational(Data):
         :return: the outpatients dataframe
         :rtype: pd.DataFrame
         """
-        op = (
+        return (
             self._spark.read.table("opa")
             .filter(F.col("fyear") == self._fyear)
             .withColumn("provider", F.lit("NATIONAL"))
@@ -262,13 +252,10 @@ class DatabricksNational(Data):
             )
             .withColumn("tretspef_raw", F.col("tretspef"))
             .withColumn("is_wla", F.lit(True))
+            # TODO: how do we make this stable? at the moment we can't use full model results with
+            # national
+            .withColumn("rn", F.expr("uuid()"))
             .toPandas()
-        )
-        return (
-            op.sort_values(list(op.columns))
-            .reset_index(drop=True)
-            .reset_index()
-            .rename(columns={"index": "rn"})
         )
 
     def get_aae(self) -> pd.DataFrame:
@@ -277,7 +264,7 @@ class DatabricksNational(Data):
         :return: the A&E dataframe
         :rtype: pd.DataFrame
         """
-        aae = (
+        return (
             self._spark.read.table("ecds")
             .filter(F.col("fyear") == self._fyear)
             .withColumn("provider", F.lit("NATIONAL"))
@@ -301,13 +288,10 @@ class DatabricksNational(Data):
                 "tretspef",
             )
             .agg((F.sum("arrivals") * self._sample_rate).alias("arrivals"))
+            # TODO: how do we make this stable? at the moment we can't use full model results with
+            # national
+            .withColumn("rn", F.expr("uuid()"))
             .toPandas()
-        )
-        return (
-            aae.sort_values(list(aae.columns))
-            .reset_index(drop=True)
-            .reset_index()
-            .rename(columns={"index": "rn"})
         )
 
     def get_birth_factors(self) -> pd.DataFrame:
