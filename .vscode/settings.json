@@ -11,5 +11,6 @@
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter"
   },
-  "azurite.location": "../.azurite"
+  "azurite.location": "../.azurite",
+  "nhp.data_path": "data/dev"
 }

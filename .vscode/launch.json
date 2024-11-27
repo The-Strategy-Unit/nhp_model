@@ -11,6 +11,7 @@
       "program": "run_model.py",
       "args": [
         "queue/sample_params.json",
+        "-d=${config:nhp.data_path}",
         "--type=ip"
       ],
       "console": "integratedTerminal"
@@ -22,6 +23,7 @@
       "program": "run_model.py",
       "args": [
         "queue/sample_params.json",
+        "-d=${config:nhp.data_path}",
         "--type=op"
       ],
       "console": "integratedTerminal"
@@ -33,6 +35,7 @@
       "program": "run_model.py",
       "args": [
         "queue/sample_params.json",
+        "-d=${config:nhp.data_path}",
         "--type=aae"
       ],
       "console": "integratedTerminal"
@@ -44,19 +47,8 @@
       "program": "run_model.py",
       "args": [
         "queue/sample_params.json",
+        "-d=${config:nhp.data_path}",
         "--type=all"
-      ],
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "Inpatients (Time Profile Year + 2) Run Model",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "run_model.py",
-      "args": [
-        "queue/sample_params.json",
-        "--type=ip",
-        "--model-run=258"
       ],
       "console": "integratedTerminal"
     }
