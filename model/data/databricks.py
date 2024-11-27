@@ -221,28 +221,15 @@ class DatabricksNational(Data):
         :return: the outpatients dataframe
         :rtype: pd.DataFrame
         """
+        op = self._spark.read.table("opa")
+
         return (
-            self._spark.read.table("opa")
-            .filter(F.col("fyear") == self._fyear)
+            op.filter(F.col("fyear") == self._fyear)
             .withColumn("provider", F.lit("NATIONAL"))
             .withColumn("sitetret", F.lit("NATIONAL"))
             .withColumn("sex", F.col("sex").cast("int"))
             .groupBy(
-                "provider",
-                "sitetret",
-                "age",
-                "sex",
-                "tretspef",
-                "has_procedures",
-                "is_main_icb",
-                "is_surgical_specialty",
-                "is_adult",
-                "is_gp_ref",
-                "is_cons_cons_ref",
-                "is_first",
-                "type",
-                "group",
-                "hsagrp",
+                op.drop("index", "fyear", "attendances", "tele_attendances").columns
             )
             .agg(
                 (F.sum("attendances") * self._sample_rate).alias("attendances"),
@@ -264,29 +251,14 @@ class DatabricksNational(Data):
         :return: the A&E dataframe
         :rtype: pd.DataFrame
         """
+        ecds = self._spark.read.table("ecds")
+
         return (
-            self._spark.read.table("ecds")
-            .filter(F.col("fyear") == self._fyear)
+            ecds.filter(F.col("fyear") == self._fyear)
             .withColumn("provider", F.lit("NATIONAL"))
             .withColumn("sitetret", F.lit("NATIONAL"))
             .withColumn("sex", F.col("sex").cast("int"))
-            .groupBy(
-                "provider",
-                "age",
-                "sex",
-                "sitetret",
-                "aedepttype",
-                "attendance_category",
-                "is_main_icb",
-                "is_ambulance",
-                "is_frequent_attender",
-                "is_low_cost_referred_or_discharged",
-                "is_left_before_treatment",
-                "is_discharged_no_treatment",
-                "group",
-                "hsagrp",
-                "tretspef",
-            )
+            .groupBy(ecds.drop("index", "fyear", "arrivals").columns)
             .agg((F.sum("arrivals") * self._sample_rate).alias("arrivals"))
             # TODO: how do we make this stable? at the moment we can't use full model results with
             # national
