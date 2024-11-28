@@ -317,7 +317,6 @@ class Model:
         )
 
         agg = model_results.groupby(cols)["value"].sum()
-        agg.index.names = agg.index.names[:-1] + ["measure"]
 
         return {name: {frozenset(zip(cols, k)): v for k, v in agg.items()}}
 
