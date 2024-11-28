@@ -285,8 +285,8 @@ def test_run_model(mocker):
     actual = _run_model(model_m, params, "data", "hsa", "run_params", pc_m, False)
 
     # assert
-    pool_ctm.imap.assert_called_once_with(model_m().go, [0, 1, 2, 3], chunksize=1)
-    assert actual == [model_m().go()] * 4
+    pool_ctm.imap.assert_called_once_with(model_m().go, [0, 1, 2], chunksize=1)
+    assert actual == [model_m().go()] * 3
     pc_m.assert_not_called()
 
 

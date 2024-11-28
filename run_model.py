@@ -89,7 +89,7 @@ def _combine_results(results: list, model_runs: int) -> dict:
             {
                 **dict(k1),
                 "baseline": v1[0],
-                "model_runs": v1[1 : (model_runs + 1)],
+                "model_runs": v1[1:],
             }
             for k1, v1 in v0.items()
         ]
@@ -163,8 +163,7 @@ def _run_model(
     # model run  0 is the principal
     # model run 1:n are the monte carlo sims
     # model run >n are the time profile years
-    years = params["end_year"] - params["start_year"]
-    model_runs = list(range(params["model_runs"] + years))
+    model_runs = list(range(params["model_runs"] + 1))
 
     cpus = os.cpu_count()
     batch_size = int(os.getenv("BATCH_SIZE", "1"))
