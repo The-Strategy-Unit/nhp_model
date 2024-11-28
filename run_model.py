@@ -87,7 +87,10 @@ def _combine_results(results: list) -> dict:
 
     combined_step_counts = pd.concat(
         [
-            v.reset_index().assign(model_run=i)
+            v
+            # TODO: handle the case of daycase conversion, it's duplicating values
+            # need to figure out exactly why, but this masks the issue for now
+            .groupby(v.index.names).sum().reset_index().assign(model_run=i)
             for r in results
             for i, (_, v) in enumerate(r)
             if i > 0
