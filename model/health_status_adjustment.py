@@ -139,16 +139,16 @@ class HealthStatusAdjustment:
         return mode + sd * spt.norm.ppf((u + x) / (a_sqrt_tau * sd))
 
     def run(self, run_params: dict):
-        """_summary_
+        """Return factor for health status adjustment
 
-        :param hsa_param: _description_
-        :type hsa_param: int
-        :return: _description_
-        :rtype: _type_
+        :param run_params: P
+        :type run_params: dict
+        :return: factor
+        :rtype: float
         """
         hsa_param = run_params["health_status_adjustment"]
         selected_variant = reference.variant_lookup()[run_params["variant"]]
-        cache_key = (*hsa_param, run_params["year"], selected_variant)
+        cache_key = (*hsa_param, selected_variant)
         if cache_key in self._cache:
             return self._cache[cache_key]
 
