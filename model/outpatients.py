@@ -4,7 +4,6 @@ Outpatients Module
 Implements the Outpatients model.
 """
 
-from functools import partial
 from typing import Any, Callable, Tuple
 
 import numpy as np
@@ -193,14 +192,7 @@ class OutpatientsModel(Model):
             .agg({"value": "sum"})
         )
 
-        agg = partial(self._create_agg, model_results)
-        return (
-            agg,
-            {
-                **agg(["sex", "tretspef"]),
-                **agg(["tretspef_raw"]),
-            },
-        )
+        return model_results
 
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model

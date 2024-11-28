@@ -5,7 +5,6 @@ Implements the inpatients model.
 """
 
 from collections import defaultdict
-from functools import partial
 from typing import Any, Callable, Tuple
 
 import numpy as np
@@ -244,14 +243,7 @@ class InpatientsModel(Model):
         # remove any row where the measure value is 0
         model_results = model_results[model_results["value"] > 0].reset_index()
 
-        agg = partial(self._create_agg, model_results)
-        return (
-            agg,
-            {
-                **agg(["sex", "tretspef"]),
-                **agg(["tretspef_raw", "los_group"]),
-            },
-        )
+        return model_results
 
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model

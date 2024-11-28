@@ -4,7 +4,6 @@ Accident and Emergency Module
 Implements the A&E model.
 """
 
-from functools import partial
 from typing import Any, Callable, Tuple
 
 import numpy as np
@@ -140,12 +139,20 @@ class AaEModel(Model):
         model_results = model_results.groupby(
             # note: any columns used in the calls to _create_agg, including pod and measure
             # must be included below
-            ["pod", "sitetret", "acuity", "measure", "sex", "age", "age_group", "attendance_category"],
+            [
+                "pod",
+                "sitetret",
+                "acuity",
+                "measure",
+                "sex",
+                "age",
+                "age_group",
+                "attendance_category",
+            ],
             as_index=False,
         ).agg({"value": "sum"})
 
-        agg = partial(self._create_agg, model_results)
-        return (agg, {**agg(["acuity"]), **agg(["attendance_category"])})
+        return model_results
 
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model

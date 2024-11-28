@@ -18,10 +18,11 @@ import json
 import logging
 import os
 import time
-from collections import defaultdict
 from multiprocessing import Pool
 from typing import Any, Callable
 
+# janitor complains of being unused, but it is used (.complete())
+import janitor  # pylint: disable=unused-import
 import pandas as pd
 from tqdm.auto import tqdm as base_tqdm
 
@@ -60,7 +61,7 @@ def timeit(func: Callable, *args) -> Any:
     return results
 
 
-def _combine_results(results: list, model_runs: int) -> dict:
+def _combine_results(results: list) -> dict:
     """Combine the results into a single dictionary
 
     When we run the models we have an array containing 3 items [inpatients, outpatient, a&e].
@@ -71,57 +72,96 @@ def _combine_results(results: list, model_runs: int) -> dict:
     :return: combined model results
     :rtype: dict
     """
-    # results are a list containing each model runs aggregations
-    # the aggregations are dicts of dicts
-    combined_results = defaultdict(lambda: defaultdict(lambda: [0] * len(results[0])))
-    # first, we need to invert the [{{}}] to {{[]}}
-    for model_result in results:
-        for i, res in enumerate(model_result):
-            for agg_type, agg_values in res.items():
-                for key, value in agg_values.items():
-                    if agg_type == "step_counts":
-                        combined_results[agg_type][key][i] = value
-                    else:
-                        combined_results[agg_type][key][i] += value
-    # now we can convert this to the results we want
-    combined_results = {
-        k0: [
-            {
-                **dict(k1),
-                "baseline": v1[0],
-                "model_runs": v1[1:],
-            }
-            for k1, v1 in v0.items()
+
+    logging.info(" * starting to combine results")
+    combined_results = pd.concat(
+        [v.assign(model_run=i) for r in results for i, (v, _) in enumerate(r)],
+        ignore_index=True,
+    )
+
+    combined_results = combined_results.complete(
+        [i for i in combined_results.columns if i != "model_run" if i != "value"],
+        "model_run",
+        fill_value={"value": 0},
+    )
+
+    combined_step_counts = pd.concat(
+        [
+            v.reset_index().assign(model_run=i)
+            for r in results
+            for i, (_, v) in enumerate(r)
+            if i > 0
+        ],
+        ignore_index=True,
+    )
+
+    combined_step_counts = combined_step_counts.complete(
+        [i for i in combined_step_counts.columns if i != "model_run" if i != "value"],
+        "model_run",
+        fill_value={"value": 0},
+    )
+
+    def get_agg(*args):
+        df = combined_results.groupby(
+            ["model_run", "pod", "sitetret", *args, "measure"]
+        )["value"].sum()
+        return (
+            pd.concat(
+                [
+                    df.loc[0].rename("baseline"),
+                    df.loc[1:]
+                    .groupby(level=df.index.names[1:])
+                    .agg(list)
+                    .rename("model_runs"),
+                ],
+                axis=1,
+            )
+            .reset_index()
+            .to_dict(orient="records")
+        )
+
+    dict_results = {
+        "default" if not v else "+".join(v): get_agg(*v)
+        for v in [
+            [],
+            ["sex", "age_group"],
+            ["age"],
+            # aae specific
+            ["acuity"],
+            ["attendance_category"],
+            # ip/op
+            ["sex", "tretspef"],
+            ["tretspef_raw"],
+            # ip specific
+            ["tretspef_raw", "los_group"],
         ]
-        for k0, v0 in combined_results.items()
     }
-    # finally we split the model runs out, this function modifies values in place
-    for agg_type, values in combined_results.items():
-        _split_model_runs_out(agg_type, values)
 
-    return combined_results
+    dict_results["step_counts"] = (
+        combined_step_counts.groupby(
+            [
+                "pod",
+                "change_factor",
+                "strategy",
+                "sitetret",
+                "activity_type",
+                "measure",
+            ]
+        )[["value"]]
+        .agg(list)
+        .reset_index()
+        .to_dict("records")
+    )
 
+    for i in dict_results["step_counts"]:
+        i["model_runs"] = i.pop("value")
+        if i["change_factor"] == "baseline":
+            i["model_runs"] = i["model_runs"][0:1]
+        if i["strategy"] == "-":
+            i.pop("strategy")
 
-def _split_model_runs_out(agg_type: str, results: dict) -> None:
-    """updates a single result to be correct
-
-    :param agg_type: which aggregate type are we using
-    :type key: string
-    :param results: the results for this aggregation
-    :type results: dict
-    """
-    for result in results:
-        if agg_type == "step_counts":
-            result.pop("baseline")
-            if result["strategy"] == "-":
-                result.pop("strategy")
-            if result["change_factor"] == "baseline":
-                result["model_runs"] = result["model_runs"][:1]
-            continue
-
-        result["model_runs"] = [int(i) for i in result["model_runs"]]
-
-        result["baseline"] = int(result["baseline"])
+    logging.info(" * finished combining results")
+    return dict_results
 
 
 def _run_model(
@@ -159,10 +199,8 @@ def _run_model(
     # set the progress callback for this run
     tqdm.progress_callback = progress_callback
 
-    # model run -1 is the baseline
-    # model run  0 is the principal
+    # model run 0 is the baseline
     # model run 1:n are the monte carlo sims
-    # model run >n are the time profile years
     model_runs = list(range(params["model_runs"] + 1))
 
     cpus = os.cpu_count()
@@ -178,8 +216,6 @@ def _run_model(
                 ),
                 f"Running {model.__class__.__name__[:-5].rjust(11)} model",  # pylint: disable=protected-access
                 total=len(model_runs),
-                position=1,
-                leave=False,
             )
         )
     logging.info(" * finished")
@@ -225,8 +261,7 @@ def run_all(
                 save_full_model_results,
             )
             for m in model_types
-        ],
-        params["model_runs"],
+        ]
     )
 
     filename = f"{params['dataset']}/{params['scenario']}-{params['create_datetime']}"
@@ -258,31 +293,24 @@ def run_single_model_run(
     print("running model...       ", end="")
     m_run = timeit(ModelRun, model, model_run)
     print("aggregating results... ", end="")
-    agg_results = timeit(m_run.get_aggregate_results)
+    model_results, step_counts = timeit(m_run.get_aggregate_results)
     #
     print()
     print("change factors:")
-    step_counts = pd.DataFrame(
-        [{**dict(k), "value": v} for k, v, in agg_results["step_counts"].items()]
-    ).drop(columns=["strategy"])
-    # pylint: disable=unsubscriptable-object
-    cf_values = step_counts["change_factor"].unique()
     step_counts = (
-        step_counts.groupby(["change_factor", "measure"], as_index=False)[["value"]]
+        step_counts.reset_index()
+        .groupby(["change_factor", "measure"], as_index=False)["value"]
         .sum()
         .pivot(index="change_factor", columns="measure")
-        .loc[cf_values]
     )
     step_counts.loc["total"] = step_counts.sum()
     print(step_counts.fillna(0).astype(int))
     #
     print()
     print("aggregated (default) results:")
+
     default_results = (
-        pd.DataFrame(
-            [{**dict(k), "value": v} for k, v, in agg_results["default"].items()]
-        )
-        .groupby(["pod", "measure"], as_index=False)
+        model_results.groupby(["pod", "measure"], as_index=False)
         .agg({"value": sum})
         .pivot(index=["pod"], columns="measure")
         .fillna(0)

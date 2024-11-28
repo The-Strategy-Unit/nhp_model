@@ -284,38 +284,6 @@ class Model:
         """
         return row_samples
 
-    @staticmethod
-    def _create_agg(model_results, cols=None, name=None, include_measure=True):
-        """Create an aggregation
-
-        Aggregates the model results across the given columns by summing the `value` column.
-
-        It always includes the `pod` column, and by default includes the `measure` column.
-
-        :param model_results: a DataFrame containing the results of a model run
-        :type model_results: pandas.DataFrame
-        :param cols: a list of column names to aggregate by
-        :type cols: [str], optional
-        :param name: the name to give this aggregation
-        :type name: str, optional
-        :param include_measure: whether to include the `measure` column
-        :type include_measure: bool, optional
-
-        :returns: a dictionary containing the aggregation
-        :rtype: dict
-        """
-        if name is None:
-            name = "+".join(cols) if cols else "default"
-        cols = (
-            ["sitetret", "pod"]
-            + (["measure"] if include_measure else [])
-            + (cols if cols else [])
-        )
-
-        agg = model_results.groupby(cols)["value"].sum()
-
-        return {name: {frozenset(zip(cols, k)): v for k, v in agg.items()}}
-
     # pylint: disable=invalid-name
     def go(self, model_run: int) -> dict:
         """Run the model and get the aggregated results
