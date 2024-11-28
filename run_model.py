@@ -117,7 +117,6 @@ def _split_model_runs_out(agg_type: str, results: dict) -> None:
                 result.pop("strategy")
             if result["change_factor"] == "baseline":
                 result["model_runs"] = result["model_runs"][:1]
-                result.pop("time_profiles")
             continue
 
         result["model_runs"] = [int(i) for i in result["model_runs"]]

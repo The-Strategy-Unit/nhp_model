@@ -242,14 +242,12 @@ def test_split_model_runs_out_step_counts():
             "strategy": "-",
             "baseline": 0,
             "model_runs": [1, 2],
-            "time_profiles": [3, 4],
         },
         {
             "change_factor": "a",
             "strategy": "a",
             "baseline": 0,
             "model_runs": [5, 6],
-            "time_profiles": [7, 8],
         },
     ]
     expected = [
@@ -258,7 +256,6 @@ def test_split_model_runs_out_step_counts():
             "change_factor": "a",
             "strategy": "a",
             "model_runs": [5, 6],
-            "time_profiles": [7, 8],
         },
     ]
 
