@@ -90,7 +90,6 @@ def _combine_results(results: list, model_runs: int) -> dict:
                 **dict(k1),
                 "baseline": v1[0],
                 "model_runs": v1[1 : (model_runs + 1)],
-                "time_profiles": v1[(model_runs + 1) :],
             }
             for k1, v1 in v0.items()
         ]
