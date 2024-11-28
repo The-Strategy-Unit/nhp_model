@@ -87,22 +87,3 @@ def load_params(filename: str) -> dict:
 
     with open(filename, "r", encoding="UTF-8") as prf:
         return json.load(prf)
-
-
-def create_time_profiles(horizon_years: int, year: int) -> dict[str, callable]:
-    """Create time profile functions
-
-    :param horizon_years: how many years the model is running over
-    :type horizon_years: int
-    :param year: the year (in `(0, horizon_years]`) that the model is running for
-    :return: the time profiles, in a dictionary
-    :rtype: dict[str, callable]
-    """
-    return {
-        "none": 1,
-        "linear": year / horizon_years,
-        "front_loaded": np.sqrt(horizon_years**2 - (horizon_years - year) ** 2)
-        / horizon_years,
-        "back_loaded": 1 - np.sqrt(horizon_years**2 - year**2) / horizon_years,
-        "step": lambda y: int(year >= y),
-    }

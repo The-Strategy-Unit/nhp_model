@@ -380,7 +380,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
 # _get_run_params()
 
 @pytest.mark.parametrize(
-    "model_run, expected_run_params, mock_call",
+    "model_run, expected_run_params",
     [
         (
             0,
@@ -412,7 +412,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 },
                 "year": 2020,
             },
-            [],
         ),
         (
             2,
@@ -444,29 +443,16 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 },
                 "year": 2020,
             },
-            [],
         )
     ]
 )
 def test_get_run_params(
-    mocker, mock_model, mock_run_params, model_run, expected_run_params, mock_call
+    mock_model, mock_run_params, model_run, expected_run_params,
 ):
     """tests _get_run_params gets the right params for a model run"""
     # arrange
     mdl = mock_model
     mdl.run_params = mock_run_params
-
-    mdl.params["time_profile_mappings"] = {
-        "covid_adjustment": "none",
-        "baseline_adjustment": "none",
-        "expat": "linear",
-        "repat_local": "linear",
-        "repat_nonlocal": "linear",
-        "non-demographic_adjustment": "none",
-        "activity_avoidance": "linear",
-        "efficiencies": "linear",
-        "waiting_list_adjustment": "step2025",
-    }
 
     # act
     actual = mdl._get_run_params(model_run)
