@@ -172,7 +172,7 @@ class Model:
 
         This method saves the values to self.run_params
         """
-        # the principal projection will have run number 0. all other runs start indexing from 1
+        # the baseline run will have run number 0. all other runs start indexing from 1
         rng = np.random.default_rng(params["seed"])
         model_runs = params["model_runs"] + 1  # add 1 for the principal
 
@@ -186,9 +186,9 @@ class Model:
             # we haven't received an interval, just a single value
             if not isinstance(i, list):
                 return i
-            # for the principal projection, just use the midpoint of the interval
+            # for the baseline run, no params need to be set
             if model_run == 0:
-                return sum(i) / 2
+                return 1
             return rnorm(rng, *i)  # otherwise
 
         # function to traverse a dictionary until we find the values to generate from
