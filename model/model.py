@@ -261,12 +261,8 @@ class Model:
 
             return prm[model_run]
 
-        hsa = params["health_status_adjustment"][model_run]
-
         return {
             "year": self.params["end_year"],
-            "variant": params["variant"][model_run],
-            "health_status_adjustment": hsa,
             "seed": params["seeds"][model_run],
             **{k: get_param_value(params[k]) for k in params.keys() if k != "seeds"},
         }
