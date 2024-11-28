@@ -2,15 +2,6 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "type": "R",
-      "code": [
-        "targets::tar_make()"
-      ],
-      "group": "build",
-      "problemMatcher": [],
-      "label": "R: Run Targets"
-    },
-    {
       "type": "shell",
       "label": "Run Code Coverage",
       "command": "${command:python.interpreterPath} -m pytest --cov=. tests/ --cov-report xml:coverage.xml --cov-report term",

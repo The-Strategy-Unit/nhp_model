@@ -75,7 +75,7 @@ def test_combine_results(mocker):
                     ): [2 + j, 3 + j],
                 },
             }
-            for j in range(6)
+            for j in range(3)
         ],
         [{"a": {frozenset({("measure", "a"), ("pod", "a")}): 100}}],
     ]
@@ -86,28 +86,24 @@ def test_combine_results(mocker):
                 "pod": "a",
                 "baseline": 101,
                 "model_runs": [21, 41],
-                "time_profiles": [61, 81, 101],
             },
             {
                 "measure": "a",
                 "pod": "b",
                 "baseline": 2,
                 "model_runs": [22, 42],
-                "time_profiles": [62, 82, 102],
             },
             {
                 "pod": "a",
                 "measure": "b",
                 "baseline": 3,
                 "model_runs": [23, 43],
-                "time_profiles": [63, 83, 103],
             },
             {
                 "measure": "b",
                 "pod": "b",
                 "baseline": 4,
                 "model_runs": [24, 44],
-                "time_profiles": [64, 84, 104],
             },
         ],
         "b": [
@@ -116,28 +112,24 @@ def test_combine_results(mocker):
                 "pod": "a",
                 "baseline": 5,
                 "model_runs": [25, 45],
-                "time_profiles": [65, 85, 105],
             },
             {
                 "measure": "a",
                 "pod": "b",
                 "baseline": 6,
                 "model_runs": [26, 46],
-                "time_profiles": [66, 86, 106],
             },
             {
                 "pod": "a",
                 "measure": "b",
                 "baseline": 7,
                 "model_runs": [27, 47],
-                "time_profiles": [67, 87, 107],
             },
             {
                 "measure": "b",
                 "pod": "b",
                 "baseline": 8,
                 "model_runs": [28, 48],
-                "time_profiles": [68, 88, 108],
             },
         ],
         "c": [
@@ -146,28 +138,24 @@ def test_combine_results(mocker):
                 "pod": "a",
                 "baseline": 9,
                 "model_runs": [29, 49],
-                "time_profiles": [69, 89, 109],
             },
             {
                 "measure": "a",
                 "pod": "b",
                 "baseline": 10,
                 "model_runs": [30, 50],
-                "time_profiles": [70, 90, 110],
             },
             {
                 "pod": "a",
                 "measure": "b",
                 "baseline": 11,
                 "model_runs": [31, 51],
-                "time_profiles": [71, 91, 111],
             },
             {
                 "measure": "b",
                 "pod": "b",
                 "baseline": 12,
                 "model_runs": [32, 52],
-                "time_profiles": [72, 92, 112],
             },
         ],
         "d": [
@@ -176,28 +164,24 @@ def test_combine_results(mocker):
                 "pod": "a",
                 "baseline": 13,
                 "model_runs": [33, 53],
-                "time_profiles": [73, 93, 113],
             },
             {
                 "measure": "a",
                 "pod": "b",
                 "baseline": 14,
                 "model_runs": [34, 54],
-                "time_profiles": [74, 94, 114],
             },
             {
                 "pod": "a",
                 "measure": "b",
                 "baseline": 15,
                 "model_runs": [35, 55],
-                "time_profiles": [75, 95, 115],
             },
             {
                 "measure": "b",
                 "pod": "b",
                 "baseline": 16,
                 "model_runs": [36, 56],
-                "time_profiles": [76, 96, 116],
             },
         ],
         "step_counts": [
@@ -206,14 +190,12 @@ def test_combine_results(mocker):
                 "change_factor": "baseline",
                 "baseline": [0, 1],
                 "model_runs": [[0, 1], [0, 1]],
-                "time_profiles": [[0, 1], [0, 1], [0, 1]],
             },
             {
                 "strategy": "a",
                 "change_factor": "a",
                 "baseline": [2, 3],
                 "model_runs": [[3, 4], [4, 5]],
-                "time_profiles": [[5, 6], [6, 7], [7, 8]],
             },
         ],
     }
@@ -260,14 +242,12 @@ def test_split_model_runs_out_step_counts():
             "strategy": "-",
             "baseline": 0,
             "model_runs": [1, 2],
-            "time_profiles": [3, 4],
         },
         {
             "change_factor": "a",
             "strategy": "a",
             "baseline": 0,
             "model_runs": [5, 6],
-            "time_profiles": [7, 8],
         },
     ]
     expected = [
@@ -276,7 +256,6 @@ def test_split_model_runs_out_step_counts():
             "change_factor": "a",
             "strategy": "a",
             "model_runs": [5, 6],
-            "time_profiles": [7, 8],
         },
     ]
 
@@ -306,8 +285,8 @@ def test_run_model(mocker):
     actual = _run_model(model_m, params, "data", "hsa", "run_params", pc_m, False)
 
     # assert
-    pool_ctm.imap.assert_called_once_with(model_m().go, [0, 1, 2, 3], chunksize=1)
-    assert actual == [model_m().go()] * 4
+    pool_ctm.imap.assert_called_once_with(model_m().go, [0, 1, 2], chunksize=1)
+    assert actual == [model_m().go()] * 3
     pc_m.assert_not_called()
 
 

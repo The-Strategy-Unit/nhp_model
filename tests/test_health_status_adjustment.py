@@ -286,12 +286,12 @@ def test_hsa_run_not_cached(mocker, mock_hsa):
         ("b", 2, 1): 7.0,
         ("b", 2, 2): 8.0,
     }
-    assert mock_hsa._cache[(2, 3, 2020, "ppp")].equals(actual)
+    assert mock_hsa._cache[(2, 3, "ppp")].equals(actual)
 
 
 def test_hsa_run_cached(mocker, mock_hsa):
     # arrange
-    mock_hsa._cache[(1, 2, 2020, "ppp")] = "a"
+    mock_hsa._cache[(1, 2, "ppp")] = "a"
 
     ref_mock = mocker.patch("model.health_status_adjustment.reference")
     ref_mock.variant_lookup.return_value = {"principal_proj": "ppp"}

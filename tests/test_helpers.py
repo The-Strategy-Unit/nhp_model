@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from model.helpers import age_groups, create_time_profiles, inrange, load_params, rnorm
+from model.helpers import age_groups, inrange, load_params, rnorm
 
 
 @pytest.mark.parametrize(
@@ -62,17 +62,3 @@ def test_load_params():
     with patch("builtins.open", mock_open(read_data='{"params": 0}')) as mock_file:
         assert load_params("filename.json") == {"params": 0}
         mock_file.assert_called_with("filename.json", "r", encoding="UTF-8")
-
-
-def test_create_time_profiles():
-    # act
-    time_profiles = create_time_profiles(5, 1)
-
-    # assert
-    assert time_profiles["none"] == 1
-    assert time_profiles["linear"] == 0.2
-    assert time_profiles["front_loaded"] == 0.6
-    assert time_profiles["back_loaded"] == 1 - 24**0.5 / 5
-    assert time_profiles["step"](0) == 1
-    assert time_profiles["step"](1) == 1
-    assert time_profiles["step"](2) == 0

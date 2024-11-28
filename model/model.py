@@ -22,7 +22,7 @@ from model.health_status_adjustment import (
     HealthStatusAdjustment,
     HealthStatusAdjustmentInterpolated,
 )
-from model.helpers import age_groups, create_time_profiles, inrange, load_params, rnorm
+from model.helpers import age_groups, inrange, load_params, rnorm
 from model.model_run import ModelRun
 
 
@@ -172,7 +172,7 @@ class Model:
 
         This method saves the values to self.run_params
         """
-        # the principal projection will have run number 0. all other runs start indexing from 1
+        # the baseline run will have run number 0. all other runs start indexing from 1
         rng = np.random.default_rng(params["seed"])
         model_runs = params["model_runs"] + 1  # add 1 for the principal
 
@@ -186,9 +186,9 @@ class Model:
             # we haven't received an interval, just a single value
             if not isinstance(i, list):
                 return i
-            # for the principal projection, just use the midpoint of the interval
+            # for the baseline run, no params need to be set
             if model_run == 0:
-                return sum(i) / 2
+                return 1
             return rnorm(rng, *i)  # otherwise
 
         # function to traverse a dictionary until we find the values to generate from
@@ -255,64 +255,16 @@ class Model:
         """
         params = self.run_params
 
-        horizon_years = self.params["end_year"] - self.params["start_year"]
-        year = model_run - self.params["model_runs"]
-        if year <= 0:
-            year = horizon_years
-
-        time_profiles = create_time_profiles(horizon_years, year)
-
-        def get_param_value(prm, i):
+        def get_param_value(prm):
             if isinstance(prm, dict):
-                # a function to choose the next value of `i`
-                #   * if `i` is a dictionary, then we need to choose the item
-                #   * otherwise, `i` is already the name of a time profile, so use a const function
-                get_i = (lambda k: i[k]) if isinstance(i, dict) else (lambda _: i)
-                return {k: get_param_value(v, get_i(k)) for k, v in prm.items()}
+                return {k: get_param_value(v) for k, v in prm.items()}
 
-            # get the time profile value, if it's a step change then we need to parse the year out
-            # and run the step function
-            if i[:4] == "step":
-                j = int(i[4:]) - self.params["start_year"]
-                i = time_profiles["step"](j)
-            else:
-                i = time_profiles[i]
-
-            return 1 - (1 - prm[model_run]) * i
-
-        time_profile_mappings = self.params["time_profile_mappings"]
-
-        hsa = params["health_status_adjustment"][model_run]
-
-        if model_run <= self.params["model_runs"]:
-            # when we aren't performing the time profiles, set everything to "none"
-            time_profile_mappings = {k: "none" for k in time_profile_mappings}
-        else:
-            # for the time profiles, use the principal projection
-            model_run = 0
-            # make sure these parameters do not have a time profile selected
-            assert (
-                time_profile_mappings["covid_adjustment"] == "none"
-            ), "Invalid Time Profile for Covid Adjustment"
-            assert (
-                time_profile_mappings["baseline_adjustment"] == "none"
-            ), "Invalid Time Profile for Baseline Adjustment"
-            assert (
-                time_profile_mappings["non-demographic_adjustment"] == "none"
-            ), "Invalid Time Profile for Non-Demographic Adjustment"
+            return prm[model_run]
 
         return {
-            "year": year + self.params["start_year"],
-            "variant": params["variant"][model_run],
-            "health_status_adjustment": hsa,
+            "year": self.params["end_year"],
             "seed": params["seeds"][model_run],
-            **{
-                k: get_param_value(params[k], v)
-                for k, v in time_profile_mappings.items()
-                # TODO: this probably should be removed
-                # it masks potential issues in the parameters by just ignoring them
-                if k in params.keys()
-            },
+            **{k: get_param_value(params[k]) for k in params.keys() if k != "seeds"},
         }
 
     def get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
@@ -361,7 +313,6 @@ class Model:
         )
 
         agg = model_results.groupby(cols)["value"].sum()
-        agg.index.names = agg.index.names[:-1] + ["measure"]
 
         return {name: {frozenset(zip(cols, k)): v for k, v in agg.items()}}
 

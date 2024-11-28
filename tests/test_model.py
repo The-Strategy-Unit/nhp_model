@@ -79,27 +79,27 @@ def mock_run_params():
         "variant": ["a", "a", "b", "a"],
         "seeds": [1, 2, 3, 4],
         "health_status_adjustment": [1, 2, 3, 4, 5],
-        "covid_adjustment": [1.1, 1, 2, 3],
+        "covid_adjustment": [1, 1, 2, 3],
         "waiting_list_adjustment": {
             "ip": {"100": [1] * 4, "120": [2] * 4},
             "op": {"100": [3] * 4, "120": [4] * 4},
         },
-        "expat": {"ip": {"elective": {"Other": [0.8, 4, 5, 6]}}},
-        "repat_local": {"ip": {"elective": {"Other": [1.1, 7, 8, 9]}}},
-        "repat_nonlocal": {"ip": {"elective": {"Other": [1.4, 10, 11, 12]}}},
-        "baseline_adjustment": {"ip": {"elective": {"Other": [1.6, 13, 14, 15]}}},
+        "expat": {"ip": {"elective": {"Other": [1, 4, 5, 6]}}},
+        "repat_local": {"ip": {"elective": {"Other": [1, 7, 8, 9]}}},
+        "repat_nonlocal": {"ip": {"elective": {"Other": [1, 10, 11, 12]}}},
+        "baseline_adjustment": {"ip": {"elective": {"Other": [1, 13, 14, 15]}}},
         "non-demographic_adjustment": {
-            "a": {"a_a": [1.1, 16, 17, 18], "a_b": [1.1, 19, 20, 21]},
-            "b": {"b_a": [1.1, 22, 23, 24], "b_b": [1.1, 25, 26, 27]},
+            "a": {"a_a": [1, 16, 17, 18], "a_b": [1, 19, 20, 21]},
+            "b": {"b_a": [1, 22, 23, 24], "b_b": [1, 25, 26, 27]},
         },
         "activity_avoidance": {
-            "ip": {"a_a": [0.5, 28, 29, 30], "a_b": [0.5, 31, 32, 33]},
-            "op": {"a_a": [0.5, 34, 35, 36], "a_b": [0.5, 37, 38, 39]},
-            "aae": {"a_a": [0.5, 40, 41, 42], "a_b": [0.5, 43, 44, 45]},
+            "ip": {"a_a": [1, 28, 29, 30], "a_b": [1, 31, 32, 33]},
+            "op": {"a_a": [1, 34, 35, 36], "a_b": [1, 37, 38, 39]},
+            "aae": {"a_a": [1, 40, 41, 42], "a_b": [1, 43, 44, 45]},
         },
         "efficiencies": {
-            "ip": {"b_a": [0.5, 46, 47, 48], "b_b": [0.5, 49, 50, 51]},
-            "op": {"b_a": [0.5, 52, 53, 54], "b_b": [0.5, 55, 56, 57]},
+            "ip": {"b_a": [1, 46, 47, 48], "b_b": [1, 49, 50, 51]},
+            "op": {"b_a": [1, 52, 53, 54], "b_b": [1, 55, 56, 57]},
         },
     }
 
@@ -379,44 +379,8 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
 
 # _get_run_params()
 
-
-# expect errors
 @pytest.mark.parametrize(
-    "key", ["covid_adjustment", "baseline_adjustment", "non-demographic_adjustment"]
-)
-def test_get_run_params_invalid_time_profiles(mocker, mock_model, mock_run_params, key):
-    """tests _get_run_params gets the right params for a model run"""
-    # arrange
-    mdl = mock_model
-    mdl.run_params = mock_run_params
-
-    mdl.params["time_profile_mappings"] = {
-        "covid_adjustment": "none",
-        "baseline_adjustment": "none",
-        "expat": "linear",
-        "repat_local": "linear",
-        "repat_nonlocal": "linear",
-        "non-demographic_adjustment": "none",
-        "activity_avoidance": "linear",
-        "efficiencies": "linear",
-        "waiting_list_adjustment": "step2025",
-    }
-
-    m = Mock(return_value=1)
-    mocker.patch(
-        "model.model.create_time_profiles",
-        return_value={"none": 1, "linear": 0.5, "step": m},
-    )
-
-    mdl.params["time_profile_mappings"][key] = "linear"
-
-    # act / assert
-    with pytest.raises(Exception):
-        mdl._get_run_params(4)
-
-
-@pytest.mark.parametrize(
-    "model_run, expected_run_params, mock_call",
+    "model_run, expected_run_params",
     [
         (
             0,
@@ -424,23 +388,23 @@ def test_get_run_params_invalid_time_profiles(mocker, mock_model, mock_run_param
                 "variant": "a",
                 "health_status_adjustment": 1,
                 "seed": 1,
-                "covid_adjustment": 1.1,
+                "covid_adjustment": 1,
                 "non-demographic_adjustment": {
-                    "a": {"a_a": 1.1, "a_b": 1.1},
-                    "b": {"b_a": 1.1, "b_b": 1.1},
+                    "a": {"a_a": 1, "a_b": 1},
+                    "b": {"b_a": 1, "b_b": 1},
                 },
-                "expat": {"ip": {"elective": {"Other": 0.8}}},
-                "repat_local": {"ip": {"elective": {"Other": 1.1}}},
-                "repat_nonlocal": {"ip": {"elective": {"Other": 1.4}}},
-                "baseline_adjustment": {"ip": {"elective": {"Other": 1.6}}},
+                "expat": {"ip": {"elective": {"Other": 1}}},
+                "repat_local": {"ip": {"elective": {"Other": 1}}},
+                "repat_nonlocal": {"ip": {"elective": {"Other": 1}}},
+                "baseline_adjustment": {"ip": {"elective": {"Other": 1}}},
                 "activity_avoidance": {
-                    "ip": {"a_a": 0.5, "a_b": 0.5},
-                    "op": {"a_a": 0.5, "a_b": 0.5},
-                    "aae": {"a_a": 0.5, "a_b": 0.5},
+                    "ip": {"a_a": 1, "a_b": 1},
+                    "op": {"a_a": 1, "a_b": 1},
+                    "aae": {"a_a": 1, "a_b": 1},
                 },
                 "efficiencies": {
-                    "ip": {"b_a": 0.5, "b_b": 0.5},
-                    "op": {"b_a": 0.5, "b_b": 0.5},
+                    "ip": {"b_a": 1, "b_b": 1},
+                    "op": {"b_a": 1, "b_b": 1},
                 },
                 "waiting_list_adjustment": {
                     "ip": {"100": 1, "120": 2},
@@ -448,7 +412,6 @@ def test_get_run_params_invalid_time_profiles(mocker, mock_model, mock_run_param
                 },
                 "year": 2020,
             },
-            [],
         ),
         (
             2,
@@ -480,74 +443,22 @@ def test_get_run_params_invalid_time_profiles(mocker, mock_model, mock_run_param
                 },
                 "year": 2020,
             },
-            [],
-        ),
-        (
-            4,
-            {
-                "variant": "a",
-                "health_status_adjustment": 5,
-                "seed": 1,
-                "covid_adjustment": 1.1,
-                "non-demographic_adjustment": {
-                    "a": {"a_a": 1.1, "a_b": 1.1},
-                    "b": {"b_a": 1.1, "b_b": 1.1},
-                },
-                "expat": {"ip": {"elective": {"Other": 0.9}}},
-                "repat_local": {"ip": {"elective": {"Other": 1.05}}},
-                "repat_nonlocal": {"ip": {"elective": {"Other": 1.2}}},
-                "baseline_adjustment": {"ip": {"elective": {"Other": 1.6}}},
-                "activity_avoidance": {
-                    "ip": {"a_a": 0.75, "a_b": 0.75},
-                    "op": {"a_a": 0.75, "a_b": 0.75},
-                    "aae": {"a_a": 0.75, "a_b": 0.75},
-                },
-                "efficiencies": {
-                    "ip": {"b_a": 0.75, "b_b": 0.75},
-                    "op": {"b_a": 0.75, "b_b": 0.75},
-                },
-                "waiting_list_adjustment": {
-                    "ip": {"100": 1, "120": 2},
-                    "op": {"100": 3, "120": 4},
-                },
-                "year": 2019,
-            },
-            [call(7)] * 4,
-        ),
-    ],
+        )
+    ]
 )
 def test_get_run_params(
-    mocker, mock_model, mock_run_params, model_run, expected_run_params, mock_call
+    mock_model, mock_run_params, model_run, expected_run_params,
 ):
     """tests _get_run_params gets the right params for a model run"""
     # arrange
     mdl = mock_model
     mdl.run_params = mock_run_params
 
-    mdl.params["time_profile_mappings"] = {
-        "covid_adjustment": "none",
-        "baseline_adjustment": "none",
-        "expat": "linear",
-        "repat_local": "linear",
-        "repat_nonlocal": "linear",
-        "non-demographic_adjustment": "none",
-        "activity_avoidance": "linear",
-        "efficiencies": "linear",
-        "waiting_list_adjustment": "step2025",
-    }
-
-    m = Mock(return_value=1)
-    mocker.patch(
-        "model.model.create_time_profiles",
-        return_value={"none": 1, "linear": 0.5, "step": m},
-    )
-
     # act
     actual = mdl._get_run_params(model_run)
     # assert
     assert actual == expected_run_params
 
-    assert m.call_args_list == mock_call
 
 
 # get_data_counts
