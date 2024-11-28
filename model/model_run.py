@@ -93,16 +93,7 @@ class ModelRun:
         :rtype: dict
         """
         # pylint: disable=assignment-from-no-return
-        agg, aggregates = self.model.aggregate(self)
-        step_counts = self.get_step_counts()
-
-        return {
-            **agg(),
-            **agg(["sex", "age_group"]),
-            **agg(["age"]),
-            **aggregates,
-            **step_counts,
-        }
+        return self.model.aggregate(self), self.get_step_counts()
 
     def get_step_counts(self):
         """get the step counts of a model run"""
@@ -145,12 +136,7 @@ class ModelRun:
 
         step_counts = self._step_counts_get_type_changes(step_counts)
 
-        return {
-            "step_counts": {
-                frozenset(zip(step_counts.index.names, k)): v
-                for k, v in step_counts.to_dict().items()
-            }
-        }
+        return step_counts
 
     def _step_counts_get_type_changes(self, step_counts):
         step_counts.sort_index(inplace=True)
