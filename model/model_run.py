@@ -72,7 +72,7 @@ class ModelRun:
             .waiting_list_adjustment()
             .baseline_adjustment()
             .non_demographic_adjustment()
-            .activity_resampling()
+            .activity_avoidance()
             # call apply_resampling last, as this is what actually alters the data
             .apply_resampling()
         )

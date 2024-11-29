@@ -123,7 +123,7 @@ def test_run(mocker, mock_model_run):
     rr_mock.waiting_list_adjustment.return_value = rr_mock
     rr_mock.baseline_adjustment.return_value = rr_mock
     rr_mock.non_demographic_adjustment.return_value = rr_mock
-    rr_mock.activity_resampling.return_value = rr_mock
+    rr_mock.activity_avoidance.return_value = rr_mock
     rr_mock.apply_resampling.return_value = rr_mock
 
     # act
@@ -140,7 +140,7 @@ def test_run(mocker, mock_model_run):
     rr_mock.waiting_list_adjustment.assert_called_once()
     rr_mock.baseline_adjustment.assert_called_once()
     rr_mock.non_demographic_adjustment.assert_called_once()
-    rr_mock.activity_resampling.assert_called_once()
+    rr_mock.activity_avoidance.assert_called_once()
     rr_mock.apply_resampling.assert_called_once()
 
     mr_mock.model.efficiencies.assert_called_once_with(mr_mock)
