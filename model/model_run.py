@@ -6,7 +6,7 @@ Provides a simple class which holds all of the data required for a model run
 import numpy as np
 import pandas as pd
 
-from model.activity_avoidance import ActivityAvoidance
+from model.activity_resampling import ActivityResampling
 
 
 class ModelRun:
@@ -62,7 +62,7 @@ class ModelRun:
             return
 
         (
-            ActivityAvoidance(self)
+            ActivityResampling(self)
             .demographic_adjustment()
             .birth_adjustment()
             .health_status_adjustment()

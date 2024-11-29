@@ -280,7 +280,7 @@ class Model:
     def get_future_from_row_samples(self, row_samples):
         """Get the future counts from row samples
 
-        Called from within `model.activity_avoidance.ActivityAvoidance.apply_resampling`
+        Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
         """
         return row_samples
 

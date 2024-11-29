@@ -112,7 +112,7 @@ def test_run(mocker, mock_model_run):
     mr_mock = mock_model_run
     mr_mock.model_run = 1
 
-    rr_mock = mocker.patch("model.model_run.ActivityAvoidance")
+    rr_mock = mocker.patch("model.model_run.ActivityResampling")
     rr_mock.return_value = rr_mock
     rr_mock.demographic_adjustment.return_value = rr_mock
     rr_mock.birth_adjustment.return_value = rr_mock
@@ -152,7 +152,7 @@ def test_run_baseline(mocker, mock_model_run):
     mr_mock = mock_model_run
     mr_mock.model_run = 0
 
-    rr_mock = mocker.patch("model.model_run.ActivityAvoidance")
+    rr_mock = mocker.patch("model.model_run.ActivityResampling")
 
     # act
     mr_mock._run()

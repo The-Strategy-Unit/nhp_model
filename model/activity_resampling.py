@@ -9,10 +9,10 @@ import numpy.typing as npt
 import pandas as pd
 
 
-class ActivityAvoidance:
-    """Activity Avoidance
+class ActivityResampling:
+    """Activity Resampling
 
-    Class for handling the activity avoidance methods in the model. The class keeps track of
+    Class for handling the activity resampling methods in the model. The class keeps track of
     the current row counts, which represent the value for the lambda parameter to a random poisson
     when we come to resample the rows, and the step counts (the estimated effect of each step on
     the total number of rows).
