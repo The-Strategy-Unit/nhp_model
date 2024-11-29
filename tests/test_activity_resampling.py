@@ -548,7 +548,7 @@ def test_activity_resampling_no_params(mocker, mock_activity_resampling):
         "model.activity_resampling.ActivityResampling._update", return_value="update"
     )
     # act
-    actual = aa_mock.activity_resampling()
+    actual = aa_mock.activity_avoidance()
 
     # assert
     assert actual == aa_mock
@@ -610,7 +610,7 @@ def test_activity_resampling(mocker, mock_activity_resampling, binomial_rv, expe
     )
 
     # act
-    actual = aa_mock.activity_resampling()
+    actual = aa_mock.activity_avoidance()
     call_args = [(i[0][0].to_list(), i[0][1]) for i in u_mock.call_args_list]
 
     # assert

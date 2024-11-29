@@ -231,7 +231,7 @@ class ActivityResampling:
         factor = pd.Series(params).rename("non-demographic_adjustment") ** year_exponent
         return self._update(factor, ["group"])
 
-    def activity_resampling(self) -> dict:
+    def activity_avoidance(self) -> dict:
         """perform the activity avoidance (strategies)"""
         # if there are no items in params for activity_avoidance then exit
         if not (params := self.run_params["activity_avoidance"][self._activity_type]):
