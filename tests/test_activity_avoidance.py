@@ -8,15 +8,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from model.activity_avoidance import ActivityAvoidance
+from model.activity_resampling import ActivityResampling
 
 
 # fixtures
 @pytest.fixture
-def mock_activity_avoidance():
+def mock_activity_resampling():
     """create a mock Model instance"""
-    with patch.object(ActivityAvoidance, "__init__", lambda m, c: None):
-        mdl = ActivityAvoidance(None)
+    with patch.object(ActivityResampling, "__init__", lambda m, c: None):
+        mdl = ActivityResampling(None)
     mdl._model_run = Mock()
     mdl._model_run.model.baseline_counts = np.array(
         [[1, 2, 3, 4], [5, 6, 7, 8]]
@@ -40,7 +40,7 @@ def test_init():
     model_run.model.strategies = {"activity_avoidance": "activity_avoidance"}
 
     # act
-    actual = ActivityAvoidance(model_run)
+    actual = ActivityResampling(model_run)
 
     # assert
     assert actual.data == "data"
@@ -56,9 +56,9 @@ def test_init():
     assert actual._baseline_counts.tolist() == [[1, 2, 3], [4, 5, 6]]
 
 
-def test_update(mock_activity_avoidance):
+def test_update(mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
 
     aa_mock._row_counts = np.array([3.0, 4.0, 5.0, 6.0])
     aa_mock._model_run.data = pd.DataFrame({"a": [1, 2, 3, 4]})
@@ -76,9 +76,9 @@ def test_update(mock_activity_avoidance):
     }
 
 
-def test_update_rn(mock_activity_avoidance):
+def test_update_rn(mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
 
     aa_mock._row_counts = np.array([3.0, 4.0, 5.0, 6.0])
     aa_mock._model_run.data = pd.DataFrame({"rn": [1, 2, 3, 4]})
@@ -96,9 +96,9 @@ def test_update_rn(mock_activity_avoidance):
     }
 
 
-def test_demographic_adjustment(mocker, mock_activity_avoidance):
+def test_demographic_adjustment(mocker, mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run.run_params = {"year": 2020, "variant": "a"}
     aa_mock._model_run.model.demog_factors = pd.DataFrame(
         {"2020": [1, 2, 3]},
@@ -106,7 +106,7 @@ def test_demographic_adjustment(mocker, mock_activity_avoidance):
     )
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
     )
 
     # act
@@ -120,9 +120,9 @@ def test_demographic_adjustment(mocker, mock_activity_avoidance):
     assert u_mock.call_args[0][1] == ["age", "sex"]
 
 
-def test_birth_adjustment(mocker, mock_activity_avoidance):
+def test_birth_adjustment(mocker, mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run.run_params = {"year": 2020, "variant": "a"}
     # set up demog_factors/birth_factors: we end up dividing birth factors by the demog factors, so
     # we set these up here so (roughly) birth_factors == 1 / demog_factors.
@@ -141,7 +141,7 @@ def test_birth_adjustment(mocker, mock_activity_avoidance):
     )
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
     )
 
     # act
@@ -158,16 +158,16 @@ def test_birth_adjustment(mocker, mock_activity_avoidance):
 # _health_status_adjustment()
 
 
-def test_health_status_adjustment_when_enabled(mocker, mock_activity_avoidance):
+def test_health_status_adjustment_when_enabled(mocker, mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run.params = {"health_status_adjustment": True}
     aa_mock._model_run.run_params = {"health_status_adjustment": 2}
 
     aa_mock._model_run.model.hsa.run.return_value = "hsa"
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
     )
 
     # act
@@ -179,9 +179,9 @@ def test_health_status_adjustment_when_enabled(mocker, mock_activity_avoidance):
     u_mock.assert_called_once_with("hsa", ["hsagrp", "sex", "age"])
 
 
-def test_health_status_adjustmen_when_disabled(mock_activity_avoidance):
+def test_health_status_adjustmen_when_disabled(mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run.params = {"health_status_adjustment": False}
     aa_mock._model_run.run_params = {"health_status_adjustment": 2}
 
@@ -195,16 +195,16 @@ def test_health_status_adjustmen_when_disabled(mock_activity_avoidance):
     aa_mock.hsa.run.assert_not_called()
 
 
-def test_covid_adjustment(mocker, mock_activity_avoidance):
+def test_covid_adjustment(mocker, mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run.model.model_type = "ip"
     aa_mock._model_run.run_params = {
         "covid_adjustment": {"ip": {"elective": 1, "non-elective": 2}}
     }
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
     )
 
     # act
@@ -218,14 +218,14 @@ def test_covid_adjustment(mocker, mock_activity_avoidance):
     assert cols == ["group"]
 
 
-def test_expat_adjustment_no_params(mocker, mock_activity_avoidance):
+def test_expat_adjustment_no_params(mocker, mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run.model.model_type = "ip"
     aa_mock._model_run.run_params = {"expat": {"ip": {}}}
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
     )
 
     # act
@@ -236,9 +236,9 @@ def test_expat_adjustment_no_params(mocker, mock_activity_avoidance):
     u_mock.assert_not_called()
 
 
-def test_expat_adjustment(mocker, mock_activity_avoidance):
+def test_expat_adjustment(mocker, mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run.model.model_type = "ip"
     aa_mock._model_run.run_params = {
         "expat": {
@@ -250,7 +250,7 @@ def test_expat_adjustment(mocker, mock_activity_avoidance):
     }
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
     )
 
     # act
@@ -269,9 +269,9 @@ def test_expat_adjustment(mocker, mock_activity_avoidance):
     assert cols == ["group", "tretspef"]
 
 
-def test_repat_adjustment_no_params(mocker, mock_activity_avoidance):
+def test_repat_adjustment_no_params(mocker, mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run.model.model_type = "ip"
     aa_mock._model_run.run_params = {
         "repat_local": {"ip": {}},
@@ -279,7 +279,7 @@ def test_repat_adjustment_no_params(mocker, mock_activity_avoidance):
     }
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
     )
 
     # act
@@ -290,9 +290,9 @@ def test_repat_adjustment_no_params(mocker, mock_activity_avoidance):
     u_mock.assert_not_called()
 
 
-def test_repat_adjustment(mocker, mock_activity_avoidance):
+def test_repat_adjustment(mocker, mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run.model.model_type = "ip"
     aa_mock._model_run.run_params = {
         "repat_local": {
@@ -310,7 +310,7 @@ def test_repat_adjustment(mocker, mock_activity_avoidance):
     }
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
     )
 
     # act
@@ -333,14 +333,14 @@ def test_repat_adjustment(mocker, mock_activity_avoidance):
     assert cols == ["is_main_icb", "group", "tretspef"]
 
 
-def test_baseline_adjustment_no_params(mocker, mock_activity_avoidance):
+def test_baseline_adjustment_no_params(mocker, mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run.model.model_type = "ip"
     aa_mock._model_run.run_params = {"baseline_adjustment": {"ip": {}}}
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
     )
 
     # act
@@ -351,9 +351,9 @@ def test_baseline_adjustment_no_params(mocker, mock_activity_avoidance):
     u_mock.assert_not_called()
 
 
-def test_baseline_adjustment(mocker, mock_activity_avoidance):
+def test_baseline_adjustment(mocker, mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run.model.model_type = "ip"
     aa_mock._model_run.run_params = {
         "baseline_adjustment": {
@@ -365,7 +365,7 @@ def test_baseline_adjustment(mocker, mock_activity_avoidance):
     }
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
     )
 
     # act
@@ -384,9 +384,9 @@ def test_baseline_adjustment(mocker, mock_activity_avoidance):
     assert cols == ["group", "tretspef"]
 
 
-def test_waiting_list_adjustment_aae(mocker, mock_activity_avoidance):
+def test_waiting_list_adjustment_aae(mocker, mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run.model.model_type = "aae"
 
     aa_mock._model_run.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
@@ -401,7 +401,7 @@ def test_waiting_list_adjustment_aae(mocker, mock_activity_avoidance):
     }
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
     )
 
     # act
@@ -412,9 +412,9 @@ def test_waiting_list_adjustment_aae(mocker, mock_activity_avoidance):
     u_mock.assert_not_called()
 
 
-def test_waiting_list_adjustment_no_params(mocker, mock_activity_avoidance):
+def test_waiting_list_adjustment_no_params(mocker, mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run.model.model_type = "ip"
 
     aa_mock._model_run.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
@@ -422,7 +422,7 @@ def test_waiting_list_adjustment_no_params(mocker, mock_activity_avoidance):
     aa_mock._model_run.run_params = {"waiting_list_adjustment": {"ip": {}}}
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
     )
 
     # act
@@ -433,9 +433,9 @@ def test_waiting_list_adjustment_no_params(mocker, mock_activity_avoidance):
     u_mock.assert_not_called()
 
 
-def test_waiting_list_adjustment(mocker, mock_activity_avoidance):
+def test_waiting_list_adjustment(mocker, mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run.model.model_type = "ip"
 
     aa_mock._model_run.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
@@ -450,7 +450,7 @@ def test_waiting_list_adjustment(mocker, mock_activity_avoidance):
     }
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
     )
 
     # act
@@ -466,10 +466,10 @@ def test_waiting_list_adjustment(mocker, mock_activity_avoidance):
 
 @pytest.mark.parametrize("model_type", ["ip", "op", "aae"])
 def test_non_demographic_adjustment_no_params(
-    mocker, mock_activity_avoidance, model_type
+    mocker, mock_activity_resampling, model_type
 ):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run.model.model_type = model_type
 
     aa_mock._model_run.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
@@ -479,7 +479,7 @@ def test_non_demographic_adjustment_no_params(
     }
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
     )
 
     # act
@@ -502,10 +502,10 @@ def test_non_demographic_adjustment_no_params(
     ],
 )
 def test_non_demographic_adjustment(
-    mocker, mock_activity_avoidance, model_type, expected, year
+    mocker, mock_activity_resampling, model_type, expected, year
 ):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run.model.model_type = model_type
 
     aa_mock._model_run.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
@@ -521,7 +521,7 @@ def test_non_demographic_adjustment(
     aa_mock._model_run.params = {"start_year": 2020}
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
     )
 
     # act
@@ -535,9 +535,9 @@ def test_non_demographic_adjustment(
     assert cols == ["group"]
 
 
-def test_activity_avoidance_no_params(mocker, mock_activity_avoidance):
+def test_activity_resampling_no_params(mocker, mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run = Mock()
     aa_mock._model_run.model.strategies = {"activity_avoidance": None}
 
@@ -545,10 +545,10 @@ def test_activity_avoidance_no_params(mocker, mock_activity_avoidance):
     aa_mock._model_run.run_params = {"activity_avoidance": {"ip": {}}}
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update", return_value="update"
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
     )
     # act
-    actual = aa_mock.activity_avoidance()
+    actual = aa_mock.activity_resampling()
 
     # assert
     assert actual == aa_mock
@@ -580,9 +580,9 @@ def test_activity_avoidance_no_params(mocker, mock_activity_avoidance):
         ),
     ],
 )
-def test_activity_avoidance(mocker, mock_activity_avoidance, binomial_rv, expected):
+def test_activity_resampling(mocker, mock_activity_resampling, binomial_rv, expected):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
 
     aa_mock._model_run = Mock()
     aa_mock._model_run.rng.binomial.return_value = binomial_rv
@@ -605,12 +605,12 @@ def test_activity_avoidance(mocker, mock_activity_avoidance, binomial_rv, expect
     }
 
     u_mock = mocker.patch(
-        "model.activity_avoidance.ActivityAvoidance._update_rn",
+        "model.activity_resampling.ActivityResampling._update_rn",
         return_value="update_rn",
     )
 
     # act
-    actual = aa_mock.activity_avoidance()
+    actual = aa_mock.activity_resampling()
     call_args = [(i[0][0].to_list(), i[0][1]) for i in u_mock.call_args_list]
 
     # assert
@@ -618,9 +618,9 @@ def test_activity_avoidance(mocker, mock_activity_avoidance, binomial_rv, expect
     assert call_args == expected
 
 
-def test_apply_resampling(mock_activity_avoidance):
+def test_apply_resampling(mock_activity_resampling):
     # arrange
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
 
     aa_mock._row_counts = "row_counts"
     mr = aa_mock._model_run
@@ -645,12 +645,12 @@ def test_apply_resampling(mock_activity_avoidance):
     aa_mock._fix_step_counts.assert_called_once_with("future")
 
 
-def test_fix_step_counts(mock_activity_avoidance):
+def test_fix_step_counts(mock_activity_resampling):
     # arrange
     baseline = np.array([[1, 1, 1], [1, 2, 3]])
     future = np.array([[0, 1, 2], [0, 2, 6]])
 
-    aa_mock = mock_activity_avoidance
+    aa_mock = mock_activity_resampling
     aa_mock._model_run.model.baseline_counts = baseline
 
     aa_mock.step_counts = {

@@ -139,7 +139,7 @@ class InpatientsModel(Model):
     ) -> pd.DataFrame:
         """Apply row resampling
 
-        Called from within `model.activity_avoidance.ActivityAvoidance.apply_resampling`
+        Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
 
         :param row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
         values for `data["arrivals"]`
@@ -154,7 +154,7 @@ class InpatientsModel(Model):
     def get_future_from_row_samples(self, row_samples):
         """Get the future counts from row samples
 
-        Called from within `model.activity_avoidance.ActivityAvoidance.apply_resampling`
+        Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
         """
         return row_samples[0] * self.baseline_counts
 

@@ -4,7 +4,7 @@ New Hospitals Programme Model
 
 # re-export anything useful
 from model.aae import AaEModel
-from model.activity_avoidance import ActivityAvoidance
+from model.activity_resampling import ActivityResampling
 from model.health_status_adjustment import HealthStatusAdjustmentInterpolated
 from model.helpers import load_params
 from model.inpatients import InpatientEfficiencies, InpatientsModel

@@ -9,10 +9,10 @@ import numpy.typing as npt
 import pandas as pd
 
 
-class ActivityAvoidance:
-    """Activity Avoidance
+class ActivityResampling:
+    """Activity Resampling
 
-    Class for handling the activity avoidance methods in the model. The class keeps track of
+    Class for handling the activity resampling methods in the model. The class keeps track of
     the current row counts, which represent the value for the lambda parameter to a random poisson
     when we come to resample the rows, and the step counts (the estimated effect of each step on
     the total number of rows).
@@ -231,7 +231,7 @@ class ActivityAvoidance:
         factor = pd.Series(params).rename("non-demographic_adjustment") ** year_exponent
         return self._update(factor, ["group"])
 
-    def activity_avoidance(self) -> dict:
+    def activity_resampling(self) -> dict:
         """perform the activity avoidance (strategies)"""
         # if there are no items in params for activity_avoidance then exit
         if not (params := self.run_params["activity_avoidance"][self._activity_type]):

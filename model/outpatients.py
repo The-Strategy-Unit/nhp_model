@@ -130,7 +130,7 @@ class OutpatientsModel(Model):
     ) -> pd.DataFrame:
         """Apply row resampling
 
-        Called from within `model.activity_avoidance.ActivityAvoidance.apply_resampling`
+        Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
 
         :param row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
         values for `data["arrivals"]`
