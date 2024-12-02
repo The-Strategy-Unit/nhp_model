@@ -2,10 +2,7 @@
 
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name, missing-function-docstring
 
-from unittest.mock import Mock, call, mock_open, patch
-
 import pandas as pd
-import pytest
 
 from model.results import (
     _combine_model_results,
@@ -182,12 +179,322 @@ def test_combine_step_counts():
     # assert
     assert actual.to_dict("list") == expected
 
+
 def test_generate_results_json():
     # arrange
+    combined_results = pd.DataFrame(
+        {
+            "model_run": list(range(5)) * 5,
+            "pod": [i for i in ["a1", "a2", "b1", "b2", "c1"] for _ in range(5)],
+            "sitetret": ["s1"] * 5 * 5,
+            "measure": ["x"] * 5 * 2 + ["y"] * 5 * 2 + ["z"] * 5,
+            "sex": [0] * 5 * 5,
+            "age_group": [0] * 5 * 5,
+            "age": [0] * 5 * 5,
+            "acuity": [None] * 5 * 4 + [0] * 5,
+            "attendance_category": [None] * 5 * 4 + [0] * 5,
+            "tretspef": ["a"] * 5 * 4 + [None] * 5,
+            "tretspef_raw": ["a"] * 5 * 4 + [None] * 5,
+            "los_group": ["a"] * 5 * 2 + [None] * 5 * 3,
+            "value": range(25),
+        }
+    )
+
+    combined_step_counts = pd.DataFrame(
+        {
+            "pod": ["a1"] * 4 * 4,
+            "change_factor": ["a", "b", "c", "c"] * 4,
+            "strategy": ["-", "-", "a", "b"] * 4,
+            "sitetret": ["s"] * 4 * 4,
+            "activity_type": ["a"] * 4 * 4,
+            "measure": ["x"] * 4 * 4,
+            "value": [i for i in range(4) for _ in range(4)],
+        }
+    )
+
+    expected = {
+        "default": [
+            {
+                "pod": "a1",
+                "sitetret": "s1",
+                "measure": "x",
+                "baseline": 0,
+                "model_runs": [1, 2, 3, 4],
+            },
+            {
+                "pod": "a2",
+                "sitetret": "s1",
+                "measure": "x",
+                "baseline": 5,
+                "model_runs": [6, 7, 8, 9],
+            },
+            {
+                "pod": "b1",
+                "sitetret": "s1",
+                "measure": "y",
+                "baseline": 10,
+                "model_runs": [11, 12, 13, 14],
+            },
+            {
+                "pod": "b2",
+                "sitetret": "s1",
+                "measure": "y",
+                "baseline": 15,
+                "model_runs": [16, 17, 18, 19],
+            },
+            {
+                "pod": "c1",
+                "sitetret": "s1",
+                "measure": "z",
+                "baseline": 20,
+                "model_runs": [21, 22, 23, 24],
+            },
+        ],
+        "sex+age_group": [
+            {
+                "pod": "a1",
+                "sitetret": "s1",
+                "sex": 0,
+                "age_group": 0,
+                "measure": "x",
+                "baseline": 0,
+                "model_runs": [1, 2, 3, 4],
+            },
+            {
+                "pod": "a2",
+                "sitetret": "s1",
+                "sex": 0,
+                "age_group": 0,
+                "measure": "x",
+                "baseline": 5,
+                "model_runs": [6, 7, 8, 9],
+            },
+            {
+                "pod": "b1",
+                "sitetret": "s1",
+                "sex": 0,
+                "age_group": 0,
+                "measure": "y",
+                "baseline": 10,
+                "model_runs": [11, 12, 13, 14],
+            },
+            {
+                "pod": "b2",
+                "sitetret": "s1",
+                "sex": 0,
+                "age_group": 0,
+                "measure": "y",
+                "baseline": 15,
+                "model_runs": [16, 17, 18, 19],
+            },
+            {
+                "pod": "c1",
+                "sitetret": "s1",
+                "sex": 0,
+                "age_group": 0,
+                "measure": "z",
+                "baseline": 20,
+                "model_runs": [21, 22, 23, 24],
+            },
+        ],
+        "age": [
+            {
+                "pod": "a1",
+                "sitetret": "s1",
+                "age": 0,
+                "measure": "x",
+                "baseline": 0,
+                "model_runs": [1, 2, 3, 4],
+            },
+            {
+                "pod": "a2",
+                "sitetret": "s1",
+                "age": 0,
+                "measure": "x",
+                "baseline": 5,
+                "model_runs": [6, 7, 8, 9],
+            },
+            {
+                "pod": "b1",
+                "sitetret": "s1",
+                "age": 0,
+                "measure": "y",
+                "baseline": 10,
+                "model_runs": [11, 12, 13, 14],
+            },
+            {
+                "pod": "b2",
+                "sitetret": "s1",
+                "age": 0,
+                "measure": "y",
+                "baseline": 15,
+                "model_runs": [16, 17, 18, 19],
+            },
+            {
+                "pod": "c1",
+                "sitetret": "s1",
+                "age": 0,
+                "measure": "z",
+                "baseline": 20,
+                "model_runs": [21, 22, 23, 24],
+            },
+        ],
+        "acuity": [
+            {
+                "pod": "c1",
+                "sitetret": "s1",
+                "acuity": 0.0,
+                "measure": "z",
+                "baseline": 20,
+                "model_runs": [21, 22, 23, 24],
+            }
+        ],
+        "attendance_category": [
+            {
+                "pod": "c1",
+                "sitetret": "s1",
+                "attendance_category": 0.0,
+                "measure": "z",
+                "baseline": 20,
+                "model_runs": [21, 22, 23, 24],
+            }
+        ],
+        "sex+tretspef": [
+            {
+                "pod": "a1",
+                "sitetret": "s1",
+                "sex": 0,
+                "tretspef": "a",
+                "measure": "x",
+                "baseline": 0,
+                "model_runs": [1, 2, 3, 4],
+            },
+            {
+                "pod": "a2",
+                "sitetret": "s1",
+                "sex": 0,
+                "tretspef": "a",
+                "measure": "x",
+                "baseline": 5,
+                "model_runs": [6, 7, 8, 9],
+            },
+            {
+                "pod": "b1",
+                "sitetret": "s1",
+                "sex": 0,
+                "tretspef": "a",
+                "measure": "y",
+                "baseline": 10,
+                "model_runs": [11, 12, 13, 14],
+            },
+            {
+                "pod": "b2",
+                "sitetret": "s1",
+                "sex": 0,
+                "tretspef": "a",
+                "measure": "y",
+                "baseline": 15,
+                "model_runs": [16, 17, 18, 19],
+            },
+        ],
+        "tretspef_raw": [
+            {
+                "pod": "a1",
+                "sitetret": "s1",
+                "tretspef_raw": "a",
+                "measure": "x",
+                "baseline": 0,
+                "model_runs": [1, 2, 3, 4],
+            },
+            {
+                "pod": "a2",
+                "sitetret": "s1",
+                "tretspef_raw": "a",
+                "measure": "x",
+                "baseline": 5,
+                "model_runs": [6, 7, 8, 9],
+            },
+            {
+                "pod": "b1",
+                "sitetret": "s1",
+                "tretspef_raw": "a",
+                "measure": "y",
+                "baseline": 10,
+                "model_runs": [11, 12, 13, 14],
+            },
+            {
+                "pod": "b2",
+                "sitetret": "s1",
+                "tretspef_raw": "a",
+                "measure": "y",
+                "baseline": 15,
+                "model_runs": [16, 17, 18, 19],
+            },
+        ],
+        "tretspef_raw+los_group": [
+            {
+                "pod": "a1",
+                "sitetret": "s1",
+                "tretspef_raw": "a",
+                "los_group": "a",
+                "measure": "x",
+                "baseline": 0,
+                "model_runs": [1, 2, 3, 4],
+            },
+            {
+                "pod": "a2",
+                "sitetret": "s1",
+                "tretspef_raw": "a",
+                "los_group": "a",
+                "measure": "x",
+                "baseline": 5,
+                "model_runs": [6, 7, 8, 9],
+            },
+        ],
+        "step_counts": [
+            {
+                "pod": "a1",
+                "change_factor": "a",
+                "sitetret": "s",
+                "activity_type": "a",
+                "measure": "x",
+                "model_runs": [0, 1, 2, 3],
+            },
+            {
+                "pod": "a1",
+                "change_factor": "b",
+                "sitetret": "s",
+                "activity_type": "a",
+                "measure": "x",
+                "model_runs": [0, 1, 2, 3],
+            },
+            {
+                "pod": "a1",
+                "change_factor": "c",
+                "strategy": "a",
+                "sitetret": "s",
+                "activity_type": "a",
+                "measure": "x",
+                "model_runs": [0, 1, 2, 3],
+            },
+            {
+                "pod": "a1",
+                "change_factor": "c",
+                "strategy": "b",
+                "sitetret": "s",
+                "activity_type": "a",
+                "measure": "x",
+                "model_runs": [0, 1, 2, 3],
+            },
+        ],
+    }
 
     # act
+    actual = _generate_results_json(combined_results, combined_step_counts)
 
     # assert
+    assert actual == expected
+
 
 def test_combine_results(mocker):
     # arrange
