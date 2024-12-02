@@ -21,9 +21,6 @@ import time
 from multiprocessing import Pool
 from typing import Any, Callable
 
-# janitor complains of being unused, but it is used (.complete())
-import janitor  # pylint: disable=unused-import
-import pandas as pd
 from tqdm.auto import tqdm as base_tqdm
 
 from model.aae import AaEModel
@@ -34,6 +31,7 @@ from model.inpatients import InpatientsModel
 from model.model import Model
 from model.model_run import ModelRun
 from model.outpatients import OutpatientsModel
+from model.results import combine_results
 
 
 class tqdm(base_tqdm):  # pylint: disable=inconsistent-mro, invalid-name
@@ -59,112 +57,6 @@ def timeit(func: Callable, *args) -> Any:
     results = func(*args)
     print(f"elapsed: {time.time() - start:.3f}s")
     return results
-
-
-def _combine_results(results: list) -> dict:
-    """Combine the results into a single dictionary
-
-    When we run the models we have an array containing 3 items [inpatients, outpatient, a&e].
-    Each of which contains one item for each model run, which is a dictionary.
-
-    :param results: the results of running the models
-    :type results: list
-    :return: combined model results
-    :rtype: dict
-    """
-
-    logging.info(" * starting to combine results")
-    combined_results = pd.concat(
-        [v.assign(model_run=i) for r in results for i, (v, _) in enumerate(r)],
-        ignore_index=True,
-    )
-
-    combined_results = combined_results.complete(
-        [i for i in combined_results.columns if i != "model_run" if i != "value"],
-        "model_run",
-        fill_value={"value": 0},
-    )
-
-    combined_step_counts = pd.concat(
-        [
-            v
-            # TODO: handle the case of daycase conversion, it's duplicating values
-            # need to figure out exactly why, but this masks the issue for now
-            .groupby(v.index.names).sum().reset_index().assign(model_run=i)
-            for r in results
-            for i, (_, v) in enumerate(r)
-            if i > 0
-        ],
-        ignore_index=True,
-    )
-
-    combined_step_counts = combined_step_counts.complete(
-        [i for i in combined_step_counts.columns if i != "model_run" if i != "value"],
-        "model_run",
-        fill_value={"value": 0},
-    )
-
-    def get_agg(*args):
-        df = combined_results.groupby(
-            ["model_run", "pod", "sitetret", *args, "measure"]
-        )["value"].sum()
-        return (
-            pd.concat(
-                [
-                    df.loc[0].rename("baseline"),
-                    df.loc[1:]
-                    .groupby(level=df.index.names[1:])
-                    .agg(list)
-                    .rename("model_runs"),
-                ],
-                axis=1,
-            )
-            .reset_index()
-            .to_dict(orient="records")
-        )
-
-    dict_results = {
-        "default" if not v else "+".join(v): get_agg(*v)
-        for v in [
-            [],
-            ["sex", "age_group"],
-            ["age"],
-            # aae specific
-            ["acuity"],
-            ["attendance_category"],
-            # ip/op
-            ["sex", "tretspef"],
-            ["tretspef_raw"],
-            # ip specific
-            ["tretspef_raw", "los_group"],
-        ]
-    }
-
-    dict_results["step_counts"] = (
-        combined_step_counts.groupby(
-            [
-                "pod",
-                "change_factor",
-                "strategy",
-                "sitetret",
-                "activity_type",
-                "measure",
-            ]
-        )[["value"]]
-        .agg(list)
-        .reset_index()
-        .to_dict("records")
-    )
-
-    for i in dict_results["step_counts"]:
-        i["model_runs"] = i.pop("value")
-        if i["change_factor"] == "baseline":
-            i["model_runs"] = i["model_runs"][0:1]
-        if i["strategy"] == "-":
-            i.pop("strategy")
-
-    logging.info(" * finished combining results")
-    return dict_results
 
 
 def _run_model(
@@ -252,7 +144,7 @@ def run_all(
 
     pcallback = progress_callback()
 
-    results = _combine_results(
+    results = combine_results(
         [
             _run_model(
                 m,
