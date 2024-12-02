@@ -4,21 +4,13 @@
 
 from unittest.mock import Mock, call, mock_open, patch
 
+import pandas as pd
 import pytest
 
 from model.aae import AaEModel
 from model.inpatients import InpatientsModel
 from model.outpatients import OutpatientsModel
-from run_model import (
-    _combine_results,
-    _run_model,
-    _split_model_runs_out,
-    main,
-    run_all,
-    run_single_model_run,
-    timeit,
-    tqdm,
-)
+from run_model import _run_model, main, run_all, run_single_model_run, timeit, tqdm
 
 
 def test_tqdm():
@@ -38,232 +30,6 @@ def test_timeit(mocker, capsys):
     # assert
     assert actual == "function"
     assert capsys.readouterr().out == "elapsed: 0.000s\n"
-
-
-def test_combine_results(mocker):
-    # arrange
-    m = mocker.patch("run_model._split_model_runs_out")
-    results = [
-        [
-            {
-                **{
-                    k: {
-                        frozenset({("measure", "a"), ("pod", "a")}): 1 + i * 4 + j * 20,
-                        frozenset({("measure", "a"), ("pod", "b")}): 2 + i * 4 + j * 20,
-                        frozenset({("measure", "b"), ("pod", "a")}): 3 + i * 4 + j * 20,
-                        frozenset({("measure", "b"), ("pod", "b")}): 4 + i * 4 + j * 20,
-                    }
-                    for k, i in [
-                        ("a", 0),
-                        ("b", 1),
-                        ("c", 2),
-                        ("d", 3),
-                    ]
-                },
-                "step_counts": {
-                    frozenset(
-                        {
-                            ("change_factor", "baseline"),
-                            ("strategy", "-"),
-                        }
-                    ): [0, 1],
-                    frozenset(
-                        {
-                            ("change_factor", "a"),
-                            ("strategy", "a"),
-                        }
-                    ): [2 + j, 3 + j],
-                },
-            }
-            for j in range(3)
-        ],
-        [{"a": {frozenset({("measure", "a"), ("pod", "a")}): 100}}],
-    ]
-    expected = {
-        "a": [
-            {
-                "measure": "a",
-                "pod": "a",
-                "baseline": 101,
-                "model_runs": [21, 41],
-            },
-            {
-                "measure": "a",
-                "pod": "b",
-                "baseline": 2,
-                "model_runs": [22, 42],
-            },
-            {
-                "pod": "a",
-                "measure": "b",
-                "baseline": 3,
-                "model_runs": [23, 43],
-            },
-            {
-                "measure": "b",
-                "pod": "b",
-                "baseline": 4,
-                "model_runs": [24, 44],
-            },
-        ],
-        "b": [
-            {
-                "measure": "a",
-                "pod": "a",
-                "baseline": 5,
-                "model_runs": [25, 45],
-            },
-            {
-                "measure": "a",
-                "pod": "b",
-                "baseline": 6,
-                "model_runs": [26, 46],
-            },
-            {
-                "pod": "a",
-                "measure": "b",
-                "baseline": 7,
-                "model_runs": [27, 47],
-            },
-            {
-                "measure": "b",
-                "pod": "b",
-                "baseline": 8,
-                "model_runs": [28, 48],
-            },
-        ],
-        "c": [
-            {
-                "measure": "a",
-                "pod": "a",
-                "baseline": 9,
-                "model_runs": [29, 49],
-            },
-            {
-                "measure": "a",
-                "pod": "b",
-                "baseline": 10,
-                "model_runs": [30, 50],
-            },
-            {
-                "pod": "a",
-                "measure": "b",
-                "baseline": 11,
-                "model_runs": [31, 51],
-            },
-            {
-                "measure": "b",
-                "pod": "b",
-                "baseline": 12,
-                "model_runs": [32, 52],
-            },
-        ],
-        "d": [
-            {
-                "measure": "a",
-                "pod": "a",
-                "baseline": 13,
-                "model_runs": [33, 53],
-            },
-            {
-                "measure": "a",
-                "pod": "b",
-                "baseline": 14,
-                "model_runs": [34, 54],
-            },
-            {
-                "pod": "a",
-                "measure": "b",
-                "baseline": 15,
-                "model_runs": [35, 55],
-            },
-            {
-                "measure": "b",
-                "pod": "b",
-                "baseline": 16,
-                "model_runs": [36, 56],
-            },
-        ],
-        "step_counts": [
-            {
-                "strategy": "-",
-                "change_factor": "baseline",
-                "baseline": [0, 1],
-                "model_runs": [[0, 1], [0, 1]],
-            },
-            {
-                "strategy": "a",
-                "change_factor": "a",
-                "baseline": [2, 3],
-                "model_runs": [[3, 4], [4, 5]],
-            },
-        ],
-    }
-
-    # act
-    actual = _combine_results(results, 2)
-
-    # assert
-    assert actual == expected
-    assert m.call_args_list == [call(k, v) for k, v in expected.items()]
-
-
-def test_split_model_runs_out():
-    # arrange
-    results = [
-        {
-            "pod": "a",
-            "measure": "a",
-            "baseline": 1,
-            "model_runs": list(range(101)),
-        }
-    ]
-    expected = [
-        {
-            "pod": "a",
-            "measure": "a",
-            "baseline": 1,
-            "model_runs": list(range(101)),
-        }
-    ]
-
-    # act
-    _split_model_runs_out("default", results)
-
-    # assert
-    assert results == expected
-
-
-def test_split_model_runs_out_step_counts():
-    # arrange
-    results = [
-        {
-            "change_factor": "baseline",
-            "strategy": "-",
-            "baseline": 0,
-            "model_runs": [1, 2],
-        },
-        {
-            "change_factor": "a",
-            "strategy": "a",
-            "baseline": 0,
-            "model_runs": [5, 6],
-        },
-    ]
-    expected = [
-        {"change_factor": "baseline", "model_runs": [1]},
-        {
-            "change_factor": "a",
-            "strategy": "a",
-            "model_runs": [5, 6],
-        },
-    ]
-
-    # act
-    _split_model_runs_out("step_counts", results)
-
-    # assert
-    assert results == expected
 
 
 def test_run_model(mocker):
@@ -300,7 +66,7 @@ def test_run_all(mocker):
     )
 
     rm_m = mocker.patch("run_model._run_model", side_effect=["ip", "op", "aae"])
-    cr_m = mocker.patch("run_model._combine_results", return_value="combined_results")
+    cr_m = mocker.patch("run_model.combine_results", return_value="combined_results")
     nd_m = mocker.patch("run_model.Local")
 
     os_m = mocker.patch("os.makedirs")
@@ -355,7 +121,7 @@ def test_run_all(mocker):
         for m in [InpatientsModel, OutpatientsModel, AaEModel]
     ]
 
-    cr_m.assert_called_once_with(["ip", "op", "aae"], 10)
+    cr_m.assert_called_once_with(["ip", "op", "aae"])
     os_m.assert_called_once_with("results/synthetic", exist_ok=True)
 
     mock_file.assert_called_once_with(
@@ -378,78 +144,24 @@ def test_run_single_model_run(mocker, capsys):
     ndl_mock = mocker.patch("run_model.Local")
     ndl_mock.create.return_value = "nhp_data"
 
+    results_m = pd.DataFrame(
+        {
+            "pod": ["a", "b"] * 4 + ["c"],
+            "measure": [i for i in ["x", "y"] for _ in [1, 2]] * 2 + ["x"],
+            "value": range(9),
+        }
+    )
+    step_counts_m = pd.DataFrame(
+        {
+            "change_factor": ["a", "b"] * 4 + ["c"],
+            "measure": [i for i in ["x", "y"] for _ in [1, 2]] * 2 + ["x"],
+            "value": range(9),
+        }
+    )
+
     timeit_mock = mocker.patch(
         "run_model.timeit",
-        side_effect=[
-            None,
-            mr_mock,
-            {
-                "default": {
-                    frozenset(
-                        {
-                            ("measure", "admissions"),
-                            ("pod", "ip_elective_admission"),
-                            ("sitetret", "RXX01"),
-                        }
-                    ): 100.0,
-                    frozenset(
-                        {
-                            ("measure", "beddays"),
-                            ("pod", "ip_elective_admission"),
-                            ("sitetret", "RXX01"),
-                        }
-                    ): 200.0,
-                    frozenset(
-                        {
-                            ("measure", "procedures"),
-                            ("pod", "ip_elective_admission"),
-                            ("sitetret", "RXX01"),
-                        }
-                    ): 300.0,
-                    frozenset(
-                        {
-                            ("pod", "ip_elective_daycase"),
-                            ("measure", "admissions"),
-                            ("sitetret", "RXX01"),
-                        }
-                    ): 400.0,
-                },
-                "step_counts": {
-                    frozenset(
-                        {
-                            ("activity_type", "ip"),
-                            ("change_factor", "baseline"),
-                            ("measure", "admissions"),
-                            ("strategy", "-"),
-                        }
-                    ): 100.0,
-                    frozenset(
-                        {
-                            ("activity_type", "ip"),
-                            ("change_factor", "baseline"),
-                            ("measure", "beddays"),
-                            ("strategy", "-"),
-                        }
-                    ): 200.0,
-                    frozenset(
-                        {
-                            ("activity_type", "ip"),
-                            ("change_factor", "demographic_adjustment"),
-                            ("measure", "admissions"),
-                            ("strategy", "-"),
-                        }
-                    ): 50.0,
-                    frozenset(
-                        {
-                            ("activity_type", "ip"),
-                            ("change_factor", "demographic_adjustment"),
-                            ("measure", "beddays"),
-                            ("strategy", "-"),
-                        }
-                    ): 100.0,
-                },
-            },
-        ],
+        side_effect=[None, mr_mock, (results_m, step_counts_m)],
     )
     params = {"dataset": "synthetic", "start_year": 2020, "end_year": 2025}
 
@@ -467,20 +179,22 @@ def test_run_single_model_run(mocker, capsys):
         [
             "initialising model...  running model...       aggregating results... ",
             "change factors:",
-            "                            value        ",
-            "measure                admissions beddays",
-            "change_factor                            ",
-            "baseline                      100     200",
-            "demographic_adjustment         50     100",
-            "total                         150     300",
+            "              value    ",
+            "measure           x   y",
+            "change_factor          ",
+            "a                 4   8",
+            "b                 6  10",
+            "c                 8   0",
+            "total            18  18",
             "",
             "aggregated (default) results:",
-            "                           value                   ",
-            "measure               admissions beddays procedures",
-            "pod                                                ",
-            "ip_elective_admission      100.0   200.0      300.0",
-            "ip_elective_daycase        400.0     0.0        0.0",
-            "total                      500.0   200.0      300.0",
+            "        value      ",
+            "measure     x     y",
+            "pod                ",
+            "a         4.0   8.0",
+            "b         6.0  10.0",
+            "c         8.0   0.0",
+            "total    18.0  18.0",
             "",
         ]
     )

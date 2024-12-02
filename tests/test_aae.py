@@ -203,24 +203,23 @@ def test_aggregate(mock_model):
         }
     )
 
-    expected_mr = {
+    expected = {
         "pod": ["aae_type-01", "aae_type-01", "aae_type-02", "aae_type-02"],
         "sitetret": ["trust"] * 4,
         "acuity": ["a", "a", "b", "b"],
-        "attendance_category": [1, 1, 2, 2],
         "measure": ["ambulance", "walk-in"] * 2,
         "sex": [1] * 4,
         "age": [1, 2, 3, 4],
         "age_group": [1] * 4,
+        "attendance_category": [1, 1, 2, 2],
         "value": [1, 2, 3, 4],
     }
 
     # act
-    (agg, results) = mdl.aggregate(mr_mock)
+    actual = mdl.aggregate(mr_mock)
 
     # assert
-    assert agg() == {"default": expected_mr}
-    assert results == {"acuity": expected_mr, "attendance_category": expected_mr}
+    assert actual.to_dict("list") == expected
 
 
 def test_save_results(mocker, mock_model):
