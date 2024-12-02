@@ -245,7 +245,7 @@ def test_aggregate(mock_model):
         }
     )
 
-    expected_mr = {
+    expected = {
         "pod": [
             k for k in ["op_first", "op_follow-up", "op_procedure"] for _ in [0, 1]
         ],
@@ -260,11 +260,10 @@ def test_aggregate(mock_model):
     }
 
     # act
-    (agg, results) = mdl.aggregate(mr_mock)
+    actual = mdl.aggregate(mr_mock)
 
     # assert
-    assert agg() == {"default": expected_mr}
-    assert results == {"sex+tretspef": expected_mr, "tretspef_raw": expected_mr}
+    assert actual.to_dict("list") == expected
 
 
 def test_save_results(mocker, mock_model):

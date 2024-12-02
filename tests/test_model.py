@@ -379,6 +379,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
 
 # _get_run_params()
 
+
 @pytest.mark.parametrize(
     "model_run, expected_run_params",
     [
@@ -443,11 +444,14 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 },
                 "year": 2020,
             },
-        )
-    ]
+        ),
+    ],
 )
 def test_get_run_params(
-    mock_model, mock_run_params, model_run, expected_run_params,
+    mock_model,
+    mock_run_params,
+    model_run,
+    expected_run_params,
 ):
     """tests _get_run_params gets the right params for a model run"""
     # arrange
@@ -458,7 +462,6 @@ def test_get_run_params(
     actual = mdl._get_run_params(model_run)
     # assert
     assert actual == expected_run_params
-
 
 
 # get_data_counts
@@ -474,134 +477,6 @@ def test_get_data_counts(mock_model):
 
 def test_get_future_from_row_samples(mock_model):
     assert mock_model.get_future_from_row_samples("row_samples") == "row_samples"
-
-
-# _create_agg()
-
-
-@pytest.mark.parametrize(
-    "cols, name, include_measure, expected",
-    [
-        (
-            None,
-            None,
-            True,
-            {
-                "default": {
-                    frozenset({("pod", 0), ("measure", 0), ("sitetret", "trust")}): 4,
-                    frozenset({("pod", 0), ("sitetret", "trust"), ("measure", 1)}): 6,
-                    frozenset({("pod", 1), ("measure", 0), ("sitetret", "trust")}): 12,
-                    frozenset({("pod", 1), ("sitetret", "trust"), ("measure", 1)}): 14,
-                    frozenset({("pod", 2), ("sitetret", "trust"), ("measure", 0)}): 20,
-                    frozenset({("pod", 2), ("sitetret", "trust"), ("measure", 1)}): 22,
-                }
-            },
-        ),
-        (
-            None,
-            "thing",
-            True,
-            {
-                "thing": {
-                    frozenset({("sitetret", "trust"), ("measure", 0), ("pod", 0)}): 4,
-                    frozenset({("sitetret", "trust"), ("measure", 1), ("pod", 0)}): 6,
-                    frozenset({("pod", 1), ("sitetret", "trust"), ("measure", 0)}): 12,
-                    frozenset({("pod", 1), ("sitetret", "trust"), ("measure", 1)}): 14,
-                    frozenset({("pod", 2), ("sitetret", "trust"), ("measure", 0)}): 20,
-                    frozenset({("pod", 2), ("sitetret", "trust"), ("measure", 1)}): 22,
-                }
-            },
-        ),
-        (
-            ["col1"],
-            None,
-            True,
-            {
-                "col1": {
-                    frozenset(
-                        {("measure", 0), ("col1", 0), ("sitetret", "trust"), ("pod", 0)}
-                    ): 1,
-                    frozenset(
-                        {("col1", 1), ("measure", 0), ("sitetret", "trust"), ("pod", 0)}
-                    ): 3,
-                    frozenset(
-                        {("col1", 0), ("measure", 1), ("sitetret", "trust"), ("pod", 0)}
-                    ): 2,
-                    frozenset(
-                        {("col1", 1), ("measure", 1), ("sitetret", "trust"), ("pod", 0)}
-                    ): 4,
-                    frozenset(
-                        {("pod", 1), ("measure", 0), ("col1", 0), ("sitetret", "trust")}
-                    ): 5,
-                    frozenset(
-                        {("pod", 1), ("measure", 0), ("sitetret", "trust"), ("col1", 1)}
-                    ): 7,
-                    frozenset(
-                        {("pod", 1), ("col1", 0), ("measure", 1), ("sitetret", "trust")}
-                    ): 6,
-                    frozenset(
-                        {("pod", 1), ("measure", 1), ("sitetret", "trust"), ("col1", 1)}
-                    ): 8,
-                    frozenset(
-                        {("pod", 2), ("measure", 0), ("col1", 0), ("sitetret", "trust")}
-                    ): 9,
-                    frozenset(
-                        {("pod", 2), ("measure", 0), ("sitetret", "trust"), ("col1", 1)}
-                    ): 11,
-                    frozenset(
-                        {("col1", 0), ("pod", 2), ("measure", 1), ("sitetret", "trust")}
-                    ): 10,
-                    frozenset(
-                        {("pod", 2), ("measure", 1), ("sitetret", "trust"), ("col1", 1)}
-                    ): 12,
-                }
-            },
-        ),
-        (
-            ["col1", "col2"],
-            None,
-            False,
-            {
-                "col1+col2": {
-                    frozenset(
-                        {("col1", 0), ("pod", 0), ("sitetret", "trust"), ("col2", 0)}
-                    ): 3,
-                    frozenset(
-                        {("col1", 1), ("pod", 0), ("sitetret", "trust"), ("col2", 0)}
-                    ): 3,
-                    frozenset(
-                        {("col1", 1), ("pod", 0), ("sitetret", "trust"), ("col2", 1)}
-                    ): 4,
-                    frozenset(
-                        {("col1", 0), ("col2", 0), ("sitetret", "trust"), ("pod", 1)}
-                    ): 11,
-                    frozenset(
-                        {("col1", 1), ("col2", 0), ("sitetret", "trust"), ("pod", 1)}
-                    ): 7,
-                    frozenset(
-                        {("col1", 1), ("sitetret", "trust"), ("pod", 1), ("col2", 1)}
-                    ): 8,
-                    frozenset(
-                        {("col1", 0), ("sitetret", "trust"), ("col2", 0), ("pod", 2)}
-                    ): 19,
-                    frozenset(
-                        {("col1", 1), ("sitetret", "trust"), ("col2", 0), ("pod", 2)}
-                    ): 11,
-                    frozenset(
-                        {("col1", 1), ("sitetret", "trust"), ("pod", 2), ("col2", 1)}
-                    ): 12,
-                }
-            },
-        ),
-    ],
-)
-def test_create_agg(
-    mock_model, mock_model_results, cols, name, include_measure, expected
-):
-    """test that it aggregates the data correctly"""
-    actual = mock_model._create_agg(mock_model_results, cols, name, include_measure)
-    cols = ["sitetret", "pod"] + (["measure"] if include_measure else []) + (cols or [])
-    assert actual == expected
 
 
 def test_go_save_full_model_results_false(mocker, mock_model):

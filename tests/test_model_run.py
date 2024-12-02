@@ -166,31 +166,26 @@ def test_run_baseline(mocker, mock_model_run):
 
 
 def test_get_aggregate_results(mock_model_run):
-    """test the _run method"""
+    """test the get_aggregate_results method"""
 
     # arrange
-    def mock_agg(cols=None):
-        name = "+".join(cols) if cols else "default"
-        return {name: name}
-
     mr_mock = mock_model_run
 
-    mock_aggregates = {"results": "results"}
-    mr_mock.model.aggregate.return_value = mock_agg, mock_aggregates
-
-    mr_mock.get_step_counts = Mock(return_value={"step_counts": "step_counts"})
+    mr_mock.model.aggregate.return_value = "aggregated_results"
+    mr_mock.get_step_counts = Mock(return_value="step_counts")
 
     # act
-    results = mr_mock.get_aggregate_results()
+    actual = mr_mock.get_aggregate_results()
 
     # assert
-    assert results == {
-        i: i for i in ["default", "sex+age_group", "age", "results", "step_counts"]
-    }
+    assert actual == ("aggregated_results", "step_counts")
     mr_mock.model.aggregate.assert_called_once_with(mr_mock)
+    mr_mock.get_step_counts.assert_called_once_with()
 
 
 def test_get_step_counts_empty(mock_model_run):
+    """test the get_step_counts method when step counts is empty"""
+
     # arrange
     step_counts = {}
 
@@ -212,6 +207,8 @@ def test_get_step_counts_empty(mock_model_run):
 
 
 def test_get_step_counts(mock_model_run):
+    """test the get_step_counts method when step counts is not empty"""
+
     # arrange
     step_counts = {
         ("x", "-"): np.array([[3, 2, 1, 1], [6, 5, 4, 1]]),
@@ -233,36 +230,56 @@ def test_get_step_counts(mock_model_run):
 
     mr._step_counts_get_type_changes = Mock(side_effect=lambda x: x)
 
+    expected = {
+        ("baseline", "-", "ip", "a", "a", "x"): 1.0,
+        ("baseline", "-", "ip", "a", "a", "y"): 5.0,
+        ("baseline", "-", "ip", "a", "b", "x"): 2.0,
+        ("baseline", "-", "ip", "a", "b", "y"): 6.0,
+        ("baseline", "-", "ip", "b", "a", "x"): 3.0,
+        ("baseline", "-", "ip", "b", "a", "y"): 7.0,
+        ("baseline", "-", "ip", "b", "b", "x"): 4.0,
+        ("baseline", "-", "ip", "b", "b", "y"): 8.0,
+        ("x", "-", "ip", "a", "a", "x"): 3.0,
+        ("x", "-", "ip", "a", "a", "y"): 6.0,
+        ("x", "-", "ip", "a", "b", "x"): 2.0,
+        ("x", "-", "ip", "a", "b", "y"): 5.0,
+        ("x", "-", "ip", "b", "a", "x"): 1.0,
+        ("x", "-", "ip", "b", "a", "y"): 4.0,
+        ("x", "-", "ip", "b", "b", "x"): 1.0,
+        ("x", "-", "ip", "b", "b", "y"): 1.0,
+        ("y", "a", "ip", "a", "a", "x"): 2.0,
+        ("y", "a", "ip", "a", "a", "y"): 5.0,
+        ("y", "a", "ip", "a", "b", "x"): 1.0,
+        ("y", "a", "ip", "a", "b", "y"): 4.0,
+        ("y", "a", "ip", "b", "a", "x"): 3.0,
+        ("y", "a", "ip", "b", "a", "y"): 6.0,
+        ("y", "a", "ip", "b", "b", "x"): 1.0,
+        ("y", "a", "ip", "b", "b", "y"): 1.0,
+        ("z", "a", "ip", "a", "a", "x"): -2.0,
+        ("z", "a", "ip", "a", "a", "y"): -5.0,
+        ("z", "a", "ip", "a", "b", "x"): -1.0,
+        ("z", "a", "ip", "a", "b", "y"): -4.0,
+        ("z", "a", "ip", "b", "a", "x"): -3.0,
+        ("z", "a", "ip", "b", "a", "y"): -6.0,
+        ("z", "a", "ip", "b", "b", "x"): -1.0,
+        ("z", "a", "ip", "b", "b", "y"): -1.0,
+        ("efficiencies", "-", "ip", "a", "a", "x"): -1.0,
+        ("efficiencies", "-", "ip", "a", "a", "y"): -4.0,
+        ("efficiencies", "-", "ip", "a", "b", "x"): -2.0,
+        ("efficiencies", "-", "ip", "a", "b", "y"): -5.0,
+        ("efficiencies", "-", "ip", "b", "a", "x"): 0.0,
+        ("efficiencies", "-", "ip", "b", "a", "y"): 0.0,
+        ("efficiencies", "-", "ip", "b", "b", "x"): -1.0,
+        ("efficiencies", "-", "ip", "b", "b", "y"): -1.0,
+    }
+
     # act
-    r = mr.get_step_counts()
-    actual = pd.DataFrame(
-        [{**dict(k), "value": v} for k, v in r["step_counts"].items()]
-    ).to_dict("list")
+    actual = mr.get_step_counts()
 
     # assert
     mr._step_counts_get_type_changes.assert_called_once()
 
-    assert actual["pod"] == ["a", "a", "b", "b"] * 10
-    assert actual["measure"] == ["x", "y"] * 20
-    assert actual["sitetret"] == [x for x in ["a", "b"] for _ in range(4)] * 5
-    assert actual["activity_type"] == ["ip"] * 40
-    assert (
-        actual["strategy"]
-        == [x for x in ["-", "-", "a", "a"] for _ in range(8)] + ["-"] * 8
-    )
-    assert (
-        actual["change_factor"]
-        == ["baseline"] * 8
-        + [x for x in ["x", "y", "z"] for _ in range(8)]
-        + ["efficiencies"] * 8
-    )
-    assert actual["value"] == (
-        [1.0, 5.0, 2.0, 6.0, 3.0, 7.0, 4.0, 8.0]
-        + [3.0, 6.0, 2.0, 5.0, 1.0, 4.0, 1.0, 1.0]
-        + [2.0, 5.0, 1.0, 4.0, 3.0, 6.0, 1.0, 1.0]
-        + [-2.0, -5.0, -1.0, -4.0, -3.0, -6.0, -1.0, -1.0]
-        + [-1.0, -4.0, -2.0, -5.0, 0.0, 0.0, -1.0, -1.0]
-    )
+    assert actual.to_dict() == expected
 
 
 def test_step_counts_get_changes(mock_model_run):

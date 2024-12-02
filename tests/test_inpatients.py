@@ -340,7 +340,7 @@ def test_aggregate(mock_model):
     mr_mock = Mock()
     mr_mock.get_model_results.return_value = gmr_df
 
-    expected_mr = {
+    expected = {
         "sitetret": ["trust"] * 26,
         "age": list(range(12)) + [i for i in range(11) if i != 5] + [1, 3, 7, 9],
         "age_group": list(range(6)) * 2 + list(range(5)) * 2 + [1, 3] * 2,
@@ -386,14 +386,10 @@ def test_aggregate(mock_model):
     }
 
     # act
-    (agg, results) = mdl.aggregate(mr_mock)
+    actual = mdl.aggregate(mr_mock)
 
     # assert
-    assert agg() == {"default": expected_mr}
-    assert results == {
-        "sex+tretspef": expected_mr,
-        "tretspef_raw+los_group": expected_mr,
-    }
+    assert actual.to_dict("list") == expected
 
 
 def test_save_results(mocker, mock_model):
