@@ -152,7 +152,13 @@ class AaEModel(Model):
             as_index=False,
         ).agg({"value": "sum"})
 
-        return model_results
+        return (
+            model_results,
+            [
+                ["acuity"],
+                ["attendance_category"],
+            ],
+        )
 
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model

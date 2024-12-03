@@ -93,7 +93,15 @@ class ModelRun:
         :rtype: dict
         """
         # pylint: disable=assignment-from-no-return
-        return self.model.aggregate(self), self.get_step_counts()
+
+        model_results, aggregations = self.model.aggregate(self)
+
+        aggs = {
+            "default" if not v else "+".join(v): self.model.get_agg(model_results, *v)
+            for v in [[], ["sex", "age_group"], ["age"], *aggregations]
+        }
+
+        return aggs, self.get_step_counts()
 
     def get_step_counts(self):
         """get the step counts of a model run"""

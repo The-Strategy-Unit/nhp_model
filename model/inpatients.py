@@ -243,7 +243,14 @@ class InpatientsModel(Model):
         # remove any row where the measure value is 0
         model_results = model_results[model_results["value"] > 0].reset_index()
 
-        return model_results
+        return (
+            model_results,
+            [
+                ["sex", "tretspef"],
+                ["tretspef_raw"],
+                ["tretspef_raw", "los_group"],
+            ],
+        )
 
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model
