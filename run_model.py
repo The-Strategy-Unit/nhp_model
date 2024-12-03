@@ -205,7 +205,9 @@ def run_single_model_run(
     print("aggregated (default) results:")
 
     default_results = (
-        model_results.groupby(["pod", "measure"], as_index=False)
+        model_results["default"]
+        .reset_index()
+        .groupby(["pod", "measure"], as_index=False)
         .agg({"value": sum})
         .pivot(index=["pod"], columns="measure")
         .fillna(0)

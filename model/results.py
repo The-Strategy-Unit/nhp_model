@@ -6,10 +6,33 @@ into a single panda's dataframe, and helping with saving the results files.
 """
 
 import logging
+from typing import List
 
 # janitor complains of being unused, but it is used (.complete())
 import janitor  # pylint: disable=unused-import
 import pandas as pd
+
+
+def _complete_model_runs(res: List[pd.DataFrame], model_runs: int) -> pd.DataFrame:
+    """Complete the data frame for all model runs
+
+    if any aggregation returns rows for only some of the model runs, we need to add a "0" row for
+    that run
+
+    :param res: list of model results
+    :type res: List[pd.DataFrame]
+    :param model_runs: the number of model runs
+    :type model_runs: int
+    :return: combined and completed data frame
+    :rtype: pd.DataFrame
+    """
+    res = pd.concat(res)
+    return janitor.complete(
+        res,
+        [i for i in res.columns if i != "model_run" if i != "value"],
+        {"model_run": range(model_runs + 1)},
+        fill_value={"value": 0},
+    )
 
 
 def _combine_model_results(results: list) -> pd.DataFrame:
@@ -23,16 +46,22 @@ def _combine_model_results(results: list) -> pd.DataFrame:
     :return: DataFrame containing the model results
     :rtype: pd.DataFrame
     """
-    combined_results = pd.concat(
-        [v.assign(model_run=i) for r in results for i, (v, _) in enumerate(r)],
-        ignore_index=True,
-    )
+    aggregations = {k for r in results for v, _ in r for k in v.keys()}
 
-    return combined_results.complete(
-        [i for i in combined_results.columns if i != "model_run" if i != "value"],
-        "model_run",
-        fill_value={"value": 0},
-    )
+    model_runs = len(results[0])
+
+    return {
+        k: _complete_model_runs(
+            [
+                v[k].reset_index().assign(model_run=i)
+                for r in results
+                for (i, (v, _)) in enumerate(r)
+                if k in v
+            ],
+            model_runs,
+        )
+        for k in aggregations
+    }
 
 
 def _combine_step_counts(results: list):
@@ -46,7 +75,8 @@ def _combine_step_counts(results: list):
     :return: DataFrame containing the model step counts
     :rtype: pd.DataFrame
     """
-    combined_step_counts = pd.concat(
+    model_runs = len(results[0])
+    return _complete_model_runs(
         [
             v
             # TODO: handle the case of daycase conversion, it's duplicating values
@@ -56,13 +86,7 @@ def _combine_step_counts(results: list):
             for i, (_, v) in enumerate(r)
             if i > 0
         ],
-        ignore_index=True,
-    )
-
-    return combined_step_counts.complete(
-        [i for i in combined_step_counts.columns if i != "model_run" if i != "value"],
-        "model_run",
-        fill_value={"value": 0},
+        model_runs,
     )
 
 
@@ -71,18 +95,18 @@ def _generate_results_json(
 ) -> dict:
     """Generate the results in the json format"""
 
-    def get_agg(*args):
-        df = combined_results.groupby(
-            ["model_run", "pod", "sitetret", *args, "measure"]
-        )["value"].sum()
+    def agg_to_dict(res):
+        df = res.set_index("model_run")
         return (
             pd.concat(
                 [
-                    df.loc[0].rename("baseline"),
-                    df.loc[1:]
-                    .groupby(level=df.index.names[1:])
+                    df.loc[0]
+                    .set_index([i for i in df.columns if i != "value"])
+                    .rename(columns={"value": "baseline"}),
+                    df.loc[df.index != 0]
+                    .groupby([i for i in df.columns if i != "value"])
                     .agg(list)
-                    .rename("model_runs"),
+                    .rename(columns={"value": "model_runs"}),
                 ],
                 axis=1,
             )
@@ -90,22 +114,7 @@ def _generate_results_json(
             .to_dict(orient="records")
         )
 
-    dict_results = {
-        "default" if not v else "+".join(v): get_agg(*v)
-        for v in [
-            [],
-            ["sex", "age_group"],
-            ["age"],
-            # aae specific
-            ["acuity"],
-            ["attendance_category"],
-            # ip/op
-            ["sex", "tretspef"],
-            ["tretspef_raw"],
-            # ip specific
-            ["tretspef_raw", "los_group"],
-        ]
-    }
+    dict_results = {k: agg_to_dict(v) for k, v in combined_results.items()}
 
     dict_results["step_counts"] = (
         combined_step_counts.groupby(

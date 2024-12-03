@@ -311,6 +311,18 @@ class Model:
 
         return mr.get_aggregate_results()
 
+    @staticmethod
+    def get_agg(results: pd.DataFrame, *args) -> pd.Series:
+        """Get aggregation from model results
+
+        :param results: The results of a model run
+        :type results: pd.DataFrame
+        :param *args: Any columns you wish to aggregate on
+        :return: Aggregated results
+        :rtype: pd.Series
+        """
+        return results.groupby(["pod", "sitetret", *args, "measure"])["value"].sum()
+
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model
 

@@ -192,7 +192,13 @@ class OutpatientsModel(Model):
             .agg({"value": "sum"})
         )
 
-        return model_results
+        return (
+            model_results,
+            [
+                ["sex", "tretspef"],
+                ["tretspef_raw"],
+            ],
+        )
 
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model
