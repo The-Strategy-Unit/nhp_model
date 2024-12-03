@@ -202,13 +202,13 @@ def test_generate_results_json():
 
     combined_step_counts = pd.DataFrame(
         {
-            "pod": ["a1"] * 4 * 4,
-            "change_factor": ["a", "b", "c", "c"] * 4,
-            "strategy": ["-", "-", "a", "b"] * 4,
-            "sitetret": ["s"] * 4 * 4,
-            "activity_type": ["a"] * 4 * 4,
-            "measure": ["x"] * 4 * 4,
-            "value": [i for i in range(4) for _ in range(4)],
+            "pod": ["a1"] * 4 * 5,
+            "change_factor": ["baseline", "a", "b", "c", "c"] * 4,
+            "strategy": ["-", "-", "-", "a", "b"] * 4,
+            "sitetret": ["s"] * 4 * 5,
+            "activity_type": ["a"] * 4 * 5,
+            "measure": ["x"] * 4 * 5,
+            "value": range(20),
         }
     )
 
@@ -458,7 +458,7 @@ def test_generate_results_json():
                 "sitetret": "s",
                 "activity_type": "a",
                 "measure": "x",
-                "model_runs": [0, 1, 2, 3],
+                "model_runs": [1, 6, 11, 16],
             },
             {
                 "pod": "a1",
@@ -466,7 +466,15 @@ def test_generate_results_json():
                 "sitetret": "s",
                 "activity_type": "a",
                 "measure": "x",
-                "model_runs": [0, 1, 2, 3],
+                "model_runs": [2, 7, 12, 17],
+            },
+            {
+                "pod": "a1",
+                "change_factor": "baseline",
+                "sitetret": "s",
+                "activity_type": "a",
+                "measure": "x",
+                "model_runs": [0],
             },
             {
                 "pod": "a1",
@@ -475,7 +483,7 @@ def test_generate_results_json():
                 "sitetret": "s",
                 "activity_type": "a",
                 "measure": "x",
-                "model_runs": [0, 1, 2, 3],
+                "model_runs": [3, 8, 13, 18],
             },
             {
                 "pod": "a1",
@@ -484,7 +492,7 @@ def test_generate_results_json():
                 "sitetret": "s",
                 "activity_type": "a",
                 "measure": "x",
-                "model_runs": [0, 1, 2, 3],
+                "model_runs": [4, 9, 14, 19],
             },
         ],
     }
