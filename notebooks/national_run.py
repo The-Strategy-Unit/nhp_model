@@ -48,7 +48,8 @@ import pyspark.sql.functions as F
 import model as mdl
 from model.data.databricks import DatabricksNational
 from model.health_status_adjustment import HealthStatusAdjustmentInterpolated
-from run_model import _combine_results, _run_model
+from run_model import _run_model
+from model.results import combine_results
 
 os.environ["BATCH_SIZE"] = "8"
 
@@ -150,7 +151,7 @@ results_dict["aae"] = _run_model(
 
 # COMMAND ----------
 
-results = _combine_results(list(results_dict.values()), params["model_runs"])
+results = combine_results(list(results_dict.values()))
 
 # COMMAND ----------
 
@@ -186,7 +187,6 @@ for k in results.keys():
   pd.DataFrame(results["step_counts"])
   .query("change_factor == 'activity_avoidance'")
   .query("measure == 'admissions'")
-  .drop(columns="time_profiles")
   .explode("model_runs")
   .groupby("strategy")
   ["model_runs"].mean()
@@ -196,7 +196,6 @@ for k in results.keys():
 
 df = (
     pd.DataFrame(results["default"])
-    .drop(columns="time_profiles")
     .rename(columns={"model_runs": "value"})
     .assign(model_run=lambda x: x["value"].apply(lambda y: list(range(len(y)))))
     .explode(["model_run", "value"])
