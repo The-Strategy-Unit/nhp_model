@@ -46,19 +46,6 @@ You can use all of the VS code debugging tools like breakpoints and the debug co
 
 There is a Jupyter notebook, [`run_model.ipynb`](run_model.ipynb) which runs the models for a given params file.
 
-## Downloading the data
-
-The simplest way to download the synthetic data is to use the `download_data` scripts. These require that you have the [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) installed.
-
-You then simply pass in the version of the data that you wish to download:
-
-```
-# Windows
-.\download_data.ps1 v0.2.0
-# Linux
-./download_data.sh v0.2.0
-```
-
 ## Deployment
 
 The model is deployed to Azure Container Registry on pull requests, tagging the container as `nhp_model:dev`, and on releases its deployed to `nhp_model:v0.*.*` and `nhp_model:latest`.
