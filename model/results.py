@@ -13,8 +13,11 @@ import janitor  # pylint: disable=unused-import
 import pandas as pd
 
 
-def _complete_model_runs(res: List[pd.DataFrame], model_runs: int) -> pd.DataFrame:
-    """Complete the data frame for all model runs
+def _complete_model_runs(
+    res: List[pd.DataFrame], model_runs: int, include_baseline: bool = True
+) -> pd.DataFrame:
+    """
+    Complete the data frame for all model runs
 
     if any aggregation returns rows for only some of the model runs, we need to add a "0" row for
     that run
@@ -23,6 +26,8 @@ def _complete_model_runs(res: List[pd.DataFrame], model_runs: int) -> pd.DataFra
     :type res: List[pd.DataFrame]
     :param model_runs: the number of model runs
     :type model_runs: int
+    :param include_baseline: whether to include model run 0 (the baseline) or not, optional (defaults to True)
+    :type include_baseline: bool
     :return: combined and completed data frame
     :rtype: pd.DataFrame
     """
@@ -30,7 +35,7 @@ def _complete_model_runs(res: List[pd.DataFrame], model_runs: int) -> pd.DataFra
     return janitor.complete(
         res,
         [i for i in res.columns if i != "model_run" if i != "value"],
-        {"model_run": range(model_runs + 1)},
+        {"model_run": range(0 if include_baseline else 1, model_runs + 1)},
         fill_value={"value": 0},
     )
 
@@ -48,7 +53,7 @@ def _combine_model_results(results: list) -> pd.DataFrame:
     """
     aggregations = sorted(list({k for r in results for v, _ in r for k in v.keys()}))
 
-    model_runs = len(results[0])
+    model_runs = len(results[0]) - 1
 
     return {
         k: _complete_model_runs(
@@ -75,7 +80,7 @@ def _combine_step_counts(results: list):
     :return: DataFrame containing the model step counts
     :rtype: pd.DataFrame
     """
-    model_runs = len(results[0])
+    model_runs = len(results[0]) - 1
     return _complete_model_runs(
         [
             v
@@ -87,6 +92,7 @@ def _combine_step_counts(results: list):
             if i > 0
         ],
         model_runs,
+        include_baseline=False,
     )
 
 

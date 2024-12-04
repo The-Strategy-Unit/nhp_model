@@ -3,6 +3,7 @@
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name, missing-function-docstring
 
 import pandas as pd
+import pytest
 
 from model.results import (
     _combine_model_results,
@@ -13,7 +14,7 @@ from model.results import (
 )
 
 
-def test_complete_model_runs():
+def test_complete_model_runs_include_baseline():
     # arrange
     df = pd.DataFrame(
         [
@@ -27,15 +28,40 @@ def test_complete_model_runs():
     results = [df.assign(a=0), df.assign(a=1, value=lambda r: r["value"] + 100)]
 
     # act
-    actual = _complete_model_runs(results, 2)
+    actual = _complete_model_runs(results, 3)
 
     # assert
     # we should have added in two (missing) rows
     assert len(actual) == sum(len(i) + 1 for i in results)
     # but the sum of the value column should be unchanged
     assert actual["value"].sum() == sum(i["value"].sum() for i in results)
-    # each group should have 4 model runss
+    # each group should have 3 model runs + baseline
     assert all(actual.value_counts(["a", "b"]) == 4)
+
+
+def test_complete_model_runs_exclude_baseline():
+    # arrange
+    df = pd.DataFrame(
+        [
+            {"b": b, "model_run": mr, "value": b * 10 + mr}
+            for b in range(2)
+            for mr in range(1, 4)
+            if not (b == 1 and mr == 2)
+        ]
+    )
+
+    results = [df.assign(a=0), df.assign(a=1, value=lambda r: r["value"] + 100)]
+
+    # act
+    actual = _complete_model_runs(results, 3, False)
+
+    # assert
+    # we should have added in two (missing) rows
+    assert len(actual) == sum(len(i) + 1 for i in results)
+    # but the sum of the value column should be unchanged
+    assert actual["value"].sum() == sum(i["value"].sum() for i in results)
+    # each group should have 3 model runs
+    assert all(actual.value_counts(["a", "b"]) == 3)
 
 
 def test_combine_model_results(mocker):
@@ -73,9 +99,9 @@ def test_combine_model_results(mocker):
     assert actual == {"default": "cmr", "other": "cmr"}
 
     assert [i["value"].sum() for i in cmr_mock.call_args_list[0][0][0]] == [6, 15, 7, 8]
-    assert cmr_mock.call_args_list[0][0][1] == 2
+    assert cmr_mock.call_args_list[0][0][1] == 1
     assert [i["value"].sum() for i in cmr_mock.call_args_list[1][0][0]] == [15, 6]
-    assert cmr_mock.call_args_list[0][0][1] == 2
+    assert cmr_mock.call_args_list[0][0][1] == 1
 
 
 def test_combine_step_counts(mocker):
@@ -115,7 +141,8 @@ def test_combine_step_counts(mocker):
     # assert
     assert actual == "cmr"
     assert all(i.to_dict("list") == expected for i in cmr_mock.call_args[0][0])
-    assert cmr_mock.call_args[0][1] == 2
+    assert cmr_mock.call_args[0][1] == 1
+    assert cmr_mock.call_args[1] == {"include_baseline": False}
 
 
 def test_generate_results_json():
