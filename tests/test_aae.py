@@ -216,10 +216,14 @@ def test_aggregate(mock_model):
     }
 
     # act
-    actual = mdl.aggregate(mr_mock)
+    actual_mr, actual_aggs = mdl.aggregate(mr_mock)
 
     # assert
-    assert actual.to_dict("list") == expected
+    assert actual_mr.to_dict("list") == expected
+    assert actual_aggs == [
+        ["acuity"],
+        ["attendance_category"],
+    ]
 
 
 def test_save_results(mocker, mock_model):

@@ -479,6 +479,9 @@ def test_get_future_from_row_samples(mock_model):
     assert mock_model.get_future_from_row_samples("row_samples") == "row_samples"
 
 
+# go
+
+
 def test_go_save_full_model_results_false(mocker, mock_model):
     """test the go method"""
     # arrange
@@ -551,3 +554,68 @@ def test_go_save_full_model_results_true_baseline(mocker, mock_model):
 
     mdl.save_results.assert_not_called()
     makedirs_mock.assert_not_called()
+
+
+# get_agg
+
+
+@pytest.mark.parametrize(
+    "results, cols, expected",
+    [
+        (
+            pd.DataFrame(
+                {
+                    "pod": ["a"] * 4 + ["b"] * 4,
+                    "sitetret": [i for i in ["c", "d"] for _ in [0, 1]] * 2,
+                    "measure": ["e", "f"] * 4,
+                    "value": range(8),
+                }
+            ),
+            [],
+            {
+                r: i
+                for (i, r) in enumerate(
+                    [
+                        (i, j, k)
+                        for i in ["a", "b"]
+                        for j in ["c", "d"]
+                        for k in ["e", "f"]
+                    ]
+                )
+            },
+        ),
+        (
+            pd.DataFrame(
+                {
+                    "pod": (["a"] * 4 + ["b"] * 4) * 2,
+                    "sitetret": [i for i in ["c", "d"] for _ in [0, 1]] * 4,
+                    "measure": ["e", "f"] * 8,
+                    "x": ["x"] * 8 + ["y"] * 8,
+                    "value": range(16),
+                }
+            ),
+            ["x"],
+            {
+                r: i
+                for (i, r) in enumerate(
+                    [
+                        (i, j, x, k)
+                        for x in ["x", "y"]
+                        for i in ["a", "b"]
+                        for j in ["c", "d"]
+                        for k in ["e", "f"]
+                    ]
+                )
+            },
+        ),
+    ],
+)
+def test_get_agg(mock_model, results, cols, expected):
+    # arrange
+    mdl = mock_model
+
+    # act
+    actual = mdl.get_agg(results, *cols)
+
+    # assert
+    assert actual.to_dict() == expected

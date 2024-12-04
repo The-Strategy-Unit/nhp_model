@@ -7,198 +7,136 @@ import pandas as pd
 from model.results import (
     _combine_model_results,
     _combine_step_counts,
+    _complete_model_runs,
     _generate_results_json,
     combine_results,
 )
 
-results = [
-    [
-        (
-            pd.DataFrame(
-                {
-                    "pod": ["a1", "a2"] * 4,
-                    "measure": [i for i in ["a", "b"] for _ in [1, 2]] * 2,
-                    "value": range(0, 8),
-                }
-            ),
-            pd.DataFrame(
-                {
-                    "pod": ["a1", "a2", "a1", "a2"],
-                    "change_factor": ["a", "a", "b", "b"],
-                    "value": range(0, 4),
-                }
-            ).set_index(["pod", "change_factor"])["value"],
-        ),
-        (
-            pd.DataFrame(
-                {
-                    "pod": ["a1", "a2"] * 4,
-                    "measure": [i for i in ["a", "b"] for _ in [1, 2]] * 2,
-                    "value": range(8, 16),
-                }
-            ),
-            pd.DataFrame(
-                {
-                    "pod": ["a1", "a2", "a1", "a2"],
-                    "change_factor": ["a", "a", "b", "b"],
-                    "value": range(4, 8),
-                }
-            ).set_index(["pod", "change_factor"])["value"],
-        ),
-        (
-            pd.DataFrame(
-                {
-                    "pod": ["a1"] * 4,
-                    "measure": [i for i in ["a", "b"] for _ in [1, 2]],
-                    "value": range(16, 20),
-                }
-            ),
-            pd.DataFrame(
-                {
-                    "pod": ["a1", "a1"],
-                    "change_factor": ["a", "b"],
-                    "value": range(8, 10),
-                }
-            ).set_index(["pod", "change_factor"])["value"],
-        ),
-    ],
-    [
-        (
-            pd.DataFrame(
-                {
-                    "pod": ["b1", "b2"] * 4,
-                    "measure": [i for i in ["c", "d"] for _ in [1, 2]] * 2,
-                    "value": range(8),
-                }
-            ),
-            pd.DataFrame(
-                {
-                    "pod": ["b1", "b2", "b1", "b2"],
-                    "change_factor": ["a", "a", "b", "b"],
-                    "value": range(0, 4),
-                }
-            ).set_index(["pod", "change_factor"])["value"],
-        ),
-        (
-            pd.DataFrame(
-                {
-                    "pod": ["b1", "b2"] * 4,
-                    "measure": [i for i in ["c", "d"] for _ in [1, 2]] * 2,
-                    "value": range(8, 16),
-                }
-            ),
-            pd.DataFrame(
-                {
-                    "pod": ["b1", "b2", "b1", "b2"],
-                    "change_factor": ["a", "a", "b", "b"],
-                    "value": range(4, 8),
-                }
-            ).set_index(["pod", "change_factor"])["value"],
-        ),
-        (
-            pd.DataFrame(
-                {
-                    "pod": ["b1"] * 4,
-                    "measure": [i for i in ["c", "d"] for _ in [1, 2]],
-                    "value": range(16, 20),
-                }
-            ),
-            pd.DataFrame(
-                {
-                    "pod": ["b1", "b1"],
-                    "change_factor": ["a", "b"],
-                    "value": range(8, 10),
-                }
-            ).set_index(["pod", "change_factor"])["value"],
-        ),
-    ],
-]
 
-
-def test_combine_model_results():
+def test_complete_model_runs():
     # arrange
-
-    expected = {
-        "pod": ["a1"] * 6
-        + ["a2"] * 5
-        + ["a1"] * 6
-        + ["a2"] * 5
-        + ["b1"] * 6
-        + ["b2"] * 5
-        + ["b1"] * 6
-        + ["b2"] * 5,
-        "measure": ["a"] * 11 + ["b"] * 11 + ["c"] * 11 + ["d"] * 11,
-        "value": [
-            0,
-            4,
-            8,
-            12,
-            16,
-            17,
-            1,
-            5,
-            9,
-            13,
-            0,
-            2,
-            6,
-            10,
-            14,
-            18,
-            19,
-            3,
-            7,
-            11,
-            15,
-            0,
+    df = pd.DataFrame(
+        [
+            {"b": b, "model_run": mr, "value": b * 10 + mr}
+            for b in range(2)
+            for mr in range(4)
+            if not (b == 1 and mr == 2)
         ]
-        * 2,
-        "model_run": [0, 0, 1, 1, 2, 2, 0, 0, 1, 1, 2] * 4,
-    }
+    )
+
+    results = [df.assign(a=0), df.assign(a=1, value=lambda r: r["value"] + 100)]
+
+    # act
+    actual = _complete_model_runs(results, 2)
+
+    # assert
+    # we should have added in two (missing) rows
+    assert len(actual) == sum(len(i) + 1 for i in results)
+    # but the sum of the value column should be unchanged
+    assert actual["value"].sum() == sum(i["value"].sum() for i in results)
+    # each group should have 4 model runss
+    assert all(actual.value_counts(["a", "b"]) == 4)
+
+
+def test_combine_model_results(mocker):
+    # arrange
+    def r(*args):
+        return pd.Series(args, name="value")
+
+    results = [
+        [
+            ({"default": r(1, 2, 3), "other": r(4, 5, 6)}, None),
+            ({"default": r(4, 5, 6), "other": r(1, 2, 3)}, None),
+        ],
+        [
+            (
+                {
+                    "default": r(7),
+                },
+                None,
+            ),
+            (
+                {
+                    "default": r(8),
+                },
+                None,
+            ),
+        ],
+    ]
+
+    cmr_mock = mocker.patch("model.results._complete_model_runs", return_value="cmr")
 
     # act
     actual = _combine_model_results(results)
 
     # assert
-    assert actual.to_dict("list") == expected
+    assert actual == {"default": "cmr", "other": "cmr"}
+
+    assert [i["value"].sum() for i in cmr_mock.call_args_list[0][0][0]] == [6, 15, 7, 8]
+    assert cmr_mock.call_args_list[0][0][1] == 2
+    assert [i["value"].sum() for i in cmr_mock.call_args_list[1][0][0]] == [15, 6]
+    assert cmr_mock.call_args_list[0][0][1] == 2
 
 
-def test_combine_step_counts():
+def test_combine_step_counts(mocker):
     # arrange
+    df = pd.DataFrame(
+        [
+            {"a": 1, "b": 1, "value": 1},
+            {"a": 1, "b": 2, "value": 2},
+            {"a": 2, "b": 1, "value": 3},
+            {"a": 2, "b": 2, "value": 4},
+        ]
+    ).set_index(["a", "b"])
+
+    results = [
+        [
+            (None, df),
+            (None, df),
+        ],
+        [
+            (None, df),
+            (None, df),
+        ],
+    ]
 
     expected = {
-        "pod": ["a1"] * 4 + ["a2"] * 4 + ["b1"] * 4 + ["b2"] * 4,
-        "change_factor": [i for i in ["a", "b"] for _ in [1, 2]] * 4,
-        "value": [4, 8, 6, 9, 5, 0, 7, 0, 4, 8, 6, 9, 5, 0, 7, 0],
-        "model_run": [1, 2] * 8,
+        "a": [1, 1, 2, 2],
+        "b": [1, 2, 1, 2],
+        "value": [1, 2, 3, 4],
+        "model_run": [1, 1, 1, 1],
     }
+
+    cmr_mock = mocker.patch("model.results._complete_model_runs", return_value="cmr")
 
     # act
     actual = _combine_step_counts(results)
 
     # assert
-    assert actual.to_dict("list") == expected
+    assert actual == "cmr"
+    assert all(i.to_dict("list") == expected for i in cmr_mock.call_args[0][0])
+    assert cmr_mock.call_args[0][1] == 2
 
 
 def test_generate_results_json():
     # arrange
-    combined_results = pd.DataFrame(
-        {
-            "model_run": list(range(5)) * 5,
-            "pod": [i for i in ["a1", "a2", "b1", "b2", "c1"] for _ in range(5)],
-            "sitetret": ["s1"] * 5 * 5,
-            "measure": ["x"] * 5 * 2 + ["y"] * 5 * 2 + ["z"] * 5,
-            "sex": [0] * 5 * 5,
-            "age_group": [0] * 5 * 5,
-            "age": [0] * 5 * 5,
-            "acuity": [None] * 5 * 4 + [0] * 5,
-            "attendance_category": [None] * 5 * 4 + [0] * 5,
-            "tretspef": ["a"] * 5 * 4 + [None] * 5,
-            "tretspef_raw": ["a"] * 5 * 4 + [None] * 5,
-            "los_group": ["a"] * 5 * 2 + [None] * 5 * 3,
-            "value": range(25),
-        }
-    )
+    combined_results = {
+        "default": pd.DataFrame(
+            {
+                "a": [i for i in [0, 1] for _ in range(5)],
+                "model_run": list(range(5)) * 2,
+                "value": range(10),
+            }
+        ),
+        "a": pd.DataFrame(
+            {
+                "a": [i for i in [0, 1] for _ in list(range(5)) * 2],
+                "b": [i for i in [0, 1] for _ in list(range(5))] * 2,
+                "model_run": list(range(5)) * 4,
+                "value": list(range(20)),
+            }
+        ),
+    }
 
     combined_step_counts = pd.DataFrame(
         {
@@ -214,242 +152,14 @@ def test_generate_results_json():
 
     expected = {
         "default": [
-            {
-                "pod": "a1",
-                "sitetret": "s1",
-                "measure": "x",
-                "baseline": 0,
-                "model_runs": [1, 2, 3, 4],
-            },
-            {
-                "pod": "a2",
-                "sitetret": "s1",
-                "measure": "x",
-                "baseline": 5,
-                "model_runs": [6, 7, 8, 9],
-            },
-            {
-                "pod": "b1",
-                "sitetret": "s1",
-                "measure": "y",
-                "baseline": 10,
-                "model_runs": [11, 12, 13, 14],
-            },
-            {
-                "pod": "b2",
-                "sitetret": "s1",
-                "measure": "y",
-                "baseline": 15,
-                "model_runs": [16, 17, 18, 19],
-            },
-            {
-                "pod": "c1",
-                "sitetret": "s1",
-                "measure": "z",
-                "baseline": 20,
-                "model_runs": [21, 22, 23, 24],
-            },
+            {"a": 0, "baseline": 0, "model_runs": [1, 2, 3, 4]},
+            {"a": 1, "baseline": 5, "model_runs": [6, 7, 8, 9]},
         ],
-        "sex+age_group": [
-            {
-                "pod": "a1",
-                "sitetret": "s1",
-                "sex": 0,
-                "age_group": 0,
-                "measure": "x",
-                "baseline": 0,
-                "model_runs": [1, 2, 3, 4],
-            },
-            {
-                "pod": "a2",
-                "sitetret": "s1",
-                "sex": 0,
-                "age_group": 0,
-                "measure": "x",
-                "baseline": 5,
-                "model_runs": [6, 7, 8, 9],
-            },
-            {
-                "pod": "b1",
-                "sitetret": "s1",
-                "sex": 0,
-                "age_group": 0,
-                "measure": "y",
-                "baseline": 10,
-                "model_runs": [11, 12, 13, 14],
-            },
-            {
-                "pod": "b2",
-                "sitetret": "s1",
-                "sex": 0,
-                "age_group": 0,
-                "measure": "y",
-                "baseline": 15,
-                "model_runs": [16, 17, 18, 19],
-            },
-            {
-                "pod": "c1",
-                "sitetret": "s1",
-                "sex": 0,
-                "age_group": 0,
-                "measure": "z",
-                "baseline": 20,
-                "model_runs": [21, 22, 23, 24],
-            },
-        ],
-        "age": [
-            {
-                "pod": "a1",
-                "sitetret": "s1",
-                "age": 0,
-                "measure": "x",
-                "baseline": 0,
-                "model_runs": [1, 2, 3, 4],
-            },
-            {
-                "pod": "a2",
-                "sitetret": "s1",
-                "age": 0,
-                "measure": "x",
-                "baseline": 5,
-                "model_runs": [6, 7, 8, 9],
-            },
-            {
-                "pod": "b1",
-                "sitetret": "s1",
-                "age": 0,
-                "measure": "y",
-                "baseline": 10,
-                "model_runs": [11, 12, 13, 14],
-            },
-            {
-                "pod": "b2",
-                "sitetret": "s1",
-                "age": 0,
-                "measure": "y",
-                "baseline": 15,
-                "model_runs": [16, 17, 18, 19],
-            },
-            {
-                "pod": "c1",
-                "sitetret": "s1",
-                "age": 0,
-                "measure": "z",
-                "baseline": 20,
-                "model_runs": [21, 22, 23, 24],
-            },
-        ],
-        "acuity": [
-            {
-                "pod": "c1",
-                "sitetret": "s1",
-                "acuity": 0.0,
-                "measure": "z",
-                "baseline": 20,
-                "model_runs": [21, 22, 23, 24],
-            }
-        ],
-        "attendance_category": [
-            {
-                "pod": "c1",
-                "sitetret": "s1",
-                "attendance_category": 0.0,
-                "measure": "z",
-                "baseline": 20,
-                "model_runs": [21, 22, 23, 24],
-            }
-        ],
-        "sex+tretspef": [
-            {
-                "pod": "a1",
-                "sitetret": "s1",
-                "sex": 0,
-                "tretspef": "a",
-                "measure": "x",
-                "baseline": 0,
-                "model_runs": [1, 2, 3, 4],
-            },
-            {
-                "pod": "a2",
-                "sitetret": "s1",
-                "sex": 0,
-                "tretspef": "a",
-                "measure": "x",
-                "baseline": 5,
-                "model_runs": [6, 7, 8, 9],
-            },
-            {
-                "pod": "b1",
-                "sitetret": "s1",
-                "sex": 0,
-                "tretspef": "a",
-                "measure": "y",
-                "baseline": 10,
-                "model_runs": [11, 12, 13, 14],
-            },
-            {
-                "pod": "b2",
-                "sitetret": "s1",
-                "sex": 0,
-                "tretspef": "a",
-                "measure": "y",
-                "baseline": 15,
-                "model_runs": [16, 17, 18, 19],
-            },
-        ],
-        "tretspef_raw": [
-            {
-                "pod": "a1",
-                "sitetret": "s1",
-                "tretspef_raw": "a",
-                "measure": "x",
-                "baseline": 0,
-                "model_runs": [1, 2, 3, 4],
-            },
-            {
-                "pod": "a2",
-                "sitetret": "s1",
-                "tretspef_raw": "a",
-                "measure": "x",
-                "baseline": 5,
-                "model_runs": [6, 7, 8, 9],
-            },
-            {
-                "pod": "b1",
-                "sitetret": "s1",
-                "tretspef_raw": "a",
-                "measure": "y",
-                "baseline": 10,
-                "model_runs": [11, 12, 13, 14],
-            },
-            {
-                "pod": "b2",
-                "sitetret": "s1",
-                "tretspef_raw": "a",
-                "measure": "y",
-                "baseline": 15,
-                "model_runs": [16, 17, 18, 19],
-            },
-        ],
-        "tretspef_raw+los_group": [
-            {
-                "pod": "a1",
-                "sitetret": "s1",
-                "tretspef_raw": "a",
-                "los_group": "a",
-                "measure": "x",
-                "baseline": 0,
-                "model_runs": [1, 2, 3, 4],
-            },
-            {
-                "pod": "a2",
-                "sitetret": "s1",
-                "tretspef_raw": "a",
-                "los_group": "a",
-                "measure": "x",
-                "baseline": 5,
-                "model_runs": [6, 7, 8, 9],
-            },
+        "a": [
+            {"a": 0, "b": 0, "baseline": 0, "model_runs": [1, 2, 3, 4]},
+            {"a": 0, "b": 1, "baseline": 5, "model_runs": [6, 7, 8, 9]},
+            {"a": 1, "b": 0, "baseline": 10, "model_runs": [11, 12, 13, 14]},
+            {"a": 1, "b": 1, "baseline": 15, "model_runs": [16, 17, 18, 19]},
         ],
         "step_counts": [
             {

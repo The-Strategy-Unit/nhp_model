@@ -2,7 +2,7 @@
 
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 import numpy as np
 import pandas as pd
@@ -171,16 +171,27 @@ def test_get_aggregate_results(mock_model_run):
     # arrange
     mr_mock = mock_model_run
 
-    mr_mock.model.aggregate.return_value = "aggregated_results"
+    mr_mock.model.aggregate.return_value = "aggregated_results", [["a"]]
     mr_mock.get_step_counts = Mock(return_value="step_counts")
+    mr_mock.model.get_agg.return_value = "agg"
 
     # act
     actual = mr_mock.get_aggregate_results()
 
     # assert
-    assert actual == ("aggregated_results", "step_counts")
+    assert actual == (
+        {"default": "agg", "sex+age_group": "agg", "age": "agg", "a": "agg"},
+        "step_counts",
+    )
     mr_mock.model.aggregate.assert_called_once_with(mr_mock)
     mr_mock.get_step_counts.assert_called_once_with()
+
+    assert mr_mock.model.get_agg.call_args_list == [
+        call("aggregated_results"),
+        call("aggregated_results", "sex", "age_group"),
+        call("aggregated_results", "age"),
+        call("aggregated_results", "a"),
+    ]
 
 
 def test_get_step_counts_empty(mock_model_run):
