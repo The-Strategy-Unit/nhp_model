@@ -46,7 +46,7 @@ def _combine_model_results(results: list) -> pd.DataFrame:
     :return: DataFrame containing the model results
     :rtype: pd.DataFrame
     """
-    aggregations = {k for r in results for v, _ in r for k in v.keys()}
+    aggregations = sorted(list({k for r in results for v, _ in r for k in v.keys()}))
 
     model_runs = len(results[0])
 

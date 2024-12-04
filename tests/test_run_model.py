@@ -144,13 +144,15 @@ def test_run_single_model_run(mocker, capsys):
     ndl_mock = mocker.patch("run_model.Local")
     ndl_mock.create.return_value = "nhp_data"
 
-    results_m = pd.DataFrame(
-        {
-            "pod": ["a", "b"] * 4 + ["c"],
-            "measure": [i for i in ["x", "y"] for _ in [1, 2]] * 2 + ["x"],
-            "value": range(9),
-        }
-    )
+    results_m = {
+        "default": pd.DataFrame(
+            {
+                "pod": ["a", "b"] * 4 + ["c"],
+                "measure": [i for i in ["x", "y"] for _ in [1, 2]] * 2 + ["x"],
+                "value": range(9),
+            }
+        )
+    }
     step_counts_m = pd.DataFrame(
         {
             "change_factor": ["a", "b"] * 4 + ["c"],
