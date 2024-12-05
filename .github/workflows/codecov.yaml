@@ -1,5 +1,10 @@
 name: CodeCov
-on: [push, pull_request]
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 
 jobs:
   run:
@@ -15,7 +20,6 @@ jobs:
     - name: Setup Mambaforge
       uses: conda-incubator/setup-miniconda@v3
       with:
-        miniforge-variant: Mambaforge
         miniforge-version: latest
         activate-environment: nhp
         use-mamba: true
