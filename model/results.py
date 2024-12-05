@@ -96,7 +96,7 @@ def _combine_step_counts(results: list):
     )
 
 
-def _generate_results_json(
+def generate_results_json(
     combined_results: pd.DataFrame, combined_step_counts: pd.DataFrame
 ) -> dict:
     """Generate the results in the json format"""
@@ -165,7 +165,5 @@ def combine_results(results: list) -> dict:
     combined_results = _combine_model_results(results)
     combined_step_counts = _combine_step_counts(results)
 
-    dict_results = _generate_results_json(combined_results, combined_step_counts)
-
     logging.info(" * finished combining results")
-    return dict_results
+    return combined_results, combined_step_counts

@@ -31,7 +31,7 @@ from model.inpatients import InpatientsModel
 from model.model import Model
 from model.model_run import ModelRun
 from model.outpatients import OutpatientsModel
-from model.results import combine_results
+from model.results import combine_results, generate_results_json
 
 
 class tqdm(base_tqdm):  # pylint: disable=inconsistent-mro, invalid-name
@@ -144,7 +144,7 @@ def run_all(
 
     pcallback = progress_callback()
 
-    results = combine_results(
+    results, step_counts = combine_results(
         [
             _run_model(
                 m,
@@ -159,6 +159,8 @@ def run_all(
         ]
     )
 
+    dict_results = generate_results_json(results, step_counts)
+
     filename = f"{params['dataset']}/{params['scenario']}-{params['create_datetime']}"
     os.makedirs(f"results/{params['dataset']}", exist_ok=True)
 
@@ -167,7 +169,7 @@ def run_all(
             {
                 "params": params,
                 "population_variants": run_params["variant"],
-                "results": results,
+                "results": dict_results,
             },
             file,
         )
