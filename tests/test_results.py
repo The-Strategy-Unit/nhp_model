@@ -9,8 +9,8 @@ from model.results import (
     _combine_model_results,
     _combine_step_counts,
     _complete_model_runs,
-    _generate_results_json,
     combine_results,
+    generate_results_json,
 )
 
 
@@ -235,7 +235,7 @@ def test_generate_results_json():
     }
 
     # act
-    actual = _generate_results_json(combined_results, combined_step_counts)
+    actual = generate_results_json(combined_results, combined_step_counts)
 
     # assert
     assert actual == expected
@@ -249,15 +249,11 @@ def test_combine_results(mocker):
     mb = mocker.patch(
         "model.results._combine_step_counts", return_value="combined_step_counts"
     )
-    mc = mocker.patch(
-        "model.results._generate_results_json", return_value="dict_results"
-    )
 
     # act
     actual = combine_results("results")
 
     # assert
-    assert actual == "dict_results"
+    assert actual == ("combined_results", "combined_step_counts")
     ma.assert_called_once_with("results")
     mb.assert_called_once_with("results")
-    mc.assert_called_once_with("combined_results", "combined_step_counts")

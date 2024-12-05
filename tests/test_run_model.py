@@ -66,7 +66,11 @@ def test_run_all(mocker):
     )
 
     rm_m = mocker.patch("run_model._run_model", side_effect=["ip", "op", "aae"])
-    cr_m = mocker.patch("run_model.combine_results", return_value="combined_results")
+    cr_m = mocker.patch(
+        "run_model.combine_results",
+        return_value=("combined_results", "combined_step_counts"),
+    )
+    gr_m = mocker.patch("run_model.generate_results_json", return_value="results_json")
     nd_m = mocker.patch("run_model.Local")
 
     os_m = mocker.patch("os.makedirs")
@@ -122,6 +126,7 @@ def test_run_all(mocker):
     ]
 
     cr_m.assert_called_once_with(["ip", "op", "aae"])
+    gr_m.assert_called_once_with("combined_results", "combined_step_counts")
     os_m.assert_called_once_with("results/synthetic", exist_ok=True)
 
     mock_file.assert_called_once_with(
@@ -131,7 +136,7 @@ def test_run_all(mocker):
         {
             "params": params,
             "population_variants": "variants",
-            "results": "combined_results",
+            "results": "results_json",
         },
         mock_file(),
     )
