@@ -70,10 +70,8 @@ def test_run_all(mocker):
         "run_model.combine_results",
         return_value=("combined_results", "combined_step_counts"),
     )
-    gr_m = mocker.patch("run_model.generate_results_json", return_value="results_json")
+    gr_m = mocker.patch("run_model.generate_results_json", return_value="results_json_path")
     nd_m = mocker.patch("run_model.Local")
-
-    os_m = mocker.patch("os.makedirs")
 
     pc_m = Mock()
     pc_m().return_value = "progress callback"
@@ -89,14 +87,11 @@ def test_run_all(mocker):
         "create_datetime": "20230123_012345",
     }
 
-    jd_m = mocker.patch("json.dump")
-
     # act
-    with patch("builtins.open", mock_open()) as mock_file:
-        actual = run_all(params, "data_path", pc_m, False)
+    actual = run_all(params, "data_path", pc_m, False)
 
     # assert
-    assert actual == "synthetic/test-20230123_012345"
+    assert actual == "results_json_path"
 
     nd_m.create.assert_called_once_with("data_path")
     nd_c = nd_m.create()
@@ -126,19 +121,8 @@ def test_run_all(mocker):
     ]
 
     cr_m.assert_called_once_with(["ip", "op", "aae"])
-    gr_m.assert_called_once_with("combined_results", "combined_step_counts")
-    os_m.assert_called_once_with("results/synthetic", exist_ok=True)
-
-    mock_file.assert_called_once_with(
-        "results/synthetic/test-20230123_012345.json", "w", encoding="utf-8"
-    )
-    jd_m.assert_called_once_with(
-        {
-            "params": params,
-            "population_variants": "variants",
-            "results": "results_json",
-        },
-        mock_file(),
+    gr_m.assert_called_once_with(
+        "combined_results", "combined_step_counts", params, {"variant": "variants"}
     )
 
 

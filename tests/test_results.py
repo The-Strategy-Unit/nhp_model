@@ -2,6 +2,8 @@
 
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name, missing-function-docstring
 
+from unittest.mock import mock_open, patch
+
 import pandas as pd
 import pytest
 
@@ -145,7 +147,7 @@ def test_combine_step_counts(mocker):
     assert cmr_mock.call_args[1] == {"include_baseline": False}
 
 
-def test_generate_results_json():
+def test_generate_results_json(mocker):
     # arrange
     combined_results = {
         "default": pd.DataFrame(
@@ -177,7 +179,10 @@ def test_generate_results_json():
         }
     )
 
-    expected = {
+    os_m = mocker.patch("os.makedirs")
+    jd_m = mocker.patch("json.dump")
+
+    json_content = {
         "default": [
             {"a": 0, "baseline": 0, "model_runs": [1, 2, 3, 4]},
             {"a": 1, "baseline": 5, "model_runs": [6, 7, 8, 9]},
@@ -234,11 +239,36 @@ def test_generate_results_json():
         ],
     }
 
+    params = {
+        "dataset": "synthetic",
+        "scenario": "test",
+        "create_datetime": "create_datetime",
+    }
+
+    run_params = {"variant": [1, 2, 3]}
+
+    expected = "synthetic/test-create_datetime"
+
     # act
-    actual = generate_results_json(combined_results, combined_step_counts)
+    with patch("builtins.open", mock_open()) as mock_file:
+        actual = generate_results_json(
+            combined_results, combined_step_counts, params, run_params
+        )
 
     # assert
     assert actual == expected
+    mock_file.assert_called_once_with(
+        "results/synthetic/test-create_datetime.json", "w", encoding="utf-8"
+    )
+    os_m.assert_called_once_with("results/synthetic", exist_ok=True)
+    jd_m.assert_called_once_with(
+        {
+            "params": params,
+            "population_variants": [1, 2, 3],
+            "results": json_content,
+        },
+        mock_file(),
+    )
 
 
 def test_combine_results(mocker):

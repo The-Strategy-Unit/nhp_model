@@ -159,20 +159,7 @@ def run_all(
         ]
     )
 
-    dict_results = generate_results_json(results, step_counts)
-
-    filename = f"{params['dataset']}/{params['scenario']}-{params['create_datetime']}"
-    os.makedirs(f"results/{params['dataset']}", exist_ok=True)
-
-    with open(f"results/{filename}.json", "w", encoding="utf-8") as file:
-        json.dump(
-            {
-                "params": params,
-                "population_variants": run_params["variant"],
-                "results": dict_results,
-            },
-            file,
-        )
+    filename = generate_results_json(results, step_counts, params, run_params)
 
     return filename
 
