@@ -21,7 +21,6 @@ def mock_activity_resampling():
     mdl._model_run.model.baseline_counts = np.array(
         [[1, 2, 3, 4], [5, 6, 7, 8]]
     ).astype(float)
-    mdl.step_counts = {}
     return mdl
 
 
@@ -33,11 +32,9 @@ def test_init():
     model_run.model.baseline_counts = np.array([[1, 2, 3], [4, 5, 6]])
     model_run.params = "params"
     model_run.run_params = "run_params"
-    model_run.step_counts = {}
     model_run.model.demog_factors = "demog_factors"
     model_run.model.birth_factors = "birth_factors"
     model_run.model.hsa = "hsa"
-    model_run.model.strategies = {"activity_avoidance": "activity_avoidance"}
 
     # act
     actual = ActivityResampling(model_run)
@@ -47,53 +44,29 @@ def test_init():
     assert actual._activity_type == "ip"
     assert actual.params == "params"
     assert actual.run_params == "run_params"
-    assert not actual.step_counts
     assert actual.demog_factors == "demog_factors"
     assert actual.birth_factors == "birth_factors"
     assert actual.hsa == "hsa"
-    assert actual.strategies == "activity_avoidance"
-    assert actual._row_counts.tolist() == [[1, 2, 3], [4, 5, 6]]
     assert actual._baseline_counts.tolist() == [[1, 2, 3], [4, 5, 6]]
 
 
 def test_update(mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
+    aa_mock.factors = []
 
-    aa_mock._row_counts = np.array([3.0, 4.0, 5.0, 6.0])
+    # aa_mock._row_counts = np.array([3.0, 4.0, 5.0, 6.0])
     aa_mock._model_run.data = pd.DataFrame({"a": [1, 2, 3, 4]})
 
     factor = pd.Series([1.0, 2.0, 3.0], index=[1, 2, 3], name="f")
+    factor.index.names = ["a"]
 
     # act
-    actual = aa_mock._update(factor, ["a"])
+    actual = aa_mock._update(factor)
 
     # assert
-    assert aa_mock._row_counts.tolist() == [3, 8, 15, 6]
+    assert aa_mock.factors[0].to_list() == [1, 2, 3, 1]
     assert actual == aa_mock
-    assert {k: v.tolist() for k, v in actual.step_counts.items()} == {
-        ("f", "-"): [1.0, 2.0, 3.0, 1.0]
-    }
-
-
-def test_update_rn(mock_activity_resampling):
-    # arrange
-    aa_mock = mock_activity_resampling
-
-    aa_mock._row_counts = np.array([3.0, 4.0, 5.0, 6.0])
-    aa_mock._model_run.data = pd.DataFrame({"rn": [1, 2, 3, 4]})
-
-    factor = pd.Series([1.0, 2.0, 3.0], index=[1, 2, 3], name="f")
-
-    # act
-    actual = aa_mock._update_rn(factor, "a")
-
-    # assert
-    assert aa_mock._row_counts.tolist() == [3, 8, 15, 6]
-    assert actual == aa_mock
-    assert {k: v.tolist() for k, v in actual.step_counts.items()} == {
-        ("activity_avoidance", "a"): [1.0, 2.0, 3.0, 1.0]
-    }
 
 
 def test_demographic_adjustment(mocker, mock_activity_resampling):
@@ -116,8 +89,9 @@ def test_demographic_adjustment(mocker, mock_activity_resampling):
     assert actual == "update"
     u_mock.assert_called_once()
 
-    assert u_mock.call_args[0][0].to_list() == [1, 2]
-    assert u_mock.call_args[0][1] == ["age", "sex"]
+    assert u_mock.call_args[0][0].equals(
+        pd.Series([1, 2], name="demographic_adjustment")
+    )
 
 
 def test_birth_adjustment(mocker, mock_activity_resampling):
@@ -151,8 +125,12 @@ def test_birth_adjustment(mocker, mock_activity_resampling):
     assert actual == "update"
     u_mock.assert_called_once()
 
-    assert u_mock.call_args[0][0].to_list() == [(x + 9) ** 2 for x in range(4)]
-    assert u_mock.call_args[0][1] == ["group", "age", "sex"]
+    assert u_mock.call_args[0][0].to_dict() == {
+        ("maternity", 2, 1): 81,
+        ("maternity", 2, 2): 100,
+        ("maternity", 2, 3): 121,
+        ("maternity", 2, 4): 144,
+    }
 
 
 # _health_status_adjustment()
@@ -176,7 +154,7 @@ def test_health_status_adjustment_when_enabled(mocker, mock_activity_resampling)
     # assert
     assert actual == "update"
     aa_mock.hsa.run.assert_called_once_with({"health_status_adjustment": 2})
-    u_mock.assert_called_once_with("hsa", ["hsagrp", "sex", "age"])
+    u_mock.assert_called_once_with("hsa")
 
 
 def test_health_status_adjustmen_when_disabled(mock_activity_resampling):
@@ -212,10 +190,7 @@ def test_covid_adjustment(mocker, mock_activity_resampling):
 
     # assert
     assert actual == "update"
-    f, cols = u_mock.call_args_list[0][0]
-    assert f.to_dict() == {"elective": 1, "non-elective": 2}
-    assert f.name == "covid_adjustment"
-    assert cols == ["group"]
+    assert u_mock.call_args[0][0].to_dict() == {"elective": 1, "non-elective": 2}
 
 
 def test_expat_adjustment_no_params(mocker, mock_activity_resampling):
@@ -258,15 +233,12 @@ def test_expat_adjustment(mocker, mock_activity_resampling):
 
     # assert
     assert actual == "update"
-    f, cols = u_mock.call_args_list[0][0]
-    assert f.to_dict() == {
+    assert u_mock.call_args[0][0].to_dict() == {
         ("elective", "100"): 1,
         ("elective", "200"): 2,
         ("non-elective", "300"): 3,
         ("non-elective", "400"): 4,
     }
-    assert f.name == "expat"
-    assert cols == ["group", "tretspef"]
 
 
 def test_repat_adjustment_no_params(mocker, mock_activity_resampling):
@@ -318,8 +290,7 @@ def test_repat_adjustment(mocker, mock_activity_resampling):
 
     # assert
     assert actual == "update"
-    f, cols = u_mock.call_args_list[0][0]
-    assert f.to_dict() == {
+    assert u_mock.call_args[0][0].to_dict() == {
         (1, "elective", "100"): 1,
         (1, "elective", "200"): 2,
         (1, "non-elective", "300"): 3,
@@ -329,8 +300,6 @@ def test_repat_adjustment(mocker, mock_activity_resampling):
         (0, "non-elective", "300"): 7,
         (0, "non-elective", "400"): 8,
     }
-    assert f.name == "repat"
-    assert cols == ["is_main_icb", "group", "tretspef"]
 
 
 def test_baseline_adjustment_no_params(mocker, mock_activity_resampling):
@@ -373,15 +342,12 @@ def test_baseline_adjustment(mocker, mock_activity_resampling):
 
     # assert
     assert actual == "update"
-    f, cols = u_mock.call_args_list[0][0]
-    assert f.to_dict() == {
-        ("elective", "100"): 1,
-        ("elective", "200"): 2,
-        ("non-elective", "300"): 3,
-        ("non-elective", "400"): 4,
+    assert u_mock.call_args[0][0].to_dict() == {
+        ("elective", "100"): 1.0,
+        ("elective", "200"): 2.0,
+        ("non-elective", "300"): 3.0,
+        ("non-elective", "400"): 4.0,
     }
-    assert f.name == "baseline_adjustment"
-    assert cols == ["group", "tretspef"]
 
 
 def test_waiting_list_adjustment_aae(mocker, mock_activity_resampling):
@@ -458,10 +424,7 @@ def test_waiting_list_adjustment(mocker, mock_activity_resampling):
 
     # assert
     assert actual == "update"
-    f, cols = u_mock.call_args_list[0][0]
-    assert f.to_dict() == {(True, "100"): 1, (True, "200"): 4}
-    assert f.name == "waiting_list_adjustment"
-    assert cols == ["is_wla", "tretspef"]
+    assert u_mock.call_args[0][0].to_dict() == {(True, "100"): 1, (True, "200"): 4}
 
 
 @pytest.mark.parametrize("model_type", ["ip", "op", "aae"])
@@ -529,142 +492,43 @@ def test_non_demographic_adjustment(
 
     # assert
     assert actual == "update"
-    f, cols = u_mock.call_args_list[0][0]
-    assert f.to_dict() == expected
-    assert f.name == "non-demographic_adjustment"
-    assert cols == ["group"]
-
-
-def test_activity_resampling_no_params(mocker, mock_activity_resampling):
-    # arrange
-    aa_mock = mock_activity_resampling
-    aa_mock._model_run = Mock()
-    aa_mock._model_run.model.strategies = {"activity_avoidance": None}
-
-    aa_mock._model_run.model.model_type = "ip"
-    aa_mock._model_run.run_params = {"activity_avoidance": {"ip": {}}}
-
-    u_mock = mocker.patch(
-        "model.activity_resampling.ActivityResampling._update", return_value="update"
-    )
-    # act
-    actual = aa_mock.activity_avoidance()
-
-    # assert
-    assert actual == aa_mock
-    u_mock.assert_not_called()
-
-
-@pytest.mark.parametrize(
-    "binomial_rv, expected",
-    [
-        (
-            [1] * 9,
-            [
-                ([1 / 8] * 1, "a"),
-                ([2 / 8] * 2, "b"),
-                ([3 / 8] * 3, "c"),
-                ([4 / 8] * 2, "d"),
-                ([5 / 8] * 1, "e"),
-            ],
-        ),
-        (
-            [0] * 9,
-            [
-                ([1] * 1, "a"),
-                ([1] * 2, "b"),
-                ([1] * 3, "c"),
-                ([1] * 2, "d"),
-                ([1] * 1, "e"),
-            ],
-        ),
-    ],
-)
-def test_activity_resampling(mocker, mock_activity_resampling, binomial_rv, expected):
-    # arrange
-    aa_mock = mock_activity_resampling
-
-    aa_mock._model_run = Mock()
-    aa_mock._model_run.rng.binomial.return_value = binomial_rv
-
-    aa_mock._model_run.model.strategies = {
-        "activity_avoidance": pd.DataFrame(
-            {
-                "strategy": ["a", "b", "c"] + ["b", "c", "d"] + ["c", "d", "e"],
-                "sample_rate": [0.5, 1.0, 1.0] + [1.0, 1.0, 1.0] + [1.0, 1.0, 0.5],
-            },
-            index=pd.Index([1, 1, 1, 2, 2, 2, 3, 3, 3], name="rn"),
-        )
-    }
-
-    aa_mock._model_run.model.model_type = "ip"
-    aa_mock._model_run.run_params = {
-        "activity_avoidance": {
-            "ip": {"a": 1 / 8, "b": 2 / 8, "c": 3 / 8, "d": 4 / 8, "e": 5 / 8}
-        }
-    }
-
-    u_mock = mocker.patch(
-        "model.activity_resampling.ActivityResampling._update_rn",
-        return_value="update_rn",
-    )
-
-    # act
-    actual = aa_mock.activity_avoidance()
-    call_args = [(i[0][0].to_list(), i[0][1]) for i in u_mock.call_args_list]
-
-    # assert
-    assert actual == aa_mock
-    assert call_args == expected
+    assert u_mock.call_args[0][0].to_dict() == expected
 
 
 def test_apply_resampling(mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
+    aa_mock.factors = [
+        pd.Series([1, 2, 3, 4], name="a"),
+        pd.Series([5, 6, 7, 8], name="b"),
+    ]
 
-    aa_mock._row_counts = "row_counts"
     mr = aa_mock._model_run
 
     mr.data = "data"
     mr.rng.poisson.return_value = "poisson"
     mr.model.apply_resampling.return_value = "data"
-    aa_mock._fix_step_counts = Mock()
 
-    mr.model.get_future_from_row_samples.return_value = "future"
+    mr.fix_step_counts.return_value = pd.DataFrame({"x": [1]})
 
     # act
-    aa_mock.apply_resampling()
+    actual = aa_mock.apply_resampling()
 
     # assert
-    mr.rng.poisson.assert_called_once_with("row_counts")
+    assert actual[0] == "data"
+    assert actual[1].to_dict("list") == {"x": [1], "strategy": ["-"]}
+
+    mr.rng.poisson.assert_called_once()
+    assert mr.rng.poisson.call_args[0][0].tolist() == [
+        [5.0, 24.0, 63.0, 128.0],
+        [25.0, 72.0, 147.0, 256.0],
+    ]
+
     mr.model.apply_resampling.assert_called_once_with("poisson", "data")
 
-    assert mr.data == "data"
-
-    mr.model.get_future_from_row_samples.assert_called_once_with("poisson")
-    aa_mock._fix_step_counts.assert_called_once_with("future")
-
-
-def test_fix_step_counts(mock_activity_resampling):
-    # arrange
-    baseline = np.array([[1, 1, 1], [1, 2, 3]])
-    future = np.array([[0, 1, 2], [0, 2, 6]])
-
-    aa_mock = mock_activity_resampling
-    aa_mock._model_run.model.baseline_counts = baseline
-
-    aa_mock.step_counts = {
-        k: v * np.ones_like(baseline[0])
-        for k, v in {("a", "-"): 1.5, ("b", "-"): 2.0, ("c", "-"): 0.5}.items()
-    }
-
-    # act
-    aa_mock._fix_step_counts(future)
-
-    # assert
-    assert {k: v.tolist() for k, v in aa_mock._model_run.step_counts.items()} == {
-        ("a", "-"): [[0.5, 0.5, 0.5], [0.5, 1.0, 1.5]],
-        ("b", "-"): [[1.0, 1.0, 1.0], [1.0, 2.0, 3.0]],
-        ("c", "-"): [[-0.5, -0.5, -0.5], [-0.5, -1.0, -1.5]],
-        ("model_interaction_term", "-"): [[-2.0, -1.0, 0.0], [-2.0, -2.0, 0.0]],
-    }
+    mr.fix_step_counts.assert_called_once()
+    args = mr.fix_step_counts.call_args[0]
+    assert args[0] == "data"
+    assert args[1] == "poisson"
+    assert args[2].to_dict("list") == {"a": [1, 2, 3, 4], "b": [5, 6, 7, 8]}
+    assert args[3] == "model_interaction_term"

@@ -95,6 +95,7 @@ class OutpatientsModel(Model):
 
     @staticmethod
     def _convert_to_tele(
+        data,
         model_run: ModelRun,
     ) -> None:
         """Convert attendances to tele-attendances
@@ -106,8 +107,8 @@ class OutpatientsModel(Model):
         :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
         :type run_params: dict
         """
+        # TODO: we need to make sure efficiences contains convert to tele keys
         rng = model_run.rng
-        data = model_run.data
         params = model_run.run_params["efficiencies"]["op"]
         strategies = model_run.model.strategies["efficiencies"]
         # make sure to take the complement of the parameter
@@ -115,14 +116,28 @@ class OutpatientsModel(Model):
         # create a value for converting attendances into tele attendances for each row
         # the value will be a random binomial value, i.e. we will convert between 0 and attendances
         # into tele attendances
-        tele_conversion = rng.binomial(data["attendances"], factor)
+        tele_conversion = rng.binomial(data["attendances"].to_list(), factor.to_list())
         # update the columns, subtracting tc from one, adding tc to the other (we maintain the
         # number of overall attendances)
         data["attendances"] -= tele_conversion
         data["tele_attendances"] += tele_conversion
-        model_run.step_counts[("efficiencies", "convert_to_tele")] = (
-            np.array([[-1], [1]]) * tele_conversion
+
+        step_counts = (
+            pd.DataFrame(
+                {
+                    "pod": data["pod"],
+                    "sitetret": data["sitetret"],
+                    "change_factor": "efficiencies",
+                    "strategy": "convert_to_tele",
+                    "attendances": tele_conversion * -1,
+                    "tele_attendances": tele_conversion,
+                }
+            )
+            .groupby(["pod", "sitetret", "change_factor", "strategy"], as_index=False)
+            .sum()
+            .query("attendances<0")
         )
+        return data, step_counts
 
     def apply_resampling(
         self, row_samples: npt.ArrayLike, data: pd.DataFrame
@@ -144,13 +159,16 @@ class OutpatientsModel(Model):
         # return the altered data
         return data
 
-    def efficiencies(self, model_run: ModelRun) -> None:
+    def efficiencies(self, data: pd.DataFrame, model_run: ModelRun) -> None:
         """Run the efficiencies steps of the model
 
         :param model_run: an instance of the ModelRun class
         :type model_run: model.model_run.ModelRun
         """
-        self._convert_to_tele(model_run)
+        # TODO: we need to make sure efficiences contains keys
+        data = data.copy()
+        data, step_counts = self._convert_to_tele(data, model_run)
+        return data, step_counts
 
     def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
         """Aggregate the model results

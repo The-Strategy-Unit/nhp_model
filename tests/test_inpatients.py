@@ -240,20 +240,6 @@ def test_apply_resampling(mock_model):
     assert data["rn"].to_list() == [1, 2, 2, 3, 3, 3]
 
 
-def test_get_future_from_row_samples(mock_model):
-    # arrange
-    mdl = mock_model
-    mdl.baseline_counts = np.array([1, 2, 3])
-    row_samples = np.array([[1, 2, 3], [4, 5, 6]])
-    expected = [1, 4, 9]
-
-    # act
-    actual = mdl.get_future_from_row_samples(row_samples)
-
-    # assert
-    assert actual.tolist() == expected
-
-
 def test_efficiencies(mocker, mock_model):
     """test that it runs the model steps"""
 
@@ -261,6 +247,7 @@ def test_efficiencies(mocker, mock_model):
 
     mock = mocker.patch("model.inpatients.InpatientEfficiencies")
     mock.return_value = mock
+    mock.data = "data_efficiencies"
 
     mock.losr_all.return_value = mock
     mock.losr_aec.return_value = mock
@@ -268,15 +255,19 @@ def test_efficiencies(mocker, mock_model):
     mock.losr_day_procedures.return_value = mock
     mock.update_step_counts.return_value = mock
 
+    mock.get_step_counts.return_value = "step_counts"
+
     mock_model_run = Mock()
     mock_model_run.empty = False
     mock_model_run.model.strategies = {"efficiencies": mock_model_run}
 
     # act
-    mdl.efficiencies(mock_model_run)
+    actual = mdl.efficiencies("data", mock_model_run)
 
     # assert
-    mock.assert_called_once_with(mock_model_run)
+    assert actual == ("data_efficiencies", "step_counts")
+
+    mock.assert_called_once_with("data", mock_model_run)
     mock.losr_all.assert_called_once()
     mock.losr_aec.assert_called_once()
     mock.losr_preop.assert_called_once()
@@ -285,7 +276,7 @@ def test_efficiencies(mocker, mock_model):
         call("day_procedures_daycase"),
         call("day_procedures_outpatients"),
     ]
-    mock.update_step_counts.assert_called_once()
+    mock.get_step_counts.assert_called_once()
 
 
 def test_efficiencies_no_params(mocker, mock_model):
@@ -301,9 +292,10 @@ def test_efficiencies_no_params(mocker, mock_model):
     mock_model_run.model.strategies = {"efficiencies": mock_model_run}
 
     # act
-    mdl.efficiencies(mock_model_run)
+    actual = mdl.efficiencies("data", mock_model_run)
 
     # assert
+    assert actual == ("data", None)
     mock.assert_not_called()
 
 

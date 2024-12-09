@@ -15,8 +15,8 @@ from model.inpatients import InpatientEfficiencies
 @pytest.fixture
 def mock_ipe():
     """create a mock Model instance"""
-    with patch.object(InpatientEfficiencies, "__init__", lambda s, m: None):
-        ipe = InpatientEfficiencies(None)
+    with patch.object(InpatientEfficiencies, "__init__", lambda s, d, m: None):
+        ipe = InpatientEfficiencies(None, None)
     ipe._model_run = Mock()
     ipe.losr = pd.DataFrame(
         {
@@ -37,17 +37,16 @@ def test_init(mocker):
 
     model_run = Mock()
     model_run.model_run = 0
-    model_run.data = pd.DataFrame({"speldur": [1, 2, 3]})
+    data = pd.DataFrame({"speldur": [1, 2, 3]})
     model_run.step_counts = "step_counts"
     model_run.model.strategies = {"efficiencies": "efficiencies"}
 
     # act
-    actual = InpatientEfficiencies(model_run)
+    actual = InpatientEfficiencies(data, model_run)
 
     # assert
     assert actual._model_run == model_run
-    assert actual.data.equals(model_run.data)
-    assert actual.step_counts == "step_counts"
+    assert actual.data.equals(data)
     assert actual.strategies == "efficiencies"
     assert actual.speldur_before.to_list() == [1, 2, 3]
 
@@ -59,9 +58,7 @@ def test_select_single_strategy(mock_ipe):
     # arrange
     m = mock_ipe
     m._model_run.rng = np.random.default_rng(0)
-    m._model_run.data = pd.DataFrame(
-        {"rn": list(range(5)), "admimeth": ["0"] * 4 + ["3"]}
-    )
+    m.data = pd.DataFrame({"rn": list(range(5)), "admimeth": ["0"] * 4 + ["3"]})
     m._model_run.model.strategies = {
         "efficiencies": pd.DataFrame(
             {"strategy": ["a"] * 3 + ["b"] * 3}, index=[1, 2, 3] * 2
@@ -73,7 +70,7 @@ def test_select_single_strategy(mock_ipe):
     m._select_single_strategy()
 
     # assert
-    assert m._model_run.data.index.fillna("NULL").to_list() == [
+    assert m.data.index.fillna("NULL").to_list() == [
         "NULL",
         "b",
         "b",
@@ -119,32 +116,24 @@ def test_losr_empty(mock_ipe, losr_type):
     # arrange
     m = mock_ipe
     m.losr = m.losr[m.losr.type != losr_type]
-    m._model_run.data = pd.DataFrame(
-        {"speldur": list(range(9))}, index=["x", "a", "b"] * 3
-    )
+    m.data = pd.DataFrame({"speldur": list(range(9))}, index=["x", "a", "b"] * 3)
 
-    # act
-    if losr_type == "all":
-        actual = m.losr_all()
-    if losr_type == "aec":
-        actual = m.losr_aec()
-    if losr_type == "pre-op":
-        actual = m.losr_preop()
-
-    # assert
-    assert actual == m
+    # act / assert
+    match losr_type:
+        case "all":
+            assert m.losr_all() == m
+        case "aec":
+            assert m.losr_aec() == m
+        case "pre-op":
+            assert m.losr_preop() == m
 
 
 def test_losr_all(mock_ipe):
     """test that it reduces the speldur column for 'all' types"""
     # arrange
     m = mock_ipe
-    m._model_run.data = pd.DataFrame(
-        {"speldur": list(range(9))}, index=["x", "a", "b"] * 3
-    )
+    m.data = pd.DataFrame({"speldur": list(range(9))}, index=["x", "a", "b"] * 3)
     m._model_run.rng.binomial.return_value = list(range(6))
-
-    m._update = Mock(return_value="update")
 
     # act
     actual = m.losr_all()
@@ -163,9 +152,7 @@ def test_losr_aec(mock_ipe):
     """test that it reduces the speldur column for 'aec' types"""
     # arrange
     m = mock_ipe
-    m._model_run.data = pd.DataFrame(
-        {"speldur": list(range(9))}, index=["x", "c", "d"] * 3
-    )
+    m.data = pd.DataFrame({"speldur": list(range(9))}, index=["x", "c", "d"] * 3)
     m._model_run.rng.binomial.return_value = [0, 0, 0, 1, 1, 1]
 
     # act
@@ -185,9 +172,7 @@ def test_losr_preop(mock_ipe):
     """test that is reduces the speldur column for 'pre-op' types"""
     # arrange
     m = mock_ipe
-    m._model_run.data = pd.DataFrame(
-        {"speldur": list(range(9))}, index=["x", "e", "f"] * 3
-    )
+    m.data = pd.DataFrame({"speldur": list(range(9))}, index=["x", "e", "f"] * 3)
     m._model_run.rng.binomial.return_value = [0, 1, 0, 1, 0, 1]
 
     # act
@@ -229,7 +214,7 @@ def test_losr_day_procedures(
     i = m.losr.index[~m.losr.type.str.startswith("day_procedures_")].to_list() + strats
     m.losr.index = i
 
-    m._model_run.data = pd.DataFrame(
+    m.data = pd.DataFrame(
         {
             "speldur": list(range(9)) * 2,
             "classpat": ["1"] * 18,
@@ -251,30 +236,33 @@ def test_losr_day_procedures(
         == m.losr[m.losr.type == day_procedures_type]["losr_f"].repeat(6)
     ).all()
 
-    assert m._model_run.data["speldur"].to_list() == expected_speldur
-    assert m._model_run.data["classpat"].to_list() == expected_classpat
+    assert m.data["speldur"].to_list() == expected_speldur
+    assert m.data["classpat"].to_list() == expected_classpat
 
 
-def test_update_step_counts(mock_ipe):
+def test_get_step_counts(mock_ipe):
     # arrange
-    mock_ipe._model_run.data = pd.DataFrame(
+    mock_ipe.data = pd.DataFrame(
         {
             "rn": ["1", "2", "3", "1"],
+            "pod": ["a", "a", "a", "a"],
+            "sitetret": ["a", "a", "a", "a"],
             "classpat": ["-1", "1", "1", "1"],
             "speldur": [1, 2, 3, 4],
         },
         index=["a", "b", "a", "a"],
     )
     mock_ipe.speldur_before = [3, 4, 5, 6]
-    mock_ipe._model_run.step_counts = {}
-    mock_ipe._model_run.model.data = pd.DataFrame({"rn": ["1", "2", "3", "4"]})
 
     # act
-    actual = mock_ipe.update_step_counts()
+    actual = mock_ipe.get_step_counts()
 
     # assert
-    assert actual == mock_ipe
-    assert {k: v.tolist() for k, v in actual._model_run.step_counts.items()} == {
-        ("efficiencies", "a"): [[-1.0, 0.0, 0.0, 0.0], [-5.0, 0.0, -2.0, 0.0]],
-        ("efficiencies", "b"): [[0.0, 0.0, 0.0, 0.0], [0.0, -2.0, 0.0, 0.0]],
+    assert actual.to_dict("list") == {
+        "pod": ["a", "a"],
+        "sitetret": ["a", "a"],
+        "strategy": ["a", "b"],
+        "admissions": [-1, 0],
+        "beddays": [-7, -2],
+        "change_factor": ["efficiencies", "efficiencies"],
     }

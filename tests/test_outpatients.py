@@ -2,7 +2,7 @@
 
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring
 
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import Mock, call, mock_open, patch
 
 import numpy as np
 import pandas as pd
@@ -161,35 +161,87 @@ def test_convert_to_tele(mock_model):
     mdl = mock_model
 
     mr_mock = Mock()
-    mr_mock.rng.binomial.return_value = np.array([10, 15, 0])
-    mr_mock.data = pd.DataFrame(
+    mr_mock.rng.binomial.return_value = np.array(
+        [10, 15, 0, 20, 25, 0, 30, 35, 0, 40, 45, 0]
+    )
+    data = pd.DataFrame(
         {
-            "rn": [1, 2, 3],
-            "has_procedures": [False, False, True],
-            "type": ["a", "b", "a"],
-            "attendances": [20, 25, 30],
-            "tele_attendances": [5, 10, 0],
+            "rn": range(12),
+            "pod": (["a"] * 3 + ["b"] * 3) * 2,
+            "sitetret": ["c"] * 6 + ["d"] * 6,
+            "has_procedures": [False, False, True] * 4,
+            "type": ["a", "b", "a"] * 4,
+            "attendances": [20, 25, 30] * 4,
+            "tele_attendances": [5, 10, 0] * 4,
         }
     )
-    mr_mock.model.strategies = {
-        "efficiencies": pd.Series({1: "convert_to_tele_a", 2: "convert_to_tele_b"})
-    }
-    mr_mock.step_counts = {}
     mr_mock.run_params = {
-        "efficiencies": {"op": {"convert_to_tele_a": 2, "convert_to_tele_b": 3}}
+        "efficiencies": {"op": {"convert_to_tele_a": 0.25, "convert_to_tele_b": 0.5}}
     }
+    mr_mock.model.strategies = {
+        "efficiencies": pd.Series(
+            {
+                k: "convert_to_tele_a" if k % 2 else "convert_to_tele_b"
+                for k in data["rn"]
+            }
+        )
+    }
+
     # act
-    mdl._convert_to_tele(mr_mock)
+    actual_data, actual_step_counts = mdl._convert_to_tele(data.copy(), mr_mock)
+
     # assert
-    assert mr_mock.data["attendances"].to_list() == [10, 10, 30]
-    assert mr_mock.data["tele_attendances"].to_list() == [15, 25, 0]
+    assert actual_data["attendances"].to_list() == [
+        10,
+        10,
+        30,
+        0,
+        0,
+        30,
+        -10,
+        -10,
+        30,
+        -20,
+        -20,
+        30,
+    ]
+    assert actual_data["tele_attendances"].to_list() == [
+        15,
+        25,
+        0,
+        25,
+        35,
+        0,
+        35,
+        45,
+        0,
+        45,
+        55,
+        0,
+    ]
 
-    rng_call = mr_mock.rng.binomial.call_args_list[0][0]
-    assert rng_call[0].to_list() == [10, 10, 30]
-    assert rng_call[1].to_list() == [-1.0, -2.0, 0.0]
+    assert mr_mock.rng.binomial.call_args == call(
+        data["attendances"].to_list(), [i for _ in range(6) for i in [0.5, 0.75]]
+    )
 
-    step_counts = mr_mock.step_counts[("efficiencies", "convert_to_tele")]
-    assert step_counts.tolist() == [[-10, -15, 0], [10, 15, 0]]
+    assert actual_step_counts.to_dict("list") == {
+        "pod": ["a", "a", "b", "b"],
+        "sitetret": ["c", "d", "c", "d"],
+        "change_factor": [
+            "efficiencies",
+            "efficiencies",
+            "efficiencies",
+            "efficiencies",
+        ],
+        "strategy": [
+            "convert_to_tele",
+            "convert_to_tele",
+            "convert_to_tele",
+            "convert_to_tele",
+        ],
+        "attendances": [-25, -65, -45, -85],
+        "tele_attendances": [25, 65, 45, 85],
+    }
 
 
 def test_apply_resampling(mocker, mock_model):
@@ -206,14 +258,19 @@ def test_efficiencies(mock_model):
     """test that it runs the model steps"""
     # arrange
     mdl = mock_model
+    data = pd.DataFrame({"x": [1]})
 
-    mdl._convert_to_tele = Mock()
+    mdl._convert_to_tele = Mock(return_value=("data", "step_counts"))
 
     # act
-    mdl.efficiencies("model_run")
+    actual = mdl.efficiencies(data, "model_run")
 
     # assert
-    mdl._convert_to_tele.assert_called_once_with("model_run")
+    assert actual == ("data", "step_counts")
+
+    mdl._convert_to_tele.assert_called_once()
+    assert mdl._convert_to_tele.call_args[0][0].to_dict("list") == {"x": [1]}
+    assert mdl._convert_to_tele.call_args[0][1] == "model_run"
 
 
 def test_aggregate(mock_model):

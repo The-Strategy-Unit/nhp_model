@@ -111,39 +111,50 @@ def test_run(mocker, mock_model_run):
     # arrange
     mr_mock = mock_model_run
     mr_mock.model_run = 1
+    mr_mock.model.activity_avoidance.return_value = "data_aa", "step_counts_aa"
+    mr_mock.model.efficiencies.return_value = "data_ef", "step_counts_ef"
+    mr_mock.model.baseline_step_counts = "step_counts_baseline"
 
-    rr_mock = mocker.patch("model.model_run.ActivityResampling")
-    rr_mock.return_value = rr_mock
-    rr_mock.demographic_adjustment.return_value = rr_mock
-    rr_mock.birth_adjustment.return_value = rr_mock
-    rr_mock.health_status_adjustment.return_value = rr_mock
-    rr_mock.covid_adjustment.return_value = rr_mock
-    rr_mock.expat_adjustment.return_value = rr_mock
-    rr_mock.repat_adjustment.return_value = rr_mock
-    rr_mock.waiting_list_adjustment.return_value = rr_mock
-    rr_mock.baseline_adjustment.return_value = rr_mock
-    rr_mock.non_demographic_adjustment.return_value = rr_mock
-    rr_mock.activity_avoidance.return_value = rr_mock
-    rr_mock.apply_resampling.return_value = rr_mock
+    ar_mock = mocker.patch("model.model_run.ActivityResampling")
+    ar_mock.return_value = ar_mock
+    ar_mock.demographic_adjustment.return_value = ar_mock
+    ar_mock.birth_adjustment.return_value = ar_mock
+    ar_mock.health_status_adjustment.return_value = ar_mock
+    ar_mock.covid_adjustment.return_value = ar_mock
+    ar_mock.expat_adjustment.return_value = ar_mock
+    ar_mock.repat_adjustment.return_value = ar_mock
+    ar_mock.waiting_list_adjustment.return_value = ar_mock
+    ar_mock.baseline_adjustment.return_value = ar_mock
+    ar_mock.non_demographic_adjustment.return_value = ar_mock
+    ar_mock.apply_resampling.return_value = "data_ar", "step_counts_ar"
+
+    pd_mock = mocker.patch("pandas.concat", return_value="pd.concat")
 
     # act
     mr_mock._run()
 
     # assert
-    rr_mock.assert_called_once_with(mr_mock)
-    rr_mock.demographic_adjustment.assert_called_once()
-    rr_mock.birth_adjustment.assert_called_once()
-    rr_mock.health_status_adjustment.assert_called_once()
-    rr_mock.covid_adjustment.assert_called_once()
-    rr_mock.expat_adjustment.assert_called_once()
-    rr_mock.repat_adjustment.assert_called_once()
-    rr_mock.waiting_list_adjustment.assert_called_once()
-    rr_mock.baseline_adjustment.assert_called_once()
-    rr_mock.non_demographic_adjustment.assert_called_once()
-    rr_mock.activity_avoidance.assert_called_once()
-    rr_mock.apply_resampling.assert_called_once()
+    ar_mock.assert_called_once_with(mr_mock)
+    ar_mock.demographic_adjustment.assert_called_once()
+    ar_mock.birth_adjustment.assert_called_once()
+    ar_mock.health_status_adjustment.assert_called_once()
+    ar_mock.covid_adjustment.assert_called_once()
+    ar_mock.expat_adjustment.assert_called_once()
+    ar_mock.repat_adjustment.assert_called_once()
+    ar_mock.waiting_list_adjustment.assert_called_once()
+    ar_mock.baseline_adjustment.assert_called_once()
+    ar_mock.non_demographic_adjustment.assert_called_once()
+    ar_mock.apply_resampling.assert_called_once()
 
-    mr_mock.model.efficiencies.assert_called_once_with(mr_mock)
+    mr_mock.model.activity_avoidance.assert_called_once_with("data_ar", mr_mock)
+    mr_mock.model.efficiencies.assert_called_once_with("data_aa", mr_mock)
+
+    pd_mock.assert_called_once_with(
+        ["step_counts_baseline", "step_counts_ar", "step_counts_aa", "step_counts_ef"]
+    )
+
+    assert mr_mock.data == "data_ef"
+    assert mr_mock.step_counts == "pd.concat"
 
 
 def test_run_baseline(mocker, mock_model_run):
@@ -160,6 +171,41 @@ def test_run_baseline(mocker, mock_model_run):
     # assert
     rr_mock.assert_not_called()
     mr_mock.model.efficiencies.assert_not_called()
+
+
+# test_fix_step_counts
+
+
+def test_fix_step_counts(mock_model_run):
+    # arrange
+    baseline = np.array([[1, 1, 1], [1, 2, 3]])
+    future = np.array([[0, 1, 2], [0, 2, 6]])
+
+    mr_mock = mock_model_run
+    mr_mock.model.get_data_counts.return_value = baseline
+    mr_mock.model.measures = ["x", "y"]
+
+    factors = pd.DataFrame(
+        {
+            k: v * np.ones_like(baseline[0])
+            for k, v in {"a": 1.5, "b": 2.0, "c": 0.5}.items()
+        }
+    )
+
+    data = pd.DataFrame({"pod": ["a", "a", "b"], "sitetret": ["c", "d", "c"]})
+
+    # act
+    actual = mr_mock.fix_step_counts(data, future, factors, "term")
+
+    # assert
+    assert actual.to_dict("list") == {
+        "pod": ["a", "a", "b"] * 4,
+        "sitetret": ["c", "d", "c"] * 4,
+        "x": [i for i in [0.5, 1.0, -0.5] for _ in range(3)] + [-2.0, -1.0, 0.0],
+        "y": [0.5, 1.0, 1.5, 1.0, 2.0, 3.0, -0.5, -1.0, -1.5, -2.0, -2.0, 0.0],
+        "change_factor": [i for i in ["a", "b", "c", "term"] for _ in range(3)],
+    }
+    assert mr_mock.model.get_data_counts.call_args[0][0].equals(data)
 
 
 # aggregate()
@@ -196,37 +242,31 @@ def test_get_aggregate_results(mock_model_run):
 
 def test_get_step_counts_empty(mock_model_run):
     """test the get_step_counts method when step counts is empty"""
-
     # arrange
-    step_counts = {}
-
     mr = mock_model_run
-    mr.step_counts = step_counts
-    mr.model = Mock()
-    mr.step_counts = step_counts
-    mr.model.data = pd.DataFrame(
-        {"sitetret": ["a", "a", "b"], "group": ["a", "b", "a"]}
-    )
-    mr.model.measures = ["x", "y"]
-    mr.model.model_type = "ip"
+    mr.step_counts = None
 
     # act
-    actual = mock_model_run.get_step_counts()
+    actual = mr.get_step_counts()
 
     # assert
-    assert not actual
+    assert actual is None
 
 
 def test_get_step_counts(mock_model_run):
     """test the get_step_counts method when step counts is not empty"""
 
     # arrange
-    step_counts = {
-        ("x", "-"): np.array([[3, 2, 1, 1], [6, 5, 4, 1]]),
-        ("y", "a"): np.array([[2, 1, 3, 1], [5, 4, 6, 1]]),
-        ("z", "a"): np.array([[-2, -1, -3, -1], [-5, -4, -6, -1]]),
-        ("efficiencies", "-"): np.array([[-1, -2, 0, -1], [-4, -5, 0, -1]]),
-    }
+    step_counts = pd.DataFrame(
+        {
+            "pod": ["a"] * 4 + ["b"] * 4,
+            "sitetret": (["a"] * 2 + ["b"] * 2) * 2,
+            "change_factor": ["efficiencies"] * 8,
+            "strategy": ["a", "b"] * 4,
+            "x": range(8),
+            "y": range(8, 16),
+        }
+    )
 
     mr = mock_model_run
     mr.step_counts = step_counts
@@ -234,54 +274,26 @@ def test_get_step_counts(mock_model_run):
 
     mr.model.measures = ["x", "y"]
     mr.model.model_type = "ip"
-    mr.model.data = pd.DataFrame(
-        {"sitetret": ["a", "a", "b", "b", "b"], "pod": ["a", "b", "a", "b", "b"]}
-    )
-    mr.model.baseline_counts = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
 
     mr._step_counts_get_type_changes = Mock(side_effect=lambda x: x)
 
     expected = {
-        ("baseline", "-", "ip", "a", "a", "x"): 1.0,
-        ("baseline", "-", "ip", "a", "a", "y"): 5.0,
-        ("baseline", "-", "ip", "a", "b", "x"): 2.0,
-        ("baseline", "-", "ip", "a", "b", "y"): 6.0,
-        ("baseline", "-", "ip", "b", "a", "x"): 3.0,
-        ("baseline", "-", "ip", "b", "a", "y"): 7.0,
-        ("baseline", "-", "ip", "b", "b", "x"): 4.0,
-        ("baseline", "-", "ip", "b", "b", "y"): 8.0,
-        ("x", "-", "ip", "a", "a", "x"): 3.0,
-        ("x", "-", "ip", "a", "a", "y"): 6.0,
-        ("x", "-", "ip", "a", "b", "x"): 2.0,
-        ("x", "-", "ip", "a", "b", "y"): 5.0,
-        ("x", "-", "ip", "b", "a", "x"): 1.0,
-        ("x", "-", "ip", "b", "a", "y"): 4.0,
-        ("x", "-", "ip", "b", "b", "x"): 1.0,
-        ("x", "-", "ip", "b", "b", "y"): 1.0,
-        ("y", "a", "ip", "a", "a", "x"): 2.0,
-        ("y", "a", "ip", "a", "a", "y"): 5.0,
-        ("y", "a", "ip", "a", "b", "x"): 1.0,
-        ("y", "a", "ip", "a", "b", "y"): 4.0,
-        ("y", "a", "ip", "b", "a", "x"): 3.0,
-        ("y", "a", "ip", "b", "a", "y"): 6.0,
-        ("y", "a", "ip", "b", "b", "x"): 1.0,
-        ("y", "a", "ip", "b", "b", "y"): 1.0,
-        ("z", "a", "ip", "a", "a", "x"): -2.0,
-        ("z", "a", "ip", "a", "a", "y"): -5.0,
-        ("z", "a", "ip", "a", "b", "x"): -1.0,
-        ("z", "a", "ip", "a", "b", "y"): -4.0,
-        ("z", "a", "ip", "b", "a", "x"): -3.0,
-        ("z", "a", "ip", "b", "a", "y"): -6.0,
-        ("z", "a", "ip", "b", "b", "x"): -1.0,
-        ("z", "a", "ip", "b", "b", "y"): -1.0,
-        ("efficiencies", "-", "ip", "a", "a", "x"): -1.0,
-        ("efficiencies", "-", "ip", "a", "a", "y"): -4.0,
-        ("efficiencies", "-", "ip", "a", "b", "x"): -2.0,
-        ("efficiencies", "-", "ip", "a", "b", "y"): -5.0,
-        ("efficiencies", "-", "ip", "b", "a", "x"): 0.0,
-        ("efficiencies", "-", "ip", "b", "a", "y"): 0.0,
-        ("efficiencies", "-", "ip", "b", "b", "x"): -1.0,
-        ("efficiencies", "-", "ip", "b", "b", "y"): -1.0,
+        ("ip", "a", "a", "efficiencies", "a", "x"): 0,
+        ("ip", "a", "a", "efficiencies", "a", "y"): 8,
+        ("ip", "a", "a", "efficiencies", "b", "x"): 1,
+        ("ip", "a", "a", "efficiencies", "b", "y"): 9,
+        ("ip", "a", "b", "efficiencies", "a", "x"): 4,
+        ("ip", "a", "b", "efficiencies", "a", "y"): 12,
+        ("ip", "a", "b", "efficiencies", "b", "x"): 5,
+        ("ip", "a", "b", "efficiencies", "b", "y"): 13,
+        ("ip", "b", "a", "efficiencies", "a", "x"): 2,
+        ("ip", "b", "a", "efficiencies", "a", "y"): 10,
+        ("ip", "b", "a", "efficiencies", "b", "x"): 3,
+        ("ip", "b", "a", "efficiencies", "b", "y"): 11,
+        ("ip", "b", "b", "efficiencies", "a", "x"): 6,
+        ("ip", "b", "b", "efficiencies", "a", "y"): 14,
+        ("ip", "b", "b", "efficiencies", "b", "x"): 7,
+        ("ip", "b", "b", "efficiencies", "b", "y"): 15,
     }
 
     # act
@@ -305,7 +317,7 @@ def test_step_counts_get_changes(mock_model_run):
     actual = mr._step_counts_get_type_changes(sc)
 
     # assert
-    assert actual.to_list() == [3, 2, 1, 4, 5]
+    assert actual.to_list() == [1, 2, 3, 4, 5]
     mr._step_counts_get_type_change_daycase.assert_called_once_with(sc)
     mr._step_counts_get_type_change_outpatients.assert_called_once_with(sc)
 

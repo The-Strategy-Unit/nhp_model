@@ -172,9 +172,12 @@ def test_apply_resampling(mocker, mock_model):
 def test_efficiencies(mock_model):
     """test the efficiencies method (pass)"""
     # arrange
+
     # act
-    mock_model.efficiencies(None)
+    actual = mock_model.efficiencies("data", None)
+
     # assert
+    assert actual == ("data", None)
 
 
 def test_aggregate(mock_model):

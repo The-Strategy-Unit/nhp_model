@@ -150,30 +150,26 @@ class InpatientsModel(Model):
         """
         return data.loc[data.index.repeat(row_samples[0])].reset_index(drop=True)
 
-    def get_future_from_row_samples(self, row_samples):
-        """Get the future counts from row samples
-
-        Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
-        """
-        return row_samples[0] * self.baseline_counts
-
-    def efficiencies(self, model_run: ModelRun) -> None:
+    def efficiencies(self, data: pd.DataFrame, model_run: ModelRun) -> None:
         """Run the efficiencies steps of the model
 
         :param model_run: an instance of the ModelRun class
         :type model_run: model.model_run.ModelRun
         """
         # skip if there are no efficiencies
-        if not model_run.model.strategies["efficiencies"].empty:
-            (
-                InpatientEfficiencies(model_run)
-                .losr_all()
-                .losr_aec()
-                .losr_preop()
-                .losr_day_procedures("day_procedures_daycase")
-                .losr_day_procedures("day_procedures_outpatients")
-                .update_step_counts()
-            )
+        if model_run.model.strategies["efficiencies"].empty:
+            return data, None
+
+        efficiencies = (
+            InpatientEfficiencies(data, model_run)
+            .losr_all()
+            .losr_aec()
+            .losr_preop()
+            .losr_day_procedures("day_procedures_daycase")
+            .losr_day_procedures("day_procedures_outpatients")
+        )
+
+        return efficiencies.data, efficiencies.get_step_counts()
 
     def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
         """Aggregate the model results
@@ -188,7 +184,6 @@ class InpatientsModel(Model):
         :rtype: dict
         """
         model_results = model_run.get_model_results()
-
         # handle the type conversions: change the pod's
         model_results.loc[model_results["classpat"] == "-2", "pod"] = (
             "ip_elective_daycase"
@@ -279,17 +274,12 @@ class InpatientsModel(Model):
 class InpatientEfficiencies:
     """Apply the Inpatient Efficiency Strategies"""
 
-    def __init__(self, model_run: ModelRun):
+    def __init__(self, data: pd.DataFrame, model_run: ModelRun):
+        self.data = data
         self._model_run = model_run
-        self.step_counts = model_run.step_counts
         self._select_single_strategy()
         self._generate_losr_df()
         self.speldur_before = self.data["speldur"].copy()
-
-    @property
-    def data(self):
-        """get the model runs data"""
-        return self._model_run.data
 
     @property
     def strategies(self):
@@ -429,12 +419,13 @@ class InpatientEfficiencies:
 
         return self
 
-    def update_step_counts(self):
+    def get_step_counts(self):
         """Updates the step counts object
 
         After running the efficiencies, update the model runs step counts object.
         """
-        sc_df = (
+
+        return (
             self.data
             # handle the changes of activity type
             .assign(
@@ -446,23 +437,13 @@ class InpatientEfficiencies:
                 # any admissions that are converted to outpatients will reduce 1 bedday per
                 # admission this column is negative values, so we need to add in order to subtract
                 + x["admissions"]
-            )[["rn", "admissions", "beddays"]]
+            )
+            .loc[self.data.index.notnull()]
             .reset_index()
             .rename(columns={"index": "strategy"})
-            .groupby(["rn", "strategy"], as_index=False)
+            .groupby(["pod", "sitetret", "strategy"], as_index=False)[
+                ["admissions", "beddays"]
+            ]
             .sum()
-            .melt(["rn", "strategy"], var_name="measure")
-            .pivot(index=["measure", "rn"], columns="strategy", values="value")
+            .assign(change_factor="efficiencies")
         )
-
-        model_run = self._model_run
-        rn_col = pd.Index(model_run.model.data["rn"])
-        for i in sc_df.columns:
-            model_run.step_counts[("efficiencies", i)] = np.array(
-                [
-                    rn_col.map(sc_df.loc[(m, slice(None))][i]).fillna(0.0).to_numpy()
-                    for m in sc_df.index.levels[0]
-                ]
-            )
-
-        return self
