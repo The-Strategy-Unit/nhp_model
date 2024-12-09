@@ -263,10 +263,17 @@ def test_measures(mock_model):
 def test_load_data(mocker, mock_model):
     # arrange
     mdl = mock_model
+    mdl._measures = ["x", "y"]
     mocker.patch("model.model.age_groups", return_value="age_groups")
-    mocker.patch("model.model.Model.get_data_counts", return_value="data_counts")
+    mocker.patch(
+        "model.model.Model.get_data_counts", return_value=np.array([[1, 2], [3, 4]])
+    )
     mocker.patch("model.model.Model._add_pod_to_data")
-    mdl._get_data = Mock(return_value=pd.DataFrame({"rn": [2, 1], "age": [2, 1]}))
+    mdl._get_data = Mock(
+        return_value=pd.DataFrame(
+            {"rn": [2, 1], "age": [2, 1], "pod": ["a", "b"], "sitetret": ["c", "d"]}
+        )
+    )
 
     # act
     mdl._load_data()
@@ -275,11 +282,33 @@ def test_load_data(mocker, mock_model):
     assert mdl.data.to_dict(orient="list") == {
         "rn": [1, 2],
         "age": [1, 2],
+        "pod": ["b", "a"],
+        "sitetret": ["d", "c"],
         "age_group": ["age_groups"] * 2,
     }
-    assert mdl.baseline_counts == "data_counts"
+    assert mdl.baseline_counts.tolist() == [[1, 2], [3, 4]]
     mdl.get_data_counts.call_args_list[0][0][0].equals(mdl.data)
     mdl._add_pod_to_data.assert_called_once_with()
+
+    assert mdl.baseline_step_counts.to_dict("list") == {
+        "pod": ["a", "b"],
+        "sitetret": ["c", "d"],
+        "x": [2, 1],
+        "y": [4, 3],
+        "change_factor": ["baseline", "baseline"],
+        "strategy": ["-", "-"],
+    }
+
+
+# _load_strategies()
+
+
+def test_load_stratergies(mock_model):
+    # arrange
+    # act
+    mock_model._load_strategies()
+    # assert
+    assert mock_model.strategies is None
 
 
 # _load_demog_factors()
@@ -472,11 +501,110 @@ def test_get_data_counts(mock_model):
         mock_model.get_data_counts(None)
 
 
-# get_future_from_row_samples
+# activity_avoidance
 
 
-def test_get_future_from_row_samples(mock_model):
-    assert mock_model.get_future_from_row_samples("row_samples") == "row_samples"
+def test_activity_avoidance_no_params(mock_model):
+    # arrange
+    mdl = mock_model
+    mdl.strategies = {"activity_avoidance": None}
+
+    mdl.model_type = "ip"
+
+    mr_mock = Mock()
+    mr_mock.run_params = {"activity_avoidance": {"ip": {}}}
+
+    # act
+    actual = mdl.activity_avoidance("data", mr_mock)
+
+    # assert
+    assert actual == ("data", None)
+
+
+@pytest.mark.parametrize(
+    "binomial_rv, expected_binomial_args, expected_factors",
+    [
+        (
+            [1] * 9,
+            {
+                0: 0.01171875,
+                1: 0.046875,
+                2: 0.1171875,
+                3: 1.0,
+            },
+            {
+                "a": [0.125, 1.0, 1.0, 1.0],
+                "b": [0.25, 0.25, 1.0, 1.0],
+                "c": [0.375, 0.375, 0.375, 1.0],
+                "d": [1.0, 0.5, 0.5, 1.0],
+                "e": [1.0, 1.0, 0.625, 1.0],
+            },
+        ),
+        ([0] * 9, {0: 1.0, 1: 1.0, 2: 1.0, 3: 1.0}, {}),
+    ],
+)
+def test_activity_avoidance(
+    mock_model, binomial_rv, expected_binomial_args, expected_factors
+):
+    # arrange
+    mdl = mock_model
+
+    data = pd.DataFrame({"rn": [1, 2, 3, 4]})
+
+    mdl.get_data_counts = Mock(return_value=[2, 3, 4, 5])
+
+    mr_mock = Mock()
+    mr_mock.rng.binomial.side_effect = [np.array(binomial_rv), np.array([1, 1, 0, 1])]
+
+    mdl.strategies = {
+        "activity_avoidance": pd.DataFrame(
+            {
+                "strategy": ["a", "b", "c"] + ["b", "c", "d"] + ["c", "d", "e"],
+                "sample_rate": [0.5, 1.0, 1.0] + [1.0, 1.0, 1.0] + [1.0, 1.0, 0.5],
+            },
+            index=pd.Index([1, 1, 1, 2, 2, 2, 3, 3, 3], name="rn"),
+        )
+    }
+
+    mdl.model_type = "ip"
+    mr_mock.run_params = {
+        "activity_avoidance": {
+            "ip": {"a": 1 / 8, "b": 2 / 8, "c": 3 / 8, "d": 4 / 8, "e": 5 / 8}
+        }
+    }
+
+    mr_mock.fix_step_counts.return_value = pd.DataFrame({"change_factor": [1]})
+
+    # act
+    actual_data, actual_step_counts = mdl.activity_avoidance(data, mr_mock)
+
+    # assert
+    assert actual_data.to_dict("list") == {"rn": [1, 2, 4]}
+    assert actual_step_counts.to_dict("list") == {
+        "strategy": [1],
+        "change_factor": ["activity_avoidance"],
+    }
+
+    assert mr_mock.rng.binomial.call_args_list[0][0][0] == 1
+    assert mr_mock.rng.binomial.call_args_list[0][0][1].to_dict() == {
+        1: 1.0,
+        2: 1.0,
+        3: 0.5,
+    }
+
+    assert mr_mock.rng.binomial.call_args_list[1][0][0] == 1
+    assert (
+        mr_mock.rng.binomial.call_args_list[1][0][1].to_dict() == expected_binomial_args
+    )
+
+    assert mr_mock.fix_step_counts.call_args[0][0].to_dict("list") == {
+        "rn": [1, 2, 3, 4]
+    }
+    assert mr_mock.fix_step_counts.call_args[0][1].tolist() == [2, 3, 0, 5]
+    assert mr_mock.fix_step_counts.call_args[0][2].to_dict("list") == expected_factors
+    assert (
+        mr_mock.fix_step_counts.call_args[0][3] == "activity_avoidance_interaction_term"
+    )
 
 
 # go

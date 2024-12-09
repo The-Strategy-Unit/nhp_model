@@ -86,6 +86,8 @@ class Model:
         if not "create_datetime" in self.params:
             self.params["create_datetime"] = f"{datetime.now():%Y%m%d_%H%M%S}"
         self._data_loader = data(params["start_year"], params["dataset"])
+        #
+        self._measures = measures
         # load the data. we only need some of the columns for the model, so just load what we need
         self._load_data()
         self._load_strategies()
@@ -99,8 +101,6 @@ class Model:
         self.run_params = run_params or self.generate_run_params(params)
         #
         self.save_full_model_results = save_full_model_results
-        #
-        self._measures = measures
         #
         self._data_loader = None
 
@@ -128,9 +128,22 @@ class Model:
         self.baseline_counts = self.get_data_counts(self.data)
         self._add_pod_to_data()
 
+        self.baseline_step_counts = (
+            pd.DataFrame(
+                self.baseline_counts.transpose(),
+                columns=self.measures,
+                index=pd.MultiIndex.from_frame(self.data[["pod", "sitetret"]]),
+            )
+            .groupby(level=[0, 1])
+            .sum()
+            .reset_index()
+            .assign(change_factor="baseline", strategy="-")
+        )
+
     def _load_strategies(self) -> None:
         """Load a set of strategies"""
         # to be implemented by the concrete classes
+        self.strategies = None  # lint helper
 
     def _load_demog_factors(self) -> None:
         """Load the demographic factors
@@ -277,12 +290,49 @@ class Model:
         """
         raise NotImplementedError()
 
-    def get_future_from_row_samples(self, row_samples):
-        """Get the future counts from row samples
+    def activity_avoidance(self, data: pd.DataFrame, model_run: ModelRun) -> dict:
+        """perform the activity avoidance (strategies)"""
+        # if there are no items in params for activity_avoidance then exit
+        if not (params := model_run.run_params["activity_avoidance"][self.model_type]):
+            return data, None
 
-        Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
-        """
-        return row_samples
+        rng = model_run.rng
+
+        strategies = self.strategies["activity_avoidance"]
+        # decide whether to sample a strategy for each row this model run
+        strategies = strategies.loc[
+            rng.binomial(1, strategies["sample_rate"]).astype("bool"), "strategy"
+        ]
+        # join the parameters, then pivot wider
+        strategies = (
+            strategies.reset_index()
+            .merge(pd.Series(params, name="aaf"), left_on="strategy", right_index=True)
+            .pivot(index="rn", columns="strategy", values="aaf")
+        )
+
+        data_counts = self.get_data_counts(data)
+
+        factors_aa = (
+            data[["rn"]]
+            .merge(strategies, left_on="rn", right_index=True, how="left")
+            .fillna(1)
+            .drop(columns="rn")
+        )
+
+        keep_activity = rng.binomial(1, factors_aa.prod(axis=1))
+
+        step_counts = (
+            model_run.fix_step_counts(
+                data,
+                keep_activity * data_counts,
+                factors_aa,
+                "activity_avoidance_interaction_term",
+            )
+            .rename(columns={"change_factor": "strategy"})
+            .assign(change_factor="activity_avoidance")
+        )
+
+        return data[keep_activity.astype("bool")], step_counts
 
     # pylint: disable=invalid-name
     def go(self, model_run: int) -> dict:

@@ -4,6 +4,7 @@ Provides a simple class which holds all of the data required for a model run
 """
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from model.activity_resampling import ActivityResampling
@@ -29,6 +30,7 @@ class ModelRun:
 
         # data is mutated, so is not a property
         self.data = model.data.copy()
+        self.step_counts = None
 
         # run the model
         self._run()
@@ -61,7 +63,7 @@ class ModelRun:
         if self.model_run == 0:
             return
 
-        (
+        data_ar, step_counts_ar = (
             ActivityResampling(self)
             .demographic_adjustment()
             .birth_adjustment()
@@ -72,12 +74,66 @@ class ModelRun:
             .waiting_list_adjustment()
             .baseline_adjustment()
             .non_demographic_adjustment()
-            .activity_avoidance()
             # call apply_resampling last, as this is what actually alters the data
             .apply_resampling()
         )
 
-        self.model.efficiencies(self)
+        data_aa, step_counts_aa = self.model.activity_avoidance(data_ar, self)
+        data_ef, step_counts_ef = self.model.efficiencies(data_aa, self)
+
+        self.data = data_ef
+        self.step_counts = pd.concat(
+            [
+                self.model.baseline_step_counts,
+                step_counts_ar,
+                step_counts_aa,
+                step_counts_ef,
+            ]
+        )
+
+    def fix_step_counts(
+        self,
+        data: pd.DataFrame,
+        future: npt.ArrayLike,
+        factors: npt.ArrayLike,
+        term_name: str,
+    ) -> None:
+        """Calculate the step counts
+
+        Calculates the step counts for the current model run, saving back to
+        self._model_run.step_counts.
+
+        :param future: The future row counts after running the poisson resampling.
+        :type future: npt.ArrayLike
+        """
+        before = self.model.get_data_counts(data)
+        # convert the paramater values from a dict of 2d numpy arrays to a 3d numpy array
+        param_values = np.array(list(factors.to_numpy().transpose()))
+        # later on we want to be able to multiply by baseline, we need to have compatible
+        # numpy shapes
+        # our param values has shape of (x, y). baseline has shape of (z, y).
+        # (x, 1, y) will allow (x, y) * (z, y)
+        shape = (param_values.shape[0], 1, param_values.shape[1])
+        # calculate the simple effect of each parameter, if it was performed in isolation to all
+        # other parameters
+        param_simple_effects = (param_values - 1).reshape(shape) * before
+        # what is the difference left over from the expected changes (model interaction term)
+        diff = future - (before + param_simple_effects.sum(axis=0))
+        # convert the 3d numpy array back to a pandas dataframe aggregated by the columns we are interested in
+        idx = pd.MultiIndex.from_frame(data[["pod", "sitetret"]])
+        return pd.concat(
+            [
+                pd.DataFrame(v.transpose(), columns=self.model.measures, index=idx)
+                .groupby(level=idx.names)
+                .sum()
+                .assign(change_factor=k)
+                .reset_index()
+                for k, v in {
+                    **dict(zip(factors.columns, param_simple_effects)),
+                    term_name: diff,
+                }.items()
+            ]
+        )
 
     def get_aggregate_results(self) -> dict:
         """Aggregate the model results
@@ -105,41 +161,26 @@ class ModelRun:
 
     def get_step_counts(self):
         """get the step counts of a model run"""
-        if not self.step_counts:
-            return {}
+        if self.step_counts is None:
+            return None
 
-        def get_counts(data, values):
-            return (
-                pd.concat(
-                    [
-                        data,
-                        pd.DataFrame(values.transpose(), columns=self.model.measures),
-                    ],
-                    axis=1,
-                )
-                .groupby(["sitetret", "pod"], as_index=False)[self.model.measures]
-                .sum()
-                .melt(["sitetret", "pod"], var_name="measure")
-                .assign(activity_type=self.model.model_type)
-                .set_index(["activity_type", "sitetret", "pod", "measure"])
-                .sort_index()["value"]
+        step_counts = (
+            self.step_counts.melt(
+                [i for i in self.step_counts.columns if i not in self.model.measures],
+                var_name="measure",
             )
-
-        sitetret_pod = self.model.data[["sitetret", "pod"]].reset_index(drop=True)
-
-        step_counts = pd.concat(
-            {
-                k: get_counts(sitetret_pod, v)
-                for k, v in {
-                    ("baseline", "-"): self.model.baseline_counts,
-                    **self.step_counts,
-                }.items()
-            }
-        )
-        step_counts.index.names = (
-            ["change_factor", "strategy", "activity_type"]
-            + list(sitetret_pod.columns)
-            + ["measure"]
+            .assign(activity_type=self.model.model_type)
+            .set_index(
+                [
+                    "activity_type",
+                    "sitetret",
+                    "pod",
+                    "change_factor",
+                    "strategy",
+                    "measure",
+                ]
+            )
+            .sort_index()["value"]
         )
 
         step_counts = self._step_counts_get_type_changes(step_counts)
@@ -147,8 +188,6 @@ class ModelRun:
         return step_counts
 
     def _step_counts_get_type_changes(self, step_counts):
-        step_counts.sort_index(inplace=True)
-
         return pd.concat(
             [
                 step_counts,
@@ -163,7 +202,7 @@ class ModelRun:
             step_counts[
                 step_counts.index.isin(
                     ["day_procedures_usually_dc", "day_procedures_occasionally_dc"],
-                    level=1,
+                    level="strategy",
                 )
             ]
             .to_frame()
@@ -181,9 +220,9 @@ class ModelRun:
             step_counts[
                 step_counts.index.isin(
                     ["day_procedures_usually_op", "day_procedures_occasionally_op"],
-                    level=1,
+                    level="strategy",
                 )
-                & (step_counts.index.get_level_values(5) == "admissions")
+                & (step_counts.index.get_level_values("measure") == "admissions")
             ]
             .to_frame()
             .reset_index()

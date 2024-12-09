@@ -5,7 +5,6 @@ Methods for handling row resampling"""
 from typing import List
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 
 
@@ -32,9 +31,8 @@ class ActivityResampling:
     def __init__(self, model_run) -> None:
         self._model_run = model_run
 
-        self._row_counts = self._model_run.model.baseline_counts.copy()
         # initialise step counts
-        self.step_counts = {}
+        self.factors = []
 
     @property
     def _baseline_counts(self):
@@ -70,33 +68,18 @@ class ActivityResampling:
         return self._model_run.model.hsa
 
     @property
-    def strategies(self):
-        """get the activty avoidance strategies for the model"""
-        return self._model_run.model.strategies["activity_avoidance"]
-
-    @property
     def data(self):
         """get the current model runs data"""
         return self._model_run.data
 
-    def _update(self, factor: pd.Series, cols: List[str]):
+    def _update(self, factor: pd.Series):
         step = factor.name
 
-        factor = (
-            self.data.merge(factor, how="left", left_on=cols, right_index=True)[step]
-            .fillna(1)
-            .to_numpy()
-        )
+        factor = self.data.merge(
+            factor, how="left", left_on=factor.index.names, right_index=True
+        )[step].fillna(1)
 
-        self._row_counts *= factor
-        self.step_counts[(step, "-")] = factor
-
-        return self
-
-    def _update_rn(self, factor: pd.Series, group: str):
-        factor = self.data["rn"].map(factor).fillna(1).to_numpy()
-        self._row_counts *= factor
-        self.step_counts[("activity_avoidance", group)] = factor
+        self.factors.append(factor)
 
         return self
 
@@ -108,7 +91,7 @@ class ActivityResampling:
         factor = self.demog_factors.loc[(variant, slice(None), slice(None))][
             year
         ].rename("demographic_adjustment")
-        return self._update(factor, ["age", "sex"])
+        return self._update(factor)
 
     def birth_adjustment(self):
         """perform the birth adjustment"""
@@ -129,23 +112,21 @@ class ActivityResampling:
             ),
         )
 
-        return self._update(factor, ["group", "age", "sex"])
+        return self._update(factor)
 
     def health_status_adjustment(self):
         """perform the health status adjustment"""
         if not self.params["health_status_adjustment"]:
             return self
 
-        return self._update(
-            self.hsa.run(self.run_params),
-            ["hsagrp", "sex", "age"],
-        )
+        return self._update(self.hsa.run(self.run_params))
 
     def covid_adjustment(self):
         """perform the covid adjustment"""
         params = self.run_params["covid_adjustment"][self._activity_type]
         factor = pd.Series(params, name="covid_adjustment")
-        return self._update(factor, ["group"])
+        factor.index.names = ["group"]
+        return self._update(factor)
 
     def expat_adjustment(self):
         """perform the expatriation adjustment"""
@@ -158,7 +139,8 @@ class ActivityResampling:
             return self
 
         factor = pd.concat({k: pd.Series(v, name="expat") for k, v in params.items()})
-        return self._update(factor, ["group", "tretspef"])
+        factor.index.names = ["group", "tretspef"]
+        return self._update(factor)
 
     def repat_adjustment(self):
         """perform the repatriation adjustment"""
@@ -175,7 +157,8 @@ class ActivityResampling:
             return self
 
         factor = pd.concat(params)
-        return self._update(factor, ["is_main_icb", "group", "tretspef"])
+        factor.index.names = ["is_main_icb", "group", "tretspef"]
+        return self._update(factor)
 
     def baseline_adjustment(self):
         """perform the baseline adjustment
@@ -194,7 +177,8 @@ class ActivityResampling:
                 for k, v in params.items()
             }
         )
-        return self._update(factor, ["group", "tretspef"])
+        factor.index.names = ["group", "tretspef"]
+        return self._update(factor)
 
     def waiting_list_adjustment(self):
         """perform the waiting list adjustment
@@ -214,10 +198,12 @@ class ActivityResampling:
         factor = pd.Series(params)
 
         # update the index to include "True" for the is_wla field
-        factor.index = pd.MultiIndex.from_tuples([(True, i) for i in factor.index])
+        factor.index = pd.MultiIndex.from_tuples(
+            [(True, i) for i in factor.index], names=["is_wla", "tretspef"]
+        )
         factor.name = "waiting_list_adjustment"
 
-        return self._update(factor, ["is_wla", "tretspef"])
+        return self._update(factor)
 
     def non_demographic_adjustment(self):
         """perform the non-demographic adjustment"""
@@ -229,72 +215,26 @@ class ActivityResampling:
 
         year_exponent = self.run_params["year"] - self.params["start_year"]
         factor = pd.Series(params).rename("non-demographic_adjustment") ** year_exponent
-        return self._update(factor, ["group"])
-
-    def activity_avoidance(self) -> dict:
-        """perform the activity avoidance (strategies)"""
-        # if there are no items in params for activity_avoidance then exit
-        if not (params := self.run_params["activity_avoidance"][self._activity_type]):
-            return self
-
-        rng = self._model_run.rng
-
-        strategies = self.strategies
-
-        params = pd.Series(params, name="aaf")
-
-        strategies_grouped = (
-            strategies.reset_index()
-            .merge(params, left_on="strategy", right_index=True)
-            .assign(
-                aaf=lambda x: 1 - rng.binomial(1, x["sample_rate"]) * (1 - x["aaf"])
-            )
-            .set_index(["strategy", "rn"])["aaf"]
-        )
-
-        for k in strategies_grouped.index.levels[0]:
-            self._update_rn(strategies_grouped[k, slice(None)], k)
-
-        return self
+        factor.index.names = ["group"]
+        return self._update(factor)
 
     def apply_resampling(self):
         """apply the row resampling to the data"""
         # get the random sampling for each row
         rng = self._model_run.rng
-        row_samples = rng.poisson(self._row_counts)
-        # apply the random sampling, update the data and get the counts
-        self._model_run.data = self._model_run.model.apply_resampling(
-            row_samples, self.data
+        factors = pd.concat(self.factors, axis=1)
+
+        # reshape this to be the same as baseline counts
+        overall_factor = (
+            self._model_run.model.baseline_counts * factors.prod(axis=1).to_numpy()
         )
 
-        future = self._model_run.model.get_future_from_row_samples(row_samples)
+        row_samples = rng.poisson(overall_factor)
+        # apply the random sampling, update the data and get the counts
+        data = self._model_run.model.apply_resampling(row_samples, self.data)
 
-        self._fix_step_counts(future)
+        step_counts = self._model_run.fix_step_counts(
+            self.data, row_samples, factors, "model_interaction_term"
+        ).assign(strategy="-")
 
-    def _fix_step_counts(self, future: npt.ArrayLike) -> None:
-        """Calculate the step counts
-
-        Calculates the step counts for the current model run, saving back to
-        self._model_run.step_counts.
-
-        :param future: The future row counts after running the poisson resampling.
-        :type future: npt.ArrayLike
-        """
-        # convert the paramater values from a dict of 2d numpy arrays to a 3d numpy array
-        baseline = self._baseline_counts
-        param_values = np.array(list(self.step_counts.values()))
-        # later on we want to be able to multiply by baseline, we need to have compatible
-        # numpy shapes
-        # our param values has shape of (x, y). baseline has shape of (z, y).
-        # (x, 1, y) will allow (x, y) * (z, y)
-        shape = (param_values.shape[0], 1, param_values.shape[1])
-        # calculate the simple effect of each parameter, if it was performed in isolation to all
-        # other parameters
-        param_simple_effects = (param_values - 1).reshape(shape) * baseline
-        # what is the difference left over from the expected changes (model interaction term)
-        diff = future - (baseline + param_simple_effects.sum(axis=0))
-        # convert the 3d numpy array back to a dict of 2d numpy arrays
-        self._model_run.step_counts = {
-            **dict(zip(self.step_counts.keys(), param_simple_effects)),
-            ("model_interaction_term", "-"): diff,
-        }
+        return data, step_counts

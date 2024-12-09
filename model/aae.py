@@ -108,7 +108,7 @@ class AaEModel(Model):
         # return the altered data
         return data
 
-    def efficiencies(self, model_run: ModelRun) -> None:
+    def efficiencies(self, data: pd.DataFrame, model_run: ModelRun) -> None:
         """Run the efficiencies steps of the model
 
         :param model_run: an instance of the ModelRun class
@@ -116,6 +116,7 @@ class AaEModel(Model):
         """
 
         # A&E doesn't have any efficiencies steps
+        return data, None
 
     def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
         """Aggregate the model results
