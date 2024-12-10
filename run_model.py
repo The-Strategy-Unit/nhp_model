@@ -120,7 +120,7 @@ def _run_model(
 
 def run_all(
     params: dict, data_path: str, progress_callback, save_full_model_results: bool
-) -> dict:
+) -> str:
     """Run the model
 
     runs all 3 model types, aggregates and combines the results
@@ -130,7 +130,7 @@ def run_all(
     :param data_path: where the data is stored
     :type data_path: str
     :return: the filename of the saved results
-    :rtype: dict
+    :rtype: str
     """
     model_types = [InpatientsModel, OutpatientsModel, AaEModel]
     run_params = Model.generate_run_params(params)
