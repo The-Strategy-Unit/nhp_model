@@ -150,9 +150,10 @@ def generate_results_json(
         if i["strategy"] == "-":
             i.pop("strategy")
 
+    saved_files = save_results_files(dict_results, params)
+
     filename = f"{params['dataset']}/{params['scenario']}-{params['create_datetime']}"
     os.makedirs(f"results/{params['dataset']}", exist_ok=True)
-
     with open(f"results/{filename}.json", "w", encoding="utf-8") as file:
         json.dump(
             {
@@ -163,6 +164,34 @@ def generate_results_json(
             file,
         )
     return filename
+
+
+def save_results_files(dict_results: dict, params: dict) -> list:
+    """Saves aggregated and combined results as parquet, and params as JSON
+
+    :param dict_results: the results of running the models, processed into one dictionary
+    :type dict_results: dict
+    :param params: the parameters used for the model run
+    :type params: dict
+    :return: filepaths to saved files
+    :rtype: list
+    """
+    path = (
+        f"results/{params['dataset']}/{params['scenario']}/{params['create_datetime']}"
+    )
+    os.makedirs(path, exist_ok=True)
+    saved_files = []
+    # results
+    for k, v in dict_results.items():
+        filepath = f"{path}/{k}.parquet"
+        pd.DataFrame(v).to_parquet(filepath)
+        saved_files.append(filepath)
+    # params
+    filepath = f"{path}/params.json"
+    with open(filepath, "w", encoding="utf-8") as file:
+        json.dump(params, file)
+    saved_files.append(filepath)
+    return saved_files
 
 
 def combine_results(results: list) -> dict:

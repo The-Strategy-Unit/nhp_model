@@ -13,6 +13,7 @@ from model.results import (
     _complete_model_runs,
     combine_results,
     generate_results_json,
+    save_results_files,
 )
 
 
@@ -181,6 +182,7 @@ def test_generate_results_json(mocker):
 
     os_m = mocker.patch("os.makedirs")
     jd_m = mocker.patch("json.dump")
+    save_m = mocker.patch("model.results.save_results_files")
 
     json_content = {
         "default": [
@@ -269,6 +271,7 @@ def test_generate_results_json(mocker):
         },
         mock_file(),
     )
+    save_m.assert_called_once_with(json_content, params)
 
 
 def test_combine_results(mocker):
@@ -287,3 +290,35 @@ def test_combine_results(mocker):
     assert actual == ("combined_results", "combined_step_counts")
     ma.assert_called_once_with("results")
     mb.assert_called_once_with("results")
+
+
+def test_save_results_files(mocker):
+    # arrange
+    results = {"one": ""}
+    params = {
+        "dataset": "synthetic",
+        "scenario": "test",
+        "create_datetime": "create_datetime",
+    }
+
+    mocker.patch("pandas.DataFrame")
+    mocker.patch("json.dump")
+    pq_m = mocker.patch("pandas.DataFrame.to_parquet")
+    os_m = mocker.patch("os.makedirs")
+
+    expected = [
+        "results/synthetic/test/create_datetime/one.parquet",
+        "results/synthetic/test/create_datetime/params.json",
+    ]
+    # act
+    with patch("builtins.open", mock_open()) as mock_file:
+        actual = save_results_files(results, params)
+    # assert
+
+    assert actual == expected
+    assert os_m.called_once_with(
+        "results/synthetic/test/create_datetime", exist_ok=True
+    )
+
+    assert pq_m.called_once_with(expected[0])
+    mock_file.assert_called_once_with(expected[1], "w", encoding="utf-8")
