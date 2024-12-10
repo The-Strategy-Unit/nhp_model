@@ -37,7 +37,7 @@ def test_RunWithLocalStorage_finish(mocker):
     s = RunWithLocalStorage("filename")
 
     # act
-    s.finish("results", False)
+    s.finish("results", ["saved_files"], False)
 
     # assert (nothing to assert)
 
@@ -229,6 +229,26 @@ def test_RunWithAzureStorage_upload_results_json(mock_run_with_azure_storage, mo
     )
 
 
+def test_RunWithAzureStorage_upload_results_parquet(
+    mock_run_with_azure_storage, mocker
+):
+    # arrange
+    s = mock_run_with_azure_storage
+
+    m = mocker.patch("docker_run.RunWithAzureStorage._get_container")
+
+    # act
+    with patch("builtins.open", mock_open(read_data="data")) as mock_file:
+        s._upload_results_parquet(["results/filename"])
+
+    # assert
+    mock_file.assert_called_once_with("results/filename", "rb")
+    m.assert_called_once_with("results")
+    m().upload_blob.assert_called_once_with(
+        "aggregated-model-results/dev/filename", "data", overwrite=True
+    )
+
+
 def test_RunWithAzureStorage_upload_full_model_results(
     mock_run_with_azure_storage, mocker
 ):
@@ -283,8 +303,9 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
     # arrange
     s = mock_run_with_azure_storage
     m1 = mocker.patch("docker_run.RunWithAzureStorage._upload_results_json")
-    m2 = mocker.patch("docker_run.RunWithAzureStorage._upload_full_model_results")
-    m3 = mocker.patch("docker_run.RunWithAzureStorage._cleanup")
+    m2 = mocker.patch("docker_run.RunWithAzureStorage._upload_results_parquet")
+    m3 = mocker.patch("docker_run.RunWithAzureStorage._upload_full_model_results")
+    m4 = mocker.patch("docker_run.RunWithAzureStorage._cleanup")
 
     metadata = {"id": "1", "dataset": "synthetic", "start_year": "2020"}
     params = metadata.copy()
@@ -294,12 +315,13 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
     s.params = params
 
     # act
-    s.finish("results_file", False)
+    s.finish("results_file", ["saved_files"], False)
 
     # assert
     m1.assert_called_once_with("results_file", metadata)
-    m2.assert_not_called()
-    m3.assert_called_once()
+    m2.assert_called_once_with(["saved_files"])
+    m3.assert_not_called()
+    m4.assert_called_once()
 
 
 def test_RunWithAzureStorage_finish_save_full_model_results_true(
@@ -308,8 +330,9 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
     # arrange
     s = mock_run_with_azure_storage
     m1 = mocker.patch("docker_run.RunWithAzureStorage._upload_results_json")
-    m2 = mocker.patch("docker_run.RunWithAzureStorage._upload_full_model_results")
-    m3 = mocker.patch("docker_run.RunWithAzureStorage._cleanup")
+    m2 = mocker.patch("docker_run.RunWithAzureStorage._upload_results_parquet")
+    m3 = mocker.patch("docker_run.RunWithAzureStorage._upload_full_model_results")
+    m4 = mocker.patch("docker_run.RunWithAzureStorage._cleanup")
 
     metadata = {"id": "1", "dataset": "synthetic", "start_year": "2020"}
     params = metadata.copy()
@@ -319,12 +342,13 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
     s.params = params
 
     # act
-    s.finish("results_file", True)
+    s.finish("results_file", ["saved_files"], True)
 
     # assert
     m1.assert_called_once_with("results_file", metadata)
-    m2.assert_called_once()
+    m2.assert_called_once_with(["saved_files"])
     m3.assert_called_once()
+    m4.assert_called_once()
 
 
 def test_RunWithAzureStorage_progress_callback(mock_run_with_azure_storage):
@@ -427,7 +451,7 @@ def test_main_local(mocker):
 
     s = rwls()
     ru_m.assert_called_once_with(params, "data", s.progress_callback, False)
-    s.finish.assert_called_once_with("results.json", False)
+    s.finish.assert_called_once_with("results.json", "list_of_results", False)
 
 
 def test_main_azure(mocker):
@@ -463,7 +487,7 @@ def test_main_azure(mocker):
 
     s = rwas()
     ru_m.assert_called_once_with(params, "data", s.progress_callback, False)
-    s.finish.assert_called_once_with("results.json", False)
+    s.finish.assert_called_once_with("results.json", "list_of_results", False)
 
 
 def test_exit_container(mocker):
