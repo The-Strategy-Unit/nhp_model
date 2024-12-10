@@ -11,6 +11,8 @@ from typing import List
 # janitor complains of being unused, but it is used (.complete())
 import janitor  # pylint: disable=unused-import
 import pandas as pd
+import os
+import json
 
 
 def _complete_model_runs(
@@ -97,9 +99,12 @@ def _combine_step_counts(results: list):
 
 
 def generate_results_json(
-    combined_results: pd.DataFrame, combined_step_counts: pd.DataFrame
-) -> dict:
-    """Generate the results in the json format"""
+    combined_results: pd.DataFrame,
+    combined_step_counts: pd.DataFrame,
+    params: dict,
+    run_params: dict,
+) -> str:
+    """Generate the results in the json format and save"""
 
     def agg_to_dict(res):
         df = res.set_index("model_run")
@@ -145,7 +150,19 @@ def generate_results_json(
         if i["strategy"] == "-":
             i.pop("strategy")
 
-    return dict_results
+    filename = f"{params['dataset']}/{params['scenario']}-{params['create_datetime']}"
+    os.makedirs(f"results/{params['dataset']}", exist_ok=True)
+
+    with open(f"results/{filename}.json", "w", encoding="utf-8") as file:
+        json.dump(
+            {
+                "params": params,
+                "population_variants": run_params["variant"],
+                "results": dict_results,
+            },
+            file,
+        )
+    return filename
 
 
 def combine_results(results: list) -> dict:

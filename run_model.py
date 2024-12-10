@@ -120,7 +120,7 @@ def _run_model(
 
 def run_all(
     params: dict, data_path: str, progress_callback, save_full_model_results: bool
-) -> dict:
+) -> str:
     """Run the model
 
     runs all 3 model types, aggregates and combines the results
@@ -130,7 +130,7 @@ def run_all(
     :param data_path: where the data is stored
     :type data_path: str
     :return: the filename of the saved results
-    :rtype: dict
+    :rtype: str
     """
     model_types = [InpatientsModel, OutpatientsModel, AaEModel]
     run_params = Model.generate_run_params(params)
@@ -159,20 +159,7 @@ def run_all(
         ]
     )
 
-    dict_results = generate_results_json(results, step_counts)
-
-    filename = f"{params['dataset']}/{params['scenario']}-{params['create_datetime']}"
-    os.makedirs(f"results/{params['dataset']}", exist_ok=True)
-
-    with open(f"results/{filename}.json", "w", encoding="utf-8") as file:
-        json.dump(
-            {
-                "params": params,
-                "population_variants": run_params["variant"],
-                "results": dict_results,
-            },
-            file,
-        )
+    filename = generate_results_json(results, step_counts, params, run_params)
 
     return filename
 
