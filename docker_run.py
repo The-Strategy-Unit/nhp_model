@@ -115,7 +115,7 @@ class RunWithAzureStorage:
                     file_client = fs_client.get_file_client(filename)
                     local_file.write(file_client.download_file().readall())
 
-    def _upload_results(self, results_file: str, metadata: dict) -> None:
+    def _upload_results_json(self, results_file: str, metadata: dict) -> None:
         """Upload the results
 
         once the model has run, upload the results to blob storage
@@ -175,7 +175,7 @@ class RunWithAzureStorage:
             for k, v in self.params.items()
             if not isinstance(v, dict) and not isinstance(v, list)
         }
-        self._upload_results(results_file, metadata)
+        self._upload_results_json(results_file, metadata)
         if save_full_model_results:
             self._upload_full_model_results()
         self._cleanup()
@@ -253,7 +253,7 @@ def main():
     logging.info("end_year:     %s", runner.params["end_year"])
     logging.info("app_version:  %s", runner.params["app_version"])
 
-    results_file = run_all(
+    saved_files, results_file = run_all(
         runner.params, "data", runner.progress_callback, args.save_full_model_results
     )
 

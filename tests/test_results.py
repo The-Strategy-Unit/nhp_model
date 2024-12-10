@@ -182,7 +182,9 @@ def test_generate_results_json(mocker):
 
     os_m = mocker.patch("os.makedirs")
     jd_m = mocker.patch("json.dump")
-    save_m = mocker.patch("model.results.save_results_files")
+    save_m = mocker.patch(
+        "model.results.save_results_files", return_value="list_of_results_files"
+    )
 
     json_content = {
         "default": [
@@ -249,7 +251,7 @@ def test_generate_results_json(mocker):
 
     run_params = {"variant": [1, 2, 3]}
 
-    expected = "synthetic/test-create_datetime"
+    expected = ("list_of_results_files", "synthetic/test-create_datetime")
 
     # act
     with patch("builtins.open", mock_open()) as mock_file:

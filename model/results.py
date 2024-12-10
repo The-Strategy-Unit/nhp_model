@@ -152,9 +152,11 @@ def generate_results_json(
 
     saved_files = save_results_files(dict_results, params)
 
-    filename = f"{params['dataset']}/{params['scenario']}-{params['create_datetime']}"
+    json_filename = (
+        f"{params['dataset']}/{params['scenario']}-{params['create_datetime']}"
+    )
     os.makedirs(f"results/{params['dataset']}", exist_ok=True)
-    with open(f"results/{filename}.json", "w", encoding="utf-8") as file:
+    with open(f"results/{json_filename}.json", "w", encoding="utf-8") as file:
         json.dump(
             {
                 "params": params,
@@ -163,7 +165,7 @@ def generate_results_json(
             },
             file,
         )
-    return filename
+    return saved_files, json_filename
 
 
 def save_results_files(dict_results: dict, params: dict) -> list:

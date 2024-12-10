@@ -70,7 +70,10 @@ def test_run_all(mocker):
         "run_model.combine_results",
         return_value=("combined_results", "combined_step_counts"),
     )
-    gr_m = mocker.patch("run_model.generate_results_json", return_value="results_json_path")
+    gr_m = mocker.patch(
+        "run_model.generate_results_json",
+        return_value=("saved_files", "results_json_path"),
+    )
     nd_m = mocker.patch("run_model.Local")
 
     pc_m = Mock()
@@ -91,7 +94,7 @@ def test_run_all(mocker):
     actual = run_all(params, "data_path", pc_m, False)
 
     # assert
-    assert actual == "results_json_path"
+    assert actual == ("saved_files", "results_json_path")
 
     nd_m.create.assert_called_once_with("data_path")
     nd_c = nd_m.create()

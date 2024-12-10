@@ -159,9 +159,11 @@ def run_all(
         ]
     )
 
-    filename = generate_results_json(results, step_counts, params, run_params)
+    saved_files, results_json = generate_results_json(
+        results, step_counts, params, run_params
+    )
 
-    return filename
+    return saved_files, results_json
 
 
 def run_single_model_run(

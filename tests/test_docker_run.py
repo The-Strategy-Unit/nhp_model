@@ -210,7 +210,7 @@ def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
     ]
 
 
-def test_RunWithAzureStorage_upload_results(mock_run_with_azure_storage, mocker):
+def test_RunWithAzureStorage_upload_results_json(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage
 
@@ -219,7 +219,7 @@ def test_RunWithAzureStorage_upload_results(mock_run_with_azure_storage, mocker)
 
     # act
     with patch("builtins.open", mock_open(read_data="data")) as mock_file:
-        s._upload_results("filename", "metadata")
+        s._upload_results_json("filename", "metadata")
 
     # assert
     mock_file.assert_called_once_with("results/filename.json", "rb")
@@ -282,7 +282,7 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
 ):
     # arrange
     s = mock_run_with_azure_storage
-    m1 = mocker.patch("docker_run.RunWithAzureStorage._upload_results")
+    m1 = mocker.patch("docker_run.RunWithAzureStorage._upload_results_json")
     m2 = mocker.patch("docker_run.RunWithAzureStorage._upload_full_model_results")
     m3 = mocker.patch("docker_run.RunWithAzureStorage._cleanup")
 
@@ -307,7 +307,7 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
 ):
     # arrange
     s = mock_run_with_azure_storage
-    m1 = mocker.patch("docker_run.RunWithAzureStorage._upload_results")
+    m1 = mocker.patch("docker_run.RunWithAzureStorage._upload_results_json")
     m2 = mocker.patch("docker_run.RunWithAzureStorage._upload_full_model_results")
     m3 = mocker.patch("docker_run.RunWithAzureStorage._cleanup")
 
@@ -414,7 +414,9 @@ def test_main_local(mocker):
     rwls().params = params
     rwls.reset_mock()
 
-    ru_m = mocker.patch("docker_run.run_all", return_value="results.json")
+    ru_m = mocker.patch(
+        "docker_run.run_all", return_value=("list_of_results", "results.json")
+    )
 
     # act
     main()
@@ -448,7 +450,9 @@ def test_main_azure(mocker):
     rwas().params = params
     rwas.reset_mock()
 
-    ru_m = mocker.patch("docker_run.run_all", return_value="results.json")
+    ru_m = mocker.patch(
+        "docker_run.run_all", return_value=("list_of_results", "results.json")
+    )
 
     # act
     main()
