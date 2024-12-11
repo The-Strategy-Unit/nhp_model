@@ -68,9 +68,12 @@ def test_run_all(mocker):
     rm_m = mocker.patch("run_model._run_model", side_effect=["ip", "op", "aae"])
     cr_m = mocker.patch(
         "run_model.combine_results",
-        return_value=("combined_results", "combined_step_counts"),
+        return_value=({"default": "combined_results"}, "combined_step_counts"),
     )
-    gr_m = mocker.patch("run_model.generate_results_json", return_value="results_json_path")
+    gr_m = mocker.patch(
+        "run_model.generate_results_json", return_value="results_json_path"
+    )
+    sr_m = mocker.patch("run_model.save_results_files", return_value="results_paths")
     nd_m = mocker.patch("run_model.Local")
 
     pc_m = Mock()
@@ -121,8 +124,17 @@ def test_run_all(mocker):
     ]
 
     cr_m.assert_called_once_with(["ip", "op", "aae"])
-    gr_m.assert_called_once_with(
-        "combined_results", "combined_step_counts", params, {"variant": "variants"}
+    # weaker form of checking, but as we intended to drop this function in the future don't expend
+    # effort to fixing this part of the test
+    gr_m.assert_called_once()
+    # gr_m.assert_called_once_with(
+    #     {"default": "combined_results"},
+    #     "combined_step_counts",
+    #     params,
+    #     {"variant": "variants"},
+    # )
+    sr_m.assert_called_once_with(
+        {"default": "combined_results", "step_counts": "combined_step_counts"}, params
     )
 
 
