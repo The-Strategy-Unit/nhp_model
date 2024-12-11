@@ -46,11 +46,19 @@
       "request": "launch",
       "program": "run_model.py",
       "args": [
-        "queue/sample_params.json",
+        "${input:params_file}",
         "-d=${config:nhp.data_path}",
         "--type=all"
       ],
       "console": "integratedTerminal"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "params_file",
+      "type": "promptString",
+      "description": "Path to parameters file",
+      "default": "queue/sample_params.json"
     }
   ]
 }
