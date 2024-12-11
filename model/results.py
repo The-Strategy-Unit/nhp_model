@@ -33,10 +33,14 @@ def _complete_model_runs(
     :return: combined and completed data frame
     :rtype: pd.DataFrame
     """
-    res = pd.concat(res)
+    results = pd.concat(res)
+    results = results.groupby(
+        [i for i in results.columns if i != "value"], as_index=False
+    )["value"].sum()
+
     return janitor.complete(
-        res,
-        [i for i in res.columns if i != "model_run" if i != "value"],
+        results,
+        [i for i in results.columns if i != "model_run" if i != "value"],
         {"model_run": range(0 if include_baseline else 1, model_runs + 1)},
         fill_value={"value": 0},
     )
