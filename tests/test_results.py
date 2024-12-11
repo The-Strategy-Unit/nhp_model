@@ -30,6 +30,9 @@ def test_complete_model_runs_include_baseline():
         ]
     )
 
+    # duplicate the dataframe to test it properly reaggregates
+    df = pd.concat([df, df])
+
     results = [df.assign(a=0), df.assign(a=1, value=lambda r: r["value"] + 100)]
 
     # act
@@ -37,7 +40,7 @@ def test_complete_model_runs_include_baseline():
 
     # assert
     # we should have added in two (missing) rows
-    assert len(actual) == sum(len(i) + 1 for i in results)
+    assert len(actual) * 2 == sum(len(i) + 2 for i in results)
     # but the sum of the value column should be unchanged
     assert actual["value"].sum() == sum(i["value"].sum() for i in results)
     # each group should have 3 model runs + baseline
