@@ -2,7 +2,7 @@
 
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name, missing-function-docstring
 
-from unittest.mock import mock_open, patch
+from unittest.mock import Mock, call, mock_open, patch
 
 import pandas as pd
 import pytest
@@ -11,6 +11,8 @@ from model.results import (
     _combine_model_results,
     _combine_step_counts,
     _complete_model_runs,
+    _save_params_file,
+    _save_parquet_file,
     combine_results,
     generate_results_json,
     save_results_files,
@@ -182,7 +184,6 @@ def test_generate_results_json(mocker):
 
     os_m = mocker.patch("os.makedirs")
     jd_m = mocker.patch("json.dump")
-    save_m = mocker.patch("model.results.save_results_files")
 
     json_content = {
         "default": [
@@ -271,7 +272,6 @@ def test_generate_results_json(mocker):
         },
         mock_file(),
     )
-    save_m.assert_called_once_with(json_content, params)
 
 
 def test_combine_results(mocker):
@@ -294,31 +294,67 @@ def test_combine_results(mocker):
 
 def test_save_results_files(mocker):
     # arrange
-    results = {"one": ""}
+    results = {"default": "default_df", "step_counts": "step_counts_df"}
     params = {
         "dataset": "synthetic",
         "scenario": "test",
         "create_datetime": "create_datetime",
     }
 
-    mocker.patch("pandas.DataFrame")
-    mocker.patch("json.dump")
-    pq_m = mocker.patch("pandas.DataFrame.to_parquet")
-    os_m = mocker.patch("os.makedirs")
-
-    expected = [
-        "results/synthetic/test/create_datetime/one.parquet",
-        "results/synthetic/test/create_datetime/params.json",
-    ]
-    # act
-    with patch("builtins.open", mock_open()) as mock_file:
-        actual = save_results_files(results, params)
-    # assert
-
-    assert actual == expected
-    assert os_m.called_once_with(
-        "results/synthetic/test/create_datetime", exist_ok=True
+    save_parquet_mock = mocker.patch(
+        "model.results._save_parquet_file",
+        side_effect=["default.parquet", "step_counts.parquet"],
+    )
+    save_params_mock = mocker.patch(
+        "model.results._save_params_file", return_value="params.json"
     )
 
-    assert pq_m.called_once_with(expected[0])
-    mock_file.assert_called_once_with(expected[1], "w", encoding="utf-8")
+    os_m = mocker.patch("os.makedirs")
+
+    path = "results/synthetic/test/create_datetime"
+
+    expected = [
+        "default.parquet",
+        "step_counts.parquet",
+        "params.json",
+    ]
+
+    # act
+    actual = save_results_files(results, params)
+
+    # assert
+    assert actual == expected
+    assert os_m.called_once_with(path, exist_ok=True)
+
+    assert save_parquet_mock.call_args_list == [
+        call(path, "default", "default_df"),
+        call(path, "step_counts", "step_counts_df"),
+    ]
+
+    assert save_params_mock.called_once_with(path, params)
+
+
+def test_save_parquet_file():
+    # arrange
+    df = Mock()
+
+    # act
+    actual = _save_parquet_file("path", "file", df)
+
+    # assert
+    assert actual == "path/file.parquet"
+    df.to_parquet.assert_called_once_with(actual)
+
+
+def test_save_params_file(mocker):
+    # arrange
+    j_mock = mocker.patch("json.dump")
+
+    # act
+    with patch("builtins.open", mock_open()) as mock_file:
+        actual = _save_params_file("path", "params")
+
+    # assert
+    assert actual == "path/params.json"
+    mock_file.assert_called_once_with(actual, "w", encoding="utf-8")
+    j_mock.assert_called_once_with("params", mock_file())

@@ -5,14 +5,14 @@ This module allows you to work with the results of the model. Namely, combining 
 into a single panda's dataframe, and helping with saving the results files.
 """
 
+import json
 import logging
+import os
 from typing import List
 
 # janitor complains of being unused, but it is used (.complete())
 import janitor  # pylint: disable=unused-import
 import pandas as pd
-import os
-import json
 
 
 def _complete_model_runs(
@@ -150,8 +150,6 @@ def generate_results_json(
         if i["strategy"] == "-":
             i.pop("strategy")
 
-    saved_files = save_results_files(dict_results, params)
-
     filename = f"{params['dataset']}/{params['scenario']}-{params['create_datetime']}"
     os.makedirs(f"results/{params['dataset']}", exist_ok=True)
     with open(f"results/{filename}.json", "w", encoding="utf-8") as file:
@@ -166,7 +164,7 @@ def generate_results_json(
     return filename
 
 
-def save_results_files(dict_results: dict, params: dict) -> list:
+def save_results_files(results: dict, params: dict) -> list:
     """Saves aggregated and combined results as parquet, and params as JSON
 
     :param dict_results: the results of running the models, processed into one dictionary
@@ -180,18 +178,42 @@ def save_results_files(dict_results: dict, params: dict) -> list:
         f"results/{params['dataset']}/{params['scenario']}/{params['create_datetime']}"
     )
     os.makedirs(path, exist_ok=True)
-    saved_files = []
-    # results
-    for k, v in dict_results.items():
-        filepath = f"{path}/{k}.parquet"
-        pd.DataFrame(v).to_parquet(filepath)
-        saved_files.append(filepath)
-    # params
-    filepath = f"{path}/params.json"
-    with open(filepath, "w", encoding="utf-8") as file:
+
+    return [
+        *[_save_parquet_file(path, k, v) for k, v in results.items()],
+        _save_params_file(path, params),
+    ]
+
+
+def _save_parquet_file(path: str, results_name: str, df: pd.DataFrame) -> str:
+    """Save a results dataframe as parquet
+
+    :param path: the folder where we want to save the results to
+    :type path: str
+    :param results_name: the name of this aggregation
+    :type results_name: str
+    :param df: the results dataframe
+    :type df: pd.DataFrame
+    :return: the filename of the saved file
+    :rtype: str
+    """
+    df.to_parquet(filename := f"{path}/{results_name}.parquet")
+    return filename
+
+
+def _save_params_file(path: str, params: dict) -> str:
+    """Save the model runs parameters as json
+
+    :param path: the folder where we want to save the results to
+    :type path: str
+    :param params: the parameters the model was run with
+    :type params: dict
+    :return: the filename of the saved file
+    :rtype: str
+    """
+    with open(filename := f"{path}/params.json", "w", encoding="utf-8") as file:
         json.dump(params, file)
-    saved_files.append(filepath)
-    return saved_files
+    return filename
 
 
 def combine_results(results: list) -> dict:

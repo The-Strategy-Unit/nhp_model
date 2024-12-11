@@ -14,7 +14,6 @@ will run a single run of the inpatients model, returning the results to display.
 """
 
 import argparse
-import json
 import logging
 import os
 import time
@@ -31,7 +30,7 @@ from model.inpatients import InpatientsModel
 from model.model import Model
 from model.model_run import ModelRun
 from model.outpatients import OutpatientsModel
-from model.results import combine_results, generate_results_json
+from model.results import combine_results, generate_results_json, save_results_files
 
 
 class tqdm(base_tqdm):  # pylint: disable=inconsistent-mro, invalid-name
@@ -159,9 +158,14 @@ def run_all(
         ]
     )
 
-    filename = generate_results_json(results, step_counts, params, run_params)
+    json_filename = generate_results_json(results, step_counts, params, run_params)
 
-    return filename
+    # TODO: once generate_results_json is deperecated this step should be moved into combine_results
+    results["step_counts"] = step_counts
+    # TODO: this should be what the model returns once generate_results_json is deprecated
+    other_files = save_results_files(results, params)  # pylint: disable=unused-variable
+
+    return json_filename
 
 
 def run_single_model_run(
