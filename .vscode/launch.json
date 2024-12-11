@@ -5,50 +5,14 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Inpatients (principal) Run Model",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "run_model.py",
-      "args": [
-        "queue/sample_params.json",
-        "-d=${config:nhp.data_path}",
-        "--type=ip"
-      ],
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "Outpatients (principal) Run Model",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "run_model.py",
-      "args": [
-        "queue/sample_params.json",
-        "-d=${config:nhp.data_path}",
-        "--type=op"
-      ],
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "A&E (principal) Run Model",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "run_model.py",
-      "args": [
-        "queue/sample_params.json",
-        "-d=${config:nhp.data_path}",
-        "--type=aae"
-      ],
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "Full Model Run",
+      "name": "Run Model",
       "type": "debugpy",
       "request": "launch",
       "program": "run_model.py",
       "args": [
         "${input:params_file}",
         "-d=${config:nhp.data_path}",
-        "--type=all"
+        "--type=${input:type}"
       ],
       "console": "integratedTerminal"
     }
@@ -59,6 +23,17 @@
       "type": "promptString",
       "description": "Path to parameters file",
       "default": "queue/sample_params.json"
+    },
+    {
+      "id": "type",
+      "type": "pickString",
+      "description": "Model Run Type",
+      "options": [
+        "ip",
+        "op",
+        "aae",
+        "full"
+      ]
     }
   ]
 }
