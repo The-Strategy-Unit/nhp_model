@@ -312,7 +312,7 @@ class DatabricksNational(Data):
         :rtype: pd.DataFrame
         """
         return (
-            self._spark.read.table("hsa_activity_tables")
+            self._spark.read.table("hsa_activity_tables_NATIONAL")
             .filter(F.col("fyear") == self._fyear)
             .groupBy("hsagrp", "sex", "age")
             .agg(F.mean("activity").alias("activity"))
