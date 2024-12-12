@@ -230,11 +230,12 @@ class ActivityResampling:
         )
 
         row_samples = rng.poisson(overall_factor)
-        # apply the random sampling, update the data and get the counts
-        data = self._model_run.model.apply_resampling(row_samples, self.data)
 
         step_counts = self._model_run.fix_step_counts(
             self.data, row_samples, factors, "model_interaction_term"
         ).assign(strategy="-")
+
+        # apply the random sampling, update the data and get the counts
+        data = self._model_run.model.apply_resampling(row_samples, self.data)
 
         return data, step_counts
