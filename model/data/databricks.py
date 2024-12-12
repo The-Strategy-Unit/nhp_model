@@ -138,9 +138,9 @@ class Databricks(Data):
         """
         return (
             self._spark.read.table("hsa_activity_tables")
-            .filter(F.col("provider") == self._dataset)
+            .filter(F.col("dataset") == self._dataset)
             .filter(F.col("fyear") == self._fyear)
-            .drop("provider", "fyear")
+            .drop("dataset", "fyear")
             .toPandas()
         )
 
