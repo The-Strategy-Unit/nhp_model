@@ -25,11 +25,15 @@ class RunWithLocalStorage:
     def __init__(self, filename: str):
         self.params = load_params(f"queue/{filename}")
 
-    def finish(self, results_file: str, save_full_model_results: bool) -> None:
+    def finish(
+        self, results_file: str, saved_files: list, save_full_model_results: bool
+    ) -> None:
         """Post model run steps
 
         :param results_file: the path to the results file
         :type results_file: str
+        :param saved_files: filepaths of results, saved in parquet format and params in json format
+        :type saved_files: list
         :param save_full_model_results: whether to save the full model results or not
         :type save_full_model_results: bool
         """
@@ -115,7 +119,7 @@ class RunWithAzureStorage:
                     file_client = fs_client.get_file_client(filename)
                     local_file.write(file_client.download_file().readall())
 
-    def _upload_results(self, results_file: str, metadata: dict) -> None:
+    def _upload_results_json(self, results_file: str, metadata: dict) -> None:
         """Upload the results
 
         once the model has run, upload the results to blob storage
@@ -134,6 +138,25 @@ class RunWithAzureStorage:
                 metadata=metadata,
                 overwrite=True,
             )
+
+    def _upload_results_parquet(self, files: list) -> None:
+        """Upload the results
+
+        once the model has run, upload the results as parquet to blob storage
+
+        :param files: list of files to be uploaded
+        :type files: list
+
+        """
+        container = self._get_container("results")
+        for file in files:
+            filename = file[8:]
+            with open(file, "rb") as f:
+                container.upload_blob(
+                    f"aggregated-model-results/{self._app_version}/{filename}",
+                    f.read(),
+                    overwrite=True,
+                )
 
     def _upload_full_model_results(self) -> None:
         container = self._get_container("results")
@@ -162,11 +185,15 @@ class RunWithAzureStorage:
 
         self._queue_blob.delete_blob()
 
-    def finish(self, results_file: str, save_full_model_results: bool) -> None:
+    def finish(
+        self, results_file: str, saved_files: list, save_full_model_results: bool
+    ) -> None:
         """Post model run steps
 
         :param results_file: the path to the results file
         :type results_file: str
+        :param saved_files: filepaths of results, saved in parquet format and params in json format
+        :type saved_files: list
         :param save_full_model_results: whether to save the full model results or not
         :type save_full_model_results: bool
         """
@@ -175,7 +202,8 @@ class RunWithAzureStorage:
             for k, v in self.params.items()
             if not isinstance(v, dict) and not isinstance(v, list)
         }
-        self._upload_results(results_file, metadata)
+        self._upload_results_json(results_file, metadata)
+        self._upload_results_parquet(saved_files)
         if save_full_model_results:
             self._upload_full_model_results()
         self._cleanup()
@@ -253,11 +281,11 @@ def main():
     logging.info("end_year:     %s", runner.params["end_year"])
     logging.info("app_version:  %s", runner.params["app_version"])
 
-    results_file = run_all(
+    saved_files, results_file = run_all(
         runner.params, "data", runner.progress_callback, args.save_full_model_results
     )
 
-    runner.finish(results_file, args.save_full_model_results)
+    runner.finish(results_file, saved_files, args.save_full_model_results)
 
     logging.info("complete")
 
