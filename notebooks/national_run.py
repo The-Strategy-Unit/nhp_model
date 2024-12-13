@@ -21,7 +21,7 @@
 # MAGIC     --auth-mode login `
 # MAGIC     --as-user `
 # MAGIC     --output tsv
-# MAGIC     
+# MAGIC
 # MAGIC
 # MAGIC echo $sas_token | databricks secrets put-secret nhpsa-results sas-token
 # MAGIC ```
@@ -34,22 +34,23 @@ dbutils.widgets.text("sample_rate", "0.01", "Sample Rate")
 # COMMAND ----------
 
 import sys
+
 sys.path.append(spark.conf.get("bundle.sourcePath", "."))
 
+import gzip
 import json
 import os
-import gzip
 from datetime import datetime
-from azure.storage.blob import ContainerClient
 
 import pandas as pd
 import pyspark.sql.functions as F
+from azure.storage.blob import ContainerClient
 
 import model as mdl
 from model.data.databricks import DatabricksNational
 from model.health_status_adjustment import HealthStatusAdjustmentInterpolated
-from run_model import _run_model
 from model.results import combine_results
+from run_model import _run_model
 
 os.environ["BATCH_SIZE"] = "8"
 
@@ -76,7 +77,7 @@ spark.catalog.setCurrentDatabase("nhp")
 SAMPLE_RATE = float(dbutils.widgets.get("sample_rate"))
 
 if not 0 < SAMPLE_RATE <= 1:
-  raise ValueError("Sample rate must be between 0 and 1")
+    raise ValueError("Sample rate must be between 0 and 1")
 
 nhp_data = DatabricksNational.create(spark, SAMPLE_RATE, params["seed"])
 runtime = datetime.now().strftime(format="%Y%m%d-%H%M%S")
@@ -151,43 +152,17 @@ results_dict["aae"] = _run_model(
 
 # COMMAND ----------
 
-results, stepcounts = combine_results(list(results_dict.values()))
+results, step_counts = combine_results(list(results_dict.values()))
+results["step_counts"] = step_counts
 
-# COMMAND ----------
 
-# MAGIC %md
-# MAGIC ## Scale results back up
+def multiply_results_by_sample_rate(results, sample_rate):
+    for res in results.values():
+        res["value"] /= sample_rate
 
-# COMMAND ----------
 
-from model.results import generate_results_json
-
-results_file = generate_results_json(results, stepcounts, params, run_params)
-with open(f'results/{results_file}.json') as f:
-    processed_results = json.load(f)
-
-# COMMAND ----------
-
-processed_results['results'].keys()
-
-# COMMAND ----------
-
-def multiply_results_by_sample_rate(results, key, sample_rate):
-  for res in results[key]:
-    if key == "step_counts":
-      fn = lambda x: x / sample_rate
-    else:
-      fn = lambda x: round(x / sample_rate)
-
-    if "baseline" in res:
-      res["baseline"] = fn(res["baseline"])
-    res["model_runs"] = [fn(r) for r in res["model_runs"]]
-    if "time_profiles" in res:
-      res["time_profiles"] = [fn(r) for r in res["time_profiles"]]
-
-for k in processed_results['results'].keys():
-  multiply_results_by_sample_rate(processed_results['results'], k, SAMPLE_RATE)
-
+multiply_results_by_sample_rate(results, SAMPLE_RATE)
+results
 
 # COMMAND ----------
 
@@ -197,23 +172,27 @@ for k in processed_results['results'].keys():
 # COMMAND ----------
 
 (
-  pd.DataFrame(stepcounts)
-  .groupby("change_factor")
-  ["value"].mean()
+    results["step_counts"]
+    .groupby(["pod", "change_factor", "measure", "model_run"])["value"]
+    .sum()
+    .groupby(["pod", "change_factor", "measure"])
+    .mean()
 )
 
 # COMMAND ----------
 
-pd.options.display.float_format = '{:20,.0f}'.format
-df = (
-    pd.DataFrame(processed_results['results']['default'])
-    .rename(columns={"model_runs": "value"})
-    .assign(model_run=lambda x: x["value"].apply(lambda y: list(range(len(y)))))
-    .explode(["model_run", "value"])
-    .reset_index(drop=True)
-)
 
-df.groupby(["pod", "measure", "baseline"]).agg(value=("value", "mean")).round(0)
+def get_principal(df):
+    cols = [i for i in df.columns if i != "value" if i != "model_run"]
+    df = df.set_index(cols)
+
+    baseline = df.query("model_run == 0")["value"].rename("baseline")
+    principal = df.groupby(level=cols)["value"].mean().rename("principal")
+
+    return pd.concat([baseline, principal], axis=1)
+
+
+get_principal(results["default"])
 
 # COMMAND ----------
 
@@ -226,7 +205,7 @@ df.groupby(["pod", "measure", "baseline"]).agg(value=("value", "mean")).round(0)
 
 filename = f"{params['dataset']}-{params['scenario']}-{runtime}"
 
-with open(f'results/{results_file}.json') as f:
+with open(f"results/{results_file}.json") as f:
     file_contents = f.read()
     zipped_results = gzip.compress(file_contents).encode("utf-8")
 
@@ -237,11 +216,13 @@ metadata = {
 }
 
 # Metadata "dataset" needs to be SYNTHETIC otherwise it will not be viewable in outputs
-metadata['dataset'] = 'synthetic'
+metadata["dataset"] = "synthetic"
 
 # COMMAND ----------
 
 url = dbutils.secrets.get("nhpsa-results", "url")
 sas = dbutils.secrets.get("nhpsa-results", "sas-token")
 cont = ContainerClient.from_container_url(f"{url}?{sas}")
-cont.upload_blob(f'prod/dev/synthetic/{filename}.json.gz', zipped_results, metadata=metadata)
+cont.upload_blob(
+    f"prod/dev/synthetic/{filename}.json.gz", zipped_results, metadata=metadata
+)
