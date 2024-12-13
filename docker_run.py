@@ -139,10 +139,10 @@ class RunWithAzureStorage:
                 overwrite=True,
             )
 
-    def _upload_results_parquet(self, files: list) -> None:
+    def _upload_results_files(self, files: list) -> None:
         """Upload the results
 
-        once the model has run, upload the results as parquet to blob storage
+        once the model has run, upload the files (parquet for model results and json for model params) to blob storage
 
         :param files: list of files to be uploaded
         :type files: list
@@ -203,7 +203,7 @@ class RunWithAzureStorage:
             if not isinstance(v, dict) and not isinstance(v, list)
         }
         self._upload_results_json(results_file, metadata)
-        self._upload_results_parquet(saved_files)
+        self._upload_results_files(saved_files)
         if save_full_model_results:
             self._upload_full_model_results()
         self._cleanup()

@@ -229,7 +229,7 @@ def test_RunWithAzureStorage_upload_results_json(mock_run_with_azure_storage, mo
     )
 
 
-def test_RunWithAzureStorage_upload_results_parquet(
+def test_RunWithAzureStorage_upload_results_files(
     mock_run_with_azure_storage, mocker
 ):
     # arrange
@@ -239,7 +239,7 @@ def test_RunWithAzureStorage_upload_results_parquet(
 
     # act
     with patch("builtins.open", mock_open(read_data="data")) as mock_file:
-        s._upload_results_parquet(["results/filename"])
+        s._upload_results_files(["results/filename"])
 
     # assert
     mock_file.assert_called_once_with("results/filename", "rb")
@@ -303,7 +303,7 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
     # arrange
     s = mock_run_with_azure_storage
     m1 = mocker.patch("docker_run.RunWithAzureStorage._upload_results_json")
-    m2 = mocker.patch("docker_run.RunWithAzureStorage._upload_results_parquet")
+    m2 = mocker.patch("docker_run.RunWithAzureStorage._upload_results_files")
     m3 = mocker.patch("docker_run.RunWithAzureStorage._upload_full_model_results")
     m4 = mocker.patch("docker_run.RunWithAzureStorage._cleanup")
 
@@ -330,7 +330,7 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
     # arrange
     s = mock_run_with_azure_storage
     m1 = mocker.patch("docker_run.RunWithAzureStorage._upload_results_json")
-    m2 = mocker.patch("docker_run.RunWithAzureStorage._upload_results_parquet")
+    m2 = mocker.patch("docker_run.RunWithAzureStorage._upload_results_files")
     m3 = mocker.patch("docker_run.RunWithAzureStorage._upload_full_model_results")
     m4 = mocker.patch("docker_run.RunWithAzureStorage._cleanup")
 
