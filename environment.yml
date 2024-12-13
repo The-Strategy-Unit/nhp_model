@@ -11,6 +11,7 @@ dependencies:
   - fastparquet=2023.2.*
   - numpy=1.23.*
   - pandas=1.5.*
+  - pyjanitor=0.23.*
   - python-dotenv=1.0.*
   - scipy=1.10.*
   - tqdm=4.65.*
@@ -31,7 +32,6 @@ dependencies:
   - nbformat=5.7.*
   - notebook=6.5.*
   - pygam=0.8.*
-  - pyjanitor=0.23.*
   - pylint=2.16.*
   - pytest=7.2.*
   - pytest-cov=4.0.*
