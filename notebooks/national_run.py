@@ -227,7 +227,8 @@ df.groupby(["pod", "measure", "baseline"]).agg(value=("value", "mean")).round(0)
 filename = f"{params['dataset']}-{params['scenario']}-{runtime}"
 
 with open(f'results/{results_file}.json') as f:
-    zipped_results = gzip.compress(f).encode("utf-8")
+    file_contents = f.read()
+    zipped_results = gzip.compress(file_contents).encode("utf-8")
 
 metadata = {
     k: str(v)
