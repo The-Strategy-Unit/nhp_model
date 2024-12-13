@@ -163,9 +163,9 @@ def run_all(
     # TODO: once generate_results_json is deperecated this step should be moved into combine_results
     results["step_counts"] = step_counts
     # TODO: this should be what the model returns once generate_results_json is deprecated
-    other_files = save_results_files(results, params)  # pylint: disable=unused-variable
+    saved_files = save_results_files(results, params)  # pylint: disable=unused-variable
 
-    return json_filename
+    return saved_files, json_filename
 
 
 def run_single_model_run(

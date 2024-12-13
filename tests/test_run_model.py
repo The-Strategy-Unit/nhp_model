@@ -94,7 +94,7 @@ def test_run_all(mocker):
     actual = run_all(params, "data_path", pc_m, False)
 
     # assert
-    assert actual == "results_json_path"
+    assert actual == ("results_paths", "results_json_path")
 
     nd_m.create.assert_called_once_with("data_path")
     nd_c = nd_m.create()

@@ -151,12 +151,24 @@ results_dict["aae"] = _run_model(
 
 # COMMAND ----------
 
-results = combine_results(list(results_dict.values()))
+results, stepcounts = combine_results(list(results_dict.values()))
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Scale results back up
+
+# COMMAND ----------
+
+from model.results import generate_results_json
+
+results_file = generate_results_json(results, stepcounts, params, run_params)
+with open(f'results/{results_file}.json') as f:
+    processed_results = json.load(f)
+
+# COMMAND ----------
+
+processed_results['results'].keys()
 
 # COMMAND ----------
 
@@ -173,8 +185,9 @@ def multiply_results_by_sample_rate(results, key, sample_rate):
     if "time_profiles" in res:
       res["time_profiles"] = [fn(r) for r in res["time_profiles"]]
 
-for k in results.keys():
-  multiply_results_by_sample_rate(results, k, SAMPLE_RATE)
+for k in processed_results['results'].keys():
+  multiply_results_by_sample_rate(processed_results['results'], k, SAMPLE_RATE)
+
 
 # COMMAND ----------
 
@@ -184,25 +197,23 @@ for k in results.keys():
 # COMMAND ----------
 
 (
-  pd.DataFrame(results["step_counts"])
-  .query("change_factor == 'activity_avoidance'")
-  .query("measure == 'admissions'")
-  .explode("model_runs")
-  .groupby("strategy")
-  ["model_runs"].mean()
+  pd.DataFrame(stepcounts)
+  .groupby("change_factor")
+  ["value"].mean()
 )
 
 # COMMAND ----------
 
+pd.options.display.float_format = '{:20,.0f}'.format
 df = (
-    pd.DataFrame(results["default"])
+    pd.DataFrame(processed_results['results']['default'])
     .rename(columns={"model_runs": "value"})
     .assign(model_run=lambda x: x["value"].apply(lambda y: list(range(len(y)))))
     .explode(["model_run", "value"])
     .reset_index(drop=True)
 )
 
-df.groupby(["pod", "measure", "baseline"]).agg(value=("value", "mean"))
+df.groupby(["pod", "measure", "baseline"]).agg(value=("value", "mean")).round(0)
 
 # COMMAND ----------
 
@@ -215,11 +226,8 @@ df.groupby(["pod", "measure", "baseline"]).agg(value=("value", "mean"))
 
 filename = f"{params['dataset']}-{params['scenario']}-{runtime}"
 
-zipped_results = gzip.compress(json.dumps({
-            "params": params,
-            "population_variants": run_params["variant"],
-            "results": results,
-        }).encode("utf-8"))
+with open(f'results/{results_file}.json') as f:
+    zipped_results = gzip.compress(f).encode("utf-8")
 
 metadata = {
     k: str(v)
