@@ -319,12 +319,12 @@ class Model:
             .drop(columns="rn")
         )
 
-        keep_activity = rng.binomial(1, factors_aa.prod(axis=1))
+        row_samples = rng.binomial(data_counts.astype("int"), factors_aa.prod(axis=1))
 
         step_counts = (
             model_run.fix_step_counts(
                 data,
-                keep_activity * data_counts,
+                row_samples,
                 factors_aa,
                 "activity_avoidance_interaction_term",
             )
@@ -332,7 +332,10 @@ class Model:
             .assign(change_factor="activity_avoidance")
         )
 
-        return data[keep_activity.astype("bool")], step_counts
+        return (
+            self.apply_resampling(row_samples, data),
+            step_counts,
+        )
 
     # pylint: disable=invalid-name
     def go(self, model_run: int) -> dict:

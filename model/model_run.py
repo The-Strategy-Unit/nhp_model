@@ -26,10 +26,9 @@ class ModelRun:
 
         self._patch_run_params()
 
-        self.step_counts = {}
-
         # data is mutated, so is not a property
         self.data = model.data.copy()
+        self.data_steps = {}
         self.step_counts = None
 
         # run the model
@@ -79,7 +78,13 @@ class ModelRun:
         )
 
         data_aa, step_counts_aa = self.model.activity_avoidance(data_ar, self)
-        data_ef, step_counts_ef = self.model.efficiencies(data_aa, self)
+        data_ef, step_counts_ef = self.model.efficiencies(data_aa.copy(), self)
+
+        self.data_steps = {
+            "resampling": data_ar,
+            "avoidance": data_aa,
+            "efficiencies": data_ef,
+        }
 
         self.data = data_ef
         self.step_counts = pd.concat(
