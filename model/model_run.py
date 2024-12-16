@@ -77,7 +77,7 @@ class ModelRun:
             .apply_resampling()
         )
 
-        data_aa, step_counts_aa = self.model.activity_avoidance(data_ar, self)
+        data_aa, step_counts_aa = self.model.activity_avoidance(data_ar.copy(), self)
         data_ef, step_counts_ef = self.model.efficiencies(data_aa.copy(), self)
 
         self.data_steps = {
