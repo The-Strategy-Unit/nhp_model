@@ -49,7 +49,7 @@ from azure.storage.blob import ContainerClient
 import model as mdl
 from model.data.databricks import DatabricksNational
 from model.health_status_adjustment import HealthStatusAdjustmentInterpolated
-from model.results import combine_results
+from model.results import combine_results, generate_results_json
 from run_model import _run_model
 
 os.environ["BATCH_SIZE"] = "8"
@@ -153,6 +153,9 @@ results_dict["aae"] = _run_model(
 # COMMAND ----------
 
 results, step_counts = combine_results(list(results_dict.values()))
+# craete the json file before adding step counts into results
+json_filename = generate_results_json(results, step_counts, params, run_params)
+
 results["step_counts"] = step_counts
 
 
@@ -203,9 +206,8 @@ get_principal(results["default"])
 
 # COMMAND ----------
 
-filename = f"{params['dataset']}-{params['scenario']}-{runtime}"
 
-with open(f"results/{results_file}.json") as f:
+with open(json_filename, "r", encoding="utf8") as f:
     file_contents = f.read()
     zipped_results = gzip.compress(file_contents).encode("utf-8")
 
