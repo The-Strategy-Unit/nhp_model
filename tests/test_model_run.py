@@ -44,7 +44,8 @@ def test_init(mocker, run, rp_call):
     assert actual.run_params == {"seed": 1}
     assert actual.rng == "rng"
     assert actual.data == "data"
-    assert not actual.step_counts
+    assert actual.step_counts is None
+    assert not actual.data_steps
 
     rng_mock.assert_called_once_with(1)
     prp_mock.assert_called_once_with()
@@ -111,8 +112,6 @@ def test_run(mocker, mock_model_run):
     # arrange
     mr_mock = mock_model_run
     mr_mock.model_run = 1
-    mr_mock.model.activity_avoidance.return_value = "data_aa", "step_counts_aa"
-    mr_mock.model.efficiencies.return_value = "data_ef", "step_counts_ef"
     mr_mock.model.baseline_step_counts = "step_counts_baseline"
 
     ar_mock = mocker.patch("model.model_run.ActivityResampling")
@@ -126,7 +125,12 @@ def test_run(mocker, mock_model_run):
     ar_mock.waiting_list_adjustment.return_value = ar_mock
     ar_mock.baseline_adjustment.return_value = ar_mock
     ar_mock.non_demographic_adjustment.return_value = ar_mock
-    ar_mock.apply_resampling.return_value = "data_ar", "step_counts_ar"
+
+    ar_mock.apply_resampling.return_value = (data_ar_mock := Mock()), "step_counts_ar"
+    mr_mock.model.activity_avoidance.return_value = (
+        data_aa_mock := Mock()
+    ), "step_counts_aa"
+    mr_mock.model.efficiencies.return_value = (data_ef_mock := Mock()), "step_counts_ef"
 
     pd_mock = mocker.patch("pandas.concat", return_value="pd.concat")
 
@@ -146,14 +150,21 @@ def test_run(mocker, mock_model_run):
     ar_mock.non_demographic_adjustment.assert_called_once()
     ar_mock.apply_resampling.assert_called_once()
 
-    mr_mock.model.activity_avoidance.assert_called_once_with("data_ar", mr_mock)
-    mr_mock.model.efficiencies.assert_called_once_with("data_aa", mr_mock)
+    mr_mock.model.activity_avoidance.assert_called_once_with(
+        data_ar_mock.copy(), mr_mock
+    )
+    mr_mock.model.efficiencies.assert_called_once_with(data_aa_mock.copy(), mr_mock)
 
     pd_mock.assert_called_once_with(
         ["step_counts_baseline", "step_counts_ar", "step_counts_aa", "step_counts_ef"]
     )
 
-    assert mr_mock.data == "data_ef"
+    assert mr_mock.data == data_ef_mock
+    assert mr_mock.data_steps == {
+        "resampling": data_ar_mock,
+        "avoidance": data_aa_mock,
+        "efficiencies": data_ef_mock,
+    }
     assert mr_mock.step_counts == "pd.concat"
 
 
