@@ -551,10 +551,11 @@ def test_activity_avoidance(
 
     data = pd.DataFrame({"rn": [1, 2, 3, 4]})
 
-    mdl.get_data_counts = Mock(return_value=[2, 3, 4, 5])
+    mdl.get_data_counts = Mock(return_value=np.array([2, 3, 4, 5]))
+    mdl.apply_resampling = Mock(return_value="apply_resampling")
 
     mr_mock = Mock()
-    mr_mock.rng.binomial.side_effect = [np.array(binomial_rv), np.array([1, 1, 0, 1])]
+    mr_mock.rng.binomial.side_effect = [np.array(binomial_rv), np.array([1, 2, 3, 4])]
 
     mdl.strategies = {
         "activity_avoidance": pd.DataFrame(
@@ -579,7 +580,7 @@ def test_activity_avoidance(
     actual_data, actual_step_counts = mdl.activity_avoidance(data, mr_mock)
 
     # assert
-    assert actual_data.to_dict("list") == {"rn": [1, 2, 4]}
+    assert actual_data == "apply_resampling"
     assert actual_step_counts.to_dict("list") == {
         "strategy": [1],
         "change_factor": ["activity_avoidance"],
@@ -592,7 +593,7 @@ def test_activity_avoidance(
         3: 0.5,
     }
 
-    assert mr_mock.rng.binomial.call_args_list[1][0][0] == 1
+    assert mr_mock.rng.binomial.call_args_list[1][0][0].tolist() == [2, 3, 4, 5]
     assert (
         mr_mock.rng.binomial.call_args_list[1][0][1].to_dict() == expected_binomial_args
     )
@@ -600,7 +601,7 @@ def test_activity_avoidance(
     assert mr_mock.fix_step_counts.call_args[0][0].to_dict("list") == {
         "rn": [1, 2, 3, 4]
     }
-    assert mr_mock.fix_step_counts.call_args[0][1].tolist() == [2, 3, 0, 5]
+    assert mr_mock.fix_step_counts.call_args[0][1].tolist() == [1, 2, 3, 4]
     assert mr_mock.fix_step_counts.call_args[0][2].to_dict("list") == expected_factors
     assert (
         mr_mock.fix_step_counts.call_args[0][3] == "activity_avoidance_interaction_term"
