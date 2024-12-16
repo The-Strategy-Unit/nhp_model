@@ -165,8 +165,6 @@ class OutpatientsModel(Model):
         :param model_run: an instance of the ModelRun class
         :type model_run: model.model_run.ModelRun
         """
-        # TODO: we need to make sure efficiences contains keys
-        data = data.copy()
         data, step_counts = self._convert_to_tele(data, model_run)
         return data, step_counts
 
