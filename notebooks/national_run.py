@@ -226,5 +226,5 @@ url = dbutils.secrets.get("nhpsa-results", "url")
 sas = dbutils.secrets.get("nhpsa-results", "sas-token")
 cont = ContainerClient.from_container_url(f"{url}?{sas}")
 cont.upload_blob(
-    f"prod/dev/synthetic/{filename}.json.gz", zipped_results, metadata=metadata
+    f"prod/dev/synthetic/{json_filename}.json.gz", zipped_results, metadata=metadata
 )
