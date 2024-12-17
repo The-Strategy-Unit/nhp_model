@@ -120,6 +120,11 @@ class AaEModel(Model):
 
     @staticmethod
     def process_data(data: pd.DataFrame) -> pd.DataFrame:
+        """Processes the data into a format suitable for aggregation in results files
+
+        :param data: Data to be processed. Format should be similar to Model.data
+        :type data: pd.DataFrame
+        """
         data["measure"] = "walk-in"
         data.loc[data["is_ambulance"], "measure"] = "ambulance"
         data.rename(columns={"arrivals": "value"}, inplace=True)

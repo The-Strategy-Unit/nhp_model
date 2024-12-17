@@ -187,6 +187,11 @@ class OutpatientsModel(Model):
 
     @staticmethod
     def process_data(data: pd.DataFrame) -> pd.DataFrame:
+        """Processes the data into a format suitable for aggregation in results files
+
+        :param data: Data to be processed. Format should be similar to Model.data
+        :type data: pd.DataFrame
+        """
         measures = data.melt(["rn"], ["attendances", "tele_attendances"], "measure")
         data = (
             data.drop(["attendances", "tele_attendances"], axis="columns")
