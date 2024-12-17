@@ -2,7 +2,7 @@
 
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring,unnecessary-lambda-assignment
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, call
 
 import numpy as np
 import pandas as pd
@@ -235,7 +235,19 @@ def test_save_results(mocker, mock_model):
 
     mr_mock = Mock()
     mr_mock.get_model_results.return_value = pd.DataFrame({"rn": [0], "arrivals": [1]})
+    mr_mock.avoided_activity = pd.DataFrame({"rn": [0], "arrivals": [1]})
 
     to_parquet_mock = mocker.patch("pandas.DataFrame.to_parquet")
     mock_model.save_results(mr_mock, path_fn)
-    to_parquet_mock.assert_called_once_with("aae/0.parquet")
+    assert to_parquet_mock.call_args_list[0] == call("aae/0.parquet")
+    assert to_parquet_mock.call_args_list[1] == call("aae_avoided/0.parquet")
+
+
+def test_calculate_avoided_activity(mock_model):
+    # arrange
+    data = pd.DataFrame({"rn": [0, 1], "arrivals": [4, 3]})
+    data_resampled = pd.DataFrame({"rn": [0, 1], "arrivals": [2, 1]})
+    # act
+    actual = mock_model.calculate_avoided_activity(data, data_resampled)
+    # assert
+    assert actual.to_dict(orient="list") == {"rn": [0, 1], "arrivals": [2, 2]}

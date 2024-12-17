@@ -337,6 +337,18 @@ class Model:
             step_counts,
         )
 
+    def calculate_avoided_activity(
+        self, data: pd.DataFrame, data_resampled: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Calculate the rows that have been avoided
+
+        :param data: The data before the binomial thinning step
+        :type data: pd.DataFrame
+        :return: The data that was avoided in the binomial thinning step
+        :rtype: pd.DataFrame
+        """
+        # implemented by concrete classes
+
     # pylint: disable=invalid-name
     def go(self, model_run: int) -> dict:
         """Run the model and get the aggregated results
@@ -344,7 +356,7 @@ class Model:
         Needed for running in a multiprocessing pool as you need a serializable method.
 
         :param model_run: the model run number we want to run
-        :type model_run: _type_
+        :type model_run: int
         :return: the aggregated model results
         :rtype: dictionary
         """

@@ -168,6 +168,23 @@ class OutpatientsModel(Model):
         data, step_counts = self._convert_to_tele(data, model_run)
         return data, step_counts
 
+    def calculate_avoided_activity(
+        self, data: pd.DataFrame, data_resampled: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Calculate the rows that have been avoided
+
+        :param data: The data before the binomial thinning step
+        :type data: pd.DataFrame
+        :return: The data that was avoided in the binomial thinning step
+        :rtype: pd.DataFrame
+        """
+        avoided = (
+            data[["attendances", "tele_attendances"]]
+            - data_resampled[["attendances", "tele_attendances"]]
+        )
+        data[["attendances", "tele_attendances"]] = avoided
+        return data
+
     def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
         """Aggregate the model results
 
@@ -220,7 +237,7 @@ class OutpatientsModel(Model):
         """Save the results of running the model
 
         This method is used for saving the results of the model run to disk as a parquet file.
-        It saves just the `rn` (row number) column and the `arrivals`, with the intention that
+        It saves just the `rn` (row number) column and the `attendances` and `tele_attendances` columns, with the intention that
         you rejoin to the original data.
 
         :param model_results: a DataFrame containing the results of a model iteration
@@ -229,3 +246,7 @@ class OutpatientsModel(Model):
         model_run.get_model_results().set_index(["rn"])[
             ["attendances", "tele_attendances"]
         ].to_parquet(f"{path_fn('op')}/0.parquet")
+
+        model_run.avoided_activity.set_index(["rn"])[
+            ["attendances", "tele_attendances"]
+        ].to_parquet(f"{path_fn('op_avoided')}/0.parquet")

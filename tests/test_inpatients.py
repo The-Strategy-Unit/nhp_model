@@ -299,6 +299,16 @@ def test_efficiencies_no_params(mocker, mock_model):
     mock.assert_not_called()
 
 
+def test_calculate_avoided_activity(mock_model):
+    # arrange
+    data = pd.DataFrame({"rn": [0, 0, 1, 2], "a": [0, 0, 1, 1]})
+    data_resampled = pd.DataFrame({"rn": [0, 1], "a": [0, 1]})
+    # act
+    actual = mock_model.calculate_avoided_activity(data, data_resampled)
+    # assert
+    assert actual.to_dict(orient="list") == {"rn": [0, 2], "a": [0, 1]}
+
+
 def test_aggregate(mock_model):
     """test that it aggregates the results correctly"""
 
@@ -407,6 +417,13 @@ def test_save_results(mocker, mock_model):
             "sitetret": [7],
         }
     )
+    mr_mock.avoided_activity = pd.DataFrame(
+        {
+            "rn": [0],
+            "classpat": [1],
+            "speldur": [5],
+        }
+    )
 
     to_parquet_mock = mocker.patch("pandas.DataFrame.to_parquet")
 
@@ -414,6 +431,7 @@ def test_save_results(mocker, mock_model):
     mock_model.save_results(mr_mock, path_fn)
 
     # assert
-    assert to_parquet_mock.call_count == 2
+    assert to_parquet_mock.call_count == 3
     assert to_parquet_mock.call_args_list[0] == call("op_conversion/0.parquet")
     assert to_parquet_mock.call_args_list[1] == call("ip/0.parquet")
+    assert to_parquet_mock.call_args_list[2] == call("ip_avoided/0.parquet")

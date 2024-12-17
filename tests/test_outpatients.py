@@ -335,7 +335,29 @@ def test_save_results(mocker, mock_model):
     mr_mock.get_model_results.return_value = pd.DataFrame(
         {"rn": [0], "attendances": [1], "tele_attendances": [2]}
     )
+    mr_mock.avoided_activity = pd.DataFrame(
+        {"rn": [0], "attendances": [1], "tele_attendances": [0]}
+    )
 
     to_parquet_mock = mocker.patch("pandas.DataFrame.to_parquet")
     mock_model.save_results(mr_mock, path_fn)
-    to_parquet_mock.assert_called_once_with("op/0.parquet")
+    assert to_parquet_mock.call_args_list == [
+        call("op/0.parquet"),
+        call("op_avoided/0.parquet"),
+    ]
+
+
+def test_calculate_avoided_activity(mock_model):
+    # arrange
+    data = pd.DataFrame({"rn": [0], "attendances": [4], "tele_attendances": [3]})
+    data_resampled = pd.DataFrame(
+        {"rn": [0], "attendances": [2], "tele_attendances": [1]}
+    )
+    # act
+    actual = mock_model.calculate_avoided_activity(data, data_resampled)
+    # assert
+    assert actual.to_dict(orient="list") == {
+        "rn": [0],
+        "attendances": [2],
+        "tele_attendances": [2],
+    }

@@ -247,6 +247,23 @@ class InpatientsModel(Model):
             ],
         )
 
+    def calculate_avoided_activity(
+        self, data: pd.DataFrame, data_resampled: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Calculate the rows that have been avoided
+
+        :param data: The data before the binomial thinning step
+        :type data: pd.DataFrame
+        :return: The data that was avoided in the binomial thinning step
+        :rtype: pd.DataFrame
+        """
+        diffs = data["rn"].value_counts() - data_resampled["rn"].value_counts()
+        rows_avoided = diffs.fillna(data["rn"].value_counts()).sort_index()
+        rows_avoided = pd.DataFrame(
+            np.sort(data["rn"].unique()).repeat(rows_avoided), columns=["rn"]
+        )
+        return rows_avoided.merge(data.drop_duplicates(), how="left", on="rn")
+
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model
 
@@ -268,6 +285,10 @@ class InpatientsModel(Model):
         # remove the op converted rows
         model_results.loc[~ip_op_row_ix, ["rn", "speldur", "classpat"]].to_parquet(
             f"{path_fn('ip')}/0.parquet"
+        )
+
+        model_run.avoided_activity.loc[:, ["rn", "speldur", "classpat"]].to_parquet(
+            f"{path_fn('ip_avoided')}/0.parquet"
         )
 
 

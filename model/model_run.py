@@ -28,8 +28,8 @@ class ModelRun:
 
         # data is mutated, so is not a property
         self.data = model.data.copy()
-        self.data_steps = {}
         self.step_counts = None
+        self.avoided_activity = None
 
         # run the model
         self._run()
@@ -80,11 +80,7 @@ class ModelRun:
         data_aa, step_counts_aa = self.model.activity_avoidance(data_ar.copy(), self)
         data_ef, step_counts_ef = self.model.efficiencies(data_aa.copy(), self)
 
-        self.data_steps = {
-            "resampling": data_ar,
-            "avoidance": data_aa,
-            "efficiencies": data_ef,
-        }
+        self.avoided_activity = self.model.calculate_avoided_activity(data_ar, data_aa)
 
         self.data = data_ef
         self.step_counts = pd.concat(

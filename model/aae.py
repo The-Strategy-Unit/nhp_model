@@ -161,6 +161,20 @@ class AaEModel(Model):
             ],
         )
 
+    def calculate_avoided_activity(
+        self, data: pd.DataFrame, data_resampled: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Calculate the rows that have been avoided
+
+        :param data: The data before the binomial thinning step
+        :type data: pd.DataFrame
+        :return: The data that was avoided in the binomial thinning step
+        :rtype: pd.DataFrame
+        """
+        avoided = data["arrivals"] - data_resampled["arrivals"]
+        data["arrivals"] = avoided
+        return data
+
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model
 
@@ -175,4 +189,7 @@ class AaEModel(Model):
         """
         model_run.get_model_results().set_index(["rn"])[["arrivals"]].to_parquet(
             f"{path_fn('aae')}/0.parquet"
+        )
+        model_run.avoided_activity.set_index(["rn"])[["arrivals"]].to_parquet(
+            f"{path_fn('aae_avoided')}/0.parquet"
         )
