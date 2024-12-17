@@ -309,19 +309,10 @@ def test_calculate_avoided_activity(mock_model):
     assert actual.to_dict(orient="list") == {"rn": [0, 2], "a": [0, 1]}
 
 
-def test_aggregate(mock_model):
-    """test that it aggregates the results correctly"""
-
+def test_process_data(mock_model):
     # arrange
-    def create_agg_stub(model_results, cols=None):
-        name = "+".join(cols) if cols else "default"
-        return {name: model_results.to_dict(orient="list")}
-
-    mdl = mock_model
-    mdl._create_agg = Mock(wraps=create_agg_stub)
     xs = list(range(6)) * 2
-
-    gmr_df = pd.DataFrame(
+    df = pd.DataFrame(
         {
             "sitetret": ["trust"] * 12,
             "age": list(range(12)),
@@ -336,11 +327,7 @@ def test_aggregate(mock_model):
             "speldur": list(range(12)),
         }
     )
-
-    gmr_df["pod"] = "ip_" + gmr_df["group"] + "_admission"
-
-    mr_mock = Mock()
-    mr_mock.get_model_results.return_value = gmr_df
+    df["pod"] = "ip_" + df["group"] + "_admission"
 
     expected = {
         "sitetret": ["trust"] * 26,
@@ -386,12 +373,34 @@ def test_aggregate(mock_model):
         + ["8-14 days"] * 3
         + ["1 day", "3 days", "4-7 days", "8-14 days"],
     }
+    # act
+    actual = mock_model.process_data(df)
+    # assert
+    assert actual.to_dict("list") == expected
+
+
+def test_aggregate(mock_model):
+    """test that it aggregates the results correctly"""
+
+    # arrange
+    def create_agg_stub(model_results, cols=None):
+        name = "+".join(cols) if cols else "default"
+        return {name: model_results.to_dict(orient="list")}
+
+    mdl = mock_model
+    mdl._create_agg = Mock(wraps=create_agg_stub)
+    mdl.process_data = Mock(return_value="processed_data")
+
+    mr_mock = Mock()
+    mr_mock.get_model_results.return_value = "model_data"
 
     # act
     actual_mr, actual_aggs = mdl.aggregate(mr_mock)
 
     # assert
-    assert actual_mr.to_dict("list") == expected
+
+    mdl.process_data.assert_called_once_with("model_data")
+    assert actual_mr == "processed_data"
     assert actual_aggs == [
         ["sex", "tretspef"],
         ["tretspef_raw"],

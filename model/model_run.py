@@ -158,6 +158,12 @@ class ModelRun:
             for v in [[], ["sex", "age_group"], ["age"], *aggregations]
         }
 
+        if self.avoided_activity is not None:
+            avoided_activity_agg = self.model.process_data(self.avoided_activity)
+            aggs["avoided_activity"] = self.model.get_agg(
+                avoided_activity_agg, "sex", "age_group"
+            )
+
         return aggs, self.get_step_counts()
 
     def get_step_counts(self):

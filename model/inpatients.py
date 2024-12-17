@@ -171,24 +171,16 @@ class InpatientsModel(Model):
 
         return efficiencies.data, efficiencies.get_step_counts()
 
-    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
-        """Aggregate the model results
+    @staticmethod
+    def process_data(data: pd.DataFrame) -> pd.DataFrame:
+        """Processes the data into a format suitable for aggregation in results files
 
-        Can also be used to aggregate the baseline data by passing in a `ModelRun` with
-        the `model_run` argument set `-1`.
-
-        :param model_run: an instance of the `ModelRun` class
-        :type model_run: model.model_run.ModelRun
-
-        :returns: a dictionary containing the different aggregations of this data
-        :rtype: dict
+        :param data: Data to be processed. Format should be similar to Model.data
+        :type data: pd.DataFrame
         """
-        model_results = model_run.get_model_results()
         # handle the type conversions: change the pod's
-        model_results.loc[model_results["classpat"] == "-2", "pod"] = (
-            "ip_elective_daycase"
-        )
-        model_results.loc[model_results["classpat"] == "-1", "pod"] = "op_procedure"
+        data.loc[data["classpat"] == "-2", "pod"] = "ip_elective_daycase"
+        data.loc[data["classpat"] == "-1", "pod"] = "op_procedure"
 
         los_groups = defaultdict(
             lambda: "22+ days",
@@ -203,8 +195,8 @@ class InpatientsModel(Model):
             },
         )
 
-        model_results = (
-            model_results.assign(
+        data = (
+            data.assign(
                 los_group=lambda x: x["speldur"].map(los_groups),
                 admissions=1,
                 beddays=lambda x: x["speldur"] + 1,
@@ -225,18 +217,33 @@ class InpatientsModel(Model):
             )[["admissions", "beddays", "procedures"]]
             .sum()
         )
-
-        # handle the outpatients rows
-        model_results.loc[
-            model_results.index.get_level_values("pod") == "op_procedure",
+        # handle any outpatients rows
+        data.loc[
+            data.index.get_level_values("pod") == "op_procedure",
             ["beddays", "procedures"],
         ] = 0
-        model_results = model_results.melt(ignore_index=False, var_name="measure")
-        model_results.loc[
-            model_results.index.get_level_values("pod") == "op_procedure", "measure"
-        ] = "attendances"
+        data = data.melt(ignore_index=False, var_name="measure")
+        data.loc[data.index.get_level_values("pod") == "op_procedure", "measure"] = (
+            "attendances"
+        )
         # remove any row where the measure value is 0
-        model_results = model_results[model_results["value"] > 0].reset_index()
+        data = data[data["value"] > 0].reset_index()
+        return data
+
+    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
+        """Aggregate the model results
+
+        Can also be used to aggregate the baseline data by passing in a `ModelRun` with
+        the `model_run` argument set `-1`.
+
+        :param model_run: an instance of the `ModelRun` class
+        :type model_run: model.model_run.ModelRun
+
+        :returns: a dictionary containing the different aggregations of this data
+        :rtype: dict
+        """
+        model_results = model_run.get_model_results()
+        model_results = self.process_data(model_results)
 
         return (
             model_results,

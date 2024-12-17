@@ -185,26 +185,11 @@ class OutpatientsModel(Model):
         data[["attendances", "tele_attendances"]] = avoided
         return data
 
-    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
-        """Aggregate the model results
-
-        Can also be used to aggregate the baseline data by passing in the raw data
-
-        :param model_results: a DataFrame containing the results of a model iteration
-        :type model_results: pandas.DataFrame
-        :param model_run: the current model run
-        :type model_run: int
-
-        :returns: a dictionary containing the different aggregations of this data
-        :rtype: dict
-        """
-        model_results = model_run.get_model_results()
-
-        measures = model_results.melt(
-            ["rn"], ["attendances", "tele_attendances"], "measure"
-        )
-        model_results = (
-            model_results.drop(["attendances", "tele_attendances"], axis="columns")
+    @staticmethod
+    def process_data(data: pd.DataFrame) -> pd.DataFrame:
+        measures = data.melt(["rn"], ["attendances", "tele_attendances"], "measure")
+        data = (
+            data.drop(["attendances", "tele_attendances"], axis="columns")
             .merge(measures, on="rn")
             # summarise the results to make the create_agg steps quicker
             .groupby(
@@ -224,6 +209,24 @@ class OutpatientsModel(Model):
             )
             .agg({"value": "sum"})
         )
+        return data
+
+    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
+        """Aggregate the model results
+
+        Can also be used to aggregate the baseline data by passing in the raw data
+
+        :param model_results: a DataFrame containing the results of a model iteration
+        :type model_results: pandas.DataFrame
+        :param model_run: the current model run
+        :type model_run: int
+
+        :returns: a dictionary containing the different aggregations of this data
+        :rtype: dict
+        """
+        model_results = model_run.get_model_results()
+
+        model_results = self.process_data(model_results)
 
         return (
             model_results,

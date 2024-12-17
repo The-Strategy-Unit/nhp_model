@@ -118,26 +118,14 @@ class AaEModel(Model):
         # A&E doesn't have any efficiencies steps
         return data, None
 
-    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
-        """Aggregate the model results
-
-        Can also be used to aggregate the baseline data by passing in a `ModelRun` with
-        the `model_run` argument set `-1`.
-
-        :param model_run: an instance of the `ModelRun` class
-        :type model_run: model.model_run.ModelRun
-
-        :returns: a dictionary containing the different aggregations of this data
-        :rtype: dict
-        """
-        model_results = model_run.get_model_results()
-
-        model_results["measure"] = "walk-in"
-        model_results.loc[model_results["is_ambulance"], "measure"] = "ambulance"
-        model_results.rename(columns={"arrivals": "value"}, inplace=True)
+    @staticmethod
+    def process_data(data: pd.DataFrame) -> pd.DataFrame:
+        data["measure"] = "walk-in"
+        data.loc[data["is_ambulance"], "measure"] = "ambulance"
+        data.rename(columns={"arrivals": "value"}, inplace=True)
 
         # summarise the results to make the create_agg steps quicker
-        model_results = model_results.groupby(
+        data = data.groupby(
             # note: any columns used in the calls to _create_agg, including pod and measure
             # must be included below
             [
@@ -152,6 +140,22 @@ class AaEModel(Model):
             ],
             as_index=False,
         ).agg({"value": "sum"})
+        return data
+
+    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
+        """Aggregate the model results
+
+        Can also be used to aggregate the baseline data by passing in a `ModelRun` with
+        the `model_run` argument set `-1`.
+
+        :param model_run: an instance of the `ModelRun` class
+        :type model_run: model.model_run.ModelRun
+
+        :returns: a dictionary containing the different aggregations of this data
+        :rtype: dict
+        """
+        model_results = model_run.get_model_results()
+        model_results = self.process_data(model_results)
 
         return (
             model_results,

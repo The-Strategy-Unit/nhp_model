@@ -273,19 +273,9 @@ def test_efficiencies(mock_model):
     assert mdl._convert_to_tele.call_args[0][1] == "model_run"
 
 
-def test_aggregate(mock_model):
-    """test that it aggregates the results correctly"""
-
+def test_process_data(mock_model):
     # arrange
-    def create_agg_stub(model_results, cols=None):
-        name = "+".join(cols) if cols else "default"
-        return {name: model_results.to_dict(orient="list")}
-
-    mdl = mock_model
-    mdl._create_agg = Mock(wraps=create_agg_stub)
-
-    mr_mock = Mock()
-    mr_mock.get_model_results.return_value = pd.DataFrame(
+    df = pd.DataFrame(
         {
             "sitetret": ["trust"] * 4,
             "is_first": [True, True, False, False],
@@ -301,7 +291,6 @@ def test_aggregate(mock_model):
             "pod": ["op_first", "op_procedure", "op_follow-up", "op_procedure"],
         }
     )
-
     expected = {
         "pod": [
             k for k in ["op_first", "op_follow-up", "op_procedure"] for _ in [0, 1]
@@ -315,12 +304,33 @@ def test_aggregate(mock_model):
         "tretspef_raw": [1] * 6,
         "value": [5, 9, 7, 11, 14, 22],
     }
+    # act
+    actual = mock_model.process_data(df)
+    # assert
+    assert actual.to_dict("list") == expected
+
+
+def test_aggregate(mock_model):
+    """test that it aggregates the results correctly"""
+
+    # arrange
+    def create_agg_stub(model_results, cols=None):
+        name = "+".join(cols) if cols else "default"
+        return {name: model_results.to_dict(orient="list")}
+
+    mdl = mock_model
+    mdl._create_agg = Mock(wraps=create_agg_stub)
+    mdl.process_data = Mock(return_value="processed_data")
+
+    mr_mock = Mock()
+    mr_mock.get_model_results.return_value = "model_results"
 
     # act
     actual_mr, actual_aggs = mdl.aggregate(mr_mock)
 
     # assert
-    assert actual_mr.to_dict("list") == expected
+    mdl.process_data.assert_called_once_with("model_results")
+    assert actual_mr == "processed_data"
     assert actual_aggs == [
         ["sex", "tretspef"],
         ["tretspef_raw"],

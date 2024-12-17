@@ -190,9 +190,26 @@ def test_aggregate(mock_model):
 
     mdl = mock_model
     mdl._create_agg = Mock(wraps=create_agg_stub)
+    mdl.process_data = Mock(return_value="processed_data")
 
     mr_mock = Mock()
-    mr_mock.get_model_results.return_value = pd.DataFrame(
+    mr_mock.get_model_results.return_value = "model_results"
+
+    # act
+    actual_mr, actual_aggs = mdl.aggregate(mr_mock)
+
+    # assert
+    mdl.process_data.assert_called_once_with("model_results")
+    assert actual_mr == "processed_data"
+    assert actual_aggs == [
+        ["acuity"],
+        ["attendance_category"],
+    ]
+
+
+def test_process_results(mock_model):
+    # arrange
+    data = pd.DataFrame(
         {
             "sitetret": ["trust"] * 4,
             "acuity": ["a", "a", "b", "b"],
@@ -217,16 +234,11 @@ def test_aggregate(mock_model):
         "attendance_category": [1, 1, 2, 2],
         "value": [1, 2, 3, 4],
     }
-
     # act
-    actual_mr, actual_aggs = mdl.aggregate(mr_mock)
+    actual = mock_model.process_data(data)
 
     # assert
-    assert actual_mr.to_dict("list") == expected
-    assert actual_aggs == [
-        ["acuity"],
-        ["attendance_category"],
-    ]
+    assert actual.to_dict("list") == expected
 
 
 def test_save_results(mocker, mock_model):
