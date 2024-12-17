@@ -229,9 +229,7 @@ class OutpatientsModel(Model):
         :returns: a dictionary containing the different aggregations of this data
         :rtype: dict
         """
-        model_results = model_run.get_model_results()
-
-        model_results = self.process_data(model_results)
+        model_results = self.process_data(model_run.get_model_results())
 
         return (
             model_results,
