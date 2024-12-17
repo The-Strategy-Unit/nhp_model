@@ -168,26 +168,33 @@ class OutpatientsModel(Model):
         data, step_counts = self._convert_to_tele(data, model_run)
         return data, step_counts
 
-    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
-        """Aggregate the model results
+    def calculate_avoided_activity(
+        self, data: pd.DataFrame, data_resampled: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Calculate the rows that have been avoided
 
-        Can also be used to aggregate the baseline data by passing in the raw data
-
-        :param model_results: a DataFrame containing the results of a model iteration
-        :type model_results: pandas.DataFrame
-        :param model_run: the current model run
-        :type model_run: int
-
-        :returns: a dictionary containing the different aggregations of this data
-        :rtype: dict
+        :param data: The data before the binomial thinning step
+        :type data: pd.DataFrame
+        :return: The data that was avoided in the binomial thinning step
+        :rtype: pd.DataFrame
         """
-        model_results = model_run.get_model_results()
-
-        measures = model_results.melt(
-            ["rn"], ["attendances", "tele_attendances"], "measure"
+        avoided = (
+            data[["attendances", "tele_attendances"]]
+            - data_resampled[["attendances", "tele_attendances"]]
         )
-        model_results = (
-            model_results.drop(["attendances", "tele_attendances"], axis="columns")
+        data[["attendances", "tele_attendances"]] = avoided
+        return data
+
+    @staticmethod
+    def process_results(data: pd.DataFrame) -> pd.DataFrame:
+        """Processes the data into a format suitable for aggregation in results files
+
+        :param data: Data to be processed. Format should be similar to Model.data
+        :type data: pd.DataFrame
+        """
+        measures = data.melt(["rn"], ["attendances", "tele_attendances"], "measure")
+        data = (
+            data.drop(["attendances", "tele_attendances"], axis="columns")
             .merge(measures, on="rn")
             # summarise the results to make the create_agg steps quicker
             .groupby(
@@ -207,6 +214,22 @@ class OutpatientsModel(Model):
             )
             .agg({"value": "sum"})
         )
+        return data
+
+    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
+        """Aggregate the model results
+
+        Can also be used to aggregate the baseline data by passing in the raw data
+
+        :param model_results: a DataFrame containing the results of a model iteration
+        :type model_results: pandas.DataFrame
+        :param model_run: the current model run
+        :type model_run: int
+
+        :returns: a dictionary containing the different aggregations of this data
+        :rtype: dict
+        """
+        model_results = self.process_results(model_run.get_model_results())
 
         return (
             model_results,
@@ -220,7 +243,7 @@ class OutpatientsModel(Model):
         """Save the results of running the model
 
         This method is used for saving the results of the model run to disk as a parquet file.
-        It saves just the `rn` (row number) column and the `arrivals`, with the intention that
+        It saves just the `rn` (row number) column and the `attendances` and `tele_attendances` columns, with the intention that
         you rejoin to the original data.
 
         :param model_results: a DataFrame containing the results of a model iteration
@@ -229,3 +252,7 @@ class OutpatientsModel(Model):
         model_run.get_model_results().set_index(["rn"])[
             ["attendances", "tele_attendances"]
         ].to_parquet(f"{path_fn('op')}/0.parquet")
+
+        model_run.avoided_activity.set_index(["rn"])[
+            ["attendances", "tele_attendances"]
+        ].to_parquet(f"{path_fn('op_avoided')}/0.parquet")

@@ -118,26 +118,19 @@ class AaEModel(Model):
         # A&E doesn't have any efficiencies steps
         return data, None
 
-    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
-        """Aggregate the model results
+    @staticmethod
+    def process_results(data: pd.DataFrame) -> pd.DataFrame:
+        """Processes the data into a format suitable for aggregation in results files
 
-        Can also be used to aggregate the baseline data by passing in a `ModelRun` with
-        the `model_run` argument set `-1`.
-
-        :param model_run: an instance of the `ModelRun` class
-        :type model_run: model.model_run.ModelRun
-
-        :returns: a dictionary containing the different aggregations of this data
-        :rtype: dict
+        :param data: Data to be processed. Format should be similar to Model.data
+        :type data: pd.DataFrame
         """
-        model_results = model_run.get_model_results()
-
-        model_results["measure"] = "walk-in"
-        model_results.loc[model_results["is_ambulance"], "measure"] = "ambulance"
-        model_results.rename(columns={"arrivals": "value"}, inplace=True)
+        data["measure"] = "walk-in"
+        data.loc[data["is_ambulance"], "measure"] = "ambulance"
+        data.rename(columns={"arrivals": "value"}, inplace=True)
 
         # summarise the results to make the create_agg steps quicker
-        model_results = model_results.groupby(
+        data = data.groupby(
             # note: any columns used in the calls to _create_agg, including pod and measure
             # must be included below
             [
@@ -152,6 +145,21 @@ class AaEModel(Model):
             ],
             as_index=False,
         ).agg({"value": "sum"})
+        return data
+
+    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
+        """Aggregate the model results
+
+        Can also be used to aggregate the baseline data by passing in a `ModelRun` with
+        the `model_run` argument set `-1`.
+
+        :param model_run: an instance of the `ModelRun` class
+        :type model_run: model.model_run.ModelRun
+
+        :returns: a dictionary containing the different aggregations of this data
+        :rtype: dict
+        """
+        model_results = self.process_results(model_run.get_model_results())
 
         return (
             model_results,
@@ -160,6 +168,20 @@ class AaEModel(Model):
                 ["attendance_category"],
             ],
         )
+
+    def calculate_avoided_activity(
+        self, data: pd.DataFrame, data_resampled: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Calculate the rows that have been avoided
+
+        :param data: The data before the binomial thinning step
+        :type data: pd.DataFrame
+        :return: The data that was avoided in the binomial thinning step
+        :rtype: pd.DataFrame
+        """
+        avoided = data["arrivals"] - data_resampled["arrivals"]
+        data["arrivals"] = avoided
+        return data
 
     def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model
@@ -175,4 +197,7 @@ class AaEModel(Model):
         """
         model_run.get_model_results().set_index(["rn"])[["arrivals"]].to_parquet(
             f"{path_fn('aae')}/0.parquet"
+        )
+        model_run.avoided_activity.set_index(["rn"])[["arrivals"]].to_parquet(
+            f"{path_fn('aae_avoided')}/0.parquet"
         )

@@ -45,7 +45,7 @@ def test_init(mocker, run, rp_call):
     assert actual.rng == "rng"
     assert actual.data == "data"
     assert actual.step_counts is None
-    assert not actual.data_steps
+    assert not actual.avoided_activity
 
     rng_mock.assert_called_once_with(1)
     prp_mock.assert_called_once_with()
@@ -131,6 +131,7 @@ def test_run(mocker, mock_model_run):
         data_aa_mock := Mock()
     ), "step_counts_aa"
     mr_mock.model.efficiencies.return_value = (data_ef_mock := Mock()), "step_counts_ef"
+    mr_mock.model.calculate_avoided_activity.return_value = "avoided_activity"
 
     pd_mock = mocker.patch("pandas.concat", return_value="pd.concat")
 
@@ -154,17 +155,16 @@ def test_run(mocker, mock_model_run):
         data_ar_mock.copy(), mr_mock
     )
     mr_mock.model.efficiencies.assert_called_once_with(data_aa_mock.copy(), mr_mock)
+    mr_mock.model.calculate_avoided_activity.assert_called_once_with(
+        data_ar_mock, data_aa_mock
+    )
 
     pd_mock.assert_called_once_with(
         ["step_counts_baseline", "step_counts_ar", "step_counts_aa", "step_counts_ef"]
     )
 
     assert mr_mock.data == data_ef_mock
-    assert mr_mock.data_steps == {
-        "resampling": data_ar_mock,
-        "avoidance": data_aa_mock,
-        "efficiencies": data_ef_mock,
-    }
+    assert mr_mock.avoided_activity == "avoided_activity"
     assert mr_mock.step_counts == "pd.concat"
 
 
@@ -231,23 +231,33 @@ def test_get_aggregate_results(mock_model_run):
     mr_mock.model.aggregate.return_value = "aggregated_results", [["a"]]
     mr_mock.get_step_counts = Mock(return_value="step_counts")
     mr_mock.model.get_agg.return_value = "agg"
+    mr_mock.avoided_activity = "avoided_activity"
+    mr_mock.model.process_results = Mock(return_value="avoided_activity_agg")
 
     # act
     actual = mr_mock.get_aggregate_results()
 
     # assert
     assert actual == (
-        {"default": "agg", "sex+age_group": "agg", "age": "agg", "a": "agg"},
+        {
+            "default": "agg",
+            "sex+age_group": "agg",
+            "age": "agg",
+            "a": "agg",
+            "avoided_activity": "agg",
+        },
         "step_counts",
     )
     mr_mock.model.aggregate.assert_called_once_with(mr_mock)
     mr_mock.get_step_counts.assert_called_once_with()
+    mr_mock.model.process_results.assert_called_once_with("avoided_activity")
 
     assert mr_mock.model.get_agg.call_args_list == [
         call("aggregated_results"),
         call("aggregated_results", "sex", "age_group"),
         call("aggregated_results", "age"),
         call("aggregated_results", "a"),
+        call("avoided_activity_agg", "sex", "age_group"),
     ]
 
 

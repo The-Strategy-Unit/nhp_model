@@ -273,19 +273,9 @@ def test_efficiencies(mock_model):
     assert mdl._convert_to_tele.call_args[0][1] == "model_run"
 
 
-def test_aggregate(mock_model):
-    """test that it aggregates the results correctly"""
-
+def test_process_results(mock_model):
     # arrange
-    def create_agg_stub(model_results, cols=None):
-        name = "+".join(cols) if cols else "default"
-        return {name: model_results.to_dict(orient="list")}
-
-    mdl = mock_model
-    mdl._create_agg = Mock(wraps=create_agg_stub)
-
-    mr_mock = Mock()
-    mr_mock.get_model_results.return_value = pd.DataFrame(
+    df = pd.DataFrame(
         {
             "sitetret": ["trust"] * 4,
             "is_first": [True, True, False, False],
@@ -301,7 +291,6 @@ def test_aggregate(mock_model):
             "pod": ["op_first", "op_procedure", "op_follow-up", "op_procedure"],
         }
     )
-
     expected = {
         "pod": [
             k for k in ["op_first", "op_follow-up", "op_procedure"] for _ in [0, 1]
@@ -315,12 +304,33 @@ def test_aggregate(mock_model):
         "tretspef_raw": [1] * 6,
         "value": [5, 9, 7, 11, 14, 22],
     }
+    # act
+    actual = mock_model.process_results(df)
+    # assert
+    assert actual.to_dict("list") == expected
+
+
+def test_aggregate(mock_model):
+    """test that it aggregates the results correctly"""
+
+    # arrange
+    def create_agg_stub(model_results, cols=None):
+        name = "+".join(cols) if cols else "default"
+        return {name: model_results.to_dict(orient="list")}
+
+    mdl = mock_model
+    mdl._create_agg = Mock(wraps=create_agg_stub)
+    mdl.process_results = Mock(return_value="processed_data")
+
+    mr_mock = Mock()
+    mr_mock.get_model_results.return_value = "model_results"
 
     # act
     actual_mr, actual_aggs = mdl.aggregate(mr_mock)
 
     # assert
-    assert actual_mr.to_dict("list") == expected
+    mdl.process_results.assert_called_once_with("model_results")
+    assert actual_mr == "processed_data"
     assert actual_aggs == [
         ["sex", "tretspef"],
         ["tretspef_raw"],
@@ -335,7 +345,29 @@ def test_save_results(mocker, mock_model):
     mr_mock.get_model_results.return_value = pd.DataFrame(
         {"rn": [0], "attendances": [1], "tele_attendances": [2]}
     )
+    mr_mock.avoided_activity = pd.DataFrame(
+        {"rn": [0], "attendances": [1], "tele_attendances": [0]}
+    )
 
     to_parquet_mock = mocker.patch("pandas.DataFrame.to_parquet")
     mock_model.save_results(mr_mock, path_fn)
-    to_parquet_mock.assert_called_once_with("op/0.parquet")
+    assert to_parquet_mock.call_args_list == [
+        call("op/0.parquet"),
+        call("op_avoided/0.parquet"),
+    ]
+
+
+def test_calculate_avoided_activity(mock_model):
+    # arrange
+    data = pd.DataFrame({"rn": [0], "attendances": [4], "tele_attendances": [3]})
+    data_resampled = pd.DataFrame(
+        {"rn": [0], "attendances": [2], "tele_attendances": [1]}
+    )
+    # act
+    actual = mock_model.calculate_avoided_activity(data, data_resampled)
+    # assert
+    assert actual.to_dict(orient="list") == {
+        "rn": [0],
+        "attendances": [2],
+        "tele_attendances": [2],
+    }

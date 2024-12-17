@@ -299,19 +299,20 @@ def test_efficiencies_no_params(mocker, mock_model):
     mock.assert_not_called()
 
 
-def test_aggregate(mock_model):
-    """test that it aggregates the results correctly"""
-
+def test_calculate_avoided_activity(mock_model):
     # arrange
-    def create_agg_stub(model_results, cols=None):
-        name = "+".join(cols) if cols else "default"
-        return {name: model_results.to_dict(orient="list")}
+    data = pd.DataFrame({"rn": [0, 0, 1, 2], "a": [0, 0, 1, 1]})
+    data_resampled = pd.DataFrame({"rn": [0, 1], "a": [0, 1]})
+    # act
+    actual = mock_model.calculate_avoided_activity(data, data_resampled)
+    # assert
+    assert actual.to_dict(orient="list") == {"rn": [0, 2], "a": [0, 1]}
 
-    mdl = mock_model
-    mdl._create_agg = Mock(wraps=create_agg_stub)
+
+def test_process_results(mock_model):
+    # arrange
     xs = list(range(6)) * 2
-
-    gmr_df = pd.DataFrame(
+    df = pd.DataFrame(
         {
             "sitetret": ["trust"] * 12,
             "age": list(range(12)),
@@ -326,11 +327,7 @@ def test_aggregate(mock_model):
             "speldur": list(range(12)),
         }
     )
-
-    gmr_df["pod"] = "ip_" + gmr_df["group"] + "_admission"
-
-    mr_mock = Mock()
-    mr_mock.get_model_results.return_value = gmr_df
+    df["pod"] = "ip_" + df["group"] + "_admission"
 
     expected = {
         "sitetret": ["trust"] * 26,
@@ -376,12 +373,34 @@ def test_aggregate(mock_model):
         + ["8-14 days"] * 3
         + ["1 day", "3 days", "4-7 days", "8-14 days"],
     }
+    # act
+    actual = mock_model.process_results(df)
+    # assert
+    assert actual.to_dict("list") == expected
+
+
+def test_aggregate(mock_model):
+    """test that it aggregates the results correctly"""
+
+    # arrange
+    def create_agg_stub(model_results, cols=None):
+        name = "+".join(cols) if cols else "default"
+        return {name: model_results.to_dict(orient="list")}
+
+    mdl = mock_model
+    mdl._create_agg = Mock(wraps=create_agg_stub)
+    mdl.process_results = Mock(return_value="processed_data")
+
+    mr_mock = Mock()
+    mr_mock.get_model_results.return_value = "model_data"
 
     # act
     actual_mr, actual_aggs = mdl.aggregate(mr_mock)
 
     # assert
-    assert actual_mr.to_dict("list") == expected
+
+    mdl.process_results.assert_called_once_with("model_data")
+    assert actual_mr == "processed_data"
     assert actual_aggs == [
         ["sex", "tretspef"],
         ["tretspef_raw"],
@@ -407,6 +426,13 @@ def test_save_results(mocker, mock_model):
             "sitetret": [7],
         }
     )
+    mr_mock.avoided_activity = pd.DataFrame(
+        {
+            "rn": [0],
+            "classpat": [1],
+            "speldur": [5],
+        }
+    )
 
     to_parquet_mock = mocker.patch("pandas.DataFrame.to_parquet")
 
@@ -414,6 +440,7 @@ def test_save_results(mocker, mock_model):
     mock_model.save_results(mr_mock, path_fn)
 
     # assert
-    assert to_parquet_mock.call_count == 2
+    assert to_parquet_mock.call_count == 3
     assert to_parquet_mock.call_args_list[0] == call("op_conversion/0.parquet")
     assert to_parquet_mock.call_args_list[1] == call("ip/0.parquet")
+    assert to_parquet_mock.call_args_list[2] == call("ip_avoided/0.parquet")
