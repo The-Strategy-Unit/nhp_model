@@ -232,7 +232,7 @@ def test_get_aggregate_results(mock_model_run):
     mr_mock.get_step_counts = Mock(return_value="step_counts")
     mr_mock.model.get_agg.return_value = "agg"
     mr_mock.avoided_activity = "avoided_activity"
-    mr_mock.model.process_data = Mock(return_value="avoided_activity_agg")
+    mr_mock.model.process_results = Mock(return_value="avoided_activity_agg")
 
     # act
     actual = mr_mock.get_aggregate_results()
@@ -250,7 +250,7 @@ def test_get_aggregate_results(mock_model_run):
     )
     mr_mock.model.aggregate.assert_called_once_with(mr_mock)
     mr_mock.get_step_counts.assert_called_once_with()
-    mr_mock.model.process_data.assert_called_once_with("avoided_activity")
+    mr_mock.model.process_results.assert_called_once_with("avoided_activity")
 
     assert mr_mock.model.get_agg.call_args_list == [
         call("aggregated_results"),

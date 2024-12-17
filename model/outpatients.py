@@ -186,7 +186,7 @@ class OutpatientsModel(Model):
         return data
 
     @staticmethod
-    def process_data(data: pd.DataFrame) -> pd.DataFrame:
+    def process_results(data: pd.DataFrame) -> pd.DataFrame:
         """Processes the data into a format suitable for aggregation in results files
 
         :param data: Data to be processed. Format should be similar to Model.data
@@ -229,7 +229,7 @@ class OutpatientsModel(Model):
         :returns: a dictionary containing the different aggregations of this data
         :rtype: dict
         """
-        model_results = self.process_data(model_run.get_model_results())
+        model_results = self.process_results(model_run.get_model_results())
 
         return (
             model_results,

@@ -190,7 +190,7 @@ def test_aggregate(mock_model):
 
     mdl = mock_model
     mdl._create_agg = Mock(wraps=create_agg_stub)
-    mdl.process_data = Mock(return_value="processed_data")
+    mdl.process_results = Mock(return_value="processed_data")
 
     mr_mock = Mock()
     mr_mock.get_model_results.return_value = "model_results"
@@ -199,7 +199,7 @@ def test_aggregate(mock_model):
     actual_mr, actual_aggs = mdl.aggregate(mr_mock)
 
     # assert
-    mdl.process_data.assert_called_once_with("model_results")
+    mdl.process_results.assert_called_once_with("model_results")
     assert actual_mr == "processed_data"
     assert actual_aggs == [
         ["acuity"],
@@ -235,7 +235,7 @@ def test_process_results(mock_model):
         "value": [1, 2, 3, 4],
     }
     # act
-    actual = mock_model.process_data(data)
+    actual = mock_model.process_results(data)
 
     # assert
     assert actual.to_dict("list") == expected

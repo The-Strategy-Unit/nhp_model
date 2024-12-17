@@ -309,7 +309,7 @@ def test_calculate_avoided_activity(mock_model):
     assert actual.to_dict(orient="list") == {"rn": [0, 2], "a": [0, 1]}
 
 
-def test_process_data(mock_model):
+def test_process_results(mock_model):
     # arrange
     xs = list(range(6)) * 2
     df = pd.DataFrame(
@@ -374,7 +374,7 @@ def test_process_data(mock_model):
         + ["1 day", "3 days", "4-7 days", "8-14 days"],
     }
     # act
-    actual = mock_model.process_data(df)
+    actual = mock_model.process_results(df)
     # assert
     assert actual.to_dict("list") == expected
 
@@ -389,7 +389,7 @@ def test_aggregate(mock_model):
 
     mdl = mock_model
     mdl._create_agg = Mock(wraps=create_agg_stub)
-    mdl.process_data = Mock(return_value="processed_data")
+    mdl.process_results = Mock(return_value="processed_data")
 
     mr_mock = Mock()
     mr_mock.get_model_results.return_value = "model_data"
@@ -399,7 +399,7 @@ def test_aggregate(mock_model):
 
     # assert
 
-    mdl.process_data.assert_called_once_with("model_data")
+    mdl.process_results.assert_called_once_with("model_data")
     assert actual_mr == "processed_data"
     assert actual_aggs == [
         ["sex", "tretspef"],
