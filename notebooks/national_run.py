@@ -153,19 +153,27 @@ results_dict["aae"] = _run_model(
 # COMMAND ----------
 
 results, step_counts = combine_results(list(results_dict.values()))
-# craete the json file before adding step counts into results
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC scale results back
+
+# COMMAND ----------
+
+for k in results.keys():
+    results[k]["value"] /= SAMPLE_RATE
+
+step_counts["value"] /= SAMPLE_RATE
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC create the json file before adding step counts into results
+
+# COMMAND ----------
+
 json_filename = generate_results_json(results, step_counts, params, run_params)
-
-results["step_counts"] = step_counts
-
-
-def multiply_results_by_sample_rate(results, sample_rate):
-    for res in results.values():
-        res["value"] /= sample_rate
-
-
-multiply_results_by_sample_rate(results, SAMPLE_RATE)
-results
 
 # COMMAND ----------
 
@@ -175,8 +183,7 @@ results
 # COMMAND ----------
 
 (
-    results["step_counts"]
-    .groupby(["pod", "change_factor", "measure", "model_run"])["value"]
+    step_counts.groupby(["pod", "change_factor", "measure", "model_run"])["value"]
     .sum()
     .groupby(["pod", "change_factor", "measure"])
     .mean()
@@ -206,10 +213,8 @@ get_principal(results["default"])
 
 # COMMAND ----------
 
-
-with open(json_filename, "r", encoding="utf8") as f:
-    file_contents = f.read()
-    zipped_results = gzip.compress(file_contents).encode("utf-8")
+with open(f"results/{json_filename}.json", "rb") as f:
+    zipped_results = gzip.compress(f.read())
 
 metadata = {
     k: str(v)
