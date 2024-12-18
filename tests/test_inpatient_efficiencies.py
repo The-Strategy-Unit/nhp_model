@@ -133,7 +133,7 @@ def test_losr_all(mock_ipe):
     # arrange
     m = mock_ipe
     m.data = pd.DataFrame({"speldur": list(range(9))}, index=["x", "a", "b"] * 3)
-    m._model_run.rng.binomial.return_value = list(range(6))
+    m._model_run.rng.binomial.return_value = np.arange(6)
 
     # act
     actual = m.losr_all()

@@ -356,7 +356,7 @@ class InpatientEfficiencies:
             data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"]
         )
 
-        self.data.loc[i, "speldur"] = new
+        self.data.loc[i, "speldur"] = new.astype("int")
 
         return self
 
