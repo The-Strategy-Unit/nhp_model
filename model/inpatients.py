@@ -70,6 +70,10 @@ class InpatientsModel(Model):
             else ("ip_elective_daycase", "ip_elective_admission")
         )
 
+    def _add_ndggrp_to_data(self) -> None:
+        super()._add_ndggrp_to_data()
+        self.data.loc[self.data["admimeth"].isin(["81", "82"]), "ndggrp"] = "maternity"
+
     def _get_data(self) -> pd.DataFrame:
         return self._data_loader.get_ip()
 
