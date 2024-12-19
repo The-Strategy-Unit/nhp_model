@@ -108,6 +108,9 @@ class Model:
         """Adds the POD column to data"""
         # to be implemented in ip/op/aae
 
+    def _add_ndggrp_to_data(self) -> None:
+        self.data["ndggrp"] = self.data["group"]
+
     @property
     def measures(self) -> List[str]:
         """The names of the measure columns
@@ -127,6 +130,7 @@ class Model:
         # pylint: disable=assignment-from-no-return
         self.baseline_counts = self.get_data_counts(self.data)
         self._add_pod_to_data()
+        self._add_ndggrp_to_data()
 
         self.baseline_step_counts = (
             pd.DataFrame(

@@ -215,7 +215,7 @@ class ActivityResampling:
 
         year_exponent = self.run_params["year"] - self.params["start_year"]
         factor = pd.Series(params).rename("non-demographic_adjustment") ** year_exponent
-        factor.index.names = ["group"]
+        factor.index.names = ["ndggrp"]
         return self._update(factor)
 
     def apply_resampling(self):

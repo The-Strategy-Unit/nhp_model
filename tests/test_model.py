@@ -242,6 +242,21 @@ def test_model_init_initialises_hsa_if_none(mocker):
     assert mdl.hsa == "hsa"
 
 
+# add_ndggrp_to_data
+
+
+def test_add_ndggrp_to_data(mock_model):
+    # arrange
+    mdl = mock_model
+    mdl.data = pd.DataFrame({"group": ["a", "b", "c"]})
+
+    # act
+    mock_model._add_ndggrp_to_data()
+
+    # assert
+    assert mdl.data["ndggrp"].to_list() == ["a", "b", "c"]
+
+
 # measures
 
 
@@ -269,6 +284,8 @@ def test_load_data(mocker, mock_model):
         "model.model.Model.get_data_counts", return_value=np.array([[1, 2], [3, 4]])
     )
     mocker.patch("model.model.Model._add_pod_to_data")
+    mocker.patch("model.model.Model._add_ndggrp_to_data")
+
     mdl._get_data = Mock(
         return_value=pd.DataFrame(
             {"rn": [2, 1], "age": [2, 1], "pod": ["a", "b"], "sitetret": ["c", "d"]}
@@ -289,6 +306,7 @@ def test_load_data(mocker, mock_model):
     assert mdl.baseline_counts.tolist() == [[1, 2], [3, 4]]
     mdl.get_data_counts.call_args_list[0][0][0].equals(mdl.data)
     mdl._add_pod_to_data.assert_called_once_with()
+    mdl._add_ndggrp_to_data.assert_called_once_with()
 
     assert mdl.baseline_step_counts.to_dict("list") == {
         "pod": ["a", "b"],
