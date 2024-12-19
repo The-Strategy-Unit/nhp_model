@@ -72,7 +72,7 @@ class InpatientsModel(Model):
 
     def _add_ndggrp_to_data(self) -> None:
         super()._add_ndggrp_to_data()
-        self.data.loc[self.data["admimeth"].isin(["81", "82"]), "ndggrp"] = "maternity"
+        self.data.loc[self.data["admimeth"].isin(["82", "83"]), "ndggrp"] = "maternity"
 
     def _get_data(self) -> pd.DataFrame:
         return self._data_loader.get_ip()
