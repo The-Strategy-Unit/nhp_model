@@ -91,7 +91,7 @@ def test_init_calls_super_init(mocker):
 def test_add_ndggrp_to_data(mock_model):
     # arrange
     mdl = mock_model
-    mdl.data = pd.DataFrame({"group": ["a", "b", "c"], "admimeth": ["80", "81", "82"]})
+    mdl.data = pd.DataFrame({"group": ["a", "b", "c"], "admimeth": ["80", "82", "83"]})
 
     # act
     mock_model._add_ndggrp_to_data()
