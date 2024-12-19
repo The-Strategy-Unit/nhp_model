@@ -116,10 +116,6 @@ for fyear, v2 in list(dfr.groupby("fyear")):
     }
     all_gams["NATIONAL"][fyear] = g
 
-    # path = f"{save_path}/hsa_gams/{fyear=}/dataset={dataset}"
-    # os.makedirs(path, exist_ok=True)
-    # with open(f"{path}/hsa_gams.pkl", "wb") as f:
-    #     pkl.dump(g, f)
 
 # COMMAND ----------
 
