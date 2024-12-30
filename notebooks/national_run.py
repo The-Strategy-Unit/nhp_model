@@ -49,7 +49,7 @@ from azure.storage.blob import ContainerClient
 import model as mdl
 from model.data.databricks import DatabricksNational
 from model.health_status_adjustment import HealthStatusAdjustmentInterpolated
-from model.results import combine_results, generate_results_json
+from model.results import combine_results, generate_results_json, save_results_files
 from run_model import _run_model
 
 os.environ["BATCH_SIZE"] = "8"
@@ -100,6 +100,9 @@ pcallback = lambda _: None
 
 # COMMAND ----------
 
+# save_full_model_results set to True
+# This creates folders with the results for each of the 256 Monte Carlo simulations in notebooks/results/national/SCENARIONAME/CREATE_DATETIME
+
 results_dict["inpatients"] = _run_model(
     mdl.InpatientsModel,
     params,
@@ -107,7 +110,7 @@ results_dict["inpatients"] = _run_model(
     hsa,
     run_params,
     pcallback,
-    False,
+    True,
 )
 
 # COMMAND ----------
@@ -124,7 +127,7 @@ results_dict["outpatients"] = _run_model(
     hsa,
     run_params,
     pcallback,
-    False,
+    True,
 )
 
 # COMMAND ----------
@@ -141,7 +144,7 @@ results_dict["aae"] = _run_model(
     hsa,
     run_params,
     pcallback,
-    False,
+    True,
 )
 
 
@@ -213,6 +216,8 @@ get_principal(results["default"])
 
 # COMMAND ----------
 
+# JSON file
+
 with open(f"results/{json_filename}.json", "rb") as f:
     zipped_results = gzip.compress(f.read())
 
@@ -225,11 +230,44 @@ metadata = {
 # Metadata "dataset" needs to be SYNTHETIC otherwise it will not be viewable in outputs
 metadata["dataset"] = "synthetic"
 
-# COMMAND ----------
-
 url = dbutils.secrets.get("nhpsa-results", "url")
 sas = dbutils.secrets.get("nhpsa-results", "sas-token")
 cont = ContainerClient.from_container_url(f"{url}?{sas}")
 cont.upload_blob(
-    f"prod/dev/synthetic/{json_filename}.json.gz", zipped_results, metadata=metadata
+    f"prod/dev/synthetic/{json_filename}.json.gz", zipped_results, metadata=metadata, overwrite=True
 )
+
+# COMMAND ----------
+
+# Save aggregated parquets as well (new format of model results, for future proofing)
+
+saved_files = save_results_files(results, params)
+for file in saved_files:
+    filename = file[8:]
+    with open(file, "rb") as f:
+        cont.upload_blob(
+            f"aggregated-model-results/dev/{filename}",
+            f.read(),
+            overwrite=True,
+        )
+
+
+# COMMAND ----------
+
+from pathlib import Path
+
+# Save the IP full model results to storage
+# From docker_run._upload_full_model_results
+dataset = params["dataset"]
+scenario = params["scenario"]
+create_datetime = params["create_datetime"]
+
+path = Path(f"results/{dataset}/{scenario}/{create_datetime}")
+for file in path.glob("**/*.parquet"):
+    filename = file.as_posix()[8:]
+    with open(file, "rb") as f:
+        cont.upload_blob(
+            f"full-model-results/dev/{filename}",
+            f.read(),
+            overwrite=True,
+        )
