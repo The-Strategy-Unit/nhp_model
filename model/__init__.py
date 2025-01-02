@@ -9,5 +9,5 @@ from model.health_status_adjustment import HealthStatusAdjustmentInterpolated
 from model.helpers import load_params
 from model.inpatients import InpatientEfficiencies, InpatientsModel
 from model.model import Model
-from model.model_run import ModelRun
+from model.model_iteration import ModelIteration
 from model.outpatients import OutpatientsModel

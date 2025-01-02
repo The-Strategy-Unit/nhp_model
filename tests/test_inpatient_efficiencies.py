@@ -17,7 +17,7 @@ def mock_ipe():
     """create a mock Model instance"""
     with patch.object(InpatientEfficiencies, "__init__", lambda s, d, m: None):
         ipe = InpatientEfficiencies(None, None)
-    ipe._model_run = Mock()
+    ipe._model_iteration = Mock()
     ipe.losr = pd.DataFrame(
         {
             "type": [x for x in ["all", "aec", "pre-op"] for _ in [0, 1]]
@@ -35,17 +35,17 @@ def test_init(mocker):
     mocker.patch("model.inpatients.InpatientEfficiencies._select_single_strategy")
     mocker.patch("model.inpatients.InpatientEfficiencies._generate_losr_df")
 
-    model_run = Mock()
-    model_run.model_run = 0
+    model_iteration = Mock()
+    model_iteration.model_run = 0
     data = pd.DataFrame({"speldur": [1, 2, 3]})
-    model_run.step_counts = "step_counts"
-    model_run.model.strategies = {"efficiencies": "efficiencies"}
+    model_iteration.step_counts = "step_counts"
+    model_iteration.model.strategies = {"efficiencies": "efficiencies"}
 
     # act
-    actual = InpatientEfficiencies(data, model_run)
+    actual = InpatientEfficiencies(data, model_iteration)
 
     # assert
-    assert actual._model_run == model_run
+    assert actual._model_iteration == model_iteration
     assert actual.data.equals(data)
     assert actual.strategies == "efficiencies"
     assert actual.speldur_before.to_list() == [1, 2, 3]
@@ -57,14 +57,14 @@ def test_init(mocker):
 def test_select_single_strategy(mock_ipe):
     # arrange
     m = mock_ipe
-    m._model_run.rng = np.random.default_rng(0)
+    m._model_iteration.rng = np.random.default_rng(0)
     m.data = pd.DataFrame({"rn": list(range(5)), "admimeth": ["0"] * 4 + ["3"]})
-    m._model_run.model.strategies = {
+    m._model_iteration.model.strategies = {
         "efficiencies": pd.DataFrame(
             {"strategy": ["a"] * 3 + ["b"] * 3}, index=[1, 2, 3] * 2
         )
     }
-    m._model_run.params = {"efficiencies": {"ip": {"a": 2, "b": 3, "c": 4}}}
+    m._model_iteration.params = {"efficiencies": {"ip": {"a": 2, "b": 3, "c": 4}}}
 
     # act
     m._select_single_strategy()
@@ -83,7 +83,7 @@ def test_generate_losr_df(mock_ipe):
     # arrange
     m = mock_ipe
 
-    m._model_run.params = {
+    m._model_iteration.params = {
         "efficiencies": {
             "ip": {
                 "a": {"type": "1", "interval": [1, 3]},
@@ -92,7 +92,7 @@ def test_generate_losr_df(mock_ipe):
             }
         }
     }
-    m._model_run.run_params = {"efficiencies": {"ip": {"a": 2, "b": 3, "c": 4}}}
+    m._model_iteration.run_params = {"efficiencies": {"ip": {"a": 2, "b": 3, "c": 4}}}
 
     expected = {
         "type": ["1", "1", "2"],
@@ -133,11 +133,11 @@ def test_losr_all(mock_ipe):
     # arrange
     m = mock_ipe
     m.data = pd.DataFrame({"speldur": list(range(9))}, index=["x", "a", "b"] * 3)
-    m._model_run.rng.binomial.return_value = np.arange(6)
+    m._model_iteration.rng.binomial.return_value = np.arange(6)
 
     # act
     actual = m.losr_all()
-    binomial_call_args = m._model_run.rng.binomial.call_args_list[0][0]
+    binomial_call_args = m._model_iteration.rng.binomial.call_args_list[0][0]
 
     # assert
     assert actual == m
@@ -153,11 +153,11 @@ def test_losr_aec(mock_ipe):
     # arrange
     m = mock_ipe
     m.data = pd.DataFrame({"speldur": list(range(9))}, index=["x", "c", "d"] * 3)
-    m._model_run.rng.binomial.return_value = [0, 0, 0, 1, 1, 1]
+    m._model_iteration.rng.binomial.return_value = [0, 0, 0, 1, 1, 1]
 
     # act
     actual = m.losr_aec()
-    binomial_call_args = m._model_run.rng.binomial.call_args_list[0][0]
+    binomial_call_args = m._model_iteration.rng.binomial.call_args_list[0][0]
 
     # assert
     assert actual == m
@@ -173,11 +173,11 @@ def test_losr_preop(mock_ipe):
     # arrange
     m = mock_ipe
     m.data = pd.DataFrame({"speldur": list(range(9))}, index=["x", "e", "f"] * 3)
-    m._model_run.rng.binomial.return_value = [0, 1, 0, 1, 0, 1]
+    m._model_iteration.rng.binomial.return_value = [0, 1, 0, 1, 0, 1]
 
     # act
     actual = m.losr_preop()
-    binomial_call_args = m._model_run.rng.binomial.call_args_list[0][0]
+    binomial_call_args = m._model_iteration.rng.binomial.call_args_list[0][0]
 
     # assert
     assert actual == m
@@ -221,7 +221,7 @@ def test_losr_day_procedures(
         },
         index=[x for x in ["x"] + strats for _ in range(3)] * 2,
     )
-    m._model_run.rng.binomial.return_value = np.tile([1, 0, 1], 2)
+    m._model_iteration.rng.binomial.return_value = np.tile([1, 0, 1], 2)
     m.step_counts = {}
 
     # act
@@ -230,9 +230,9 @@ def test_losr_day_procedures(
     # assert
     assert actual == m
 
-    assert m._model_run.rng.binomial.call_args[0][0] == 1
+    assert m._model_iteration.rng.binomial.call_args[0][0] == 1
     assert (
-        m._model_run.rng.binomial.call_args[0][1]
+        m._model_iteration.rng.binomial.call_args[0][1]
         == m.losr[m.losr.type == day_procedures_type]["losr_f"].repeat(6)
     ).all()
 

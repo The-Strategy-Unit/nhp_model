@@ -21,56 +21,56 @@ class ActivityResampling:
     from that method.
 
     Once all of the methods have been run, finally we need to call the `apply_resampling` method.
-    This updates the `model_run` which is passed in at initialisation.
+    This updates the `model_iteration` which is passed in at initialisation.
 
-    :param model_run: the model run object, which contains all of the required values to run the
+    :param model_iteration: the model iteration object, which contains all of the required values to run the
     model.
-    :type model_run: ModelRun
+    :type model_iteration: ModelIteration
     """
 
-    def __init__(self, model_run) -> None:
-        self._model_run = model_run
+    def __init__(self, model_iteration) -> None:
+        self._model_iteration = model_iteration
 
         # initialise step counts
         self.factors = []
 
     @property
     def _baseline_counts(self):
-        return self._model_run.model.baseline_counts
+        return self._model_iteration.model.baseline_counts
 
     @property
     def _activity_type(self):
-        return self._model_run.model.model_type
+        return self._model_iteration.model.model_type
 
     @property
     def params(self):
         """get the models params"""
-        return self._model_run.params
+        return self._model_iteration.params
 
     @property
     def run_params(self):
         """get the current params for the model run"""
-        return self._model_run.run_params
+        return self._model_iteration.run_params
 
     @property
     def demog_factors(self):
         """get the demographic factors for the model"""
-        return self._model_run.model.demog_factors
+        return self._model_iteration.model.demog_factors
 
     @property
     def birth_factors(self):
         """get the birth factors for the model"""
-        return self._model_run.model.birth_factors
+        return self._model_iteration.model.birth_factors
 
     @property
     def hsa(self):
         """get the health status adjustment GAMs for the model"""
-        return self._model_run.model.hsa
+        return self._model_iteration.model.hsa
 
     @property
     def data(self):
         """get the current model runs data"""
-        return self._model_run.data
+        return self._model_iteration.data
 
     def _update(self, factor: pd.Series):
         step = factor.name
@@ -221,21 +221,22 @@ class ActivityResampling:
     def apply_resampling(self):
         """apply the row resampling to the data"""
         # get the random sampling for each row
-        rng = self._model_run.rng
+        rng = self._model_iteration.rng
         factors = pd.concat(self.factors, axis=1)
 
         # reshape this to be the same as baseline counts
         overall_factor = (
-            self._model_run.model.baseline_counts * factors.prod(axis=1).to_numpy()
+            self._model_iteration.model.baseline_counts
+            * factors.prod(axis=1).to_numpy()
         )
 
         row_samples = rng.poisson(overall_factor)
 
-        step_counts = self._model_run.fix_step_counts(
+        step_counts = self._model_iteration.fix_step_counts(
             self.data, row_samples, factors, "model_interaction_term"
         ).assign(strategy="-")
 
         # apply the random sampling, update the data and get the counts
-        data = self._model_run.model.apply_resampling(row_samples, self.data)
+        data = self._model_iteration.model.apply_resampling(row_samples, self.data)
 
         return data, step_counts

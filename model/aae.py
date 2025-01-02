@@ -12,7 +12,7 @@ import pandas as pd
 
 from model.data import Data
 from model.model import Model
-from model.model_run import ModelRun
+from model.model_iteration import ModelIteration
 
 
 class AaEModel(Model):
@@ -108,11 +108,11 @@ class AaEModel(Model):
         # return the altered data
         return data
 
-    def efficiencies(self, data: pd.DataFrame, model_run: ModelRun) -> None:
+    def efficiencies(self, data: pd.DataFrame, model_iteration: ModelIteration) -> None:
         """Run the efficiencies steps of the model
 
-        :param model_run: an instance of the ModelRun class
-        :type model_run: model.model_run.ModelRun
+        :param model_iteration: an instance of the ModelIteration class
+        :type model_iteration: model.model_iteration.ModelIteration
         """
 
         # A&E doesn't have any efficiencies steps
@@ -147,19 +147,19 @@ class AaEModel(Model):
         ).agg({"value": "sum"})
         return data
 
-    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
+    def aggregate(self, model_iteration: ModelIteration) -> Tuple[Callable, dict]:
         """Aggregate the model results
 
-        Can also be used to aggregate the baseline data by passing in a `ModelRun` with
+        Can also be used to aggregate the baseline data by passing in a `ModelIteration` with
         the `model_run` argument set `-1`.
 
-        :param model_run: an instance of the `ModelRun` class
-        :type model_run: model.model_run.ModelRun
+        :param model_iteration: an instance of the `ModelIteration` class
+        :type model_iteration: model.model_iteration.ModelIteration
 
         :returns: a dictionary containing the different aggregations of this data
         :rtype: dict
         """
-        model_results = self.process_results(model_run.get_model_results())
+        model_results = self.process_results(model_iteration.get_model_results())
 
         return (
             model_results,
@@ -183,21 +183,23 @@ class AaEModel(Model):
         data["arrivals"] = avoided
         return data
 
-    def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
+    def save_results(
+        self, model_iteration: ModelIteration, path_fn: Callable[[str], str]
+    ) -> None:
         """Save the results of running the model
 
         This method is used for saving the results of the model run to disk as a parquet file.
         It saves just the `rn` (row number) column and the `arrivals`, with the intention that
         you rejoin to the original data.
 
-        :param model_run: an instance of the `ModelRun` class
-        :type model_run: model.model_run.ModelRun
+        :param model_iteration: an instance of the `ModelIteration` class
+        :type model_iteration: model.model_iteration.ModelIteration
         :param path_fn: a function which takes the activity type and returns a path
         :type path_fn: Callable[[str], str]
         """
-        model_run.get_model_results().set_index(["rn"])[["arrivals"]].to_parquet(
+        model_iteration.get_model_results().set_index(["rn"])[["arrivals"]].to_parquet(
             f"{path_fn('aae')}/0.parquet"
         )
-        model_run.avoided_activity.set_index(["rn"])[["arrivals"]].to_parquet(
+        model_iteration.avoided_activity.set_index(["rn"])[["arrivals"]].to_parquet(
             f"{path_fn('aae_avoided')}/0.parquet"
         )

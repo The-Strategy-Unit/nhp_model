@@ -1,6 +1,6 @@
-"""Model Run
+"""Model Iteration
 
-Provides a simple class which holds all of the data required for a model run
+Provides a simple class which holds all of the data required for a model iteration
 """
 
 import numpy as np
@@ -10,10 +10,10 @@ import pandas as pd
 from model.activity_resampling import ActivityResampling
 
 
-class ModelRun:
-    """Model Run
+class ModelIteration:
+    """Model Iteration
 
-    Holds all of the information for a model run
+    Holds all of the information for a model iteration
     """
 
     def __init__(self, model, model_run):

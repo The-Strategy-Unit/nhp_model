@@ -12,7 +12,7 @@ import pandas as pd
 
 from model.data import Data
 from model.model import Model
-from model.model_run import ModelRun
+from model.model_iteration import ModelIteration
 
 
 class OutpatientsModel(Model):
@@ -96,7 +96,7 @@ class OutpatientsModel(Model):
     @staticmethod
     def _convert_to_tele(
         data,
-        model_run: ModelRun,
+        model_iteration: ModelIteration,
     ) -> None:
         """Convert attendances to tele-attendances
 
@@ -108,9 +108,9 @@ class OutpatientsModel(Model):
         :type run_params: dict
         """
         # TODO: we need to make sure efficiences contains convert to tele keys
-        rng = model_run.rng
-        params = model_run.run_params["efficiencies"]["op"]
-        strategies = model_run.model.strategies["efficiencies"]
+        rng = model_iteration.rng
+        params = model_iteration.run_params["efficiencies"]["op"]
+        strategies = model_iteration.model.strategies["efficiencies"]
         # make sure to take the complement of the parameter
         factor = 1 - data["rn"].map(strategies.map(params)).fillna(1)
         # create a value for converting attendances into tele attendances for each row
@@ -159,13 +159,13 @@ class OutpatientsModel(Model):
         # return the altered data
         return data
 
-    def efficiencies(self, data: pd.DataFrame, model_run: ModelRun) -> None:
+    def efficiencies(self, data: pd.DataFrame, model_iteration: ModelIteration) -> None:
         """Run the efficiencies steps of the model
 
-        :param model_run: an instance of the ModelRun class
-        :type model_run: model.model_run.ModelRun
+        :param model_iteration: an instance of the ModelIteration class
+        :type model_iteration: model.model_iteration.ModelIteration
         """
-        data, step_counts = self._convert_to_tele(data, model_run)
+        data, step_counts = self._convert_to_tele(data, model_iteration)
         return data, step_counts
 
     def calculate_avoided_activity(
@@ -216,7 +216,7 @@ class OutpatientsModel(Model):
         )
         return data
 
-    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
+    def aggregate(self, model_iteration: ModelIteration) -> Tuple[Callable, dict]:
         """Aggregate the model results
 
         Can also be used to aggregate the baseline data by passing in the raw data
@@ -229,7 +229,7 @@ class OutpatientsModel(Model):
         :returns: a dictionary containing the different aggregations of this data
         :rtype: dict
         """
-        model_results = self.process_results(model_run.get_model_results())
+        model_results = self.process_results(model_iteration.get_model_results())
 
         return (
             model_results,
@@ -239,7 +239,9 @@ class OutpatientsModel(Model):
             ],
         )
 
-    def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
+    def save_results(
+        self, model_iteration: ModelIteration, path_fn: Callable[[str], str]
+    ) -> None:
         """Save the results of running the model
 
         This method is used for saving the results of the model run to disk as a parquet file.
@@ -249,10 +251,10 @@ class OutpatientsModel(Model):
         :param model_results: a DataFrame containing the results of a model iteration
         :param path_fn: a function which takes the activity type and returns a path
         """
-        model_run.get_model_results().set_index(["rn"])[
+        model_iteration.get_model_results().set_index(["rn"])[
             ["attendances", "tele_attendances"]
         ].to_parquet(f"{path_fn('op')}/0.parquet")
 
-        model_run.avoided_activity.set_index(["rn"])[
+        model_iteration.avoided_activity.set_index(["rn"])[
             ["attendances", "tele_attendances"]
         ].to_parquet(f"{path_fn('op_avoided')}/0.parquet")

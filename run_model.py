@@ -28,7 +28,7 @@ from model.health_status_adjustment import HealthStatusAdjustmentInterpolated
 from model.helpers import load_params
 from model.inpatients import InpatientsModel
 from model.model import Model
-from model.model_run import ModelRun
+from model.model_iteration import ModelIteration
 from model.outpatients import OutpatientsModel
 from model.results import combine_results, generate_results_json, save_results_files
 
@@ -179,7 +179,7 @@ def run_single_model_run(
     print("initialising model...  ", end="")
     model = timeit(model_type, params, data)
     print("running model...       ", end="")
-    m_run = timeit(ModelRun, model, model_run)
+    m_run = timeit(ModelIteration, model, model_run)
     print("aggregating results... ", end="")
     model_results, step_counts = timeit(m_run.get_aggregate_results)
     #

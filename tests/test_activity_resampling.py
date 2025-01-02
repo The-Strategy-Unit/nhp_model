@@ -17,8 +17,8 @@ def mock_activity_resampling():
     """create a mock Model instance"""
     with patch.object(ActivityResampling, "__init__", lambda m, c: None):
         mdl = ActivityResampling(None)
-    mdl._model_run = Mock()
-    mdl._model_run.model.baseline_counts = np.array(
+    mdl._model_iteration = Mock()
+    mdl._model_iteration.model.baseline_counts = np.array(
         [[1, 2, 3, 4], [5, 6, 7, 8]]
     ).astype(float)
     return mdl
@@ -26,18 +26,18 @@ def mock_activity_resampling():
 
 def test_init():
     # arrange
-    model_run = Mock()
-    model_run.data = "data"
-    model_run.model.model_type = "ip"
-    model_run.model.baseline_counts = np.array([[1, 2, 3], [4, 5, 6]])
-    model_run.params = "params"
-    model_run.run_params = "run_params"
-    model_run.model.demog_factors = "demog_factors"
-    model_run.model.birth_factors = "birth_factors"
-    model_run.model.hsa = "hsa"
+    model_iteration = Mock()
+    model_iteration.data = "data"
+    model_iteration.model.model_type = "ip"
+    model_iteration.model.baseline_counts = np.array([[1, 2, 3], [4, 5, 6]])
+    model_iteration.params = "params"
+    model_iteration.run_params = "run_params"
+    model_iteration.model.demog_factors = "demog_factors"
+    model_iteration.model.birth_factors = "birth_factors"
+    model_iteration.model.hsa = "hsa"
 
     # act
-    actual = ActivityResampling(model_run)
+    actual = ActivityResampling(model_iteration)
 
     # assert
     assert actual.data == "data"
@@ -56,7 +56,7 @@ def test_update(mock_activity_resampling):
     aa_mock.factors = []
 
     # aa_mock._row_counts = np.array([3.0, 4.0, 5.0, 6.0])
-    aa_mock._model_run.data = pd.DataFrame({"a": [1, 2, 3, 4]})
+    aa_mock._model_iteration.data = pd.DataFrame({"a": [1, 2, 3, 4]})
 
     factor = pd.Series([1.0, 2.0, 3.0], index=[1, 2, 3], name="f")
     factor.index.names = ["a"]
@@ -72,8 +72,8 @@ def test_update(mock_activity_resampling):
 def test_demographic_adjustment(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
-    aa_mock._model_run.run_params = {"year": 2020, "variant": "a"}
-    aa_mock._model_run.model.demog_factors = pd.DataFrame(
+    aa_mock._model_iteration.run_params = {"year": 2020, "variant": "a"}
+    aa_mock._model_iteration.model.demog_factors = pd.DataFrame(
         {"2020": [1, 2, 3]},
         index=pd.MultiIndex.from_tuples([("a", 0), ("a", 1), ("b", 0)]),
     )
@@ -97,17 +97,17 @@ def test_demographic_adjustment(mocker, mock_activity_resampling):
 def test_birth_adjustment(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
-    aa_mock._model_run.run_params = {"year": 2020, "variant": "a"}
+    aa_mock._model_iteration.run_params = {"year": 2020, "variant": "a"}
     # set up demog_factors/birth_factors: we end up dividing birth factors by the demog factors, so
     # we set these up here so (roughly) birth_factors == 1 / demog_factors.
     # the result of this should be x ** 2 for the values in birth_factors
-    aa_mock._model_run.model.demog_factors = pd.DataFrame(
+    aa_mock._model_iteration.model.demog_factors = pd.DataFrame(
         {"2020": [1 / (x + 1) for x in range(16)]},
         index=pd.MultiIndex.from_tuples(
             [(v, s, a) for s in [1, 2] for v in ["a", "b"] for a in [1, 2, 3, 4]]
         ),
     )
-    aa_mock._model_run.model.birth_factors = pd.DataFrame(
+    aa_mock._model_iteration.model.birth_factors = pd.DataFrame(
         {"2020": [(x + 9) for x in range(8)]},
         index=pd.MultiIndex.from_tuples(
             [(v, 2, a) for v in ["a", "b"] for a in [1, 2, 3, 4]]
@@ -139,10 +139,10 @@ def test_birth_adjustment(mocker, mock_activity_resampling):
 def test_health_status_adjustment_when_enabled(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
-    aa_mock._model_run.params = {"health_status_adjustment": True}
-    aa_mock._model_run.run_params = {"health_status_adjustment": 2}
+    aa_mock._model_iteration.params = {"health_status_adjustment": True}
+    aa_mock._model_iteration.run_params = {"health_status_adjustment": 2}
 
-    aa_mock._model_run.model.hsa.run.return_value = "hsa"
+    aa_mock._model_iteration.model.hsa.run.return_value = "hsa"
 
     u_mock = mocker.patch(
         "model.activity_resampling.ActivityResampling._update", return_value="update"
@@ -160,10 +160,10 @@ def test_health_status_adjustment_when_enabled(mocker, mock_activity_resampling)
 def test_health_status_adjustmen_when_disabled(mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
-    aa_mock._model_run.params = {"health_status_adjustment": False}
-    aa_mock._model_run.run_params = {"health_status_adjustment": 2}
+    aa_mock._model_iteration.params = {"health_status_adjustment": False}
+    aa_mock._model_iteration.run_params = {"health_status_adjustment": 2}
 
-    aa_mock._model_run.model.hsa.run.return_value = "hsa"
+    aa_mock._model_iteration.model.hsa.run.return_value = "hsa"
 
     # act
     actual = aa_mock.health_status_adjustment()
@@ -176,8 +176,8 @@ def test_health_status_adjustmen_when_disabled(mock_activity_resampling):
 def test_covid_adjustment(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
-    aa_mock._model_run.model.model_type = "ip"
-    aa_mock._model_run.run_params = {
+    aa_mock._model_iteration.model.model_type = "ip"
+    aa_mock._model_iteration.run_params = {
         "covid_adjustment": {"ip": {"elective": 1, "non-elective": 2}}
     }
 
@@ -196,8 +196,8 @@ def test_covid_adjustment(mocker, mock_activity_resampling):
 def test_expat_adjustment_no_params(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
-    aa_mock._model_run.model.model_type = "ip"
-    aa_mock._model_run.run_params = {"expat": {"ip": {}}}
+    aa_mock._model_iteration.model.model_type = "ip"
+    aa_mock._model_iteration.run_params = {"expat": {"ip": {}}}
 
     u_mock = mocker.patch(
         "model.activity_resampling.ActivityResampling._update", return_value="update"
@@ -214,8 +214,8 @@ def test_expat_adjustment_no_params(mocker, mock_activity_resampling):
 def test_expat_adjustment(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
-    aa_mock._model_run.model.model_type = "ip"
-    aa_mock._model_run.run_params = {
+    aa_mock._model_iteration.model.model_type = "ip"
+    aa_mock._model_iteration.run_params = {
         "expat": {
             "ip": {
                 "elective": {"100": 1, "200": 2},
@@ -244,8 +244,8 @@ def test_expat_adjustment(mocker, mock_activity_resampling):
 def test_repat_adjustment_no_params(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
-    aa_mock._model_run.model.model_type = "ip"
-    aa_mock._model_run.run_params = {
+    aa_mock._model_iteration.model.model_type = "ip"
+    aa_mock._model_iteration.run_params = {
         "repat_local": {"ip": {}},
         "repat_nonlocal": {"ip": {}},
     }
@@ -265,8 +265,8 @@ def test_repat_adjustment_no_params(mocker, mock_activity_resampling):
 def test_repat_adjustment(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
-    aa_mock._model_run.model.model_type = "ip"
-    aa_mock._model_run.run_params = {
+    aa_mock._model_iteration.model.model_type = "ip"
+    aa_mock._model_iteration.run_params = {
         "repat_local": {
             "ip": {
                 "elective": {"100": 1, "200": 2},
@@ -305,8 +305,8 @@ def test_repat_adjustment(mocker, mock_activity_resampling):
 def test_baseline_adjustment_no_params(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
-    aa_mock._model_run.model.model_type = "ip"
-    aa_mock._model_run.run_params = {"baseline_adjustment": {"ip": {}}}
+    aa_mock._model_iteration.model.model_type = "ip"
+    aa_mock._model_iteration.run_params = {"baseline_adjustment": {"ip": {}}}
 
     u_mock = mocker.patch(
         "model.activity_resampling.ActivityResampling._update", return_value="update"
@@ -323,8 +323,8 @@ def test_baseline_adjustment_no_params(mocker, mock_activity_resampling):
 def test_baseline_adjustment(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
-    aa_mock._model_run.model.model_type = "ip"
-    aa_mock._model_run.run_params = {
+    aa_mock._model_iteration.model.model_type = "ip"
+    aa_mock._model_iteration.run_params = {
         "baseline_adjustment": {
             "ip": {
                 "elective": {"100": 1, "200": 2},
@@ -353,11 +353,13 @@ def test_baseline_adjustment(mocker, mock_activity_resampling):
 def test_waiting_list_adjustment_aae(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
-    aa_mock._model_run.model.model_type = "aae"
+    aa_mock._model_iteration.model.model_type = "aae"
 
-    aa_mock._model_run.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
+    aa_mock._model_iteration.data = pd.DataFrame(
+        {"tretspef": ["100"] * 4 + ["200"] * 2}
+    )
 
-    aa_mock._model_run.run_params = {
+    aa_mock._model_iteration.run_params = {
         "waiting_list_adjustment": {
             "ip": {
                 "100": 1,
@@ -381,11 +383,13 @@ def test_waiting_list_adjustment_aae(mocker, mock_activity_resampling):
 def test_waiting_list_adjustment_no_params(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
-    aa_mock._model_run.model.model_type = "ip"
+    aa_mock._model_iteration.model.model_type = "ip"
 
-    aa_mock._model_run.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
+    aa_mock._model_iteration.data = pd.DataFrame(
+        {"tretspef": ["100"] * 4 + ["200"] * 2}
+    )
 
-    aa_mock._model_run.run_params = {"waiting_list_adjustment": {"ip": {}}}
+    aa_mock._model_iteration.run_params = {"waiting_list_adjustment": {"ip": {}}}
 
     u_mock = mocker.patch(
         "model.activity_resampling.ActivityResampling._update", return_value="update"
@@ -402,11 +406,13 @@ def test_waiting_list_adjustment_no_params(mocker, mock_activity_resampling):
 def test_waiting_list_adjustment(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
-    aa_mock._model_run.model.model_type = "ip"
+    aa_mock._model_iteration.model.model_type = "ip"
 
-    aa_mock._model_run.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
+    aa_mock._model_iteration.data = pd.DataFrame(
+        {"tretspef": ["100"] * 4 + ["200"] * 2}
+    )
 
-    aa_mock._model_run.run_params = {
+    aa_mock._model_iteration.run_params = {
         "waiting_list_adjustment": {
             "ip": {
                 "100": 1,
@@ -433,11 +439,13 @@ def test_non_demographic_adjustment_no_params(
 ):
     # arrange
     aa_mock = mock_activity_resampling
-    aa_mock._model_run.model.model_type = model_type
+    aa_mock._model_iteration.model.model_type = model_type
 
-    aa_mock._model_run.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
+    aa_mock._model_iteration.data = pd.DataFrame(
+        {"tretspef": ["100"] * 4 + ["200"] * 2}
+    )
 
-    aa_mock._model_run.run_params = {
+    aa_mock._model_iteration.run_params = {
         "non-demographic_adjustment": {"ip": {}, "op": {}, "aae": {}}
     }
 
@@ -469,11 +477,13 @@ def test_non_demographic_adjustment(
 ):
     # arrange
     aa_mock = mock_activity_resampling
-    aa_mock._model_run.model.model_type = model_type
+    aa_mock._model_iteration.model.model_type = model_type
 
-    aa_mock._model_run.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
+    aa_mock._model_iteration.data = pd.DataFrame(
+        {"tretspef": ["100"] * 4 + ["200"] * 2}
+    )
 
-    aa_mock._model_run.run_params = {
+    aa_mock._model_iteration.run_params = {
         "year": year,
         "non-demographic_adjustment": {
             "ip": {"elective": 1, "non-elective": 2},
@@ -481,7 +491,7 @@ def test_non_demographic_adjustment(
             "aae": {"ambulance": 5, "walk-in": 6},
         },
     }
-    aa_mock._model_run.params = {"start_year": 2020}
+    aa_mock._model_iteration.params = {"start_year": 2020}
 
     u_mock = mocker.patch(
         "model.activity_resampling.ActivityResampling._update", return_value="update"
@@ -503,7 +513,7 @@ def test_apply_resampling(mock_activity_resampling):
         pd.Series([5, 6, 7, 8], name="b"),
     ]
 
-    mr = aa_mock._model_run
+    mr = aa_mock._model_iteration
 
     mr.data = "data"
     mr.rng.poisson.return_value = "poisson"
