@@ -110,6 +110,7 @@ for k, v in [
     .withColumnRenamed("provider", "dataset")
     .withColumn("fyear", F.floor(F.col("fyear") / 100))
     .withColumn("tretspef_raw", F.col("tretspef"))
+    .withColumn("tretspef", tretspef_column)
     .withColumn("is_wla", F.lit(True))
     .repartition(1)
     .write.mode("overwrite")
