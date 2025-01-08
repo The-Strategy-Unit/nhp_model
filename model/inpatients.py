@@ -13,7 +13,7 @@ import pandas as pd
 
 from model.data import Data
 from model.model import Model
-from model.model_run import ModelRun
+from model.model_iteration import ModelIteration
 
 
 class InpatientsModel(Model):
@@ -154,18 +154,18 @@ class InpatientsModel(Model):
         """
         return data.loc[data.index.repeat(row_samples[0])].reset_index(drop=True)
 
-    def efficiencies(self, data: pd.DataFrame, model_run: ModelRun) -> None:
+    def efficiencies(self, data: pd.DataFrame, model_iteration: ModelIteration) -> None:
         """Run the efficiencies steps of the model
 
-        :param model_run: an instance of the ModelRun class
-        :type model_run: model.model_run.ModelRun
+        :param model_iteration: an instance of the ModelIteration class
+        :type model_iteration: model.model_iteration.ModelIteration
         """
         # skip if there are no efficiencies
-        if model_run.model.strategies["efficiencies"].empty:
+        if model_iteration.model.strategies["efficiencies"].empty:
             return data, None
 
         efficiencies = (
-            InpatientEfficiencies(data, model_run)
+            InpatientEfficiencies(data, model_iteration)
             .losr_all()
             .losr_aec()
             .losr_preop()
@@ -234,19 +234,19 @@ class InpatientsModel(Model):
         data = data[data["value"] > 0].reset_index()
         return data
 
-    def aggregate(self, model_run: ModelRun) -> Tuple[Callable, dict]:
+    def aggregate(self, model_iteration: ModelIteration) -> Tuple[Callable, dict]:
         """Aggregate the model results
 
-        Can also be used to aggregate the baseline data by passing in a `ModelRun` with
+        Can also be used to aggregate the baseline data by passing in a `ModelIteration` with
         the `model_run` argument set `-1`.
 
-        :param model_run: an instance of the `ModelRun` class
-        :type model_run: model.model_run.ModelRun
+        :param model_iteration: an instance of the `ModelIteration` class
+        :type model_iteration: model.model_iteration.ModelIteration
 
         :returns: a dictionary containing the different aggregations of this data
         :rtype: dict
         """
-        model_results = self.process_results(model_run.get_model_results())
+        model_results = self.process_results(model_iteration.get_model_results())
 
         return (
             model_results,
@@ -274,15 +274,17 @@ class InpatientsModel(Model):
         )
         return rows_avoided.merge(data.drop_duplicates(), how="left", on="rn")
 
-    def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
+    def save_results(
+        self, model_iteration: ModelIteration, path_fn: Callable[[str], str]
+    ) -> None:
         """Save the results of running the model
 
-        :param model_run: an instance of the `ModelRun` class
-        :type model_run: model.model_run.ModelRun
+        :param model_iteration: an instance of the `ModelIteration` class
+        :type model_iteration: model.model_iteration.ModelIteration
         :param path_fn: a function which takes the activity type and returns a path
         :type path_fn: Callable[[str], str]
         """
-        model_results = model_run.get_model_results()
+        model_results = model_iteration.get_model_results()
         ip_op_row_ix = model_results["classpat"] == "-1"
         # save the op converted rows
         model_results[ip_op_row_ix].groupby(
@@ -297,17 +299,17 @@ class InpatientsModel(Model):
             f"{path_fn('ip')}/0.parquet"
         )
 
-        model_run.avoided_activity.loc[:, ["rn", "speldur", "classpat"]].to_parquet(
-            f"{path_fn('ip_avoided')}/0.parquet"
-        )
+        model_iteration.avoided_activity.loc[
+            :, ["rn", "speldur", "classpat"]
+        ].to_parquet(f"{path_fn('ip_avoided')}/0.parquet")
 
 
 class InpatientEfficiencies:
     """Apply the Inpatient Efficiency Strategies"""
 
-    def __init__(self, data: pd.DataFrame, model_run: ModelRun):
+    def __init__(self, data: pd.DataFrame, model_iteration: ModelIteration):
         self.data = data
-        self._model_run = model_run
+        self._model_iteration = model_iteration
         self._select_single_strategy()
         self._generate_losr_df()
         self.speldur_before = self.data["speldur"].copy()
@@ -315,10 +317,10 @@ class InpatientEfficiencies:
     @property
     def strategies(self):
         """get the efficiencies strategies"""
-        return self._model_run.model.strategies["efficiencies"]
+        return self._model_iteration.model.strategies["efficiencies"]
 
     def _select_single_strategy(self):
-        rng = self._model_run.rng
+        rng = self._model_iteration.rng
         selected_strategy = (
             self.data["rn"]
             .map(
@@ -334,8 +336,8 @@ class InpatientEfficiencies:
         self.data.set_index(selected_strategy, inplace=True)
 
     def _generate_losr_df(self):
-        params = self._model_run.params["efficiencies"]["ip"]
-        run_params = self._model_run.run_params["efficiencies"]["ip"]
+        params = self._model_iteration.params["efficiencies"]["ip"]
+        run_params = self._model_iteration.run_params["efficiencies"]["ip"]
         losr = pd.DataFrame.from_dict(params, orient="index")
         losr["losr_f"] = [run_params[i] for i in losr.index]
         self.losr = losr
@@ -349,7 +351,7 @@ class InpatientEfficiencies:
         """
         losr = self.losr
         data = self.data
-        rng = self._model_run.rng
+        rng = self._model_iteration.rng
 
         i = losr.index[(losr.type == "all") & (losr.index.isin(data.index))]
 
@@ -372,7 +374,7 @@ class InpatientEfficiencies:
         """
         losr = self.losr
         data = self.data
-        rng = self._model_run.rng
+        rng = self._model_iteration.rng
 
         i = losr.index[(losr.type == "aec") & (losr.index.isin(data.index))]
 
@@ -395,7 +397,7 @@ class InpatientEfficiencies:
         """
         losr = self.losr
         data = self.data
-        rng = self._model_run.rng
+        rng = self._model_iteration.rng
 
         i = losr.index[(losr.type == "pre-op") & (losr.index.isin(data.index))]
 
@@ -426,7 +428,7 @@ class InpatientEfficiencies:
         #
         losr = self.losr
         data = self.data
-        rng = self._model_run.rng
+        rng = self._model_iteration.rng
 
         losr = losr[losr.type == day_procedure_type]
 

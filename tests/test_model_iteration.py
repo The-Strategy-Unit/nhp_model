@@ -8,15 +8,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from model.model_run import ModelRun
+from model.model_iteration import ModelIteration
 
 
 # fixtures
 @pytest.fixture
-def mock_model_run():
+def mock_model_iteration():
     """create a mock Model instance"""
-    with patch.object(ModelRun, "__init__", lambda m, c, r: None):
-        mr = ModelRun(None, None)
+    with patch.object(ModelIteration, "__init__", lambda m, c, r: None):
+        mr = ModelIteration(None, None)
     mr.model = Mock()
     return mr
 
@@ -31,12 +31,12 @@ def test_init(mocker, run, rp_call):
     model._get_run_params.return_value = {"seed": 1}
 
     rng_mock = mocker.patch("numpy.random.default_rng", return_value="rng")
-    prp_mock = mocker.patch("model.model_run.ModelRun._patch_run_params")
+    prp_mock = mocker.patch("model.model_iteration.ModelIteration._patch_run_params")
 
-    mocker.patch("model.model_run.ModelRun._run")
+    mocker.patch("model.model_iteration.ModelIteration._run")
 
     # act
-    actual = ModelRun(model, run)
+    actual = ModelIteration(model, run)
 
     # assert
     assert actual.model == model
@@ -53,9 +53,9 @@ def test_init(mocker, run, rp_call):
     actual._run.assert_called_once()
 
 
-def test_patch_run_params(mock_model_run):
+def test_patch_run_params(mock_model_iteration):
     # arrange
-    mr = mock_model_run
+    mr = mock_model_iteration
     mr.run_params = {
         "expat": {"op": {"100": 1, "200": 2}, "aae": {"ambulance": 3, "walk-in": 4}},
         "repat_local": {
@@ -107,14 +107,14 @@ def test_patch_run_params(mock_model_run):
 # run()
 
 
-def test_run(mocker, mock_model_run):
+def test_run(mocker, mock_model_iteration):
     """test run calls the _run method correctly"""
     # arrange
-    mr_mock = mock_model_run
+    mr_mock = mock_model_iteration
     mr_mock.model_run = 1
     mr_mock.model.baseline_step_counts = "step_counts_baseline"
 
-    ar_mock = mocker.patch("model.model_run.ActivityResampling")
+    ar_mock = mocker.patch("model.model_iteration.ActivityResampling")
     ar_mock.return_value = ar_mock
     ar_mock.demographic_adjustment.return_value = ar_mock
     ar_mock.birth_adjustment.return_value = ar_mock
@@ -168,13 +168,13 @@ def test_run(mocker, mock_model_run):
     assert mr_mock.step_counts == "pd.concat"
 
 
-def test_run_baseline(mocker, mock_model_run):
+def test_run_baseline(mocker, mock_model_iteration):
     """test run calls the _run method correctly"""
     # arrange
-    mr_mock = mock_model_run
+    mr_mock = mock_model_iteration
     mr_mock.model_run = 0
 
-    rr_mock = mocker.patch("model.model_run.ActivityResampling")
+    rr_mock = mocker.patch("model.model_iteration.ActivityResampling")
 
     # act
     mr_mock._run()
@@ -187,12 +187,12 @@ def test_run_baseline(mocker, mock_model_run):
 # test_fix_step_counts
 
 
-def test_fix_step_counts(mock_model_run):
+def test_fix_step_counts(mock_model_iteration):
     # arrange
     baseline = np.array([[1, 1, 1], [1, 2, 3]])
     future = np.array([[0, 1, 2], [0, 2, 6]])
 
-    mr_mock = mock_model_run
+    mr_mock = mock_model_iteration
     mr_mock.model.get_data_counts.return_value = baseline
     mr_mock.model.measures = ["x", "y"]
 
@@ -222,11 +222,11 @@ def test_fix_step_counts(mock_model_run):
 # aggregate()
 
 
-def test_get_aggregate_results(mock_model_run):
+def test_get_aggregate_results(mock_model_iteration):
     """test the get_aggregate_results method"""
 
     # arrange
-    mr_mock = mock_model_run
+    mr_mock = mock_model_iteration
 
     mr_mock.model.aggregate.return_value = "aggregated_results", [["a"]]
     mr_mock.get_step_counts = Mock(return_value="step_counts")
@@ -261,10 +261,10 @@ def test_get_aggregate_results(mock_model_run):
     ]
 
 
-def test_get_step_counts_empty(mock_model_run):
+def test_get_step_counts_empty(mock_model_iteration):
     """test the get_step_counts method when step counts is empty"""
     # arrange
-    mr = mock_model_run
+    mr = mock_model_iteration
     mr.step_counts = None
 
     # act
@@ -274,7 +274,7 @@ def test_get_step_counts_empty(mock_model_run):
     assert actual is None
 
 
-def test_get_step_counts(mock_model_run):
+def test_get_step_counts(mock_model_iteration):
     """test the get_step_counts method when step counts is not empty"""
 
     # arrange
@@ -289,7 +289,7 @@ def test_get_step_counts(mock_model_run):
         }
     )
 
-    mr = mock_model_run
+    mr = mock_model_iteration
     mr.step_counts = step_counts
     mr.model = Mock()
 
@@ -326,9 +326,9 @@ def test_get_step_counts(mock_model_run):
     assert actual.to_dict() == expected
 
 
-def test_step_counts_get_changes(mock_model_run):
+def test_step_counts_get_changes(mock_model_iteration):
     # arrange
-    mr = mock_model_run
+    mr = mock_model_iteration
     mr._step_counts_get_type_change_daycase = Mock(return_value=pd.Series([4]))
     mr._step_counts_get_type_change_outpatients = Mock(return_value=pd.Series([5]))
 
@@ -343,9 +343,9 @@ def test_step_counts_get_changes(mock_model_run):
     mr._step_counts_get_type_change_outpatients.assert_called_once_with(sc)
 
 
-def test_step_counts_get_type_change_daycase(mock_model_run):
+def test_step_counts_get_type_change_daycase(mock_model_iteration):
     # arrange
-    mr = mock_model_run
+    mr = mock_model_iteration
 
     sc = pd.Series(
         [-i for i in range(10)],
@@ -394,9 +394,9 @@ def test_step_counts_get_type_change_daycase(mock_model_run):
     assert actual.equals(expected)
 
 
-def test_step_counts_get_type_change_outpatients(mock_model_run):
+def test_step_counts_get_type_change_outpatients(mock_model_iteration):
     # arrange
-    mr = mock_model_run
+    mr = mock_model_iteration
 
     sc = pd.Series(
         [-i for i in range(20)],
@@ -445,9 +445,9 @@ def test_step_counts_get_type_change_outpatients(mock_model_run):
     assert actual.equals(expected)
 
 
-def test_get_model_results(mock_model_run):
+def test_get_model_results(mock_model_iteration):
     # arrange
-    mr = mock_model_run
+    mr = mock_model_iteration
     mr.data = pd.DataFrame(
         {"x": [1, 2, 3], "hsagrp": ["h", "h", "h"]}, index=["a", "b", "c"]
     )

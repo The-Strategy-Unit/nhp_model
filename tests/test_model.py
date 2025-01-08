@@ -637,7 +637,7 @@ def test_go_save_full_model_results_false(mocker, mock_model):
 
     mock_model.save_full_model_results = False
     mr_mock = Mock()
-    mocker.patch("model.model.ModelRun", return_value=mr_mock)
+    mocker.patch("model.model.ModelIteration", return_value=mr_mock)
     mr_mock.get_aggregate_results.return_value = "aggregate_results"
 
     # act
@@ -661,7 +661,7 @@ def test_go_save_full_model_results_true(mocker, mock_model):
 
     mock_model.save_full_model_results = True
     mr_mock = Mock()
-    mocker.patch("model.model.ModelRun", return_value=mr_mock)
+    mocker.patch("model.model.ModelIteration", return_value=mr_mock)
     mr_mock.get_aggregate_results.return_value = "aggregate_results"
 
     expected_path = "results/synthetic/test/20240101_012345/ip/model_run=1/"
@@ -690,7 +690,7 @@ def test_go_save_full_model_results_true_baseline(mocker, mock_model):
 
     mock_model.save_full_model_results = True
     mr_mock = Mock()
-    mocker.patch("model.model.ModelRun", return_value=mr_mock)
+    mocker.patch("model.model.ModelIteration", return_value=mr_mock)
     mr_mock.get_aggregate_results.return_value = "aggregate_results"
 
     # act

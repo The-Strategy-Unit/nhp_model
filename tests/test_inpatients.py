@@ -269,17 +269,17 @@ def test_efficiencies(mocker, mock_model):
 
     mock.get_step_counts.return_value = "step_counts"
 
-    mock_model_run = Mock()
-    mock_model_run.empty = False
-    mock_model_run.model.strategies = {"efficiencies": mock_model_run}
+    mock_model_iteration = Mock()
+    mock_model_iteration.empty = False
+    mock_model_iteration.model.strategies = {"efficiencies": mock_model_iteration}
 
     # act
-    actual = mdl.efficiencies("data", mock_model_run)
+    actual = mdl.efficiencies("data", mock_model_iteration)
 
     # assert
     assert actual == ("data_efficiencies", "step_counts")
 
-    mock.assert_called_once_with("data", mock_model_run)
+    mock.assert_called_once_with("data", mock_model_iteration)
     mock.losr_all.assert_called_once()
     mock.losr_aec.assert_called_once()
     mock.losr_preop.assert_called_once()
@@ -299,12 +299,12 @@ def test_efficiencies_no_params(mocker, mock_model):
     mock = mocker.patch("model.inpatients.InpatientEfficiencies")
     mock.return_value = mock
 
-    mock_model_run = Mock()
-    mock_model_run.empty = True
-    mock_model_run.model.strategies = {"efficiencies": mock_model_run}
+    mock_model_iteration = Mock()
+    mock_model_iteration.empty = True
+    mock_model_iteration.model.strategies = {"efficiencies": mock_model_iteration}
 
     # act
-    actual = mdl.efficiencies("data", mock_model_run)
+    actual = mdl.efficiencies("data", mock_model_iteration)
 
     # assert
     assert actual == ("data", None)

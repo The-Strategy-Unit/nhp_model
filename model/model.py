@@ -23,7 +23,7 @@ from model.health_status_adjustment import (
     HealthStatusAdjustmentInterpolated,
 )
 from model.helpers import age_groups, inrange, load_params, rnorm
-from model.model_run import ModelRun
+from model.model_iteration import ModelIteration
 
 
 class Model:
@@ -294,13 +294,17 @@ class Model:
         """
         raise NotImplementedError()
 
-    def activity_avoidance(self, data: pd.DataFrame, model_run: ModelRun) -> dict:
+    def activity_avoidance(
+        self, data: pd.DataFrame, model_iteration: ModelIteration
+    ) -> dict:
         """perform the activity avoidance (strategies)"""
         # if there are no items in params for activity_avoidance then exit
-        if not (params := model_run.run_params["activity_avoidance"][self.model_type]):
+        if not (
+            params := model_iteration.run_params["activity_avoidance"][self.model_type]
+        ):
             return data, None
 
-        rng = model_run.rng
+        rng = model_iteration.rng
 
         strategies = self.strategies["activity_avoidance"]
         # decide whether to sample a strategy for each row this model run
@@ -326,7 +330,7 @@ class Model:
         row_samples = rng.binomial(data_counts.astype("int"), factors_aa.prod(axis=1))
 
         step_counts = (
-            model_run.fix_step_counts(
+            model_iteration.fix_step_counts(
                 data,
                 row_samples,
                 factors_aa,
@@ -364,7 +368,7 @@ class Model:
         :return: the aggregated model results
         :rtype: dictionary
         """
-        mr = ModelRun(self, model_run)
+        mr = ModelIteration(self, model_run)
 
         if self.save_full_model_results and model_run > 0:
             dataset = self.params["dataset"]
@@ -392,7 +396,9 @@ class Model:
         """
         return results.groupby(["pod", "sitetret", *args, "measure"])["value"].sum()
 
-    def save_results(self, model_run: ModelRun, path_fn: Callable[[str], str]) -> None:
+    def save_results(
+        self, model_iteration: ModelIteration, path_fn: Callable[[str], str]
+    ) -> None:
         """Save the results of running the model
 
         This method is used for saving the results of the model run to disk as a parquet file.
