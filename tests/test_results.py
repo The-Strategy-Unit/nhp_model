@@ -16,6 +16,7 @@ from model.results import (
     combine_results,
     generate_results_json,
     save_results_files,
+    _add_metadata_to_dataframe,
 )
 
 
@@ -330,23 +331,53 @@ def test_save_results_files(mocker):
     assert os_m.called_once_with(path, exist_ok=True)
 
     assert save_parquet_mock.call_args_list == [
-        call(path, "default", "default_df"),
-        call(path, "step_counts", "step_counts_df"),
+        call(path, "default", "default_df", params),
+        call(path, "step_counts", "step_counts_df", params),
     ]
 
     assert save_params_mock.called_once_with(path, params)
 
 
-def test_save_parquet_file():
+def test_save_parquet_file(mocker):
     # arrange
     df = Mock()
+    params = Mock()
+    add_metadata_to_dataframe_mock = mocker.patch(
+        "model.results._add_metadata_to_dataframe", return_value=df
+    )
 
     # act
-    actual = _save_parquet_file("path", "file", df)
+    actual = _save_parquet_file("path", "file", df, params)
 
     # assert
     assert actual == "path/file.parquet"
+    add_metadata_to_dataframe_mock.assert_called_once_with(df, params)
     df.to_parquet.assert_called_once_with(actual)
+
+
+def test_add_metadata_to_dataframe(mocker):
+    # arrange
+    df = pd.DataFrame({"one": [1], "two": [2]})
+    params = {
+        "dataset": "dataset",
+        "scenario": "scenario",
+        "app_version": "app_version",
+        "create_datetime": "create_datetime",
+    }
+    expected = {
+        "one": [1],
+        "two": [2],
+        "dataset": ["dataset"],
+        "app_version": ["app_version"],
+        "scenario": ["scenario"],
+        "create_datetime": ["create_datetime"],
+    }
+
+    # act
+    actual = _add_metadata_to_dataframe(df, params)
+
+    # assert
+    assert actual.to_dict("list") == expected
 
 
 def test_save_params_file(mocker):

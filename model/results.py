@@ -184,12 +184,30 @@ def save_results_files(results: dict, params: dict) -> list:
     os.makedirs(path, exist_ok=True)
 
     return [
-        *[_save_parquet_file(path, k, v) for k, v in results.items()],
+        *[_save_parquet_file(path, k, v, params) for k, v in results.items()],
         _save_params_file(path, params),
     ]
 
 
-def _save_parquet_file(path: str, results_name: str, df: pd.DataFrame) -> str:
+def _add_metadata_to_dataframe(df: pd.DataFrame, params: dict) -> pd.DataFrame:
+    """Add metadata as columns to the dataframe, so that the saved parquet files have useful information regarding their provenance
+
+    :param df: The dataframe that we want to add the metadata to
+    :type df: pd.DataFrame
+    :param params: The parameters for the model run, which include metadata
+    :type params: dict
+    :return: The dataframe, with additional columns "dataset", "scenario" and "create_datetime"
+    :rtype: pd.DataFrame
+    """
+    metadata_to_save = ["dataset", "scenario", "app_version", "create_datetime"]
+    for m in metadata_to_save:
+        df[m] = params[m]
+    return df
+
+
+def _save_parquet_file(
+    path: str, results_name: str, df: pd.DataFrame, params: dict
+) -> str:
     """Save a results dataframe as parquet
 
     :param path: the folder where we want to save the results to
@@ -201,6 +219,7 @@ def _save_parquet_file(path: str, results_name: str, df: pd.DataFrame) -> str:
     :return: the filename of the saved file
     :rtype: str
     """
+    df = _add_metadata_to_dataframe(df, params)
     df.to_parquet(filename := f"{path}/{results_name}.parquet")
     return filename
 
