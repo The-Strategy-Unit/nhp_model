@@ -16,30 +16,31 @@ from model.data import Data
 class Databricks(Data):
     """Load NHP data from databricks"""
 
-    def __init__(self, spark: SparkContext, fyear: int, dataset: str):
+    def __init__(self, spark: SparkContext, data_path: str, year: int, dataset: str):
         self._spark = spark
-        self._fyear = fyear * 100 + (fyear + 1) % 100
+        self._data_path = data_path
+        self._year = year
         self._dataset = dataset
 
     @staticmethod
-    def create(spark: SparkContext) -> Callable[[int, str], Any]:
+    def create(spark: SparkContext, data_path: str) -> Callable[[int, str], Any]:
         """Create Databricks object
 
         :param spark: a SparkContext for selecting data
         :type spark: SparkContext
+        :param data_path: the path to where the parquet files are stored
+        :type data_path: str
         :return: a function to initialise the object
         :rtype: Callable[[str, str], Databricks]
         """
-        return lambda fyear, dataset: Databricks(spark, fyear, dataset)
+        return lambda fyear, dataset: Databricks(spark, data_path, fyear, dataset)
 
     @property
     def _apc(self):
         return (
-            self._spark.read.table("apc")
-            .filter(F.col("provider") == self._dataset)
-            .filter(F.col("fyear") == self._fyear)
-            .withColumnRenamed("epikey", "rn")
-            .withColumn("sex", F.col("sex").cast("int"))
+            self._spark.read.parquet(f"{self._data_path}/ip")
+            .filter(F.col("dataset") == self._dataset)
+            .filter(F.col("fyear") == self._year)
             .persist()
         )
 
@@ -49,7 +50,7 @@ class Databricks(Data):
         :return: the inpatients dataframe
         :rtype: pd.DataFrame
         """
-        return self._apc.withColumn("tretspef_raw", F.col("tretspef")).toPandas()
+        return self._apc.toPandas()
 
     def get_ip_strategies(self) -> pd.DataFrame:
         """Get the inpatients strategies dataframe
@@ -57,19 +58,12 @@ class Databricks(Data):
         :return: the inpatients strategies dataframe
         :rtype: pd.DataFrame
         """
-        mitigators = (
-            self._spark.read.table("apc_mitigators")
-            .withColumnRenamed("epikey", "rn")
-            .join(self._apc, "rn", "semi")
-            .select("rn", "type", "strategy", "sample_rate")
-        )
-
         return {
-            k: mitigators.filter(F.col("type") == v).drop("type").toPandas()
-            for k, v in [
-                ("activity_avoidance", "activity_avoidance"),
-                ("efficiencies", "efficiency"),
-            ]
+            k: self._spark.read.parquet(f"{self._data_path}/ip_{k}_strategies")
+            .filter(F.col("dataset") == self._dataset)
+            .filter(F.col("fyear") == self._year)
+            .join(self._apc, "rn", "semi")
+            for k in ["activity_avoidance", "efficiencies"]
         }
 
     def get_op(self) -> pd.DataFrame:
@@ -79,13 +73,10 @@ class Databricks(Data):
         :rtype: pd.DataFrame
         """
         return (
-            self._spark.read.table("opa")
-            .filter(F.col("provider") == self._dataset)
-            .filter(F.col("fyear") == self._fyear)
-            .withColumn("tretspef_raw", F.col("tretspef"))
-            .withColumn("is_wla", F.lit(True))
+            self._spark.read.parquet(f"{self._data_path}/op")
+            .filter(F.col("dataset") == self._dataset)
+            .filter(F.col("fyear") == self._year)
             .toPandas()
-            .rename(columns={"index": "rn"})
         )
 
     def get_aae(self) -> pd.DataFrame:
@@ -95,11 +86,10 @@ class Databricks(Data):
         :rtype: pd.DataFrame
         """
         return (
-            self._spark.read.table("ecds")
-            .filter(F.col("provider") == self._dataset)
-            .filter(F.col("fyear") == self._fyear)
+            self._spark.read.parquet(f"{self._data_path}/aae")
+            .filter(F.col("dataset") == self._dataset)
+            .filter(F.col("fyear") == self._year)
             .toPandas()
-            .rename(columns={"index": "rn"})
         )
 
     def get_birth_factors(self) -> pd.DataFrame:
@@ -110,8 +100,9 @@ class Databricks(Data):
         """
 
         return (
-            self._spark.read.table("birth_factors")
-            .filter(F.col("provider") == self._dataset)
+            self._spark.read.parquet(f"{self._data_path}/birth_factors")
+            .filter(F.col("dataset") == self._dataset)
+            .filter(F.col("fyear") == self._year)
             .drop("provider")
             .toPandas()
         )
@@ -124,8 +115,9 @@ class Databricks(Data):
         """
 
         return (
-            self._spark.read.table("demographic_factors")
-            .filter(F.col("provider") == self._dataset)
+            self._spark.read.parquet(f"{self._data_path}/demographic_factors")
+            .filter(F.col("dataset") == self._dataset)
+            .filter(F.col("fyear") == self._year)
             .drop("provider")
             .toPandas()
         )
@@ -137,9 +129,9 @@ class Databricks(Data):
         :rtype: pd.DataFrame
         """
         return (
-            self._spark.read.table("hsa_activity_tables")
+            self._spark.read.parquet(f"{self._data_path}/hsa_activity_tables")
             .filter(F.col("dataset") == self._dataset)
-            .filter(F.col("fyear") == self._fyear)
+            .filter(F.col("fyear") == self._year)
             .drop("dataset", "fyear")
             .toPandas()
         )
@@ -153,38 +145,47 @@ class Databricks(Data):
 class DatabricksNational(Data):
     """Load NHP data from databricks"""
 
-    def __init__(self, spark: SparkContext, fyear: int, sample_rate: float, seed: int):
+    def __init__(
+        self,
+        spark: SparkContext,
+        data_path: str,
+        year: int,
+        sample_rate: float,
+        seed: int,
+    ):
         self._spark = spark
-        self._fyear = fyear * 100 + (fyear + 1) % 100
+        self._data_path = data_path
+        self._year = year
         self._sample_rate = sample_rate
         self._seed = seed
 
         self._apc = (
-            self._spark.read.table("apc")
-            .filter(F.col("fyear") == self._fyear)
-            .withColumnRenamed("epikey", "rn")
-            .withColumn("sex", F.col("sex").cast("int"))
+            self._spark.read.parquet(f"{self._data_path}/ip")
+            .filter(F.col("fyear") == self._year)
             .withColumn("provider", F.lit("NATIONAL"))
             .withColumn("sitetret", F.lit("NATIONAL"))
-            .drop("fyear")
             .sample(fraction=self._sample_rate, seed=self._seed)
             .persist()
         )
 
     @staticmethod
     def create(
-        spark: SparkContext, sample_rate: float, seed: int
+        spark: SparkContext, data_path: str, sample_rate: float, seed: int
     ) -> Callable[[int, str], Any]:
         """Create Databricks object
 
         :param spark: a SparkContext for selecting data
         :type spark: SparkContext
+        :param data_path: the path to where the parquet files are stored
+        :type data_path: str
         :param sample_rate: the rate to sample inpatient data at
         :type sample_rate: float
         :return: a function to initialise the object
         :rtype: Callable[[str, str], Databricks]
         """
-        return lambda fyear, _: DatabricksNational(spark, fyear, sample_rate, seed)
+        return lambda fyear, _: DatabricksNational(
+            spark, data_path, fyear, sample_rate, seed
+        )
 
     def get_ip(self) -> pd.DataFrame:
         """Get the inpatients dataframe
@@ -192,7 +193,7 @@ class DatabricksNational(Data):
         :return: the inpatients dataframe
         :rtype: pd.DataFrame
         """
-        return self._apc.withColumn("tretspef_raw", F.col("tretspef")).toPandas()
+        return self._apc.toPandas()
 
     def get_ip_strategies(self) -> pd.DataFrame:
         """Get the inpatients strategies dataframe
@@ -200,19 +201,11 @@ class DatabricksNational(Data):
         :return: the inpatients strategies dataframe
         :rtype: pd.DataFrame
         """
-        mitigators = (
-            self._spark.read.table("apc_mitigators")
-            .withColumnRenamed("epikey", "rn")
-            .join(self._apc, "rn", "semi")
-            .select("rn", "type", "strategy", "sample_rate")
-        )
-
         return {
-            k: mitigators.filter(F.col("type") == v).drop("type").toPandas()
-            for k, v in [
-                ("activity_avoidance", "activity_avoidance"),
-                ("efficiencies", "efficiency"),
-            ]
+            k: self._spark.read.parquet(f"{self._data_path}/ip_{k}_strategies")
+            .filter(F.col("fyear") == self._year)
+            .join(self._apc, "rn", "semi")
+            for k in ["activity_avoidance", "efficiencies"]
         }
 
     def get_op(self) -> pd.DataFrame:
@@ -221,24 +214,20 @@ class DatabricksNational(Data):
         :return: the outpatients dataframe
         :rtype: pd.DataFrame
         """
-        op = self._spark.read.table("opa")
+        op = self._spark.read.parquet(f"{self._data_path}/op")
 
         return (
-            op.filter(F.col("fyear") == self._fyear)
+            self._spark.read.parquet(f"{self._data_path}/op")
+            .filter(F.col("fyear") == self._year)
             .withColumn("provider", F.lit("NATIONAL"))
             .withColumn("sitetret", F.lit("NATIONAL"))
-            .withColumn("sex", F.col("sex").cast("int"))
-            .groupBy(
-                op.drop("index", "fyear", "attendances", "tele_attendances").columns
-            )
+            .groupBy(op.drop("rn", "fyear", "attendances", "tele_attendances").columns)
             .agg(
                 (F.sum("attendances") * self._sample_rate).alias("attendances"),
                 (F.sum("tele_attendances") * self._sample_rate).alias(
                     "tele_attendances"
                 ),
             )
-            .withColumn("tretspef_raw", F.col("tretspef"))
-            .withColumn("is_wla", F.lit(True))
             # TODO: how do we make this stable? at the moment we can't use full model results with
             # national
             .withColumn("rn", F.expr("uuid()"))
@@ -251,14 +240,14 @@ class DatabricksNational(Data):
         :return: the A&E dataframe
         :rtype: pd.DataFrame
         """
-        ecds = self._spark.read.table("ecds")
+        aae = self._spark.read.parquet(f"{self._data_path}/aae")
 
         return (
-            ecds.filter(F.col("fyear") == self._fyear)
+            self._spark.read.parquet(f"{self._data_path}/aae")
+            .filter(F.col("fyear") == self._year)
             .withColumn("provider", F.lit("NATIONAL"))
             .withColumn("sitetret", F.lit("NATIONAL"))
-            .withColumn("sex", F.col("sex").cast("int"))
-            .groupBy(ecds.drop("index", "fyear", "arrivals").columns)
+            .groupBy(aae.drop("rn", "fyear", "arrivals").columns)
             .agg((F.sum("arrivals") * self._sample_rate).alias("arrivals"))
             # TODO: how do we make this stable? at the moment we can't use full model results with
             # national
@@ -313,7 +302,7 @@ class DatabricksNational(Data):
         """
         return (
             self._spark.read.table("hsa_activity_tables_NATIONAL")
-            .filter(F.col("fyear") == self._fyear)
+            .filter(F.col("fyear") == self._year)
             .groupBy("hsagrp", "sex", "age")
             .agg(F.mean("activity").alias("activity"))
             .toPandas()
