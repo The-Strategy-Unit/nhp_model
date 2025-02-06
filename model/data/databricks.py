@@ -104,7 +104,7 @@ class Databricks(Data):
             self._spark.read.parquet(f"{self._data_path}/birth_factors")
             .filter(F.col("dataset") == self._dataset)
             .filter(F.col("fyear") == self._year)
-            .drop("provider")
+            .drop("dataset")
             .toPandas()
         )
 
@@ -119,7 +119,7 @@ class Databricks(Data):
             self._spark.read.parquet(f"{self._data_path}/demographic_factors")
             .filter(F.col("dataset") == self._dataset)
             .filter(F.col("fyear") == self._year)
-            .drop("provider")
+            .drop("dataset")
             .toPandas()
         )
 
@@ -163,7 +163,7 @@ class DatabricksNational(Data):
         self._apc = (
             self._spark.read.parquet(f"{self._data_path}/ip")
             .filter(F.col("fyear") == self._year)
-            .withColumn("provider", F.lit("NATIONAL"))
+            .withColumn("dataset", F.lit("NATIONAL"))
             .withColumn("sitetret", F.lit("NATIONAL"))
             .sample(fraction=self._sample_rate, seed=self._seed)
             .persist()
@@ -221,7 +221,7 @@ class DatabricksNational(Data):
         return (
             self._spark.read.parquet(f"{self._data_path}/op")
             .filter(F.col("fyear") == self._year)
-            .withColumn("provider", F.lit("NATIONAL"))
+            .withColumn("dataset", F.lit("NATIONAL"))
             .withColumn("sitetret", F.lit("NATIONAL"))
             .groupBy(op.drop("rn", "fyear", "attendances", "tele_attendances").columns)
             .agg(
@@ -247,7 +247,7 @@ class DatabricksNational(Data):
         return (
             self._spark.read.parquet(f"{self._data_path}/aae")
             .filter(F.col("fyear") == self._year)
-            .withColumn("provider", F.lit("NATIONAL"))
+            .withColumn("dataset", F.lit("NATIONAL"))
             .withColumn("sitetret", F.lit("NATIONAL"))
             .groupBy(aae.drop("rn", "fyear", "arrivals").columns)
             .agg((F.sum("arrivals") * self._sample_rate).alias("arrivals"))
