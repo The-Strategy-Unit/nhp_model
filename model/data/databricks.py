@@ -77,6 +77,7 @@ class Databricks(Data):
             self._spark.read.parquet(f"{self._data_path}/op")
             .filter(F.col("dataset") == self._dataset)
             .filter(F.col("fyear") == self._year)
+            .withColumnRenamed("index", "rn")
             .toPandas()
         )
 
@@ -90,6 +91,7 @@ class Databricks(Data):
             self._spark.read.parquet(f"{self._data_path}/aae")
             .filter(F.col("dataset") == self._dataset)
             .filter(F.col("fyear") == self._year)
+            .withColumnRenamed("index", "rn")
             .toPandas()
         )
 
@@ -223,7 +225,9 @@ class DatabricksNational(Data):
             .filter(F.col("fyear") == self._year)
             .withColumn("dataset", F.lit("NATIONAL"))
             .withColumn("sitetret", F.lit("NATIONAL"))
-            .groupBy(op.drop("rn", "fyear", "attendances", "tele_attendances").columns)
+            .groupBy(
+                op.drop("index", "fyear", "attendances", "tele_attendances").columns
+            )
             .agg(
                 (F.sum("attendances") * self._sample_rate).alias("attendances"),
                 (F.sum("tele_attendances") * self._sample_rate).alias(
@@ -249,7 +253,7 @@ class DatabricksNational(Data):
             .filter(F.col("fyear") == self._year)
             .withColumn("dataset", F.lit("NATIONAL"))
             .withColumn("sitetret", F.lit("NATIONAL"))
-            .groupBy(aae.drop("rn", "fyear", "arrivals").columns)
+            .groupBy(aae.drop("index", "fyear", "arrivals").columns)
             .agg((F.sum("arrivals") * self._sample_rate).alias("arrivals"))
             # TODO: how do we make this stable? at the moment we can't use full model results with
             # national
