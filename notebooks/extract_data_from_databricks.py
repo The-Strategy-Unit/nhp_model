@@ -1,5 +1,6 @@
 # Databricks notebook source
 dbutils.widgets.text("version", "dev")
+dbutils.widgets.text("fyear", "201920")
 
 # COMMAND ----------
 
@@ -13,6 +14,8 @@ import pyspark.sql.functions as F
 spark.catalog.setCurrentCatalog("su_data")
 spark.catalog.setCurrentDatabase("nhp")
 
+spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
+
 # COMMAND ----------
 
 # MAGIC %md
@@ -21,12 +24,13 @@ spark.catalog.setCurrentDatabase("nhp")
 # COMMAND ----------
 
 save_path = f"/Volumes/su_data/nhp/old_nhp_data/{dbutils.widgets.get('version')}"
+fyear = int(dbutils.widgets.get("fyear"))
 
 # COMMAND ----------
 
 apc = (
     spark.read.table("apc")
-    .filter(F.col("fyear").isin([201920, 202223]))
+    .filter(F.col("fyear") == fyear)
     .withColumnRenamed("epikey", "rn")
     .withColumnRenamed("provider", "dataset")
     .withColumn("tretspef_raw", F.col("tretspef"))
@@ -106,7 +110,7 @@ for k, v in [
 
 (
     spark.read.table("opa")
-    .filter(F.col("fyear").isin([201920, 202223]))
+    .filter(F.col("fyear") == fyear)
     .withColumnRenamed("provider", "dataset")
     .withColumn("fyear", F.floor(F.col("fyear") / 100))
     .withColumn("tretspef_raw", F.col("tretspef"))
@@ -123,7 +127,7 @@ for k, v in [
 
 (
     spark.read.table("ecds")
-    .filter(F.col("fyear").isin([201920, 202223]))
+    .filter(F.col("fyear") == fyear)
     .withColumnRenamed("provider", "dataset")
     .withColumn("fyear", F.floor(F.col("fyear") / 100))
     .repartition(1)
@@ -142,8 +146,7 @@ df = (
     .partitionBy("dataset")
 )
 
-df.parquet(f"{save_path}/birth_factors/fyear=2019")
-df.parquet(f"{save_path}/birth_factors/fyear=2022")
+df.parquet(f"{save_path}/birth_factors/fyear={fyear // 100}")
 
 # COMMAND ----------
 
@@ -155,5 +158,4 @@ df = (
     .partitionBy("dataset")
 )
 
-df.parquet(f"{save_path}/demographic_factors/fyear=2019")
-df.parquet(f"{save_path}/demographic_factors/fyear=2022")
+df.parquet(f"{save_path}/demographic_factors/fyear={fyear // 100}")
