@@ -28,6 +28,8 @@
 
 # COMMAND ----------
 
+dbutils.widgets.text("data_path", "/Volumes/su_data/nhp/old_nhp_data", "Data Path")
+dbutils.widgets.text("model_version", "dev", "Data Path")
 dbutils.widgets.text("params_file", "sample_params.json", "Params File")
 dbutils.widgets.text("sample_rate", "0.01", "Sample Rate")
 
@@ -79,7 +81,11 @@ SAMPLE_RATE = float(dbutils.widgets.get("sample_rate"))
 if not 0 < SAMPLE_RATE <= 1:
     raise ValueError("Sample rate must be between 0 and 1")
 
-nhp_data = DatabricksNational.create(spark, SAMPLE_RATE, params["seed"])
+DATA_PATH = (
+    f"{dbutils.widgets.get('data_path')}/{dbutils.widgets.get('model_version')}/"
+)
+
+nhp_data = DatabricksNational.create(spark, DATA_PATH, SAMPLE_RATE, params["seed"])
 runtime = datetime.now().strftime(format="%Y%m%d-%H%M%S")
 
 # COMMAND ----------
@@ -234,7 +240,10 @@ url = dbutils.secrets.get("nhpsa-results", "url")
 sas = dbutils.secrets.get("nhpsa-results", "sas-token")
 cont = ContainerClient.from_container_url(f"{url}?{sas}")
 cont.upload_blob(
-    f"prod/dev/synthetic/{json_filename}.json.gz", zipped_results, metadata=metadata, overwrite=True
+    f"prod/dev/synthetic/{json_filename}.json.gz",
+    zipped_results,
+    metadata=metadata,
+    overwrite=True,
 )
 
 # COMMAND ----------
