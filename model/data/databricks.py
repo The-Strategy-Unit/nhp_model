@@ -63,6 +63,7 @@ class Databricks(Data):
             .filter(F.col("dataset") == self._dataset)
             .filter(F.col("fyear") == self._year)
             .join(self._apc, "rn", "semi")
+            .toPandas()
             for k in ["activity_avoidance", "efficiencies"]
         }
 
@@ -205,6 +206,7 @@ class DatabricksNational(Data):
             k: self._spark.read.parquet(f"{self._data_path}/ip_{k}_strategies")
             .filter(F.col("fyear") == self._year)
             .join(self._apc, "rn", "semi")
+            .toPandas()
             for k in ["activity_avoidance", "efficiencies"]
         }
 
