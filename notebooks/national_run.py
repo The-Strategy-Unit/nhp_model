@@ -82,7 +82,7 @@ if not 0 < SAMPLE_RATE <= 1:
     raise ValueError("Sample rate must be between 0 and 1")
 
 DATA_PATH = (
-    f"{dbutils.widgets.get('data_path')}/{dbutils.widgets.get('model_version')}/"
+    f"{dbutils.widgets.get('data_path')}/{dbutils.widgets.get('data_version')}/"
 )
 
 nhp_data = DatabricksNational.create(spark, DATA_PATH, SAMPLE_RATE, params["seed"])
