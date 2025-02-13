@@ -51,7 +51,7 @@ dfr = (
         ],
     )
     .filter(~F.col("hsagrp").isin(["birth", "maternity", "paeds"]))
-    .filter(F.col("fyear").isin([2019, 2022]))
+    .filter(F.col("fyear").isin([2019, 2022, 2023]))
 )
 
 dfr.display()
@@ -198,7 +198,7 @@ hsa_activity_tables.write.mode("overwrite").saveAsTable("hsa_activity_tables")
 
 (
     spark.read.table("hsa_activity_tables")
-    .filter(F.col("fyear").isin([201920, 202223]))
+    .filter(F.col("fyear").isin([201920, 202223, 202324]))
     .withColumn("fyear", F.udf(from_fyear)("fyear"))
     .withColumnRenamed("provider", "dataset")
     .repartition(1)
