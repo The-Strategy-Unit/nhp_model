@@ -54,7 +54,7 @@ dfr = (
         ],
     )
     .filter(~F.col("hsagrp").isin(["birth", "maternity", "paeds"]))
-    .filter(F.col("fyear").isin([2019, 2022]))
+    .filter(F.col("fyear").isin([2019, 2022, 2023]))
 )
 
 dfr.display()
