@@ -66,6 +66,12 @@ params["demographic_factors"]["variant_probabilities"] = {"principal_proj": 1.0}
 
 # COMMAND ----------
 
+# Check that the version is the same in the params and in the data_version variable above
+
+assert dbutils.widgets.get('data_version').rsplit('.', 1)[0] == params["app_version"]
+
+# COMMAND ----------
+
 spark.catalog.setCurrentCatalog("su_data")
 spark.catalog.setCurrentDatabase("nhp")
 
@@ -222,6 +228,11 @@ get_principal(results["default"])
 
 # COMMAND ----------
 
+outputs_version = dbutils.widgets.get('data_version').rsplit('.', 1)[0]
+outputs_version
+
+# COMMAND ----------
+
 # JSON file
 
 with open(f"results/{json_filename}.json", "rb") as f:
@@ -233,14 +244,11 @@ metadata = {
     if not isinstance(v, dict) and not isinstance(v, list)
 }
 
-# Metadata "dataset" needs to be SYNTHETIC otherwise it will not be viewable in outputs
-metadata["dataset"] = "synthetic"
-
 url = dbutils.secrets.get("nhpsa-results", "url")
 sas = dbutils.secrets.get("nhpsa-results", "sas-token")
 cont = ContainerClient.from_container_url(f"{url}?{sas}")
 cont.upload_blob(
-    f"prod/dev/synthetic/{json_filename}.json.gz",
+    f"prod/{outputs_version}/national/{json_filename}.json.gz",
     zipped_results,
     metadata=metadata,
     overwrite=True,
@@ -255,7 +263,7 @@ for file in saved_files:
     filename = file[8:]
     with open(file, "rb") as f:
         cont.upload_blob(
-            f"aggregated-model-results/dev/{filename}",
+            f"aggregated-model-results/{outputs_version}/{filename}",
             f.read(),
             overwrite=True,
         )
@@ -276,7 +284,11 @@ for file in path.glob("**/*.parquet"):
     filename = file.as_posix()[8:]
     with open(file, "rb") as f:
         cont.upload_blob(
-            f"full-model-results/dev/{filename}",
+            f"full-model-results/{outputs_version}/{filename}",
             f.read(),
             overwrite=True,
         )
+
+# COMMAND ----------
+
+print(f"Full results saved here; use this path for avoided_activity: \n full-model-results/{outputs_version}/{dataset}/{scenario}/{create_datetime}")
