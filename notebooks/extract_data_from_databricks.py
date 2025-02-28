@@ -5,6 +5,7 @@ dbutils.widgets.text("fyear", "201920")
 # COMMAND ----------
 
 import sys
+from itertools import chain
 
 sys.path.append(spark.conf.get("bundle.sourcePath", "."))
 import pyspark.sql.functions as F
@@ -28,6 +29,22 @@ fyear = int(dbutils.widgets.get("fyear"))
 
 # COMMAND ----------
 
+imd_mapping = {
+    1: 1,
+    2: 1,
+    3: 2,
+    4: 2,
+    5: 3,
+    6: 3,
+    7: 4,
+    8: 4,
+    9: 5,
+    10: 5,
+}
+imd_mapping = F.create_map(*[F.lit(x) for x in chain(*imd_mapping.items())])
+
+# COMMAND ----------
+
 apc = (
     spark.read.table("apc")
     .filter(F.col("fyear") == fyear)
@@ -36,6 +53,9 @@ apc = (
     .withColumn("tretspef_raw", F.col("tretspef"))
     .withColumn("fyear", F.floor(F.col("fyear") / 100))
     .withColumn("sex", F.col("sex").cast("int"))
+    .withColumn("sushrg_trimmed", F.expr("substring(sushrg, 1, 4)"))
+    .withColumn("imd19_quintile", imd_mapping[F.col("imd19_decile")])
+    .drop("sushrg", "imd19_decile")
 )
 
 # COMMAND ----------
