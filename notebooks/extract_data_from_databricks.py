@@ -36,6 +36,7 @@ apc = (
     .withColumn("tretspef_raw", F.col("tretspef"))
     .withColumn("fyear", F.floor(F.col("fyear") / 100))
     .withColumn("sex", F.col("sex").cast("int"))
+    .withColumn("sushrg_trimmed", F.expr("substring(sushrg, 1, 4)"))
 )
 
 # COMMAND ----------
