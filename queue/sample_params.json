@@ -825,43 +825,47 @@
     }
   },
   "non-demographic_adjustment": {
-    "ip": {
-      "elective": [
-        1,
-        1.02
-      ],
-      "non-elective": [
-        1,
-        1.02
-      ],
-      "maternity": [
-        1,
-        1.02
-      ]
-    },
-    "op": {
-      "first": [
-        1,
-        1.02
-      ],
-      "followup": [
-        1,
-        1.02
-      ],
-      "procedure": [
-        1,
-        1.02
-      ]
-    },
-    "aae": {
-      "ambulance": [
-        1,
-        1.02
-      ],
-      "walk-in": [
-        1,
-        1.02
-      ]
+    "variant": "ndg-test",
+    "value-type": "year-on-year-growth",
+    "values": {
+      "ip": {
+        "elective": [
+          1,
+          1.02
+        ],
+        "non-elective": [
+          1,
+          1.02
+        ],
+        "maternity": [
+          1,
+          1.02
+        ]
+      },
+      "op": {
+        "first": [
+          1,
+          1.02
+        ],
+        "followup": [
+          1,
+          1.02
+        ],
+        "procedure": [
+          1,
+          1.02
+        ]
+      },
+      "aae": {
+        "ambulance": [
+          1,
+          1.02
+        ],
+        "walk-in": [
+          1,
+          1.02
+        ]
+      }
     }
   },
   "activity_avoidance": {

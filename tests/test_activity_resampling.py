@@ -491,7 +491,13 @@ def test_non_demographic_adjustment(
             "aae": {"ambulance": 5, "walk-in": 6},
         },
     }
-    aa_mock._model_iteration.params = {"start_year": 2020}
+    aa_mock._model_iteration.params = {
+        "start_year": 2020,
+        "non-demographic_adjustment": {
+            "variant": "ndg-test",
+            "value-type": "year-on-year-growth",
+        },
+    }
 
     u_mock = mocker.patch(
         "model.activity_resampling.ActivityResampling._update", return_value="update"
@@ -503,6 +509,29 @@ def test_non_demographic_adjustment(
     # assert
     assert actual == "update"
     assert u_mock.call_args[0][0].to_dict() == expected
+
+
+def test_non_demographic_adjustment_invalid_value_type(mock_activity_resampling):
+    # arrange
+    aa_mock = mock_activity_resampling
+    aa_mock._model_iteration.model.model_type = "ip"
+    aa_mock._model_iteration.run_params = {
+        "year": 2021,
+        "non-demographic_adjustment": {
+            "ip": {"elective": 1, "non-elective": 2},
+        },
+    }
+    aa_mock._model_iteration.params = {
+        "start_year": 2020,
+        "non-demographic_adjustment": {
+            "variant": "ndg-test",
+            "value-type": "invalid",
+        },
+    }
+
+    # act
+    with pytest.raises(ValueError, match="invalid value-type: invalid"):
+        aa_mock.non_demographic_adjustment()
 
 
 def test_apply_resampling(mock_activity_resampling):

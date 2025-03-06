@@ -240,6 +240,10 @@ class Model:
                 rng,
                 model_runs - 1,
             ),
+            "non-demographic_adjustment": {
+                k: generate_param_values(v, inrange_0_5)
+                for k, v in params["non-demographic_adjustment"]["values"].items()
+            },
             # generate param values for the different items in params: this will traverse the dicts
             # until a value is reached that isn't a dict. Then it will generate the required amount
             # of values for that parameter
@@ -252,7 +256,6 @@ class Model:
                     ("repat_local", inrange_1_5),
                     ("repat_nonlocal", inrange_1_5),
                     ("baseline_adjustment", inrange_0_5),
-                    ("non-demographic_adjustment", inrange_0_5),
                     ("activity_avoidance", inrange_0_1),
                     ("efficiencies", inrange_0_1),
                 ]

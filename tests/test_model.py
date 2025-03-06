@@ -40,8 +40,12 @@ def mock_model():
         "repat_nonlocal": {"ip": {"elective": {"Other": [1.3, 1.5]}}},
         "baseline_adjustment": {"ip": {"elective": {"Other": [1.5, 1.7]}}},
         "non-demographic_adjustment": {
-            "a": {"a_a": [1, 1.2], "a_b": [1, 1.2]},
-            "b": {"b_a": [1, 1.2], "b_b": [1, 1.2]},
+            "variant": "ndg-test",
+            "variant-type": "year-on-year-growth",
+            "values": {
+                "a": {"a_a": [1, 1.2], "a_b": [1, 1.2]},
+                "b": {"b_a": [1, 1.2], "b_b": [1, 1.2]},
+            },
         },
         "activity_avoidance": {
             "ip": {
@@ -79,19 +83,19 @@ def mock_run_params():
         "variant": ["a", "a", "b", "a"],
         "seeds": [1, 2, 3, 4],
         "health_status_adjustment": [1, 2, 3, 4, 5],
-        "covid_adjustment": [1, 1, 2, 3],
-        "waiting_list_adjustment": {
-            "ip": {"100": [1] * 4, "120": [2] * 4},
-            "op": {"100": [3] * 4, "120": [4] * 4},
-        },
-        "expat": {"ip": {"elective": {"Other": [1, 4, 5, 6]}}},
-        "repat_local": {"ip": {"elective": {"Other": [1, 7, 8, 9]}}},
-        "repat_nonlocal": {"ip": {"elective": {"Other": [1, 10, 11, 12]}}},
-        "baseline_adjustment": {"ip": {"elective": {"Other": [1, 13, 14, 15]}}},
         "non-demographic_adjustment": {
-            "a": {"a_a": [1, 16, 17, 18], "a_b": [1, 19, 20, 21]},
-            "b": {"b_a": [1, 22, 23, 24], "b_b": [1, 25, 26, 27]},
+            "a": {"a_a": [1, 1, 2, 3], "a_b": [1, 4, 5, 6]},
+            "b": {"b_a": [1, 7, 8, 9], "b_b": [1, 10, 11, 12]},
         },
+        "covid_adjustment": [1, 13, 14, 15],
+        "waiting_list_adjustment": {
+            "ip": {"100": [1, 1, 1, 1], "120": [2, 2, 2, 2]},
+            "op": {"100": [3, 3, 3, 3], "120": [4, 4, 4, 4]},
+        },
+        "expat": {"ip": {"elective": {"Other": [1, 16, 17, 18]}}},
+        "repat_local": {"ip": {"elective": {"Other": [1, 19, 20, 21]}}},
+        "repat_nonlocal": {"ip": {"elective": {"Other": [1, 22, 23, 24]}}},
+        "baseline_adjustment": {"ip": {"elective": {"Other": [1, 25, 26, 27]}}},
         "activity_avoidance": {
             "ip": {"a_a": [1, 28, 29, 30], "a_b": [1, 31, 32, 33]},
             "op": {"a_a": [1, 34, 35, 36], "a_b": [1, 37, 38, 39]},
@@ -467,15 +471,19 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "variant": "b",
                 "seed": 3,
                 "health_status_adjustment": 3,
-                "covid_adjustment": 2,
                 "non-demographic_adjustment": {
-                    "a": {"a_a": 17, "a_b": 20},
-                    "b": {"b_a": 23, "b_b": 26},
+                    "a": {"a_a": 2, "a_b": 5},
+                    "b": {"b_a": 8, "b_b": 11},
                 },
-                "expat": {"ip": {"elective": {"Other": 5}}},
-                "repat_local": {"ip": {"elective": {"Other": 8}}},
-                "repat_nonlocal": {"ip": {"elective": {"Other": 11}}},
-                "baseline_adjustment": {"ip": {"elective": {"Other": 14}}},
+                "covid_adjustment": 14,
+                "waiting_list_adjustment": {
+                    "ip": {"100": 1, "120": 2},
+                    "op": {"100": 3, "120": 4},
+                },
+                "expat": {"ip": {"elective": {"Other": 17}}},
+                "repat_local": {"ip": {"elective": {"Other": 20}}},
+                "repat_nonlocal": {"ip": {"elective": {"Other": 23}}},
+                "baseline_adjustment": {"ip": {"elective": {"Other": 26}}},
                 "activity_avoidance": {
                     "ip": {"a_a": 29, "a_b": 32},
                     "op": {"a_a": 35, "a_b": 38},
@@ -484,10 +492,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "efficiencies": {
                     "ip": {"b_a": 47, "b_b": 50},
                     "op": {"b_a": 53, "b_b": 56},
-                },
-                "waiting_list_adjustment": {
-                    "ip": {"100": 1, "120": 2},
-                    "op": {"100": 3, "120": 4},
                 },
                 "year": 2020,
             },
