@@ -213,7 +213,12 @@ class ActivityResampling:
         ):
             return self
 
-        year_exponent = self.run_params["year"] - self.params["start_year"]
+        match self.params["non-demographic_adjustment"]["value-type"]:
+            case "year-on-year-growth":
+                year_exponent = self.run_params["year"] - self.params["start_year"]
+            case x:
+                raise ValueError(f"invalid value-type: {x}")
+
         factor = pd.Series(params).rename("non-demographic_adjustment") ** year_exponent
         factor.index.names = ["ndggrp"]
         return self._update(factor)
