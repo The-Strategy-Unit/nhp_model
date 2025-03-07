@@ -139,23 +139,30 @@ class RunWithAzureStorage:
                 overwrite=True,
             )
 
-    def _upload_results_files(self, files: list) -> None:
+    def _upload_results_files(self, files: list, metadata: dict) -> None:
         """Upload the results
 
         once the model has run, upload the files (parquet for model results and json for model params) to blob storage
 
         :param files: list of files to be uploaded
         :type files: list
+        :param metadata: the metadata to attach to the blob
+        :type metadata: dict
 
         """
         container = self._get_container("results")
         for file in files:
             filename = file[8:]
+            if file.endswith(".json"):
+                metadata_to_use = metadata
+            else:
+                metadata_to_use = None
             with open(file, "rb") as f:
                 container.upload_blob(
                     f"aggregated-model-results/{self._app_version}/{filename}",
                     f.read(),
                     overwrite=True,
+                    metadata=metadata_to_use,
                 )
 
     def _upload_full_model_results(self) -> None:
@@ -203,7 +210,7 @@ class RunWithAzureStorage:
             if not isinstance(v, dict) and not isinstance(v, list)
         }
         self._upload_results_json(results_file, metadata)
-        self._upload_results_files(saved_files)
+        self._upload_results_files(saved_files, metadata)
         if save_full_model_results:
             self._upload_full_model_results()
         self._cleanup()

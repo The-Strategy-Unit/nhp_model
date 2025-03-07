@@ -229,23 +229,38 @@ def test_RunWithAzureStorage_upload_results_json(mock_run_with_azure_storage, mo
     )
 
 
-def test_RunWithAzureStorage_upload_results_files(
-    mock_run_with_azure_storage, mocker
-):
+def test_RunWithAzureStorage_upload_results_files(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage
 
     m = mocker.patch("docker_run.RunWithAzureStorage._get_container")
+    metadata = {"k": "v"}
 
     # act
     with patch("builtins.open", mock_open(read_data="data")) as mock_file:
-        s._upload_results_files(["results/filename"])
+        s._upload_results_files(["results/filename", "results/filename.json"], metadata)
 
     # assert
-    mock_file.assert_called_once_with("results/filename", "rb")
+    mock_file.call_args_list == [
+        call("results/filename", "rb"),
+        call("results/filename.json", "rb"),
+    ]
     m.assert_called_once_with("results")
-    m().upload_blob.assert_called_once_with(
-        "aggregated-model-results/dev/filename", "data", overwrite=True
+    m().upload_blob.assert_has_calls(
+        [
+            call(
+                "aggregated-model-results/dev/filename",
+                "data",
+                overwrite=True,
+                metadata=None,
+            ),
+            call(
+                "aggregated-model-results/dev/filename.json",
+                "data",
+                overwrite=True,
+                metadata=metadata,
+            ),
+        ]
     )
 
 
@@ -319,7 +334,7 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
 
     # assert
     m1.assert_called_once_with("results_file", metadata)
-    m2.assert_called_once_with(["saved_files"])
+    m2.assert_called_once_with(["saved_files"], metadata)
     m3.assert_not_called()
     m4.assert_called_once()
 
@@ -346,7 +361,7 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
 
     # assert
     m1.assert_called_once_with("results_file", metadata)
-    m2.assert_called_once_with(["saved_files"])
+    m2.assert_called_once_with(["saved_files"], metadata)
     m3.assert_called_once()
     m4.assert_called_once()
 
