@@ -36,12 +36,19 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       
-      - name: 'Login to Container Registry'
+      - name: 'Login to Azure Container Registry'
         uses: azure/docker-login@v2
         with:
           login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
+      
+      - name: 'Login to GitHub Container Registry'
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{github.actor}}
+          password: ${{secrets.GITHUB_TOKEN}}
 
       - name: Update version (production)
         if: ${{ inputs.latest }}
@@ -51,14 +58,21 @@ jobs:
 
       - name: 'Build and push image'
         run: |
-          docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ env.VERSION }} \
+          # build and push to GitHub Container Registry
+          docker build . -t ghcr.io/The-Strategy-Unit/nhp_model:${{ env.VERSION }} \
             --build-arg app_version=${{ inputs.app-version }} \
             --build-arg data_version=${{ inputs.data-version }} \
             --build-arg storage_account=${{ secrets.NHP_STORAGE_ACCOUNT }}
+          docker push ghcr.io/The-Strategy-Unit/nhp_model:${{ env.VERSION }}
+          # push to Azure Container Registry (where the app currently run from)
+          docker tag ghcr.io/The-Strategy-Unit/nhp_model:${{ env.VERSION }} ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ env.VERSION }}
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ env.VERSION }}
           
       - name: 'Push latest'
         if: ${{ inputs.latest }}
         run: |
-          docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ env.VERSION }} ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
+          docker tag ghcr.io/The-Strategy-Unit/nhp_model:${{ env.VERSION }} ghcr.io/The-Strategy-Unit/nhp_model:latest
+          docker push ghcr.io/The-Strategy-Unit/nhp_model:latest
+
+          docker tag ghcr.io/The-Strategy-Unit/nhp_model:${{ env.VERSION }} ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
