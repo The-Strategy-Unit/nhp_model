@@ -58,14 +58,19 @@ jobs:
 
       - name: 'Build and push image'
         run: |
+          # pull latest container, if some steps haven't changed this will speed things up
+          docker pull ghcr.io/the-strategy-unit/nhp_model:latest
           # build and push to GitHub Container Registry
           docker build . -t ghcr.io/the-strategy-unit/nhp_model:${{ env.VERSION }} \
             --build-arg app_version=${{ inputs.app-version }} \
+            --build-arg data_version=${{ inputs.data-version }}
+          docker push ghcr.io/the-strategy-unit/nhp_model:${{ env.VERSION }}
+          # build and dpush to Azure Container Registry (where the app currently run from)
+          # (include the storage account env var for the data)
+          docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ env.VERSION }} \
+            --build-arg app_version=${{ inputs.app-version }} \
             --build-arg data_version=${{ inputs.data-version }} \
             --build-arg storage_account=${{ secrets.NHP_STORAGE_ACCOUNT }}
-          docker push ghcr.io/the-strategy-unit/nhp_model:${{ env.VERSION }}
-          # push to Azure Container Registry (where the app currently run from)
-          docker tag ghcr.io/the-strategy-unit/nhp_model:${{ env.VERSION }} ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ env.VERSION }}
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ env.VERSION }}
           
       - name: 'Push latest'
@@ -74,5 +79,5 @@ jobs:
           docker tag ghcr.io/the-strategy-unit/nhp_model:${{ env.VERSION }} ghcr.io/the-strategy-unit/nhp_model:latest
           docker push ghcr.io/the-strategy-unit/nhp_model:latest
 
-          docker tag ghcr.io/the-strategy-unit/nhp_model:${{ env.VERSION }} ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
+          docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}:${{ env.VERSION }} ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
