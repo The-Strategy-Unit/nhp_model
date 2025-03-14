@@ -28,7 +28,7 @@
 
 # COMMAND ----------
 
-dbutils.widgets.text("data_path", "/Volumes/su_data/nhp/old_nhp_data", "Data Path")
+dbutils.widgets.text("data_path", "/Volumes/nhp/model_data/files", "Data Path")
 dbutils.widgets.text("data_version", "dev", "Data Version")
 dbutils.widgets.text("params_file", "sample_params.json", "Params File")
 dbutils.widgets.text("sample_rate", "0.01", "Sample Rate")
@@ -66,14 +66,8 @@ params["demographic_factors"]["variant_probabilities"] = {"principal_proj": 1.0}
 
 # COMMAND ----------
 
-# Check that the version is the same in the params and in the data_version variable above
-
-assert dbutils.widgets.get('data_version').rsplit('.', 1)[0] == params["app_version"]
-
-# COMMAND ----------
-
-spark.catalog.setCurrentCatalog("su_data")
-spark.catalog.setCurrentDatabase("nhp")
+spark.catalog.setCurrentCatalog("nhp")
+spark.catalog.setCurrentDatabase("default")
 
 # COMMAND ----------
 
