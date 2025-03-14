@@ -226,7 +226,7 @@ class DatabricksNational(Data):
             .withColumn("dataset", F.lit("NATIONAL"))
             .withColumn("sitetret", F.lit("NATIONAL"))
             .groupBy(
-                op.drop("index", "fyear", "attendances", "tele_attendances").columns
+                op.drop("index", "fyear", "attendances", "tele_attendances", "sushrg_trimmed", "imd_quintile").columns
             )
             .agg(
                 (F.sum("attendances") * self._sample_rate).alias("attendances"),
@@ -270,7 +270,7 @@ class DatabricksNational(Data):
 
         return (
             self._spark.read.parquet(
-                "/Volumes/su_data/nhp/population-projections/birth_data"
+                "/Volumes/nhp/population_projections/files/birth_data/"
             )
             .filter(F.col("area_code").rlike("^E0[6-9]"))
             .withColumn("sex", F.lit(2))
@@ -290,8 +290,9 @@ class DatabricksNational(Data):
 
         return (
             self._spark.read.parquet(
-                "/Volumes/su_data/nhp/population-projections/demographic_data"
+                "/Volumes/nhp/population_projections/files/demographic_data/projection=principal_proj"
             )
+            .withColumn("projection", F.lit("principal_proj"))
             .filter(F.col("area_code").rlike("^E0[6-9]"))
             .groupBy("projection", "age", "sex")
             .pivot("year")
@@ -307,7 +308,7 @@ class DatabricksNational(Data):
         :rtype: pd.DataFrame
         """
         return (
-            self._spark.read.table("hsa_activity_tables_NATIONAL")
+            self._spark.read.table("nhp.default.hsa_activity_tables_national")
             .filter(F.col("fyear") == self._year * 100 + (self._year + 1) % 100)
             .groupBy("hsagrp", "sex", "age")
             .agg(F.mean("activity").alias("activity"))
