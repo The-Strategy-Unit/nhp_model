@@ -56,17 +56,21 @@ jobs:
           username: ${{github.actor}}
           password: ${{secrets.GITHUB_TOKEN}}
 
-      - name: 'Build and push image (GHCR)'
+      - name: 'Pull latest dev container'
         run: |
-          # pull latest container, if some steps haven't changed this will speed things up
           docker pull ghcr.io/the-strategy-unit/nhp_model:dev
-          # build and push to GitHub Container Registry
+
+      - name: 'Build image'
+        run: |
           docker build . -t ghcr.io/the-strategy-unit/nhp_model:${{ needs.get-version.outputs.version }} \
             --build-arg app_version=${{ inputs.app-version }} \
             --build-arg data_version=${{ inputs.data-version }}
+          
+      - name: 'Push image'
+        run: |
           docker push ghcr.io/the-strategy-unit/nhp_model:${{ needs.get-version.outputs.version }}
       
-      - name: 'Push latest (GHCR)'
+      - name: 'Push latest'
         if: ${{ inputs.latest }}
         run: |
           docker tag ghcr.io/the-strategy-unit/nhp_model:${{ needs.get-version.outputs.version }} ghcr.io/the-strategy-unit/nhp_model:latest
@@ -91,18 +95,23 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: 'Build and push image (ACR)'
+      - name: 'Pull latest dev container'
         run: |
-          # build and push to Azure Container Registry (where the app currently run from)
-          # (include the storage account env var for the data)
           docker pull ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:dev
+
+      - name: 'Build and push image'
+        run: |
+          # include the storage account env var for the data for acr
           docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ needs.get-version.outputs.version }} \
             --build-arg app_version=${{ inputs.app-version }} \
             --build-arg data_version=${{ inputs.data-version }} \
             --build-arg storage_account=${{ secrets.NHP_STORAGE_ACCOUNT }}
+          
+      - name: 'Push image'
+        run: |
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ needs.get-version.outputs.version }}
 
-      - name: 'Push latest (ACR)'
+      - name: 'Push latest'
         if: ${{ inputs.latest }}
         run: |
           docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ needs.get-version.outputs.version }} ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
