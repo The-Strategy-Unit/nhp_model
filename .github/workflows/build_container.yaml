@@ -14,6 +14,8 @@ on:
     secrets:
       AZURE_CREDENTIALS:
         required: true
+      REGISTRY_LOGIN_SERVER:
+        required: true
       REGISTRY_USERNAME:
         required: true
       REGISTRY_PASSWORD:
@@ -22,15 +24,61 @@ on:
         required: true
 
 jobs:
-  build-and-deploy:
+  get-version:
     runs-on: ubuntu-latest
     env:
       # replaced progamatically if deploying to production
       VERSION: dev
+    outputs:
+      version: ${{ steps.set-outputs.outputs.VERSION }}
+    steps:
+      - name: Update version (production)
+        if: ${{ inputs.latest }}
+        run: |
+          VERSION=`echo ${{ inputs.app-version }} | awk 'BEGIN { FS="."; } { print ""$1"."$2; }'`
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Set outputs
+        id: set-outputs
+        run: echo VERSION=$VERSION >> $GITHUB_OUTPUTS
+
+  build-and-deploy-ghcr:
+    runs-on: ubuntu-latest
+    needs: [get-version]
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@v4
-        
+
+      - name: 'Login to GitHub Container Registry'
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{github.actor}}
+          password: ${{secrets.GITHUB_TOKEN}}
+
+      - name: 'Build and push image (GHCR)'
+        run: |
+          # pull latest container, if some steps haven't changed this will speed things up
+          docker pull ghcr.io/the-strategy-unit/nhp_model:dev
+          # build and push to GitHub Container Registry
+          docker build . -t ghcr.io/the-strategy-unit/nhp_model:${{ needs.get-version.outputs.version }} \
+            --build-arg app_version=${{ inputs.app-version }} \
+            --build-arg data_version=${{ inputs.data-version }}
+          docker push ghcr.io/the-strategy-unit/nhp_model:${{ needs.get-version.outputs.version }}
+      
+      - name: 'Push latest (GHCR)'
+        if: ${{ inputs.latest }}
+        run: |
+          docker tag ghcr.io/the-strategy-unit/nhp_model:${{ needs.get-version.outputs.version }} ghcr.io/the-strategy-unit/nhp_model:latest
+          docker push ghcr.io/the-strategy-unit/nhp_model:latest
+
+  build-and-deploy-acr:
+    runs-on: ubuntu-latest
+    needs: [get-version]
+    steps:
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@v4
+
       - name: 'Login via Azure CLI'
         uses: azure/login@v2
         with:
@@ -42,42 +90,19 @@ jobs:
           login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
-      
-      - name: 'Login to GitHub Container Registry'
-        uses: docker/login-action@v1
-        with:
-          registry: ghcr.io
-          username: ${{github.actor}}
-          password: ${{secrets.GITHUB_TOKEN}}
 
-      - name: Update version (production)
-        if: ${{ inputs.latest }}
+      - name: 'Build and push image (ACR)'
         run: |
-          VERSION=`echo ${{ github.ref_name }} | awk 'BEGIN { FS="."; } { print ""$1"."$2; }'`
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-      - name: 'Build and push image'
-        run: |
-          # pull latest container, if some steps haven't changed this will speed things up
-          docker pull ghcr.io/the-strategy-unit/nhp_model:latest
-          # build and push to GitHub Container Registry
-          docker build . -t ghcr.io/the-strategy-unit/nhp_model:${{ env.VERSION }} \
-            --build-arg app_version=${{ inputs.app-version }} \
-            --build-arg data_version=${{ inputs.data-version }}
-          docker push ghcr.io/the-strategy-unit/nhp_model:${{ env.VERSION }}
-          # build and dpush to Azure Container Registry (where the app currently run from)
+          # build and push to Azure Container Registry (where the app currently run from)
           # (include the storage account env var for the data)
-          docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ env.VERSION }} \
+          docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ needs.get-version.outputs.version }} \
             --build-arg app_version=${{ inputs.app-version }} \
             --build-arg data_version=${{ inputs.data-version }} \
             --build-arg storage_account=${{ secrets.NHP_STORAGE_ACCOUNT }}
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ env.VERSION }}
-          
-      - name: 'Push latest'
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ needs.get-version.outputs.version }}
+
+      - name: 'Push latest (ACR)'
         if: ${{ inputs.latest }}
         run: |
-          docker tag ghcr.io/the-strategy-unit/nhp_model:${{ env.VERSION }} ghcr.io/the-strategy-unit/nhp_model:latest
-          docker push ghcr.io/the-strategy-unit/nhp_model:latest
-
-          docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}:${{ env.VERSION }} ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
+          docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ needs.get-version.outputs.version }} ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
