@@ -95,6 +95,7 @@ jobs:
         run: |
           # build and push to Azure Container Registry (where the app currently run from)
           # (include the storage account env var for the data)
+          docker pull ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:dev
           docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ needs.get-version.outputs.version }} \
             --build-arg app_version=${{ inputs.app-version }} \
             --build-arg data_version=${{ inputs.data-version }} \
