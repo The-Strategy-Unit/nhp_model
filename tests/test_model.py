@@ -39,6 +39,12 @@ def mock_model():
         "repat_local": {"ip": {"elective": {"Other": [1.0, 1.2]}}},
         "repat_nonlocal": {"ip": {"elective": {"Other": [1.3, 1.5]}}},
         "baseline_adjustment": {"ip": {"elective": {"Other": [1.5, 1.7]}}},
+        "inequalities": {
+            "HRG1": {
+                "option": "level_up",
+                "values": {"1": 5.4321, "2": 4.321, "3": 3.21, "4": 2.21, "5": 1},
+            }
+        },
         "non-demographic_adjustment": {
             "variant": "ndg-test",
             "variant-type": "year-on-year-growth",
@@ -96,6 +102,15 @@ def mock_run_params():
         "repat_local": {"ip": {"elective": {"Other": [1, 19, 20, 21]}}},
         "repat_nonlocal": {"ip": {"elective": {"Other": [1, 22, 23, 24]}}},
         "baseline_adjustment": {"ip": {"elective": {"Other": [1, 25, 26, 27]}}},
+        "inequalities": {
+            "HRG1": {
+                "1": [5.4321, 5.4321, 5.4321, 5.4321],
+                "2": [4.321, 4.321, 4.321, 4.321],
+                "3": [3.21, 3.21, 3.21, 3.21],
+                "4": [2.21, 2.21, 2.21, 2.21],
+                "5": [1, 1, 1, 1],
+            }
+        },
         "activity_avoidance": {
             "ip": {"a_a": [1, 28, 29, 30], "a_b": [1, 31, 32, 33]},
             "op": {"a_a": [1, 34, 35, 36], "a_b": [1, 37, 38, 39]},
@@ -449,6 +464,9 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "repat_local": {"ip": {"elective": {"Other": 1}}},
                 "repat_nonlocal": {"ip": {"elective": {"Other": 1}}},
                 "baseline_adjustment": {"ip": {"elective": {"Other": 1}}},
+                "inequalities": {
+                    "HRG1": {"1": 5.4321, "2": 4.321, "3": 3.21, "4": 2.21, "5": 1}
+                },
                 "activity_avoidance": {
                     "ip": {"a_a": 1, "a_b": 1},
                     "op": {"a_a": 1, "a_b": 1},
@@ -484,6 +502,9 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "repat_local": {"ip": {"elective": {"Other": 20}}},
                 "repat_nonlocal": {"ip": {"elective": {"Other": 23}}},
                 "baseline_adjustment": {"ip": {"elective": {"Other": 26}}},
+                "inequalities": {
+                    "HRG1": {"1": 5.4321, "2": 4.321, "3": 3.21, "4": 2.21, "5": 1}
+                },
                 "activity_avoidance": {
                     "ip": {"a_a": 29, "a_b": 32},
                     "op": {"a_a": 35, "a_b": 38},
