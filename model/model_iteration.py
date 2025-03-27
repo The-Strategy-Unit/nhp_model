@@ -73,6 +73,7 @@ class ModelIteration:
             .waiting_list_adjustment()
             .baseline_adjustment()
             .non_demographic_adjustment()
+            .inequalities_adjustment()
             # call apply_resampling last, as this is what actually alters the data
             .apply_resampling()
         )
