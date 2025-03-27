@@ -244,6 +244,10 @@ class Model:
                 k: generate_param_values(v, inrange_0_5)
                 for k, v in params["non-demographic_adjustment"]["values"].items()
             },
+            "inequalities": {
+                k: generate_param_values(v["values"], lambda x: x)
+                for k, v in params["inequalities"].items()
+            },
             # generate param values for the different items in params: this will traverse the dicts
             # until a value is reached that isn't a dict. Then it will generate the required amount
             # of values for that parameter
