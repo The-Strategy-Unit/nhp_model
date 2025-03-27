@@ -121,6 +121,28 @@ class ActivityResampling:
 
         return self._update(self.hsa.run(self.run_params))
 
+    def inequalities_adjustment(self):
+        """perform the inequalities adjustment"""
+        activity_type = self._activity_type
+        if activity_type == "aae":
+            return self
+
+        if not (params := self.run_params["inequalities"]):
+            return self
+
+        factor = pd.concat(
+            {
+                k: pd.Series(v, name="inequalities", dtype="float64")
+                for k, v in params.items()
+            }
+        )
+        factor.index.names = ("sushrg_trimmed", "imd_quintile")
+        factor.index = factor.index.set_levels(
+            factor.index.levels[1].astype(int), level="imd_quintile"
+        )
+
+        return self._update(factor)
+
     def covid_adjustment(self):
         """perform the covid adjustment"""
         params = self.run_params["covid_adjustment"][self._activity_type]
