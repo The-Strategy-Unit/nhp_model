@@ -140,10 +140,13 @@ class ActivityResampling:
         factor.index = factor.index.set_levels(
             factor.index.levels[1].astype(int), level="imd_quintile"
         )
-        if activity_type == "op":
-            factor = pd.concat({"procedure": factor}, names=["group"])
-        if activity_type == "ip":
-            factor = pd.concat({"elective": factor}, names=["group"])
+match activity_type:
+  case "op":
+    factor_key = "procedure"
+  case "ip":
+    factor_key = "elective"
+    
+factor = pd.concat({factor_key: factor}, names=["group"])
         return self._update(factor)
 
     def covid_adjustment(self):
