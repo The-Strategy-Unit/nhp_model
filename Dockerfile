@@ -28,11 +28,15 @@ RUN uv pip install .
 # define build arguments, these will set the environment variables in the container
 ARG app_version
 ARG data_version
-ARG storage_account
+ARG queue_storage_account_url
+ARG data_storage_account_url
+ARG results_storage_account_url
 
 ENV APP_VERSION=$app_version
 ENV DATA_VERSION=$data_version
-ENV STORAGE_ACCOUNT=$storage_account
+ENV QUEUE_STORAGE_ACCOUNT_URL=$queue_storage_account_url
+ENV DATA_STORAGE_ACCOUNT_URL=$data_storage_account_url
+ENV RESULTS_STORAGE_ACCOUNT_URL=$results_storage_account_url
 
 # Define static environment variables
 ENV BATCH_SIZE=16

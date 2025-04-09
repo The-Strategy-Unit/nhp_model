@@ -59,6 +59,10 @@ def mock_run_with_azure_storage():
     rwas.params = {}
     rwas._app_version = "dev"
 
+    rwas._queue_storage_account_url = "queue_url"
+    rwas._data_storage_account_url = "data_url"
+    rwas._results_storage_account_url = "results_url"
+
     return rwas
 
 
@@ -74,16 +78,51 @@ def test_RunWithAzureStorage_init(mocker, args, expected_version):
     )
     gdm = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_data")
 
+    config.QUEUE_STORAGE_ACCOUNT_URL = "queue_url"
+    config.DATA_STORAGE_ACCOUNT_URL = "data_url"
+    config.RESULTS_STORAGE_ACCOUNT_URL = "results_url"
+
     # act
     s = RunWithAzureStorage(*args)  # type: ignore
 
     # assert
     assert s._app_version == expected_version
     assert s.params == expected_params
+    assert s._queue_storage_account_url == "queue_url"
+    assert s._data_storage_account_url == "data_url"
+    assert s._results_storage_account_url == "results_url"
 
     gpm.assert_called_once_with("filename")
 
     gdm.assert_called_once_with(2020, "synthetic")
+
+
+@pytest.mark.parametrize(
+    "queue_url, results_url, data_url, error_str",
+    [
+        (None, "results_url", "data_url", "QUEUE"),
+        ("queue_url", None, "data_url", "RESULTS"),
+        ("queue_url", "results_url", None, "DATA"),
+    ],
+)
+def test_RunWithAzureStorage_init_checks_urls(mocker, queue_url, results_url, data_url, error_str):
+    # arrange
+    expected_params = {"start_year": 2020, "dataset": "synthetic"}
+    mocker.patch(
+        "nhp.docker.run.RunWithAzureStorage._get_params",
+        return_value=expected_params,
+    )
+    mocker.patch("nhp.docker.run.RunWithAzureStorage._get_data")
+
+    config.QUEUE_STORAGE_ACCOUNT_URL = queue_url
+    config.DATA_STORAGE_ACCOUNT_URL = data_url
+    config.RESULTS_STORAGE_ACCOUNT_URL = results_url
+
+    # act & assert
+    with pytest.raises(
+        ValueError, match=f"{error_str}_STORAGE_ACCOUNT_URL environment variable not set"
+    ):
+        RunWithAzureStorage(None)  # type: ignore
 
 
 def test_RunWithAzureStorage_get_container(mock_run_with_azure_storage, mocker):
@@ -97,13 +136,12 @@ def test_RunWithAzureStorage_get_container(mock_run_with_azure_storage, mocker):
 
     dac_m = mocker.patch("nhp.docker.run.DefaultAzureCredential", return_value="cred")
 
-    config.STORAGE_ACCOUNT = "sa"
     # act
-    actual = s._get_container("container")
+    actual = s._get_container("url", "container")
 
     # assert
     assert actual == "container_client"
-    bsc_m.assert_called_once_with(account_url="https://sa.blob.core.windows.net", credential="cred")
+    bsc_m.assert_called_once_with(account_url="url", credential="cred")
     dac_m.assert_called_once_with()
 
 
@@ -129,7 +167,7 @@ def test_RunWithAzureStorage_get_params(mock_run_with_azure_storage, mocker):
     # assert
     assert actual == expected
 
-    m1.assert_called_once_with("queue")
+    m1.assert_called_once_with("queue_url", "queue")
     assert s._queue_blob == m2
 
     m2.download_blob.assert_called_once_with()
@@ -140,45 +178,34 @@ def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage
 
-    files = ["ip", "op", "aae"]
-
     def paths_helper(i):
         m = Mock()
         m.name = str(i)
         return m
 
+    files = [
+        paths_helper(f"dev/{i}/fyear=2020/dataset=synthetic/0.parquet") for i in ["ip", "op", "aae"]
+    ]
+
     mkdir_m = mocker.patch("os.makedirs", return_value=False)
 
-    mock = Mock()
-    mock.get_file_system_client.return_value = mock
-    mock.get_paths.side_effect = [
-        [paths_helper(f"dev/{i}") for i in files],
-        *[[paths_helper("/".join(["dev", i, j])) for j in ["0.parquet", "file"]] for i in files],
-    ]
-    mock.get_file_client.return_value = mock
-    mock.download_file.return_value = mock
-    mock.readall.side_effect = files
+    m1 = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_container")
+    m2 = m1().list_blobs = Mock(return_value=files)
+    m3 = m1().download_blob = Mock()
 
-    dlsc_m = mocker.patch("nhp.docker.run.DataLakeServiceClient", return_value=mock)
+    m1.reset_mock()
 
-    dac_m = mocker.patch("nhp.docker.run.DefaultAzureCredential", return_value="cred")
-
-    config.STORAGE_ACCOUNT = "sa"
     # act
     with patch("builtins.open", mock_open()) as mock_file:
         s._get_data(2020, "synthetic")
 
     # assert
-
-    dlsc_m.assert_called_once_with(account_url="https://sa.dfs.core.windows.net", credential="cred")
-    dac_m.assert_called_once_with()
-
-    mock.get_file_system_client.assert_called_once_with("data")
-    assert mock.get_paths.call_args_list == [
-        call("dev", recursive=False),
-        call("dev/ip/fyear=2020/dataset=synthetic"),
-        call("dev/op/fyear=2020/dataset=synthetic"),
-        call("dev/aae/fyear=2020/dataset=synthetic"),
+    m1.assert_called_once_with("data_url", "data")
+    m2.assert_called_once_with(name_starts_with="dev/fyear=2020/dataset=synthetic")
+    assert m3.call_args_list == [
+        call("dev/ip/fyear=2020/dataset=synthetic/0.parquet"),
+        call("dev/op/fyear=2020/dataset=synthetic/0.parquet"),
+        call("dev/aae/fyear=2020/dataset=synthetic/0.parquet"),
     ]
 
     assert mkdir_m.call_args_list == [
@@ -187,11 +214,11 @@ def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
         call("data/aae/fyear=2020/dataset=synthetic", exist_ok=True),
     ]
 
-    assert mock.get_file_client.call_args_list == [call(f"dev/{i}/0.parquet") for i in files]
-    assert mock.download_file.call_args_list == [call() for _ in files]
-    assert mock.readall.call_args_list == [call() for _ in files]
-
-    assert mock_file.call_args_list == [call(f"data/{i}/0.parquet", "wb") for i in files]
+    assert mock_file.call_args_list == [
+        call("data/ip/fyear=2020/dataset=synthetic/0.parquet", "wb"),
+        call("data/op/fyear=2020/dataset=synthetic/0.parquet", "wb"),
+        call("data/aae/fyear=2020/dataset=synthetic/0.parquet", "wb"),
+    ]
 
 
 def test_RunWithAzureStorage_upload_results_json(mock_run_with_azure_storage, mocker):
@@ -207,7 +234,7 @@ def test_RunWithAzureStorage_upload_results_json(mock_run_with_azure_storage, mo
 
     # assert
     mock_file.assert_called_once_with("results/filename.json", "rb")
-    m.assert_called_once_with("results")
+    m.assert_called_once_with("results_url", "results")
     m().upload_blob.assert_called_once_with(
         "prod/dev/filename.json.gz", "gzdata", metadata="metadata", overwrite=True
     )
@@ -229,7 +256,7 @@ def test_RunWithAzureStorage_upload_results_files(mock_run_with_azure_storage, m
         call("results/filename", "rb"),
         call("results/filename.json", "rb"),
     ]
-    m.assert_called_once_with("results")
+    m.assert_called_once_with("results_url", "results")
     m().upload_blob.assert_has_calls(
         [
             call(
@@ -273,7 +300,7 @@ def test_RunWithAzureStorage_upload_full_model_results(mock_run_with_azure_stora
     # assert
     assert mock_file.call_count == 3
     assert mock_file.call_args_list == [call(i, "rb") for i in file_mocks]
-    m.assert_called_once_with("results")
+    m.assert_called_once_with("results_url", "results")
 
     assert m().upload_blob.call_count == 3
     assert m().upload_blob.call_args_list == [

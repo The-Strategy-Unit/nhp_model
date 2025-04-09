@@ -68,11 +68,22 @@ class RunWithAzureStorage:
         self.params = self._get_params(filename)
         self._get_data(self.params["start_year"], self.params["dataset"])
 
-    def _get_container(self, container_name: str):
-        return BlobServiceClient(
-            account_url=f"https://{config.STORAGE_ACCOUNT}.blob.core.windows.net",
-            credential=DefaultAzureCredential(),
-        ).get_container_client(container_name)
+        if not config.QUEUE_STORAGE_ACCOUNT_URL:
+            raise ValueError("QUEUE_STORAGE_ACCOUNT_URL environment variable not set")
+        self._queue_storage_account_url = config.QUEUE_STORAGE_ACCOUNT_URL
+
+        if not config.DATA_STORAGE_ACCOUNT_URL:
+            raise ValueError("DATA_STORAGE_ACCOUNT_URL environment variable not set")
+        self._data_storage_account_url = config.DATA_STORAGE_ACCOUNT_URL
+
+        if not config.RESULTS_STORAGE_ACCOUNT_URL:
+            raise ValueError("RESULTS_STORAGE_ACCOUNT_URL environment variable not set")
+        self._results_storage_account_url = config.RESULTS_STORAGE_ACCOUNT_URL
+
+    def _get_container(self, account_url: str, container_name: str):
+        credential = DefaultAzureCredential()
+        bsc = BlobServiceClient(account_url=account_url, credential=credential)
+        return bsc.get_container_client(container_name)
 
     def _get_params(self, filename: str) -> dict:
         """Get the parameters for the model.
@@ -84,7 +95,9 @@ class RunWithAzureStorage:
         """
         logging.info("downloading params: %s", filename)
 
-        self._queue_blob = self._get_container("queue").get_blob_client(filename)
+        self._queue_blob = self._get_container(
+            self._queue_storage_account_url, "queue"
+        ).get_blob_client(filename)
 
         params_content = self._queue_blob.download_blob().readall()
 
@@ -101,29 +114,23 @@ class RunWithAzureStorage:
         :type year: str
         """
         logging.info("downloading data (%s / %s)", year, dataset)
-        fs_client = DataLakeServiceClient(
-            account_url=f"https://{config.STORAGE_ACCOUNT}.dfs.core.windows.net",
-            credential=DefaultAzureCredential(),
-        ).get_file_system_client("data")
+
+        container = self._get_container(self._data_storage_account_url, "data")
 
         version = config.DATA_VERSION
 
-        paths = [p.name for p in fs_client.get_paths(version, recursive=False)]
+        paths = container.list_blobs(name_starts_with=f"{version}/fyear={year}/dataset={dataset}")
 
         for p in paths:
-            subpath = f"{p}/fyear={year}/dataset={dataset}"
-            os.makedirs(f"data{subpath.removeprefix(version)}", exist_ok=True)
+            filename = p.name
+            logging.info(" * %s", filename)
+            local_name = "data" + filename.removeprefix(version)
 
-            for i in fs_client.get_paths(subpath):
-                filename = i.name
-                if not filename.endswith("parquet"):
-                    continue
+            os.makedirs(os.path.dirname(local_name), exist_ok=True)
 
-                logging.info(" * %s", filename)
-                local_name = "data" + filename.removeprefix(version)
-                with open(local_name, "wb") as local_file:
-                    file_client = fs_client.get_file_client(filename)
-                    local_file.write(file_client.download_file().readall())
+            with open(local_name, "wb") as local_file:
+                file_client = container.download_blob(filename)
+                local_file.write(file_client.readall())
 
     def _upload_results_json(self, results_file: str, metadata: dict) -> None:
         """Upload the results.
@@ -135,7 +142,7 @@ class RunWithAzureStorage:
         :param metadata: the metadata to attach to the blob
         :type metadata: dict
         """
-        container = self._get_container("results")
+        container = self._get_container(self._results_storage_account_url, "results")
 
         with open(f"results/{results_file}.json", "rb") as file:
             container.upload_blob(
@@ -157,7 +164,7 @@ class RunWithAzureStorage:
         :type metadata: dict
 
         """
-        container = self._get_container("results")
+        container = self._get_container(self._results_storage_account_url, "results")
         for file in files:
             filename = file[8:]
             if file.endswith(".json"):
@@ -173,7 +180,7 @@ class RunWithAzureStorage:
                 )
 
     def _upload_full_model_results(self) -> None:
-        container = self._get_container("results")
+        container = self._get_container(self._results_storage_account_url, "results")
 
         dataset = self.params["dataset"]
         scenario = self.params["scenario"]

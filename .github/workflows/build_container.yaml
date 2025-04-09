@@ -15,6 +15,27 @@ on:
         required: true
         default: dev
         type: string
+      latest:
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      AZURE_CREDENTIALS:
+        required: true
+      REGISTRY_LOGIN_SERVER:
+        required: true
+      REGISTRY_USERNAME:
+        required: true
+      REGISTRY_PASSWORD:
+        required: true
+      NHP_QUEUE_STORAGE_ACCOUNT_URL:
+        required: true
+      NHP_DATA_STORAGE_ACCOUNT_URL:
+        required: true
+      NHP_RESULTS_STORAGE_ACCOUNT_URL:
+        required: true
+      PAT_DELETE_PACKAGES:
+        required: true
 
 jobs:
   
