@@ -1244,29 +1244,29 @@
   },
   "efficiencies": {
     "ip": {
-      "ambulatory_emergency_care_low": {
-        "type": "aec",
+      "same_day_emergency_care_low": {
+        "type": "sdec",
         "interval": [
           0.85,
           0.95
         ]
       },
-      "ambulatory_emergency_care_moderate": {
-        "type": "aec",
+      "same_day_emergency_care_moderate": {
+        "type": "sdec",
         "interval": [
           0.85,
           0.95
         ]
       },
-      "ambulatory_emergency_care_high": {
-        "type": "aec",
+      "same_day_emergency_care_high": {
+        "type": "sdec",
         "interval": [
           0.85,
           0.95
         ]
       },
-      "ambulatory_emergency_care_very_high": {
-        "type": "aec",
+      "same_day_emergency_care_very_high": {
+        "type": "sdec",
         "interval": [
           0.85,
           0.95
@@ -1541,10 +1541,10 @@
     },
     "efficiencies": {
       "ip": {
-        "ambulatory_emergency_care_low": "linear",
-        "ambulatory_emergency_care_moderate": "linear",
-        "ambulatory_emergency_care_high": "linear",
-        "ambulatory_emergency_care_very_high": "linear",
+        "same_day_emergency_care_low": "linear",
+        "same_day_emergency_care_moderate": "linear",
+        "same_day_emergency_care_high": "linear",
+        "same_day_emergency_care_very_high": "linear",
         "emergency_elderly": "linear",
         "enhanced_recovery_bladder": "linear",
         "enhanced_recovery_breast": "linear",
