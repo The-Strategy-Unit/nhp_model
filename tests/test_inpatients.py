@@ -262,7 +262,7 @@ def test_efficiencies(mocker, mock_model):
     mock.data = "data_efficiencies"
 
     mock.losr_all.return_value = mock
-    mock.losr_aec.return_value = mock
+    mock.losr_sdec.return_value = mock
     mock.losr_preop.return_value = mock
     mock.losr_day_procedures.return_value = mock
     mock.update_step_counts.return_value = mock
@@ -281,7 +281,7 @@ def test_efficiencies(mocker, mock_model):
 
     mock.assert_called_once_with("data", mock_model_iteration)
     mock.losr_all.assert_called_once()
-    mock.losr_aec.assert_called_once()
+    mock.losr_sdec.assert_called_once()
     mock.losr_preop.assert_called_once()
     assert mock.losr_day_procedures.call_count == 2
     assert mock.losr_day_procedures.call_args_list == [
@@ -331,7 +331,7 @@ def test_process_results(mock_model):
             "age_group": xs,
             "sex": xs,
             "group": ["elective", "non-elective", "maternity"] * 4,
-            "classpat": ["1", "-2", "3", "4", "5", "-1"] * 2,
+            "classpat": ["1", "-2", "-3", "4", "5", "-1"] * 2,
             "tretspef": xs,
             "tretspef_raw": list(range(12)),
             "rn": [1] * 12,
@@ -341,54 +341,252 @@ def test_process_results(mock_model):
     )
     df["pod"] = "ip_" + df["group"] + "_admission"
 
-    expected = {
-        "sitetret": ["trust"] * 26,
-        "age": list(range(12)) + [i for i in range(11) if i != 5] + [1, 3, 7, 9],
-        "age_group": list(range(6)) * 2 + list(range(5)) * 2 + [1, 3] * 2,
-        "sex": list(range(6)) * 2 + list(range(5)) * 2 + [1, 3] * 2,
-        "tretspef": list(range(6)) * 2 + list(range(5)) * 2 + [1, 3] * 2,
-        "tretspef_raw": list(range(12))
-        + [i for i in range(11) if i != 5]
-        + [1, 3, 7, 9],
-        "measure": (["admissions"] * 5 + ["attendances"]) * 2
-        + ["beddays"] * 10
-        + ["procedures"] * 4,
-        "value": [1] * 12 + [i for i in range(1, 12) if i != 6] + [1] * 4,
-        "pod": [
-            "ip_elective_admission",
-            "ip_elective_daycase",
-            "ip_maternity_admission",
-            "ip_elective_admission",
-            "ip_non-elective_admission",
-            "op_procedure",
-        ]
-        * 2
-        + [
-            "ip_elective_admission",
-            "ip_elective_daycase",
-            "ip_maternity_admission",
-            "ip_elective_admission",
-            "ip_non-elective_admission",
-        ]
-        * 2
-        + [
-            "ip_elective_daycase",
-            "ip_elective_admission",
-            "ip_elective_daycase",
-            "ip_elective_admission",
-        ],
-        "los_group": ["0 days", "1 day", "2 days", "3 days"]
-        + ["4-7 days"] * 4
-        + ["8-14 days"] * 4
-        + ["0 days", "1 day", "2 days", "3 days"]
-        + ["4-7 days"] * 3
-        + ["8-14 days"] * 3
-        + ["1 day", "3 days", "4-7 days", "8-14 days"],
-    }
+    expected = pd.DataFrame(
+        {
+            "sitetret": [
+                "trust",
+            ]
+            * 24,
+            "age": [
+                0,
+                0,
+                1,
+                1,
+                1,
+                2,
+                3,
+                3,
+                3,
+                4,
+                4,
+                5,
+                6,
+                6,
+                7,
+                7,
+                7,
+                8,
+                9,
+                9,
+                9,
+                10,
+                10,
+                11,
+            ],
+            "age_group": [
+                0,
+                0,
+                1,
+                1,
+                1,
+                2,
+                3,
+                3,
+                3,
+                4,
+                4,
+                5,
+                0,
+                0,
+                1,
+                1,
+                1,
+                2,
+                3,
+                3,
+                3,
+                4,
+                4,
+                5,
+            ],
+            "sex": [
+                0,
+                0,
+                1,
+                1,
+                1,
+                2,
+                3,
+                3,
+                3,
+                4,
+                4,
+                5,
+                0,
+                0,
+                1,
+                1,
+                1,
+                2,
+                3,
+                3,
+                3,
+                4,
+                4,
+                5,
+            ],
+            "pod": [
+                "ip_elective_admission",
+                "ip_elective_admission",
+                "ip_elective_daycase",
+                "ip_elective_daycase",
+                "ip_elective_daycase",
+                "aae_type-05",
+                "ip_elective_admission",
+                "ip_elective_admission",
+                "ip_elective_admission",
+                "ip_non-elective_admission",
+                "ip_non-elective_admission",
+                "op_procedure",
+                "ip_elective_admission",
+                "ip_elective_admission",
+                "ip_elective_daycase",
+                "ip_elective_daycase",
+                "ip_elective_daycase",
+                "aae_type-05",
+                "ip_elective_admission",
+                "ip_elective_admission",
+                "ip_elective_admission",
+                "ip_non-elective_admission",
+                "ip_non-elective_admission",
+                "op_procedure",
+            ],
+            "tretspef": [
+                0,
+                0,
+                1,
+                1,
+                1,
+                "Other",
+                3,
+                3,
+                3,
+                4,
+                4,
+                5,
+                0,
+                0,
+                1,
+                1,
+                1,
+                "Other",
+                3,
+                3,
+                3,
+                4,
+                4,
+                5,
+            ],
+            "tretspef_raw": [
+                0,
+                0,
+                1,
+                1,
+                1,
+                "Other",
+                3,
+                3,
+                3,
+                4,
+                4,
+                5,
+                6,
+                6,
+                7,
+                7,
+                7,
+                "Other",
+                9,
+                9,
+                9,
+                10,
+                10,
+                11,
+            ],
+            "los_group": [
+                "0 days",
+                "0 days",
+                "1 day",
+                "1 day",
+                "1 day",
+                None,
+                "3 days",
+                "3 days",
+                "3 days",
+                "4-7 days",
+                "4-7 days",
+                None,
+                "4-7 days",
+                "4-7 days",
+                "4-7 days",
+                "4-7 days",
+                "4-7 days",
+                None,
+                "8-14 days",
+                "8-14 days",
+                "8-14 days",
+                "8-14 days",
+                "8-14 days",
+                None,
+            ],
+            "measure": [
+                "admissions",
+                "beddays",
+                "admissions",
+                "beddays",
+                "procedures",
+                "walk-in",
+                "admissions",
+                "beddays",
+                "procedures",
+                "admissions",
+                "beddays",
+                "attendances",
+                "admissions",
+                "beddays",
+                "admissions",
+                "beddays",
+                "procedures",
+                "walk-in",
+                "admissions",
+                "beddays",
+                "procedures",
+                "admissions",
+                "beddays",
+                "attendances",
+            ],
+            "value": [
+                1,
+                1,
+                1,
+                2,
+                1,
+                1,
+                1,
+                4,
+                1,
+                1,
+                5,
+                1,
+                1,
+                7,
+                1,
+                8,
+                1,
+                1,
+                1,
+                10,
+                1,
+                1,
+                11,
+                1,
+            ],
+        }
+    )
     # act
     actual = mock_model.process_results(df)
     # assert
-    assert actual.to_dict("list") == expected
+    pd.testing.assert_frame_equal(actual, expected)
 
 
 def test_aggregate(mock_model):
@@ -426,18 +624,7 @@ def test_save_results(mocker, mock_model):
     path_fn = lambda x: x
 
     mr_mock = Mock()
-    mr_mock.get_model_results.return_value = pd.DataFrame(
-        {
-            "rn": [0],
-            "classpat": [1],
-            "age": [2],
-            "sex": [3],
-            "tretspef": [4],
-            "speldur": [5],
-            "tretspef_raw": [6],
-            "sitetret": [7],
-        }
-    )
+    mr_mock.get_model_results.return_value = "data"
     mr_mock.avoided_activity = pd.DataFrame(
         {
             "rn": [0],
@@ -446,13 +633,126 @@ def test_save_results(mocker, mock_model):
         }
     )
 
+    mock_model._save_results_get_ip_rows = Mock()
+    mock_model._save_results_get_op_converted = Mock()
+    mock_model._save_results_get_sdec_converted = Mock()
+
     to_parquet_mock = mocker.patch("pandas.DataFrame.to_parquet")
 
     # act
     mock_model.save_results(mr_mock, path_fn)
 
     # assert
-    assert to_parquet_mock.call_count == 3
-    assert to_parquet_mock.call_args_list[0] == call("op_conversion/0.parquet")
-    assert to_parquet_mock.call_args_list[1] == call("ip/0.parquet")
-    assert to_parquet_mock.call_args_list[2] == call("ip_avoided/0.parquet")
+    mock_model._save_results_get_ip_rows.assert_called_once_with("data")
+    mock_model._save_results_get_ip_rows().to_parquet.assert_called_once_with(
+        "ip/0.parquet"
+    )
+
+    mock_model._save_results_get_op_converted.assert_called_once_with("data")
+    mock_model._save_results_get_op_converted().to_parquet.assert_called_once_with(
+        "op_conversion/0.parquet"
+    )
+
+    mock_model._save_results_get_sdec_converted.assert_called_once_with("data")
+    mock_model._save_results_get_sdec_converted().to_parquet.assert_called_once_with(
+        "sdec_conversion/0.parquet"
+    )
+
+    to_parquet_mock.assert_called_once_with("ip_avoided/0.parquet")
+
+
+def test_save_results_get_op_converted(mock_model):
+    """Test that _save_results_get_op_converted processes and returns the correct data."""
+    # arrange
+    data = pd.DataFrame(
+        {
+            "rn": [1, 2, 3, 4, 5, 6],
+            "group": ["elective"] * 6,
+            "classpat": ["-1", "1"] * 3,
+            "speldur": [0, 1] * 3,
+            "age": [1, 2] * 3,
+            "sex": [1, 2] * 3,
+            "tretspef": ["a", "b"] * 3,
+            "tretspef_raw": ["a", "b"] * 3,
+            "sitetret": ["1", "1", "1", "2", "2", "2"],
+        }
+    )
+    expected = pd.DataFrame(
+        {
+            "age": [1, 1],
+            "sex": [1, 1],
+            "tretspef": ["a", "a"],
+            "tretspef_raw": ["a", "a"],
+            "sitetret": ["1", "2"],
+            "attendances": [2, 1],
+            "tele_attendances": [0, 0],
+        }
+    )
+
+    # act
+    actual = mock_model._save_results_get_op_converted(data)
+
+    # assert
+    pd.testing.assert_frame_equal(actual, expected)
+
+
+def test_save_results_get_sdec_converted(mock_model):
+    """Test that _save_results_get_op_converted processes and returns the correct data."""
+    # arrange
+    data = pd.DataFrame(
+        {
+            "rn": [1, 2, 3, 4, 5, 6],
+            "group": ["elective"] * 6,
+            "classpat": ["-3", "1"] * 3,
+            "speldur": [0, 1] * 3,
+            "age": [1, 2] * 3,
+            "sex": [1, 2] * 3,
+            "tretspef": ["a", "b"] * 3,
+            "tretspef_raw": ["a", "b"] * 3,
+            "sitetret": ["1", "1", "1", "2", "2", "2"],
+        }
+    )
+    expected = pd.DataFrame(
+        {
+            "age": [1, 1],
+            "sex": [1, 1],
+            "sitetret": ["1", "2"],
+            "arrivals": [2, 1],
+            "aedepttype": ["05", "05"],
+            "attendance_category": ["1", "1"],
+            "acuity": ["standard", "standard"],
+            "group": ["walk-in", "walk-in"],
+        }
+    )
+
+    # act
+    actual = mock_model._save_results_get_sdec_converted(data)
+
+    # assert
+    pd.testing.assert_frame_equal(actual, expected)
+
+
+def test_save_results_get_ip_rows(mock_model):
+    """Test that _save_results_get_op_converted processes and returns the correct data."""
+    # arrange
+    data = pd.DataFrame(
+        {
+            "rn": [1, 2, 3, 4, 5, 6],
+            "classpat": ["-3", "-2", "-1", "1", "2", "3"],
+            "speldur": [0, 1, 2, 3, 4, 5],
+            "sitetret": ["1", "1", "1", "2", "2", "2"],
+        }
+    )
+    expected = pd.DataFrame(
+        {
+            "rn": [2, 4, 5, 6],
+            "speldur": [1, 3, 4, 5],
+            "classpat": ["2", "1", "2", "3"],
+        }
+    )
+
+    # act
+    actual = mock_model._save_results_get_ip_rows(data)
+
+    # assert
+    pd.testing.assert_frame_equal(actual.reset_index(drop=True), expected)

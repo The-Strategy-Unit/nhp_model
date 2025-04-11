@@ -20,7 +20,7 @@ def mock_ipe():
     ipe._model_iteration = Mock()
     ipe.losr = pd.DataFrame(
         {
-            "type": [x for x in ["all", "aec", "pre-op"] for _ in [0, 1]]
+            "type": [x for x in ["all", "sdec", "pre-op"] for _ in [0, 1]]
             + ["day_procedures_daycase", "day_procedures_outpatients"],
             "pre-op_days": [pd.NA] * 4 + [1, 2] + [pd.NA] * 2,
             "losr_f": [1 - 1 / (2**x) for x in range(8)],
@@ -110,7 +110,7 @@ def test_generate_losr_df(mock_ipe):
     assert actual == expected
 
 
-@pytest.mark.parametrize("losr_type", ["all", "aec", "pre-op"])
+@pytest.mark.parametrize("losr_type", ["all", "sdec", "pre-op"])
 def test_losr_empty(mock_ipe, losr_type):
     """test that if no preop strategy provided losr functions return self"""
     # arrange
@@ -122,8 +122,8 @@ def test_losr_empty(mock_ipe, losr_type):
     match losr_type:
         case "all":
             assert m.losr_all() == m
-        case "aec":
-            assert m.losr_aec() == m
+        case "sdec":
+            assert m.losr_sdec() == m
         case "pre-op":
             assert m.losr_preop() == m
 
@@ -148,21 +148,38 @@ def test_losr_all(mock_ipe):
     assert binomial_call_args[1].to_list() == [0, 0, 0, 0.5, 0.5, 0.5]
 
 
-def test_losr_aec(mock_ipe):
+def test_losr_sdec(mock_ipe):
     """test that it reduces the speldur column for 'aec' types"""
     # arrange
     m = mock_ipe
-    m.data = pd.DataFrame({"speldur": list(range(9))}, index=["x", "c", "d"] * 3)
-    m._model_iteration.rng.binomial.return_value = [0, 0, 0, 1, 1, 1]
+    m.data = pd.DataFrame(
+        {
+            "speldur": list(range(9)),
+            "classpat": ["1"] * 9,
+        },
+        index=["x", "c", "d"] * 3,
+    )
+    m._model_iteration.rng.binomial.return_value = [0, 0, 1, 0, 1, 1]
 
     # act
-    actual = m.losr_aec()
+    actual = m.losr_sdec()
     binomial_call_args = m._model_iteration.rng.binomial.call_args_list[0][0]
 
     # assert
     assert actual == m
 
-    assert m.data["speldur"].to_list() == [0, 0, 2, 3, 0, 5, 6, 0, 8]
+    assert m.data["speldur"].to_list() == [0, 0, 0, 3, 0, 5, 6, 7, 8]
+    assert m.data["classpat"].to_list() == [
+        "1",
+        "-3",
+        "-3",
+        "1",
+        "-3",
+        "1",
+        "1",
+        "1",
+        "1",
+    ]
 
     assert binomial_call_args[0] == 1
     assert binomial_call_args[1].equals(m.losr.loc[["c"] * 3 + ["d"] * 3, "losr_f"])

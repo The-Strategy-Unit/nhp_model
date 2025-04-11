@@ -8,7 +8,7 @@ into a single panda's dataframe, and helping with saving the results files.
 import json
 import logging
 import os
-from typing import List
+from typing import Dict, List
 
 # janitor complains of being unused, but it is used (.complete())
 import janitor  # pylint: disable=unused-import
@@ -28,7 +28,8 @@ def _complete_model_runs(
     :type res: List[pd.DataFrame]
     :param model_runs: the number of model runs
     :type model_runs: int
-    :param include_baseline: whether to include model run 0 (the baseline) or not, optional (defaults to True)
+    :param include_baseline: whether to include model run 0 (the baseline) or not, optional
+        (defaults to True)
     :type include_baseline: bool
     :return: combined and completed data frame
     :rtype: pd.DataFrame
@@ -190,7 +191,8 @@ def save_results_files(results: dict, params: dict) -> list:
 
 
 def _add_metadata_to_dataframe(df: pd.DataFrame, params: dict) -> pd.DataFrame:
-    """Add metadata as columns to the dataframe, so that the saved parquet files have useful information regarding their provenance
+    """Add metadata as columns to the dataframe, so that the saved parquet files have useful
+    information regarding their provenance
 
     :param df: The dataframe that we want to add the metadata to
     :type df: pd.DataFrame
@@ -239,6 +241,56 @@ def _save_params_file(path: str, params: dict) -> str:
     return filename
 
 
+def _patch_converted_sdec_activity(
+    results: Dict[str, pd.DataFrame], column: str, col_value: str
+) -> None:
+    """
+    Patch the converted SDEC activity in the dataframe.
+    """
+    df = results[column]
+    agg_cols = ["pod", "sitetret", "measure", "model_run"]
+
+    default_sdec = (
+        results["default"]
+        .query("pod == 'aae_type-05'")
+        .set_index(agg_cols)["value"]
+        .rename("b")
+    )
+
+    missing_sdec_activity = (
+        pd.concat(
+            [
+                default_sdec,
+                (
+                    df.query("pod == 'aae_type-05'")
+                    .groupby(agg_cols)["value"]
+                    .sum()
+                    .rename("a")
+                ),
+            ],
+            axis=1,
+        )
+        .fillna(0)
+        .reset_index()
+        .assign(value=lambda x: x["b"] - x["a"])
+        .drop(columns=["b", "a"])
+    )
+    missing_sdec_activity[column] = col_value
+
+    df_fixed = (
+        pd.concat([df, missing_sdec_activity], axis=0)
+        .groupby(
+            ["pod", "sitetret", "measure", column, "model_run"],
+            as_index=False,
+        )
+        .sum()
+    )
+
+    df_fixed["value"] = df_fixed["value"].astype("int64")
+
+    results[column] = df_fixed
+
+
 def combine_results(results: list) -> dict:
     """Combine the results into a single dictionary
 
@@ -255,6 +307,12 @@ def combine_results(results: list) -> dict:
 
     combined_results = _combine_model_results(results)
     combined_step_counts = _combine_step_counts(results)
+
+    # TODO: this is a bit of a hack, but we need to patch the converted SDEC activity
+    # because inpatients activity is aggregated differently to a&e, the a&e aggregations will be
+    # missing the converted SDEC activity, so we need to add it back in
+    _patch_converted_sdec_activity(combined_results, "acuity", "standard")
+    _patch_converted_sdec_activity(combined_results, "attendance_category", "1")
 
     logging.info(" * finished combining results")
     return combined_results, combined_step_counts
