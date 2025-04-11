@@ -9,7 +9,6 @@
   "app_version": "dev",
   "create_datetime": "20220101_000000",
   "demographic_factors": {
-    "file": "demographic_factors.csv",
     "variant_probabilities": {
       "principal_proj": 0.40,
       "var_proj_10_year_migration": 0.15,
