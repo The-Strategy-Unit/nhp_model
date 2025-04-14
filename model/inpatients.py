@@ -167,7 +167,7 @@ class InpatientsModel(Model):
         efficiencies = (
             InpatientEfficiencies(data, model_iteration)
             .losr_all()
-            .losr_aec()
+            .losr_sdec()
             .losr_preop()
             .losr_day_procedures("day_procedures_daycase")
             .losr_day_procedures("day_procedures_outpatients")
@@ -185,6 +185,7 @@ class InpatientsModel(Model):
         # handle the type conversions: change the pod's
         data.loc[data["classpat"] == "-2", "pod"] = "ip_elective_daycase"
         data.loc[data["classpat"] == "-1", "pod"] = "op_procedure"
+        data.loc[data["classpat"] == "-3", "pod"] = "aae_type-05"
 
         los_groups = defaultdict(
             lambda: "22+ days",
@@ -221,17 +222,33 @@ class InpatientsModel(Model):
             )[["admissions", "beddays", "procedures"]]
             .sum()
         )
-        # handle any outpatients rows
+        # handle any outpatients/sdec rows
         data.loc[
-            data.index.get_level_values("pod") == "op_procedure",
+            data.index.get_level_values("pod").isin(["op_procedure", "aae_type-05"]),
             ["beddays", "procedures"],
         ] = 0
         data = data.melt(ignore_index=False, var_name="measure")
-        data.loc[data.index.get_level_values("pod") == "op_procedure", "measure"] = (
-            "attendances"
-        )
+
         # remove any row where the measure value is 0
         data = data[data["value"] > 0].reset_index()
+
+        # handle op_procedure column values
+        op_ix = data["pod"] == "op_procedure"
+        data.loc[op_ix, "measure"] = "attendances"
+        data.loc[op_ix, "los_group"] = None
+
+        # handle sdec column values
+        sdec_ix = data["pod"] == "aae_type-05"
+        data.loc[sdec_ix, "measure"] = "walk-in"
+        data.loc[sdec_ix, "tretspef"] = "Other"
+        data.loc[sdec_ix, "tretspef_raw"] = "Other"
+        data.loc[sdec_ix, "los_group"] = None
+
+        # reduce any duplicated rows
+        data = data.groupby(
+            data.drop(columns="value").columns.tolist(), as_index=False, dropna=False
+        ).sum()
+
         return data
 
     def aggregate(self, model_iteration: ModelIteration) -> Tuple[Callable, dict]:
@@ -285,23 +302,61 @@ class InpatientsModel(Model):
         :type path_fn: Callable[[str], str]
         """
         model_results = model_iteration.get_model_results()
-        ip_op_row_ix = model_results["classpat"] == "-1"
+
         # save the op converted rows
-        model_results[ip_op_row_ix].groupby(
-            ["age", "sex", "tretspef", "tretspef_raw", "sitetret"]
-        ).size().to_frame("attendances").assign(
-            tele_attendances=0
-        ).reset_index().to_parquet(
+        self._save_results_get_op_converted(model_results).to_parquet(
             f"{path_fn('op_conversion')}/0.parquet"
         )
-        # remove the op converted rows
-        model_results.loc[~ip_op_row_ix, ["rn", "speldur", "classpat"]].to_parquet(
+        # save the sdec converted rows
+        self._save_results_get_sdec_converted(model_results).to_parquet(
+            f"{path_fn('sdec_conversion')}/0.parquet"
+        )
+        # save the ip rows
+        self._save_results_get_ip_rows(model_results).to_parquet(
             f"{path_fn('ip')}/0.parquet"
         )
+        # save the avoided activity
+        model_iteration.avoided_activity[["rn", "speldur", "classpat"]].to_parquet(
+            f"{path_fn('ip_avoided')}/0.parquet"
+        )
 
-        model_iteration.avoided_activity.loc[
-            :, ["rn", "speldur", "classpat"]
-        ].to_parquet(f"{path_fn('ip_avoided')}/0.parquet")
+    def _save_results_get_op_converted(
+        self, model_results: pd.DataFrame
+    ) -> pd.DataFrame:
+        ix = model_results["classpat"] == "-1"
+        return (
+            model_results[ix]
+            .groupby(["age", "sex", "tretspef", "tretspef_raw", "sitetret"])
+            .size()
+            .to_frame("attendances")
+            .assign(tele_attendances=0)
+            .reset_index()
+        )
+
+    def _save_results_get_sdec_converted(
+        self, model_results: pd.DataFrame
+    ) -> pd.DataFrame:
+        ix = model_results["classpat"] == "-3"
+        return (
+            model_results[ix]
+            .groupby(["age", "sex", "sitetret"])
+            .size()
+            .to_frame("arrivals")
+            .assign(
+                aedepttype="05",
+                attendance_category="1",
+                acuity="standard",
+                group="walk-in",
+            )
+            .reset_index()
+        )
+
+    def _save_results_get_ip_rows(self, model_results: pd.DataFrame) -> pd.DataFrame:
+        # update the converted daycase rows
+        model_results.loc[model_results["classpat"] == "-2", "classpat"] = "2"
+
+        ix = ~model_results["classpat"].str.startswith("-")
+        return model_results.loc[ix, ["rn", "speldur", "classpat"]]
 
 
 class InpatientEfficiencies:
@@ -366,26 +421,25 @@ class InpatientEfficiencies:
 
         return self
 
-    def losr_aec(self):
+    def losr_sdec(self):
         """
-        Length of Stay Reduction: AEC reduction
+        Length of Stay Reduction: SDEC reduction
 
-        Updates the length of stay to 0 for a given percentage of rows.
+        Converts IP activity to SDEC attendance for a given percentage of rows.
         """
         losr = self.losr
         data = self.data
         rng = self._model_iteration.rng
 
-        i = losr.index[(losr.type == "aec") & (losr.index.isin(data.index))]
+        i = losr.index[(losr.type == "sdec") & (losr.index.isin(data.index))]
 
         if i.empty:
             return self
 
-        new = data.loc[i, "speldur"] * rng.binomial(
-            1, losr.loc[data.loc[i].index, "losr_f"]
-        )
+        rnd_choice = np.array(rng.binomial(1, losr.loc[data.loc[i].index, "losr_f"]))
 
-        self.data.loc[i, "speldur"] = new
+        self.data.loc[i, "classpat"] = np.where(rnd_choice == 0, "-3", "1")
+        self.data.loc[i, "speldur"] = self.data.loc[i, "speldur"] * rnd_choice
 
         return self
 
@@ -462,7 +516,9 @@ class InpatientEfficiencies:
             self.data
             # handle the changes of activity type
             .assign(
-                admissions=lambda x: np.where(x["classpat"].isin(["-1", "-2"]), -1, 0)
+                admissions=lambda x: np.where(
+                    x["classpat"].isin(["-1", "-2", "-3"]), -1, 0
+                )
             )
             .assign(
                 beddays=lambda x: x["speldur"]

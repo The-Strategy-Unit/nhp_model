@@ -8,15 +8,16 @@ import pandas as pd
 import pytest
 
 from model.results import (
+    _add_metadata_to_dataframe,
     _combine_model_results,
     _combine_step_counts,
     _complete_model_runs,
+    _patch_converted_sdec_activity,
     _save_params_file,
     _save_parquet_file,
     combine_results,
     generate_results_json,
     save_results_files,
-    _add_metadata_to_dataframe,
 )
 
 
@@ -286,6 +287,7 @@ def test_combine_results(mocker):
     mb = mocker.patch(
         "model.results._combine_step_counts", return_value="combined_step_counts"
     )
+    ms = mocker.patch("model.results._patch_converted_sdec_activity")
 
     # act
     actual = combine_results("results")
@@ -294,6 +296,12 @@ def test_combine_results(mocker):
     assert actual == ("combined_results", "combined_step_counts")
     ma.assert_called_once_with("results")
     mb.assert_called_once_with("results")
+
+    assert ms.call_count == 2
+    assert list(ms.call_args_list) == [
+        call("combined_results", "acuity", "standard"),
+        call("combined_results", "attendance_category", "1"),
+    ]
 
 
 def test_save_results_files(mocker):
@@ -392,3 +400,46 @@ def test_save_params_file(mocker):
     assert actual == "path/params.json"
     mock_file.assert_called_once_with(actual, "w", encoding="utf-8")
     j_mock.assert_called_once_with("params", mock_file())
+
+
+def test_patch_converted_sdec_activity():
+    # arrange
+    results = {
+        "default": pd.DataFrame(
+            {
+                "pod": ["aae_type-01"] * 8 + ["aae_type-05"] * 8,
+                "sitetret": (["a"] * 4 + ["b"] * 4) * 2,
+                "measure": ["arrivals"] * 16,
+                "model_run": [1, 2, 3, 4] * 4,
+                "value": range(16),
+            }
+        ),
+        "acuity": pd.DataFrame(
+            {
+                "pod": ["aae_type-01"] * 8 + ["aae_type-05"] * 4,
+                "sitetret": ["a"] * 4 + ["b"] * 4 + ["a"] * 4,
+                "measure": ["arrivals"] * 12,
+                "acuity": ["urgent"] * 8 + ["standard"] * 4,
+                "model_run": [1, 2, 3, 4] * 3,
+                "value": range(12),
+            }
+        ),
+    }
+
+    expected = pd.DataFrame(
+        {
+            "pod": ["aae_type-01"] * 8 + ["aae_type-05"] * 8,
+            "sitetret": (["a"] * 4 + ["b"] * 4) * 2,
+            "measure": ["arrivals"] * 16,
+            "acuity": ["urgent"] * 8 + ["standard"] * 8,
+            "model_run": [1, 2, 3, 4] * 4,
+            "value": range(16),
+        }
+    )
+    # act
+    _patch_converted_sdec_activity(results, "acuity", "standard")
+    actual = results["acuity"].sort_values(
+        ["pod", "sitetret", "measure", "acuity", "model_run"]
+    )
+    # assert
+    pd.testing.assert_frame_equal(actual, expected)
