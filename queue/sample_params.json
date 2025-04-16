@@ -1406,7 +1406,7 @@
           0.95
         ]
       },
-      "general_los_reduction_non-elective": {
+      "general_los_reduction_emergency": {
         "type": "all",
         "interval": [
           0.84,
@@ -1563,7 +1563,7 @@
         "day_procedures_occasionally_op": "linear",
         "day_procedures_usually_dc": "linear",
         "day_procedures_usually_op": "linear",
-        "general_los_reduction_non-elective": "linear",
+        "general_los_reduction_emergency": "linear",
         "general_los_reduction_elective": "linear",
         "virtual_wards_efficiencies_ari": "linear",
         "virtual_wards_efficiencies_heart_failure": "linear"
