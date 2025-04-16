@@ -440,7 +440,7 @@
                         "day_procedures_usually_op": {
                             "$ref": "#/$defs/mitigator_withType"
                         },
-                        "general_los_reduction_non-elective": {
+                        "general_los_reduction_emergency": {
                             "$ref": "#/$defs/mitigator_withType"
                         },
                         "general_los_reduction_elective": {
@@ -782,7 +782,7 @@
                                 "day_procedures_usually_op": {
                                     "$ref": "#/$defs/timeprofileMappings"
                                 },
-                                "general_los_reduction_non-elective": {
+                                "general_los_reduction_emergency": {
                                     "$ref": "#/$defs/timeprofileMappings"
                                 },
                                 "general_los_reduction_elective": {
