@@ -14,3 +14,9 @@ jobs:
       data-version: ${{vars.data_version}}
       latest: true
     secrets: inherit
+
+  deploy-schema:
+
+    uses: ./.github/workflows/deploy_schema.yaml
+    with:
+      app_version: ${{github.ref_name}} 

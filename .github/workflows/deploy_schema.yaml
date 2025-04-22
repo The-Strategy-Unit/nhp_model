@@ -1,0 +1,68 @@
+name: Deploy schema.json to GitHub Pages 
+
+on:
+  workflow_call:
+    inputs:
+      app-version:
+        required: true
+        type: string  
+
+permissions:
+  pages: write
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract major.minor from app-version
+        id: version
+        run: |
+          full_version="${{ inputs.app-version }}"
+          short_version=$(echo "$full_version" | grep -oP '^v\d+\.\d+')
+          echo "Stripped app version: $short_version"
+          echo "version_dir=$short_version" >> $GITHUB_OUTPUT
+
+      - name: Clone existing GitHub Pages content
+        run: |
+          git clone --depth=1 --branch gh-pages https://github.com/${{ github.repository }} gh-pages || mkdir gh-pages
+          mkdir -p output
+          cp -r gh-pages/* output/ || true
+
+      - name: Determine schema version from map
+        id: schema
+        run: |
+          app_version="${{ steps.version.outputs.version_dir }}"
+          schema_version=$(jq -r --arg ver "$app_version" '.[$ver]' schemas/schema-version-map.json)
+          if [ "$schema_version" == "null" ]; then
+            echo "❌ No schema version mapped for $app_version"
+            exit 1
+          fi
+          echo "Using schema version: $schema_version"
+          echo "schema_version=$schema_version" >> $GITHUB_OUTPUT
+
+      - name: Copy mapped schema to app version path
+        run: |
+          mkdir -p output/${{ steps.version.outputs.version_dir }}
+          cp schemas/${{ steps.schema.outputs.schema_version }}/params-schema.json \
+             output/${{ steps.version.outputs.version_dir }}/params-schema.json
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: output
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v3
