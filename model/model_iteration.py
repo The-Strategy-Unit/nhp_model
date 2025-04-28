@@ -200,6 +200,7 @@ class ModelIteration:
                 step_counts,
                 self._step_counts_get_type_change_daycase(step_counts),
                 self._step_counts_get_type_change_outpatients(step_counts),
+                self._step_counts_get_type_change_sdec(step_counts),
             ]
         )
 
@@ -238,6 +239,29 @@ class ModelIteration:
         sc_tc_df["activity_type"] = "op"
         sc_tc_df["pod"] = "op_procedure"
         sc_tc_df["measure"] = "attendances"
+
+        return sc_tc_df.groupby(step_counts.index.names)["value"].sum() * -1
+
+    def _step_counts_get_type_change_sdec(self, step_counts):
+        # get the sdec conversion values
+        sc_tc_df = (
+            step_counts[
+                step_counts.index.isin(
+                    [
+                        f"same_day_emergency_care_{i}"
+                        for i in ["very_high", "high", "moderate", "low"]
+                    ],
+                    level="strategy",
+                )
+                & (step_counts.index.get_level_values("measure") == "admissions")
+            ]
+            .to_frame()
+            .reset_index()
+        )
+
+        sc_tc_df["activity_type"] = "aae"
+        sc_tc_df["pod"] = "aae_type-05"
+        sc_tc_df["measure"] = "arrivals"
 
         return sc_tc_df.groupby(step_counts.index.names)["value"].sum() * -1
 

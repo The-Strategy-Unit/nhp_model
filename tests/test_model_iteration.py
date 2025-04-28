@@ -326,11 +326,12 @@ def test_get_step_counts(mock_model_iteration):
     assert actual.to_dict() == expected
 
 
-def test_step_counts_get_changes(mock_model_iteration):
+def test_step_counts_get_type_changes(mock_model_iteration):
     # arrange
     mr = mock_model_iteration
     mr._step_counts_get_type_change_daycase = Mock(return_value=pd.Series([4]))
     mr._step_counts_get_type_change_outpatients = Mock(return_value=pd.Series([5]))
+    mr._step_counts_get_type_change_sdec = Mock(return_value=pd.Series([6]))
 
     sc = pd.Series([1, 2, 3], index=[3, 2, 1])
 
@@ -338,9 +339,10 @@ def test_step_counts_get_changes(mock_model_iteration):
     actual = mr._step_counts_get_type_changes(sc)
 
     # assert
-    assert actual.to_list() == [1, 2, 3, 4, 5]
+    assert actual.to_list() == [1, 2, 3, 4, 5, 6]
     mr._step_counts_get_type_change_daycase.assert_called_once_with(sc)
     mr._step_counts_get_type_change_outpatients.assert_called_once_with(sc)
+    mr._step_counts_get_type_change_sdec.assert_called_once_with(sc)
 
 
 def test_step_counts_get_type_change_daycase(mock_model_iteration):
@@ -443,6 +445,58 @@ def test_step_counts_get_type_change_outpatients(mock_model_iteration):
 
     # assert
     assert actual.equals(expected)
+
+
+def test_step_counts_get_type_change_sdec(mock_model_iteration):
+    # arrange
+    mr = mock_model_iteration
+
+    sc = pd.Series(
+        [-i for i in range(10)],
+        index=pd.MultiIndex.from_tuples(
+            [
+                ("a", strategy, "ip", "c", "ip_emergency_admission", measure)
+                for strategy in [
+                    "x",
+                    "same_day_emergency_care_very_high",
+                    "same_day_emergency_care_high",
+                    "same_day_emergency_care_moderate",
+                    "same_day_emergency_care_low",
+                ]
+                for measure in ["admissions", "beddays"]
+            ]
+        ),
+        name="value",
+    )
+
+    expected = pd.Series(
+        [2, 4, 6, 8],
+        index=pd.MultiIndex.from_tuples(
+            ("a", strategy, "aae", "c", "aae_type-05", "arrivals")
+            for strategy in [
+                "same_day_emergency_care_very_high",
+                "same_day_emergency_care_high",
+                "same_day_emergency_care_moderate",
+                "same_day_emergency_care_low",
+            ]
+        ),
+        name="value",
+    )
+
+    expected.index.names = sc.index.names = [
+        "change_factor",
+        "strategy",
+        "activity_type",
+        "sitetret",
+        "pod",
+        "measure",
+    ]
+
+    # act
+    actual = mr._step_counts_get_type_change_sdec(sc)
+
+    # assert
+    assert actual.equals(expected.sort_index())
 
 
 def test_get_model_results(mock_model_iteration):
