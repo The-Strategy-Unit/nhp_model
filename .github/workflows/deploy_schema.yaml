@@ -1,0 +1,64 @@
+name: Deploy schema.json to GitHub Pages 
+
+on:
+  workflow_call:
+    inputs:
+      app-version:
+        required: true
+        type: string  
+
+permissions:
+  pages: write
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract major-minor from app-version (non-dev)
+        if: inputs.app-version != 'dev'
+        id: version
+        run: |
+          full_version="${{ inputs.app-version }}"
+          short_version=$(echo "$full_version" | grep -oP '^v\d+\.\d+' | sed 's/\./-/')
+          echo "Stripped app version: $short_version"
+          echo "version_dir=$short_version" >> $GITHUB_OUTPUT
+
+      - name: Set version_dir for dev
+        if: inputs.app-version == 'dev'
+        id: version
+        run: |
+          echo "Using dev version_dir"
+          echo "version_dir=dev" >> $GITHUB_OUTPUT
+
+      - name: Clone existing GitHub Pages content
+        run: |
+          git clone --depth=1 --branch gh-pages https://github.com/${{ github.repository }} gh-pages || mkdir gh-pages
+          mkdir -p output
+          cp -r gh-pages/* output/ || true
+
+      - name: Copy schema to app version path
+        run: |
+          mkdir -p output/${{ steps.version.outputs.version_dir }}
+          cp schemas/params-schema.json \
+             output/${{ steps.version.outputs.version_dir }}/params-schema.json
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: output
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v3
