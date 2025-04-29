@@ -7,9 +7,15 @@ on:
 name: Deploy Dev
 
 jobs:
-  deploy-dev:
+  deploy-dev-model:
     uses: ./.github/workflows/build_container.yaml
     with:
       app-version: dev 
       data-version: dev
+    secrets: inherit
+
+  deploy-dev-schema:
+    uses: ./github/workflows/deploy_schema.yaml
+    with: 
+      app-version: dev
     secrets: inherit
