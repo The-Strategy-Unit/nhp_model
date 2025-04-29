@@ -372,85 +372,85 @@
                     "type": "object",
                     "properties": {
                         "same_day_emergency_care_low": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_sdec"
                         },
                         "same_day_emergency_care_moderate": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_sdec"
                         },
                         "same_day_emergency_care_high": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_sdec"
                         },
                         "same_day_emergency_care_very_high": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_sdec"
                         },
                         "emergency_elderly": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_all"
                         },
                         "enhanced_recovery_bladder": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_all"
                         },
                         "enhanced_recovery_breast": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_all"
                         },
                         "enhanced_recovery_colectomy": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_all"
                         },
                         "enhanced_recovery_hip": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_all"
                         },
                         "enhanced_recovery_hysterectomy": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_all"
                         },
                         "enhanced_recovery_knee": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_all"
                         },
                         "enhanced_recovery_prostate": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_all"
                         },
                         "enhanced_recovery_rectum": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_all"
                         },
                         "excess_beddays_elective": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_all"
                         },
                         "excess_beddays_emergency": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_all"
                         },
                         "pre-op_los_1-day": {
-                            "$ref": "#/$defs/mitigator_withPreOp"
+                            "$ref": "#/$defs/mitigator_withType_PreOp"
                         },
                         "pre-op_los_2-day": {
-                            "$ref": "#/$defs/mitigator_withPreOp"
+                            "$ref": "#/$defs/mitigator_withType_PreOp"
                         },
                         "raid_ip": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_all"
                         },
                         "stroke_early_supported_discharge": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_all"
                         },
                         "day_procedures_occasionally_dc": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_dayProcedures"
                         },
                         "day_procedures_occasionally_op": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_dayProcedures"
                         },
                         "day_procedures_usually_dc": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_dayProcedures"
                         },
                         "day_procedures_usually_op": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_dayProcedures"
                         },
                         "general_los_reduction_emergency": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_all"
                         },
                         "general_los_reduction_elective": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_all"
                         },
                         "virtual_wards_efficiencies_ari": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_all"
                         },
                         "virtual_wards_efficiencies_heart_failure": {
-                            "$ref": "#/$defs/mitigator_withType"
+                            "$ref": "#/$defs/mitigator_withType_all"
                         }
                     },
                     "additionalProperties": false
@@ -1252,7 +1252,7 @@
                 "interval"
             ]
         },
-        "mitigator_withType": {
+        "mitigator_withType_sdec": {
             "allOf": [
                 {
                     "$ref": "#/$defs/mitigator_intervalOnly"
@@ -1261,31 +1261,86 @@
                     "type": "object",
                     "properties": {
                         "type": {
-                            "type": "string"
+                            "const": "sdec"
                         }
-                    },
-                    "required": [
-                        "type"
-                    ]
+                    }
                 }
+            ],
+            "required": [
+                "type",
+                "interval"
             ]
         },
-        "mitigator_withPreOp": {
+        "mitigator_withType_all": {
             "allOf": [
                 {
-                    "$ref": "#/$defs/mitigator_withType"
+                    "$ref": "#/$defs/mitigator_intervalOnly"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "all"
+                        }
+                    }
+                }
+            ],
+            "required": [
+                "type",
+                "interval"
+            ]
+        },
+        "mitigator_withType_dayProcedures": {
+            "allOf": [
+                {
+                    "$ref": "#/$defs/mitigator_intervalOnly"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "pattern": "^day_procedures_\\w*"
+                        }
+                    }
+                }
+            ],
+            "required": [
+                "type",
+                "interval"
+            ]
+        },
+        "mitigator_withType_PreOp": {
+            "allOf": [
+                {
+                    "$ref": "#/$defs/mitigator_intervalOnly"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "pre-op"
+                        }
+                    }
                 },
                 {
                     "type": "object",
                     "properties": {
                         "pre-op_days": {
-                            "type": "integer"
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 2
                         }
                     },
                     "required": [
                         "pre-op_days"
                     ]
                 }
+            ],
+            "required": [
+                "type",
+                "interval",
+                "pre-op_days"
             ]
         },
         "timeprofileMappings": {
