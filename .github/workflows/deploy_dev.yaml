@@ -15,7 +15,7 @@ jobs:
     secrets: inherit
 
   deploy-dev-schema:
-    uses: ./github/workflows/deploy_schema.yaml
+    uses: ./.github/workflows/deploy_schema.yaml
     with: 
       app-version: dev
     secrets: inherit
