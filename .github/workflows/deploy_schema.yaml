@@ -21,7 +21,7 @@ jobs:
 
       - name: Extract major-minor from app-version (non-dev)
         if: inputs.app-version != 'dev'
-        id: version
+        id: version-release
         run: |
           full_version="${{ inputs.app-version }}"
           short_version=$(echo "$full_version" | grep -oP '^v\d+\.\d+' | sed 's/\./-/')
@@ -30,7 +30,7 @@ jobs:
 
       - name: Set version_dir for dev
         if: inputs.app-version == 'dev'
-        id: version
+        id: version-dev
         run: |
           echo "Using dev version_dir"
           echo "version_dir=dev" >> $GITHUB_OUTPUT
