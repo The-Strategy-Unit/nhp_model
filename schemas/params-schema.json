@@ -1415,6 +1415,7 @@
         "expat",
         "repat_local",
         "repat_nonlocal",
+        "inequalities",
         "baseline_adjustment",
         "waiting_list_adjustment",
         "non-demographic_adjustment",
