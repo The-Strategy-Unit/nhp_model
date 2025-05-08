@@ -226,7 +226,14 @@ class DatabricksNational(Data):
             .withColumn("dataset", F.lit("NATIONAL"))
             .withColumn("sitetret", F.lit("NATIONAL"))
             .groupBy(
-                op.drop("index", "fyear", "attendances", "tele_attendances", "sushrg_trimmed", "imd_quintile").columns
+                op.drop(
+                    "index",
+                    "fyear",
+                    "attendances",
+                    "tele_attendances",
+                    "sushrg_trimmed",
+                    "imd_quintile",
+                ).columns
             )
             .agg(
                 (F.sum("attendances") * self._sample_rate).alias("attendances"),
@@ -269,9 +276,7 @@ class DatabricksNational(Data):
         """
 
         return (
-            self._spark.read.parquet(
-                "/Volumes/nhp/population_projections/files/birth_data/"
-            )
+            self._spark.read.table("nhp.population_projections.births")
             .filter(F.col("area_code").rlike("^E0[6-9]"))
             .withColumn("sex", F.lit(2))
             .groupBy("projection", "age", "sex")
@@ -289,10 +294,7 @@ class DatabricksNational(Data):
         """
 
         return (
-            self._spark.read.parquet(
-                "/Volumes/nhp/population_projections/files/demographic_data/projection=principal_proj"
-            )
-            .withColumn("projection", F.lit("principal_proj"))
+            self._spark.read.table("nhp.population_projections.demographics")
             .filter(F.col("area_code").rlike("^E0[6-9]"))
             .groupBy("projection", "age", "sex")
             .pivot("year")
