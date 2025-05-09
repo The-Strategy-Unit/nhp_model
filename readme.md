@@ -21,3 +21,9 @@ This repo contains the model code but there are several other repositories which
 ## Deployment
 
 The model is deployed to Azure Container Registry on pull requests, tagging the container as `nhp_model:dev`, and on releases its deployed to `nhp_model:v0.*.*` and `nhp_model:latest`.
+
+## JSON Schema
+
+Parameters for the model are set in JSON format; an example can be seen in `queue/sample_params.json`. As the model develops, requirements for this JSON file change over time. We use [JSON schema](https://json-schema.org/understanding-json-schema/about) to manage changes to the parameters file. From model v3.5 onwards, these are deployed to GitHub pages, following this pattern:
+- on merge to `main`, the schema is deployed to `https://the-strategy-unit.github.io/nhp_model/dev/params-schema.json`
+- on release of new model version vX.X, the schema is deployed to `https://the-strategy-unit.github.io/nhp_model/vX.X/params-schema.json`
