@@ -433,6 +433,106 @@ def test_waiting_list_adjustment(mocker, mock_activity_resampling):
     assert u_mock.call_args[0][0].to_dict() == {(True, "100"): 1, (True, "200"): 4}
 
 
+@pytest.mark.parametrize(
+    "model_type, group", [("ip", "elective"), ("op", "procedure"), ("aae", None)]
+)
+def test_inequalities_adjustment_no_params(
+    mocker, mock_activity_resampling, model_type, group
+):
+    # arrange
+    aa_mock = mock_activity_resampling
+    aa_mock._model_iteration.model.model_type = model_type
+
+    aa_mock._model_iteration.data = pd.DataFrame(
+        {
+            "group": [group, None] * 5,
+            "sushrg_trimmed": ["HRG1"] * 5 + ["HRG2"] * 5,
+            "imd_quintile": [1, 2, 3, 4, 5] * 2,
+        }
+    )
+
+    aa_mock._model_iteration.run_params = {"inequalities": {}}
+
+    u_mock = mocker.patch(
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
+    )
+
+    # act
+    actual = aa_mock.inequalities_adjustment()
+
+    # assert
+    assert actual == aa_mock
+    u_mock.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "model_type, group, expected",
+    [
+        (
+            "ip",
+            "elective",
+            {
+                ("elective", "HRG1", 1): 5.4321,
+                ("elective", "HRG1", 2): 4.321,
+                ("elective", "HRG1", 3): 3.21,
+                ("elective", "HRG1", 4): 2.21,
+                ("elective", "HRG1", 5): 1.0,
+            },
+        ),
+        (
+            "op",
+            "procedure",
+            {
+                ("procedure", "HRG1", 1): 5.4321,
+                ("procedure", "HRG1", 2): 4.321,
+                ("procedure", "HRG1", 3): 3.21,
+                ("procedure", "HRG1", 4): 2.21,
+                ("procedure", "HRG1", 5): 1.0,
+            },
+        ),
+        ("aae", None, None),
+    ],
+)
+def test_inequalities_adjustment(
+    mocker,
+    mock_activity_resampling,
+    model_type,
+    group,
+    expected,
+):
+    # arrange
+    aa_mock = mock_activity_resampling
+    aa_mock._model_iteration.model.model_type = model_type
+
+    aa_mock._model_iteration.data = pd.DataFrame(
+        {
+            "group": [group, None] * 5,
+            "sushrg_trimmed": ["HRG1"] * 5 + ["HRG2"] * 5,
+            "imd_quintile": [1, 2, 3, 4, 5] * 2,
+        }
+    )
+
+    aa_mock._model_iteration.run_params = {
+        "inequalities": {
+            "HRG1": {"1": 5.4321, "2": 4.321, "3": 3.21, "4": 2.21, "5": 1},
+        }
+    }
+
+    u_mock = mocker.patch(
+        "model.activity_resampling.ActivityResampling._update", return_value="update"
+    )
+
+    # act
+    actual = aa_mock.inequalities_adjustment()
+
+    # assert
+    if model_type == "aae":
+        u_mock.assert_not_called()
+    else:
+        assert actual == "update"
+        assert u_mock.call_args[0][0].to_dict() == expected
+
+
 @pytest.mark.parametrize("model_type", ["ip", "op", "aae"])
 def test_non_demographic_adjustment_no_params(
     mocker, mock_activity_resampling, model_type

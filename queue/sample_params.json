@@ -18,6 +18,28 @@
     }
   },
   "health_status_adjustment": true,
+  "inequalities": {
+    "HRG1": {
+      "option": "level_up",
+      "values": {
+        "1": 2,
+        "2": 1.75,
+        "3": 1.5,
+        "4": 1.25,
+        "5": 1
+      }
+    },
+    "HRG2": {
+      "option": "zero_sum",
+      "values": {
+        "1": 2,
+        "2": 1.5,
+        "3": 1,
+        "4": 0.75,
+        "5": 0.5
+      }
+    }
+  },
   "covid_adjustment": {
     "aae": {
       "ambulance": [
@@ -1468,6 +1490,7 @@
     "expat": "linear",
     "repat_local": "linear",
     "repat_nonlocal": "linear",
+    "inequalities": "linear",
     "non-demographic_adjustment": "none",
     "activity_avoidance": {
       "aae": {

@@ -159,6 +159,58 @@
             ],
             "additionalProperties": false
         },
+        "inequalities": {
+            "type": "object",
+            "propertyNames": {
+                "type": "string",
+                "minLength": 4,
+                "maxLength": 4
+            },
+            "additionalProperties": {
+                "type": "object",
+                "properties": {
+                    "option": {
+                        "type": "string",
+                        "enum": [
+                            "level_up",
+                            "zero_sum",
+                            "level_down"
+                        ]
+                    },
+                    "values": {
+                        "type": "object",
+                        "properties": {
+                            "1": {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                            },
+                            "2": {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                            },
+                            "3": {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                            },
+                            "4": {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                            },
+                            "5": {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                            }
+                        },
+                        "additionalProperties": false
+                    }
+                },
+                "required": [
+                    "option",
+                    "values"
+                ],
+                "additionalProperties": false
+            }
+        },
         "activity_avoidance": {
             "type": "object",
             "properties": {
@@ -1363,6 +1415,7 @@
         "expat",
         "repat_local",
         "repat_nonlocal",
+        "inequalities",
         "baseline_adjustment",
         "waiting_list_adjustment",
         "non-demographic_adjustment",
