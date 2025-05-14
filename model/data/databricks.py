@@ -225,6 +225,7 @@ class DatabricksNational(Data):
             .filter(F.col("fyear") == self._year)
             .withColumn("dataset", F.lit("NATIONAL"))
             .withColumn("sitetret", F.lit("NATIONAL"))
+            # TODO: temporary fix, see #353
             .withColumn("sushrg_trimmed", F.lit("HRG"))
             .groupBy(
                 op.drop(
