@@ -19,4 +19,4 @@ jobs:
 
     uses: ./.github/workflows/deploy_schema.yaml
     with:
-      app_version: ${{github.ref_name}} 
+      app-version: ${{github.ref_name}} 
