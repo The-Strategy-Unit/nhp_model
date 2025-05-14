@@ -227,6 +227,7 @@ class DatabricksNational(Data):
             .withColumn("sitetret", F.lit("NATIONAL"))
             # TODO: temporary fix, see #353
             .withColumn("sushrg_trimmed", F.lit("HRG"))
+            .withColumn("imd_quintile", F.lit(0))
             .groupBy(
                 op.drop(
                     "index",
