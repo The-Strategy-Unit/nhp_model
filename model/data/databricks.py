@@ -225,14 +225,13 @@ class DatabricksNational(Data):
             .filter(F.col("fyear") == self._year)
             .withColumn("dataset", F.lit("NATIONAL"))
             .withColumn("sitetret", F.lit("NATIONAL"))
+            .withColumn("sushrg_trimmed", F.lit("HRG"))
             .groupBy(
                 op.drop(
                     "index",
                     "fyear",
                     "attendances",
-                    "tele_attendances",
-                    "sushrg_trimmed",
-                    "imd_quintile",
+                    "tele_attendances"
                 ).columns
             )
             .agg(
