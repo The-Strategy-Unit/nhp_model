@@ -10,6 +10,7 @@ jobs:
   deploy-dev-model:
     uses: ./.github/workflows/build_container.yaml
     with:
+      docker-tag: dev
       app-version: dev 
       data-version: dev
     secrets: inherit
@@ -17,5 +18,5 @@ jobs:
   deploy-dev-schema:
     uses: ./.github/workflows/deploy_schema.yaml
     with: 
-      app-version: dev
+      schema-tag: dev
     secrets: inherit

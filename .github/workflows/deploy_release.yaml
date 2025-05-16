@@ -6,17 +6,33 @@ on:
 name: Deploy Production
 
 jobs:
+
+  set-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.create-tag.outputs.TAG }}
+
+    steps:
+      - name: Create tag
+        id: create-tag
+        run: |
+          TAG=`echo ${{ github.ref_name }} | awk 'BEGIN { FS="."; } { print ""$1"."$2; }'`
+          echo "TAG=$TAG" >> $$GITHUB_OUTPUT
+
   deploy-production:
+    needs: [set-tag]
   
     uses: ./.github/workflows/build_container.yaml
     with:
-      app-version: ${{github.ref_name}} 
+      docker-tag: ${{ needs.set-tag.outputs.tag }} 
+      app-version: ${{ github.ref_name }} 
       data-version: ${{vars.data_version}}
       latest: true
     secrets: inherit
 
   deploy-schema:
+    needs: [set-tag]
 
     uses: ./.github/workflows/deploy_schema.yaml
     with:
-      app-version: ${{github.ref_name}} 
+      schema-tag: ${{ needs.set-tag.outputs.tag }} 
