@@ -19,6 +19,7 @@ jobs:
 
   deploy-dev-schema:
     uses: ./.github/workflows/build_schema.yaml
+    if: github.event_name == 'push'
     with:
       schema-tag: dev
     secrets: inherit
