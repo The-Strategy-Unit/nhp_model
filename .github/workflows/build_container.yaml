@@ -53,6 +53,7 @@ jobs:
 
   deploy-ghcr:
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     needs: ["build-container"]
     steps:
       - name: "Checkout GitHub Action"
@@ -86,6 +87,7 @@ jobs:
 
   deploy-acr:
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     needs: ["build-container"]
     steps:
       - name: "Checkout GitHub Action"
