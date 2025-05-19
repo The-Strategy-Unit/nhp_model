@@ -57,6 +57,23 @@ jobs:
           name: nhp_model
           path: nhp_model.tar
 
+      - name: Comment with artifact link
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ✅ A new build is available.
+
+            You can use the following to use the image in your local environment:
+
+            ``` bash
+            docker load -i nhp_model.tar
+            ```
+
+            [Download Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          edit-mode: replace
+
   deploy-ghcr:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
