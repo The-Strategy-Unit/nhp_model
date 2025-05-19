@@ -16,7 +16,7 @@ jobs:
     secrets: inherit
 
   deploy-dev-schema:
-    uses: ./.github/workflows/deploy_schema.yaml
-    with: 
+    uses: ./.github/workflows/build_schema.yaml
+    with:
       schema-tag: dev
     secrets: inherit
