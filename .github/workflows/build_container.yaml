@@ -39,12 +39,12 @@ jobs:
       - name: "Pull current dev version of image"
         run: |
           docker pull ghcr.io/the-strategy-unit/nhp_model:dev || true
-          docker tag ghcr.io/the-strategy-unit/nhp_model:dev nhp_model
 
       - name: "Build Image"
         run: |
-          docker build . -t nhp_model:${{ inputs.docker-tag }} \
-            --cache-from nhp_model \
+          export DOCKER_BUILDKIT=1
+          docker build . -t nhp_model \
+            --cache-from ghcr.io/the-strategy-unit/nhp_model:dev \
             --build-arg app_version=${{ inputs.app-version }} \
             --build-arg data_version=${{ inputs.data-version }}
 
@@ -137,6 +137,7 @@ jobs:
 
       - name: "Build image"
         run: |
+          export DOCKER_BUILDKIT=1
           # include the storage account env var for the data for acr
           docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.docker-tag }} \
             --cache-from nhp_model \
