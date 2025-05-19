@@ -5,6 +5,7 @@ on:
     inputs:
       schema-tag:
         required: true
+        default: dev
         type: string  
 
 permissions:

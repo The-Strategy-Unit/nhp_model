@@ -3,12 +3,15 @@ on:
     inputs:
       docker-tag:
         required: true
+        default: dev
         type: string
       app-version:
         required: true
+        default: dev
         type: string
       data-version:
         required: true
+        default: dev
         type: string  
       latest:
         required: false
