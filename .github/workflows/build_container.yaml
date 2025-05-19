@@ -30,62 +30,87 @@ on:
         required: true
 
 jobs:
-  build-and-deploy-ghcr:
+  build-container:
     runs-on: ubuntu-latest
     steps:
-      - name: 'Checkout GitHub Action'
+      - name: "Checkout GitHub Action"
         uses: actions/checkout@v4
 
-      - name: 'Login to GitHub Container Registry'
+      - name: "Build Image"
+        run: |
+          docker build . -t nhp_model:${{ inputs.docker-tag }} \
+            --build-arg app_version=${{ inputs.app-version }} \
+            --build-arg data_version=${{ inputs.data-version }}
+
+      - name: Save Docker image to tarball
+        run: docker save nhp_model:${{ inputs.docker-tag }} -o nhp_model.tar
+
+      - name: Upload image tarball as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nhp_model
+          path: nhp_model.tar
+
+  deploy-ghcr:
+    runs-on: ubuntu-latest
+    needs: ["build-container"]
+    steps:
+      - name: "Checkout GitHub Action"
+        uses: actions/checkout@v4
+
+      - name: Download image tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: nhp_model
+
+      - name: Load Docker image from tarball
+        run: docker load -i nhp_model.tar
+
+      - name: "Login to GitHub Container Registry"
         uses: docker/login-action@v1
         with:
           registry: ghcr.io
           username: ${{github.actor}}
           password: ${{secrets.GITHUB_TOKEN}}
 
-      - name: 'Pull latest dev container'
+      - name: "Tag and push image"
         run: |
-          docker pull ghcr.io/the-strategy-unit/nhp_model:dev
-
-      - name: 'Build image'
-        run: |
-          docker build . -t ghcr.io/the-strategy-unit/nhp_model:${{ inputs.docker-tag }} \
-            --build-arg app_version=${{ inputs.app-version }} \
-            --build-arg data_version=${{ inputs.data-version }}
-          
-      - name: 'Push image'
-        run: |
+          docker tag nhp_model ghcr.io/the-strategy-unit/nhp_model:${{ inputs.docker-tag }}
           docker push ghcr.io/the-strategy-unit/nhp_model:${{ inputs.docker-tag }}
       
-      - name: 'Push latest'
+      - name: "Push latest"
         if: ${{ inputs.latest }}
         run: |
           docker tag ghcr.io/the-strategy-unit/nhp_model:${{ inputs.docker-tag }} ghcr.io/the-strategy-unit/nhp_model:latest
           docker push ghcr.io/the-strategy-unit/nhp_model:latest
 
-  build-and-deploy-acr:
+  deploy-acr:
     runs-on: ubuntu-latest
+    needs: ["build-container"]
     steps:
-      - name: 'Checkout GitHub Action'
+      - name: "Checkout GitHub Action"
         uses: actions/checkout@v4
+      - name: Download image tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: nhp_model
 
-      - name: 'Login via Azure CLI'
+      - name: Load Docker image from tarball
+        run: docker load -i nhp_model.tar
+
+      - name: "Login via Azure CLI"
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       
-      - name: 'Login to Azure Container Registry'
+      - name: "Login to Azure Container Registry"
         uses: azure/docker-login@v2
         with:
           login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: 'Pull latest dev container'
-        run: |
-          docker pull ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:dev
-
-      - name: 'Build and push image'
+      - name: "Build image"
         run: |
           # include the storage account env var for the data for acr
           docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.docker-tag }} \
@@ -93,11 +118,11 @@ jobs:
             --build-arg data_version=${{ inputs.data-version }} \
             --build-arg storage_account=${{ secrets.NHP_STORAGE_ACCOUNT }}
           
-      - name: 'Push image'
+      - name: "Push image"
         run: |
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.docker-tag }}
 
-      - name: 'Push latest'
+      - name: "Push latest"
         if: ${{ inputs.latest }}
         run: |
           docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.docker-tag }} ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
