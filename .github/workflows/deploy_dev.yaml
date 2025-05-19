@@ -11,8 +11,9 @@ jobs:
     uses: ./.github/workflows/build_container.yaml
     with:
       docker-tag: dev
-      app-version: dev 
+      app-version: dev
       data-version: dev
+      latest: false
     secrets: inherit
 
   deploy-dev-schema:
