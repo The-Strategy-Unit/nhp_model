@@ -63,7 +63,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nhp_model
-          path: nhp_model.tar
+          path: ${{ runner.temp }}/nhp_model.tar
           retention-days: 1
 
       - name: Comment with container image link
