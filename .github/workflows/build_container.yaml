@@ -49,7 +49,7 @@ jobs:
             --build-arg data_version=${{ inputs.data-version }}
 
       - name: Save Docker image to tarball
-        run: docker save nhp_model:${{ inputs.docker-tag }} -o nhp_model.tar
+        run: docker save nhp_model -o nhp_model.tar
 
       - name: Upload image tarball as artifact
         uses: actions/upload-artifact@v4
@@ -58,6 +58,7 @@ jobs:
           path: nhp_model.tar
 
       - name: Comment with artifact link
+        if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
