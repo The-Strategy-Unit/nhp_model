@@ -36,28 +36,30 @@ jobs:
       - name: "Checkout GitHub Action"
         uses: actions/checkout@v4
 
-      - name: "Pull current dev version of image"
-        run: |
-          docker pull ghcr.io/the-strategy-unit/nhp_model:dev || true
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: "Build Image"
-        run: |
-          export DOCKER_BUILDKIT=1
-          docker build . -t nhp_model \
-            --cache-from ghcr.io/the-strategy-unit/nhp_model:dev \
-            --build-arg app_version=${{ inputs.app-version }} \
-            --build-arg data_version=${{ inputs.data-version }}
-
-      - name: Save Docker image to tarball
-        run: docker save nhp_model -o nhp_model.tar
+      - name: "Build image"
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          tags: ghcr.io/the-strategy-unit/nhp_model:pr-${{ github.event.number }}
+          push: true
+          cache-from: type=registry,ref=ghcr.io/the-strategy-unit/nhp_model:build-cache
+          cache-to: type=registry,ref=ghcr.io/the-strategy-unit/nhp_model:build-cache,mode=max
+          outputs: type=docker,dest=${{ runner.temp }}/nhp_model.tar
+          build-args: |
+            app_version=${{ inputs.app-version }}
+            data_version=${{ inputs.data-version }}
 
       - name: Upload image tarball as artifact
         uses: actions/upload-artifact@v4
         with:
           name: nhp_model
           path: nhp_model.tar
+          retention-days: 1
 
-      - name: Comment with artifact link
+      - name: Comment with container image link
         if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v4
         with:
@@ -66,10 +68,10 @@ jobs:
           body: |
             ✅ A new build is available.
 
-            You can use the following to use the image in your local environment:
+            You can use the following to use pull the image into your local environment:
 
             ``` bash
-            docker load -i nhp_model.tar
+            docker pull ghcr.io/the-strategy-unit/nhp_model:pr-${{ github.event.number }}
             ```
 
             [Download Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
@@ -87,9 +89,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: nhp_model
+          path: ${{ runner.temp }}
 
       - name: Load Docker image from tarball
-        run: docker load -i nhp_model.tar
+        run: docker load -i ${{ runner.temp }}/nhp_model.tar
 
       - name: "Login to GitHub Container Registry"
         uses: docker/login-action@v1
@@ -98,11 +101,21 @@ jobs:
           username: ${{github.actor}}
           password: ${{secrets.GITHUB_TOKEN}}
 
-      - name: "Tag and push image"
-        run: |
-          docker tag nhp_model ghcr.io/the-strategy-unit/nhp_model:${{ inputs.docker-tag }}
-          docker push ghcr.io/the-strategy-unit/nhp_model:${{ inputs.docker-tag }}
-      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: "Build image"
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          tags: ghcr.io/the-strategy-unit/nhp_model:${{ inputs.docker-tag }}
+          push: true
+          cache-from: type=registry,ref=ghcr.io/the-strategy-unit/nhp_model:build-cache
+          cache-to: type=registry,ref=ghcr.io/the-strategy-unit/nhp_model:build-cache,mode=max
+          build-args: |
+            app_version=${{ inputs.app-version }}
+            data_version=${{ inputs.data-version }}
+
       - name: "Push latest"
         if: ${{ inputs.latest }}
         run: |
@@ -116,6 +129,7 @@ jobs:
     steps:
       - name: "Checkout GitHub Action"
         uses: actions/checkout@v4
+
       - name: Download image tarball
         uses: actions/download-artifact@v4
         with:
@@ -136,20 +150,21 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: "Build image"
-        run: |
-          export DOCKER_BUILDKIT=1
-          # include the storage account env var for the data for acr
-          docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.docker-tag }} \
-            --cache-from nhp_model \
-            --build-arg app_version=${{ inputs.app-version }} \
-            --build-arg data_version=${{ inputs.data-version }} \
-            --build-arg storage_account=${{ secrets.NHP_STORAGE_ACCOUNT }}
-          
-      - name: "Push image"
-        run: |
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.docker-tag }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
+      - name: "Build image"
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          tags: ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.docker-tag }}
+          push: true
+          cache-from: type=registry,ref=ghcr.io/the-strategy-unit/nhp_model:build-cache
+          build-args: |
+            app_version=${{ inputs.app-version }}
+            data_version=${{ inputs.data-version }}
+            storage_account=${{ secrets.NHP_STORAGE_ACCOUNT }}
+          
       - name: "Push latest"
         if: ${{ inputs.latest }}
         run: |
