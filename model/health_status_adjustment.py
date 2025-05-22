@@ -41,9 +41,9 @@ class HealthStatusAdjustment:
 
     def _load_activity_ages(self):
         self._activity_ages = (
-            self._data_loader.get_hsa_activity_table().set_index(
-                ["hsagrp", "sex", "age"]
-            )
+            self._data_loader.get_hsa_activity_table()
+            .set_index(["hsagrp", "sex", "age"])
+            .sort_index()
         )["activity"]
 
     @staticmethod
