@@ -1,4 +1,5 @@
-#!/opt/conda/bin/python
+#!/usr/bin/env python
+
 """Run the model inside of the docker container"""
 
 import argparse
@@ -50,9 +51,7 @@ class RunWithAzureStorage:
     """Methods for running with azure storage"""
 
     def __init__(self, filename: str, app_version: str = "dev"):
-        logging.getLogger("azure.storage.common.storageclient").setLevel(
-            logging.WARNING
-        )
+        logging.getLogger("azure.storage.common.storageclient").setLevel(logging.WARNING)
         logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
             logging.WARNING
         )

@@ -1,30 +1,42 @@
-FROM mambaorg/micromamba:1.3.1-alpine
+FROM python:3.11-slim
+
+# Create user matching micromamba's approach
+RUN groupadd --gid 1000 mambauser && \
+    useradd --uid 1000 --gid mambauser --shell /bin/bash --create-home mambauser
 
 WORKDIR /opt
-# create data, queue, results folders, make sure the user has access to write into these folders
-USER root
+
+# Create directories with proper permissions (as root)
 RUN for DIR in data queue results; do \
-  mkdir -p $DIR && \
-  chown $MAMBA_USER:$MAMBA_USER $DIR && \
-  chmod a+w $DIR; \
-  done;
-USER $MAMBA_USER
+    mkdir -p $DIR && \
+    chown mambauser:mambauser $DIR && \
+    chmod a+w $DIR; \
+    done
 
-# copy the conda environment file across, and strip out the "dev" dependencies
-# before installing the environment
-COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml /tmp/environment.yml
-RUN awk 'NR==1,/# dev dependencies/' /tmp/environment.yml | \
-  sed -E 's/^(name: nhp)$/\1_prod/; s/\s*#.*//g' > /tmp/environment_prod.yml && \
-  micromamba install -y -n base -f /tmp/environment_prod.yml && \
-  micromamba clean --all --yes
+# Change ownership of working directory to mambauser
+RUN chown mambauser:mambauser /opt
 
-# copy the app code
-COPY --chown=$MAMBA_USER:$MAMBA_USER model /opt/model
-COPY --chown=$MAMBA_USER:$MAMBA_USER run_model.py /opt
-COPY --chown=$MAMBA_USER:$MAMBA_USER docker_run.py /opt
-COPY --chown=$MAMBA_USER:$MAMBA_USER config.py /opt
+# Install uv
+# COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+COPY --from=ghcr.io/astral-sh/uv:python3.11-alpine /uv /bin/uv
 
-# define build arguments, these will set the environment variables in the container
+
+# Switch to non-root user
+USER mambauser
+
+# Copy dependency files first (optimal caching)
+COPY --chown=mambauser:mambauser pyproject.toml uv.lock ./
+
+# Install dependencies only (skip local package)
+RUN uv sync --frozen --no-dev --no-install-project
+
+# Copy application code (changes most frequently)
+COPY --chown=mambauser:mambauser model /opt/model
+COPY --chown=mambauser:mambauser run_model.py /opt
+COPY --chown=mambauser:mambauser docker_run.py /opt
+COPY --chown=mambauser:mambauser config.py /opt
+
+# Define build arguments and environment variables
 ARG app_version
 ARG data_version
 ARG storage_account
@@ -32,8 +44,10 @@ ARG storage_account
 ENV APP_VERSION=$app_version
 ENV DATA_VERSION=$data_version
 ENV STORAGE_ACCOUNT=$storage_account
-
 ENV BATCH_SIZE=16
 
-# set the entry point of the container to be our script
-ENTRYPOINT [ "./docker_run.py" ]
+# Ensure Python can find installed packages and local model
+ENV PATH="/opt/.venv/bin:$PATH"
+ENV PYTHONPATH="/opt:$PYTHONPATH"
+
+ENTRYPOINT ["python", "./docker_run.py"]
