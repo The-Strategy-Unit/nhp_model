@@ -9,6 +9,7 @@ import os
 import re
 import threading
 from pathlib import Path
+from typing import Any, Callable
 
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
@@ -38,7 +39,7 @@ class RunWithLocalStorage:
         :type save_full_model_results: bool
         """
 
-    def progress_callback(self) -> None:
+    def progress_callback(self) -> Callable[[Any], Callable[[Any], None]]:
         """Progress callback method
 
         for local storage do nothing
@@ -215,7 +216,7 @@ class RunWithAzureStorage:
             self._upload_full_model_results()
         self._cleanup()
 
-    def progress_callback(self) -> None:
+    def progress_callback(self) -> Callable[[Any], Callable[[Any], None]]:
         """Progress callback method
 
         updates the metadata for the blob in the queue to give progress

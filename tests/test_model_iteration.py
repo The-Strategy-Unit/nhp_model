@@ -263,6 +263,25 @@ def test_get_aggregate_results(mock_model_iteration):
     ]
 
 
+def test_get_aggregate_results_avoided_activity_none(mock_model_iteration):
+    """test the get_aggregate_results method when avoided activity is None"""
+
+    # arrange
+    mr_mock = mock_model_iteration
+
+    mr_mock.model.aggregate.return_value = "aggregated_results", [["a"]]
+    mr_mock.get_step_counts = Mock(return_value="step_counts")
+    mr_mock.model.get_agg.return_value = "agg"
+    mr_mock.avoided_activity = None
+    mr_mock.model.process_results = Mock(return_value="avoided_activity_agg")
+
+    # act
+    actual = mr_mock.get_aggregate_results()
+
+    # assert
+    mr_mock.model.process_results.assert_not_called()
+
+
 def test_get_step_counts_empty(mock_model_iteration):
     """test the get_step_counts method when step counts is empty"""
     # arrange

@@ -20,6 +20,12 @@ def test_tqdm():
     tqdm.progress_callback.assert_called_once_with(5)
 
 
+def test_tqdm_no_callback():
+    tqdm.progress_callback = None
+    t = tqdm()
+    t.update(5)
+
+
 def test_timeit(mocker, capsys):
     """it should evaluate a function and print how long it took to run it"""
     # arrange
@@ -227,6 +233,28 @@ def test_main_debug_runs_model(mocker, activity_type, model_class):
     run_all_mock.assert_not_called()
     run_single_mock.assert_called_once_with("params", "data", model_class, 0)
     ldp_mock.assert_called_once_with("queue/params.json")
+
+
+def test_main_debug_runs_model_invalid_type(mocker):
+    # arrange
+    args = Mock
+    args.type = "invalid"
+    args.data_path = "data"
+    args.model_run = 0
+    args.params_file = "queue/params.json"
+    mocker.patch("run_model._run_model_argparser", return_value=args)
+    mocker.patch("run_model.load_params", return_value="params")
+
+    run_all_mock = mocker.patch("run_model.run_all")
+    run_single_mock = mocker.patch("run_model.run_single_model_run")
+
+    # act
+    with pytest.raises(ValueError):
+        main()
+
+    # assert
+    run_all_mock.assert_not_called()
+    run_single_mock.assert_not_called()
 
 
 def test_main_all_runs(mocker):
