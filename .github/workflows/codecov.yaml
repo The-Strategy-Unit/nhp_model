@@ -39,7 +39,7 @@ jobs:
       if: steps.cache.outputs.cache-hit != 'true'
 
     - name: Generate Report
-      run: pytest --cov=. tests/ --ignore=tests --cov-report xml:coverage.xml
+      run: pytest --cov=. tests/ --ignore=tests --cov-branch --cov-report xml:coverage.xml
 
     - name: Upload Coverage to Codecov
       uses: codecov/codecov-action@v4
