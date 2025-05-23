@@ -266,6 +266,9 @@ def main() -> None:
             model_type = InpatientsModel
         case "op":
             model_type = OutpatientsModel
+        case _:
+            raise ValueError(f"Unknown model type: {args.type}")
+
     run_single_model_run(params, args.data_path, model_type, args.model_run)
 
 
