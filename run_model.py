@@ -201,7 +201,7 @@ def run_single_model_run(
         model_results["default"]
         .reset_index()
         .groupby(["pod", "measure"], as_index=False)
-        .agg({"value": sum})
+        .agg({"value": "sum"})
         .pivot(index=["pod"], columns="measure")
         .fillna(0)
     )
