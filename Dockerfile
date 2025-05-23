@@ -1,28 +1,28 @@
-FROM mambaorg/micromamba:1.3.1-alpine
+FROM ghcr.io/astral-sh/uv:python3.11-alpine
 
-WORKDIR /opt
-# create data, queue, results folders, make sure the user has access to write into these folders
-USER root
-RUN for DIR in data queue results; do \
-  mkdir -p $DIR && \
-  chown $MAMBA_USER:$MAMBA_USER $DIR && \
-  chmod a+w $DIR; \
-  done;
-USER $MAMBA_USER
 
-# copy the conda environment file across, and strip out the "dev" dependencies
-# before installing the environment
-COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml /tmp/environment.yml
-RUN awk 'NR==1,/# dev dependencies/' /tmp/environment.yml | \
-  sed -E 's/^(name: nhp)$/\1_prod/; s/\s*#.*//g' > /tmp/environment_prod.yml && \
-  micromamba install -y -n base -f /tmp/environment_prod.yml && \
-  micromamba clean --all --yes
+# Create user
+RUN addgroup -g 1000 nhp && adduser -u 1000 -G nhp -s /bin/sh -h /app -D nhp
+WORKDIR /app
+USER nhp
 
-# copy the app code
-COPY --chown=$MAMBA_USER:$MAMBA_USER model /opt/model
-COPY --chown=$MAMBA_USER:$MAMBA_USER run_model.py /opt
-COPY --chown=$MAMBA_USER:$MAMBA_USER docker_run.py /opt
-COPY --chown=$MAMBA_USER:$MAMBA_USER config.py /opt
+# Create directories with proper permissions (as root)
+RUN for DIR in data queue results; do mkdir -p $DIR; done
+
+# Copy dependency files first (optimal caching)
+COPY pyproject.toml uv.lock ./
+
+# Install dependencies only (skip local package)
+RUN uv sync --frozen --no-dev --no-install-project
+
+# Ensure Python can find installed packages and local model
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Copy application code (changes most frequently)
+COPY model /app/model
+COPY run_model.py /app
+COPY docker_run.py /app
+COPY config.py /app
 
 # define build arguments, these will set the environment variables in the container
 ARG app_version
@@ -33,7 +33,7 @@ ENV APP_VERSION=$app_version
 ENV DATA_VERSION=$data_version
 ENV STORAGE_ACCOUNT=$storage_account
 
+# Define static environment variables
 ENV BATCH_SIZE=16
 
-# set the entry point of the container to be our script
-ENTRYPOINT [ "./docker_run.py" ]
+ENTRYPOINT ["python", "./docker_run.py"]
