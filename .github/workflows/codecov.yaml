@@ -17,29 +17,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
         
-    - name: Setup Mambaforge
-      uses: conda-incubator/setup-miniconda@v3
+    - name: Install the latest version of uv
+      uses: astral-sh/setup-uv@v6
       with:
-        miniforge-version: latest
-        activate-environment: nhp
-        use-mamba: true
-
-    - name: Cache Conda env
-      uses: actions/cache@v4
-      id: cache
-      with:
-        path: ${{ env.CONDA }}/envs
-        key: conda-${{ hashFiles('environment.yml') }}-${{ env.CACHE_NUMBER }}
-      env:
-        # Increase this value to reset cache if etc/example-environment.yml has not changed
-        CACHE_NUMBER: 0
-
-    - name: Update environment
-      run: mamba env update -n nhp -f environment.yml
-      if: steps.cache.outputs.cache-hit != 'true'
+        version: "latest"
 
     - name: Generate Report
-      run: pytest --cov=. tests/ --ignore=tests --cov-branch --cov-report xml:coverage.xml
+      run: uv run pytest --cov=. tests/ --ignore=tests --cov-branch --cov-report xml:coverage.xml
 
     - name: Upload Coverage to Codecov
       uses: codecov/codecov-action@v4
