@@ -1,0 +1,28 @@
+name: Clean up untagged container images
+
+on:
+  workflow_dispatch:  # allows manual triggering via GitHub UI
+  schedule:
+    - cron: '0 1 * * *'  # runs at 01:00 UTC every day
+
+jobs:
+  removed-untagged-images:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - name: "Remove untagged images"
+        run: |
+          VERSION_IDS=$(gh api /orgs/the-strategy-unit/packages/container/nhp_model/versions \
+            -H "Accept: application/vnd.github+json" \
+            --paginate | \
+            jq -r '.[] | select(.metadata.container.tags | length == 0) | .id')
+
+          for VERSION_ID in $VERSION_IDS; do
+            echo "Deleting version ID: $VERSION_ID"
+            gh api \
+              -X DELETE \
+              /orgs/the-strategy-unit/packages/container/nhp_model/versions/${VERSION_ID} \
+              -H "Accept: application/vnd.github+json"
+          done
