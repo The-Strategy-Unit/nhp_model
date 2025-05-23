@@ -1,0 +1,87 @@
+[project]
+name = "nhp_model"
+version = "0.1.0"
+description = "New Hospital Programme demand model"
+
+requires-python = ">=3.11"
+
+dependencies = [
+    "azure-cosmos>=4.3",
+    "azure-keyvault-secrets>=4.6",
+    "azure-identity>=1.12",
+    "azure-storage-blob>=12.15",
+    "azure-storage-file-datalake>=12.10",
+    "fastparquet>=2023.2",
+    "numpy>=1.23",
+    "pandas>=1.5",
+    "pyjanitor>=0.23",
+    "python-dotenv>=1.0",
+    "scipy>=1.10",
+    "tqdm>=4.65",
+]
+
+
+# Explicitly specify which packages to include
+[tool.setuptools]
+packages = ["model"]          # Only include what's in the list, exclude everything else
+
+[project.optional-dependencies]
+dev = [
+    "coverage>=7.2",
+    "ipykernel>=6.21",
+    "ipython>=8.11",
+    "ipywidgets>=8.0",
+    "jupyter_client>=8.0",
+    "jupyter_core>=5.2",
+    "jupyterlab_pygments>=0.2",
+    "jupyterlab_widgets>=3.0",
+    "matplotlib>=3.7",
+    "nbconvert>=7.2",
+    "nbformat>=5.7",
+    "notebook>=6.5",
+    "pygam>=0.8",
+    "pytest>=7.2",
+    "pytest-cov>=4.0",
+    "pytest-mock>=3.10",
+    "ruff>=0.11.10",
+    "snakeviz>=2.1",
+    "widgetsnbextension>=4.0",
+    # "sphinx>=6.0",
+    # "sphinx_rtd_theme>=1.2",
+]
+
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# Ruff configuration
+[tool.ruff]
+line-length = 90
+target-version = "py311"
+
+[tool.ruff.lint]
+# Simple rules: pylint + isort
+select = [
+    "E",                                              # pycodestyle errors
+    "W",                                              # pycodestyle warnings
+    "I",                                              # isort (import sorting)
+    "PL",                                             # pylint rules
+]
+
+[tool.ruff.lint.isort]
+# isort configuration
+force-single-line = false
+combine-as-imports = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+# Black-compatible formatting (default settings)
+quote-style = "double"
+
+[tool.pyright]
+include = ["model", "tests"]
+exclude = ["**/node_modules", "**/__pycache__"]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"

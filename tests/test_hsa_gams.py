@@ -1,4 +1,5 @@
 """test hsa gams"""
+
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
 
 import os
@@ -56,6 +57,45 @@ def test_create_activity_type_gams(mocker):
         for j in [0, 0, 100, 100]
     ]
     assert gams == {(h, s): "GAM" for h in ["a", "b"] for s in [1, 2]}
+
+
+def test_create_activity_type_gams_no_ignored_hsagrps(mocker):
+    """it creates the gams for the given activity type"""
+    # arrange
+    data = pd.DataFrame(
+        {
+            "age": [17, 18, 50, 90, 91] * 6,
+            "sex": [1] * 15 + [2] * 15,
+            "hsagrp": (["a"] * 5 + ["b"] * 5 + ["c"] * 5) * 2,
+        }
+    )
+    mocker.patch("pandas.read_parquet", return_value=data)
+
+    gam_mock = Mock()
+    mocker.patch("model.hsa_gams.GAM", return_value=gam_mock)
+    gam_mock.gridsearch.return_value = "GAM"
+
+    pop = pd.DataFrame(
+        {
+            "age": list(range(100)) * 2,
+            "sex": [1] * 100 + [2] * 100,
+            "base_year": list(range(1, 201)),
+        }
+    )
+    path_fn = Mock()
+    data = {}
+    gams = {}
+
+    # act
+    _create_activity_type_gams(pop, path_fn, data, gams, "test")
+
+    # assert
+    assert data["test"].activity_rate.to_list() == [
+        1 / (i + 1 + j) if i in [18, 50, 90] else 0
+        for i in range(18, 91)
+        for j in [0, 0, 0, 100, 100, 100]
+    ]
+    assert gams == {(h, s): "GAM" for h in ["a", "b", "c"] for s in [1, 2]}
 
 
 def test_create_gams(mocker):
