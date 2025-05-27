@@ -28,6 +28,8 @@ on:
         required: true
       NHP_STORAGE_ACCOUNT:
         required: true
+      PAT_DELETE_PACKAGES:
+        required: true
 
 jobs:
   
