@@ -87,8 +87,6 @@ jobs:
             ``` bash
             docker pull ghcr.io/the-strategy-unit/nhp_model:pr-${{ github.event.number }}
             ```
-
-            [Download Artifact](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
           edit-mode: replace
 
   deploy-ghcr:
