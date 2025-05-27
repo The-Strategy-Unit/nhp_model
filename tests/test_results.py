@@ -336,14 +336,14 @@ def test_save_results_files(mocker):
 
     # assert
     assert actual == expected
-    assert os_m.called_once_with(path, exist_ok=True)
+    os_m.assert_called_once_with(path, exist_ok=True)
 
     assert save_parquet_mock.call_args_list == [
         call(path, "default", "default_df", params),
         call(path, "step_counts", "step_counts_df", params),
     ]
 
-    assert save_params_mock.called_once_with(path, params)
+    save_params_mock.assert_called_once_with(path, params)
 
 
 def test_save_parquet_file(mocker):

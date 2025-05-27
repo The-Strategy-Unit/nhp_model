@@ -417,7 +417,7 @@ class InpatientEfficiencies:
             data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"]
         )
 
-        self.data.loc[i, "speldur"] = new.astype("int")
+        self.data.loc[i, "speldur"] = new.astype("int32")
 
         return self
 
@@ -436,7 +436,9 @@ class InpatientEfficiencies:
         if i.empty:
             return self
 
-        rnd_choice = np.array(rng.binomial(1, losr.loc[data.loc[i].index, "losr_f"]))
+        rnd_choice = np.array(
+            rng.binomial(1, losr.loc[data.loc[i].index, "losr_f"])
+        ).astype("int32")
 
         self.data.loc[i, "classpat"] = np.where(rnd_choice == 0, "-3", "1")
         self.data.loc[i, "speldur"] = self.data.loc[i, "speldur"] * rnd_choice
@@ -462,7 +464,7 @@ class InpatientEfficiencies:
             rng.binomial(1, 1 - losr.loc[data.loc[i].index, "losr_f"])
             * losr.loc[data.loc[i].index, "pre-op_days"]
         )
-        self.data.loc[i, "speldur"] = new
+        self.data.loc[i, "speldur"] = new.astype("int32")
 
         return self
 

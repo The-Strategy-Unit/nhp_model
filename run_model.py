@@ -201,7 +201,7 @@ def run_single_model_run(
         model_results["default"]
         .reset_index()
         .groupby(["pod", "measure"], as_index=False)
-        .agg({"value": sum})
+        .agg({"value": "sum"})
         .pivot(index=["pod"], columns="measure")
         .fillna(0)
     )
@@ -266,6 +266,9 @@ def main() -> None:
             model_type = InpatientsModel
         case "op":
             model_type = OutpatientsModel
+        case _:
+            raise ValueError(f"Unknown model type: {args.type}")
+
     run_single_model_run(params, args.data_path, model_type, args.model_run)
 
 

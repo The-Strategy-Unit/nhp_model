@@ -124,8 +124,14 @@ class ActivityResampling:
     def inequalities_adjustment(self):
         """perform the inequalities adjustment"""
         activity_type = self._activity_type
-        if activity_type not in ["ip", "op"]:
-            return self
+
+        match activity_type:
+            case "op":
+                factor_key = "procedure"
+            case "ip":
+                factor_key = "elective"
+            case _:
+                return self
 
         if not (params := self.run_params["inequalities"]):
             return self
@@ -140,11 +146,6 @@ class ActivityResampling:
         factor.index = factor.index.set_levels(
             factor.index.levels[1].astype(int), level="imd_quintile"
         )
-        match activity_type:
-            case "op":
-                factor_key = "procedure"
-            case "ip":
-                factor_key = "elective"
 
         factor = pd.concat({factor_key: factor}, names=["group"])
 
