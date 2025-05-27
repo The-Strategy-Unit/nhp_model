@@ -1,0 +1,32 @@
+name: Clean up closed pull requests
+
+on:
+  pull_request:
+    types:
+      - closed
+jobs:
+  removed-untagged-images:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == false
+    steps:
+      # you must create a classic PAT with `delete:packages` scope and add it as a secret named `PAT_DELETE_PACKAGES` 
+      - name: Authenticate with PAT
+        run: echo "${{ secrets.PAT_DELETE_PACKAGES }}" | gh auth login --with-token
+      - name: "Remove PR image"
+        env:
+          TAG_TO_DELETE: "pr-${{ github.event.pull_request.number }}"
+        run: |
+          VERSION_ID=$(gh api /orgs/the-strategy-unit/packages/container/nhp_model/versions \
+            -H "Accept: application/vnd.github+json" \
+            --paginate | \
+            jq -r '.[] | select(.metadata.container.tags[] == "$TAG_TO_DELETE") | .id')
+
+          if [ -n "$VERSION_ID" ]; then
+            echo "Deleting version ID: $VERSION_ID"
+            gh api \
+              -X DELETE \
+              /orgs/the-strategy-unit/packages/container/nhp_model/versions/${VERSION_ID} \
+              -H "Accept: application/vnd.github+json"
+          else
+            echo "Tag '$TAG_TO_DELETE' not found — skipping delete"
+          fi

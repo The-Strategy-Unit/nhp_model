@@ -164,9 +164,7 @@ jobs:
 
   remove-pr-image:
     runs-on: ubuntu-latest
-    needs: ["deploy-ghcr"]
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
-
+    needs: ["deploy-ghcr", "deploy-acr"]
     steps:
       # you must create a classic PAT with `delete:packages` scope and add it as a secret named `PAT_DELETE_PACKAGES` 
       - name: Authenticate with PAT
