@@ -33,6 +33,7 @@ jobs:
   
   build-container:
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' &&  github.event.action != 'closed'
     steps:
       - name: "Checkout GitHub Action"
         uses: actions/checkout@v4
@@ -167,10 +168,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: ["deploy-ghcr"]
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
-    permissions:
-      packages: write
-      contents: read
+
     steps:
+      # you must create a classic PAT with `delete:packages` scope and add it as a secret named `PAT_DELETE_PACKAGES` 
+      - name: Authenticate with PAT
+        run: echo "${{ secrets.PAT_DELETE_PACKAGES }}" | gh auth login --with-token
+
       - name: "Remove pr image"
         env:
           TAG_TO_DELETE: "pr-${{ github.event.pull_request.number }}"
