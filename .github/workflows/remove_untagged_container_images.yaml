@@ -11,6 +11,8 @@ jobs:
     permissions:
       packages: write
       contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: "Remove untagged images"
         run: |
