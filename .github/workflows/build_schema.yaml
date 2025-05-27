@@ -36,7 +36,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           pushd schemas
           git add ${{ inputs.schema-tag }}/params-schema.json
-          git commit -m "adding schema for ${{ inputs.schema-tag }}"
+          git commit -m "adding schema for ${{ inputs.schema-tag }}" || echo "No changes to commit"
           git push origin schemas
           popd
       
