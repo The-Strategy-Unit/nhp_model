@@ -1,0 +1,56 @@
+name: Deploy schema.json to GitHub Pages 
+
+on:
+  workflow_call:
+    inputs:
+      schema-tag:
+        required: true
+        default: dev
+        type: string  
+
+permissions:
+  pages: write
+  id-token: write
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Clone existing schemas branch content
+        run: |
+          git fetch --depth=1 origin schemas
+          git worktree add schemas schemas
+
+      - name: Copy schema to app version path
+        run: |
+          mkdir schemas/${{ inputs.schema-tag }}
+          cp params-schema.json schemas/${{ inputs.schema-tag }}/
+
+      - name: Commit the schema
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cd schemas
+          git add .
+          git commit -m "adding schema for ${{ inputs.schema-tag }}"
+          git push origin schemas
+      
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: schemas
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

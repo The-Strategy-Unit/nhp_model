@@ -10,12 +10,14 @@ jobs:
   deploy-dev-model:
     uses: ./.github/workflows/build_container.yaml
     with:
-      app-version: dev 
+      docker-tag: dev
+      app-version: dev
       data-version: dev
+      latest: false
     secrets: inherit
 
   deploy-dev-schema:
-    uses: ./.github/workflows/deploy_schema.yaml
-    with: 
-      app-version: dev
+    uses: ./.github/workflows/build_schema.yaml
+    with:
+      schema-tag: dev
     secrets: inherit
