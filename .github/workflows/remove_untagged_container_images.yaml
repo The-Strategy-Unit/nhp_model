@@ -2,6 +2,10 @@ name: Clean up untagged container images
 
 on:
   workflow_dispatch:  # allows manual triggering via GitHub UI
+  workflow_call:
+    secrets:
+      PAT_DELETE_PACKAGES:
+        required: true
   schedule:
     - cron: '0 1 * * *'  # runs at 01:00 UTC every day
 

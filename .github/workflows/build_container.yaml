@@ -62,9 +62,13 @@ jobs:
             app_version=${{ inputs.app-version }}
             data_version=${{ inputs.data-version }}
 
+  clean-up-untagged-images:
+    needs: ["build-container"]
+    uses: ./.github/workflows/remove_untagged_container_images.yaml
+    secrets: inherit
+
   add-comment-to-pr:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     needs: ["build-container"]
     steps:
       - name: Find Comment
