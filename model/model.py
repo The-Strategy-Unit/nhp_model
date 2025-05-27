@@ -11,7 +11,7 @@ method.
 import os
 from datetime import datetime
 from functools import partial
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Optional, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -66,11 +66,11 @@ class Model:
     def __init__(
         self,
         model_type: str,
-        measures: str,
+        measures: List[str],
         params: dict,
-        data: Data,
+        data: Type[Data],
         hsa: Any = None,
-        run_params: dict = None,
+        run_params: Optional[dict] = None,
         save_full_model_results: bool = False,
     ) -> None:
         valid_model_types = ["aae", "ip", "op"]
@@ -78,15 +78,14 @@ class Model:
             model_type in valid_model_types
         ), "Model type must be one of 'aae', 'ip', or 'op'"
         self.model_type = model_type
-        #
         if isinstance(params, str):
             params = load_params(params)
         self.params = params
+        self.save_full_model_results = save_full_model_results
         # add model runtime if it doesn't exist
-        if not "create_datetime" in self.params:
+        if "create_datetime" not in self.params:
             self.params["create_datetime"] = f"{datetime.now():%Y%m%d_%H%M%S}"
         self._data_loader = data(params["start_year"], params["dataset"])
-        #
         self._measures = measures
         # load the data. we only need some of the columns for the model, so just load what we need
         self._load_data()
@@ -99,9 +98,8 @@ class Model:
         )
         # generate the run parameters if they haven't been passed in
         self.run_params = run_params or self.generate_run_params(params)
-        #
-        self.save_full_model_results = save_full_model_results
-        #
+        # specifically for running in spark: ensure we release the spark context, if we don't then
+        # we will run into an issue when we run the model in parallel
         self._data_loader = None
 
     def _add_pod_to_data(self) -> None:
@@ -351,6 +349,23 @@ class Model:
             self.apply_resampling(row_samples, data),
             step_counts,
         )
+
+    def apply_resampling(
+        self, row_samples: npt.ArrayLike, data: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Apply row resampling
+
+        Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
+
+        :param row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
+        values for `data["arrivals"]`
+        :type row_samples: npt.ArrayLike
+        :param data: the data that we want to update
+        :type data: pd.DataFrame
+        :return: the updated data
+        :rtype: pd.DataFrame
+        """
+        # implemented by concrete classes
 
     def calculate_avoided_activity(
         self, data: pd.DataFrame, data_resampled: pd.DataFrame

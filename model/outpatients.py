@@ -4,9 +4,8 @@ Outpatients Module
 Implements the Outpatients model.
 """
 
-from typing import Any, Callable, Tuple
+from typing import Any, Callable, Optional, Tuple, Type
 
-import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
@@ -38,9 +37,9 @@ class OutpatientsModel(Model):
     def __init__(
         self,
         params: dict,
-        data: Data,
+        data: Type[Data],
         hsa: Any = None,
-        run_params: dict = None,
+        run_params: Optional[dict] = None,
         save_full_model_results: bool = False,
     ) -> None:
         # call the parent init function
@@ -245,8 +244,8 @@ class OutpatientsModel(Model):
         """Save the results of running the model
 
         This method is used for saving the results of the model run to disk as a parquet file.
-        It saves just the `rn` (row number) column and the `attendances` and `tele_attendances` columns, with the intention that
-        you rejoin to the original data.
+        It saves just the `rn` (row number) column and the `attendances` and `tele_attendances`
+        columns, with the intention that you rejoin to the original data.
 
         :param model_results: a DataFrame containing the results of a model iteration
         :param path_fn: a function which takes the activity type and returns a path

@@ -13,7 +13,7 @@ class Data:
     Interface for loading data for the NHP model. This interface should have no concrete
     implementations, instead other classes should derive from this interface."""
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         pass
 
     def get_ip(self) -> pd.DataFrame:

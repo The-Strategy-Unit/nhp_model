@@ -182,7 +182,6 @@ def run_single_model_run(
     m_run = timeit(ModelIteration, model, model_run)
     print("aggregating results... ", end="")
     model_results, step_counts = timeit(m_run.get_aggregate_results)
-    #
     print()
     print("change factors:")
     step_counts = (
@@ -193,7 +192,6 @@ def run_single_model_run(
     )
     step_counts.loc["total"] = step_counts.sum()
     print(step_counts.fillna(0).astype(int))
-    #
     print()
     print("aggregated (default) results:")
 
@@ -242,7 +240,6 @@ def main() -> None:
 
     # Grab the Arguments
     args = _run_model_argparser()
-    #
     params = load_params(args.params_file)
     # define the model to run
     match args.type:

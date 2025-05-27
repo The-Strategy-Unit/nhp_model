@@ -9,6 +9,7 @@ from typing import List
 import numpy as np
 import pandas as pd
 import scipy.stats as spt
+from pandas import Series
 
 from model.data import Data, reference
 
@@ -51,9 +52,9 @@ class HealthStatusAdjustment:
         start_year: int,
         end_year: int,
         variants: List[str],
-        rng: np.random.BitGenerator,
+        rng: np.random.Generator,
         model_runs: int,
-    ) -> np.array:
+    ) -> List[np.ndarray]:
         """Generate Health Status Adjustment Parameters
 
         :param start_year: The baseline year for the model
@@ -61,7 +62,7 @@ class HealthStatusAdjustment:
         :param end_year: The year the model is running for
         :type end_year: int
         :param rng: Random Number Generator
-        :type rng: np.random.BitGenerator
+        :type rng: np.random.Generator
         :param model_runs: Number of Model Runs
         :type model_runs: int
         :return: parameters for the health status adjustment
@@ -71,7 +72,7 @@ class HealthStatusAdjustment:
         hsa_snp = reference.split_normal_params().set_index(["var", "sex", "year"])
 
         def gen(variant, sex):
-            mode, sd1, sd2 = hsa_snp.loc[(variant, sex, end_year)]
+            mode, sd1, sd2 = hsa_snp.loc[(variant, sex, end_year)]  # type: ignore
 
             return np.concatenate(
                 [
@@ -81,12 +82,13 @@ class HealthStatusAdjustment:
                     ),
                     hsa_snp.loc[
                         (variant, sex, np.arange(start_year + 1, end_year)), "mode"
-                    ],
+                    ],  # type: ignore
                 ]
             )
 
         values = {
-            v: np.transpose([gen(v, "m"), gen(v, "f")]) for v in hsa_snp.index.levels[0]
+            v: np.transpose([gen(v, "m"), gen(v, "f")])
+            for v in hsa_snp.index.levels[0]  # type: ignore
         }
 
         variant_lookup = reference.variant_lookup()
@@ -99,17 +101,17 @@ class HealthStatusAdjustment:
 
     @staticmethod
     def random_splitnorm(
-        rng: np.random.BitGenerator,
+        rng: np.random.Generator,
         n: int,  # pylint: disable=invalid-name
         mode: float,
         sd1: float,
         sd2: float,
-    ) -> np.array:
+    ) -> np.ndarray:
         # pylint: disable=invalid-name
         """Generate random splitnormal values
 
         :param rng: Random Number Generator
-        :type rng: np.random.BitGenerator
+        :type rng: np.random.Generator
         :param n: Number of random values to generate
         :type n: int
         :param mode: the mode of the distribution
@@ -152,15 +154,15 @@ class HealthStatusAdjustment:
         if cache_key in self._cache:
             return self._cache[cache_key]
 
-        lexc = self._life_expectancy.loc[(selected_variant, slice(None), slice(None))][
-            str(run_params["year"])
-        ]
+        lexc = self._life_expectancy.loc[
+            (selected_variant, slice(None), slice(None)), str(run_params["year"])
+        ].droplevel("var")
         hsa_param = np.repeat(hsa_param, len(self._ages))
         adjusted_ages = np.tile(self._ages, 2) - lexc * hsa_param
 
         factor = (
             self._predict_activity(adjusted_ages).rename_axis(["hsagrp", "sex", "age"])
-            / self._activity_ages.loc[slice(None), slice(None), self._ages]
+            / self._activity_ages.loc[pd.IndexSlice[:, :, list(self._ages)]]
         ).rename("health_status_adjustment")
 
         # if any factor goes below 0, set it to 0
@@ -169,8 +171,9 @@ class HealthStatusAdjustment:
         self._cache[cache_key] = factor
         return factor
 
-    def _predict_activity(self, adjusted_ages):
-        """"""
+    def _predict_activity(self, adjusted_ages) -> Series:
+        """Predict activity levels for adjusted ages (to be implemented by subclasses)."""
+        raise NotImplementedError("Subclasses must implement _predict_activity")
 
 
 class HealthStatusAdjustmentGAM(HealthStatusAdjustment):
@@ -181,7 +184,7 @@ class HealthStatusAdjustmentGAM(HealthStatusAdjustment):
 
         super().__init__(data, base_year)
 
-    def _predict_activity(self, adjusted_ages):
+    def _predict_activity(self, adjusted_ages) -> Series:
         return pd.concat(
             {
                 (h, s): pd.Series(
@@ -201,15 +204,19 @@ class HealthStatusAdjustmentInterpolated(HealthStatusAdjustment):
         self._load_activity_ages_lists()
 
     def _load_activity_ages_lists(self):
-        self._activity_ages_lists = self._activity_ages.groupby(level=[0, 1]).agg(list)
+        self._activity_ages_lists: Series = self._activity_ages.groupby(
+            level=[0, 1]
+        ).agg(list)
 
-    def _predict_activity(self, adjusted_ages):
+    def _predict_activity(self, adjusted_ages) -> Series:
         return pd.concat(
             {
                 (h, s): pd.Series(
                     np.interp(adjusted_ages.loc[s], self._all_ages, v),
                     index=self._ages,
                 ).apply(lambda x: x if x > 0 else 0)
-                for (h, s), v in self._activity_ages_lists.items()
+                # disable type checking because it doesn't know that the index is a MultiIndex so
+                # can be treated as a tuple.
+                for (h, s), v in self._activity_ages_lists.items()  # type: ignore
             }
         )

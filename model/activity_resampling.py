@@ -2,9 +2,6 @@
 
 Methods for handling row resampling"""
 
-from typing import List
-
-import numpy as np
 import pandas as pd
 
 
@@ -23,8 +20,8 @@ class ActivityResampling:
     Once all of the methods have been run, finally we need to call the `apply_resampling` method.
     This updates the `model_iteration` which is passed in at initialisation.
 
-    :param model_iteration: the model iteration object, which contains all of the required values to run the
-    model.
+    :param model_iteration: the model iteration object, which contains all of the required values to
+    run the model.
     :type model_iteration: ModelIteration
     """
 
@@ -138,18 +135,18 @@ class ActivityResampling:
 
         factor = pd.concat(
             {
-                k: pd.Series(v, name="inequalities", dtype="float64")
-                for k, v in params.items()
+                k1: pd.Series(
+                    {int(k2): v2 for k2, v2 in v1.items()},
+                    name="inequalities",
+                    dtype="float64",
+                )
+                for k1, v1 in params.items()
             }
-        )
-        factor.index.names = ("sushrg_trimmed", "imd_quintile")
-        factor.index = factor.index.set_levels(
-            factor.index.levels[1].astype(int), level="imd_quintile"
-        )
+        ).rename_axis(index=["sushrg_trimmed", "imd_quintile"])
 
         factor = pd.concat({factor_key: factor}, names=["group"])
 
-        return self._update(factor)
+        return self._update(factor)  # type: ignore
 
     def covid_adjustment(self):
         """perform the covid adjustment"""
@@ -170,7 +167,7 @@ class ActivityResampling:
 
         factor = pd.concat({k: pd.Series(v, name="expat") for k, v in params.items()})
         factor.index.names = ["group", "tretspef"]
-        return self._update(factor)
+        return self._update(factor)  # type: ignore
 
     def repat_adjustment(self):
         """perform the repatriation adjustment"""
@@ -201,12 +198,12 @@ class ActivityResampling:
         if not (params := self.run_params["baseline_adjustment"][self._activity_type]):
             return self
 
-        factor = pd.concat(
+        factor: pd.Series = pd.concat(
             {
                 k: pd.Series(v, name="baseline_adjustment", dtype="float64")
                 for k, v in params.items()
             }
-        )
+        )  # type: ignore
         factor.index.names = ["group", "tretspef"]
         return self._update(factor)
 

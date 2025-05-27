@@ -5,7 +5,7 @@ Implements the inpatients model.
 """
 
 from collections import defaultdict
-from typing import Any, Callable, Tuple
+from typing import Any, Callable, Optional, Tuple, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -40,9 +40,9 @@ class InpatientsModel(Model):
     def __init__(
         self,
         params: dict,
-        data: Data,
+        data: Type[Data],
         hsa: Any = None,
-        run_params: dict = None,
+        run_params: Optional[dict] = None,
         save_full_model_results: bool = False,
     ) -> None:
         # call the parent init function
@@ -154,7 +154,9 @@ class InpatientsModel(Model):
         """
         return data.loc[data.index.repeat(row_samples[0])].reset_index(drop=True)
 
-    def efficiencies(self, data: pd.DataFrame, model_iteration: ModelIteration) -> None:
+    def efficiencies(
+        self, data: pd.DataFrame, model_iteration: ModelIteration
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Run the efficiencies steps of the model
 
         :param model_iteration: an instance of the ModelIteration class
@@ -481,7 +483,6 @@ class InpatientEfficiencies:
 
         Rows that are modelled away from elective care have the length of stay fixed to 0 days.
         """
-        #
         losr = self.losr
         data = self.data
         rng = self._model_iteration.rng
