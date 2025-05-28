@@ -62,11 +62,6 @@ jobs:
             app_version=${{ inputs.app-version }}
             data_version=${{ inputs.data-version }}
 
-  clean-up-untagged-images:
-    needs: ["build-container"]
-    uses: ./.github/workflows/remove_untagged_container_images.yaml
-    secrets: inherit
-
   add-comment-to-pr:
     runs-on: ubuntu-latest
     needs: ["build-container"]
@@ -167,3 +162,9 @@ jobs:
         run: |
           docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.docker-tag }} ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
+
+  clean-up-untagged-images:
+    needs: ["build-container", "deploy-ghcr", "deploy-acr"]
+    if: always()
+    uses: ./.github/workflows/remove_untagged_container_images.yaml
+    secrets: inherit
