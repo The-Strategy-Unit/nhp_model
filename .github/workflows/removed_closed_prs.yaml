@@ -7,7 +7,6 @@ on:
 jobs:
   removed-untagged-images:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == false
     steps:
       # you must create a classic PAT with `delete:packages` scope and add it as a secret named `PAT_DELETE_PACKAGES` 
       - name: Authenticate with PAT
