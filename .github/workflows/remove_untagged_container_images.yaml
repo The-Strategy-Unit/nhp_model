@@ -10,7 +10,7 @@ on:
     - cron: '0 1 * * *'  # runs at 01:00 UTC every day
 
 jobs:
-  removed-untagged-images:
+  remove-untagged-images:
     runs-on: ubuntu-latest
 
     steps:

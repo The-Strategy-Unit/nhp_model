@@ -5,7 +5,7 @@ on:
     types:
       - closed
 jobs:
-  removed-untagged-images:
+  remove-pr-image:
     runs-on: ubuntu-latest
     steps:
       # you must create a classic PAT with `delete:packages` scope and add it as a secret named `PAT_DELETE_PACKAGES` 
