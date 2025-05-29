@@ -11,9 +11,9 @@ dependencies = [
     "azure-identity>=1.12",
     "azure-storage-blob>=12.15",
     "azure-storage-file-datalake>=12.10",
-    "fastparquet>=2023.2",
     "numpy>=1.23",
     "pandas>=1.5",
+    "pyarrow>=20.0",
     "pyjanitor>=0.23",
     "python-dotenv>=1.0",
     "scipy>=1.10",
@@ -23,7 +23,7 @@ dependencies = [
 
 # Explicitly specify which packages to include
 [tool.setuptools]
-packages = ["model"]          # Only include what's in the list, exclude everything else
+packages = ["model"]
 
 [project.optional-dependencies]
 dev = [
@@ -46,8 +46,6 @@ dev = [
     "ruff>=0.11.10",
     "snakeviz>=2.1",
     "widgetsnbextension>=4.0",
-    # "sphinx>=6.0",
-    # "sphinx_rtd_theme>=1.2",
 ]
 
 [build-system]
@@ -62,10 +60,10 @@ target-version = "py311"
 [tool.ruff.lint]
 # Simple rules: pylint + isort
 select = [
-    "E",                                              # pycodestyle errors
-    "W",                                              # pycodestyle warnings
-    "I",                                              # isort (import sorting)
-    "PL",                                             # pylint rules
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "I",   # isort (import sorting)
+    "PL",  # pylint rules
 ]
 
 [tool.ruff.lint.isort]
