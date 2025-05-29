@@ -15,10 +15,13 @@ jobs:
         env:
           TAG_TO_DELETE: "pr-${{ github.event.pull_request.number }}"
         run: |
-          VERSION_ID=$(gh api /orgs/the-strategy-unit/packages/container/nhp_model/versions \
+          ALL_VERSIONS=$(gh api /orgs/the-strategy-unit/packages/container/nhp_model/versions \
             -H "Accept: application/vnd.github+json" \
-            --paginate | \
-            jq -r '.[] | select(.metadata.container.tags[] == "$TAG_TO_DELETE") | .id')
+            --paginate)
+
+          VERSION_ID=$(jq -r --arg tag $TAG_TO_DELETE \
+            '.[] | select(.metadata.container.tags[] == $tag) | .id' \
+            <<< "$ALL_VERSIONS")
 
           if [ -n "$VERSION_ID" ]; then
             echo "Deleting version ID: $VERSION_ID"
