@@ -18,5 +18,7 @@
   "zero_eu_migration": "ppp",
   "half_eu_migration": "ppp",
   "zero_net_migration": "ppp",
-  "replacement_fertility": "ppp"
+  "replacement_fertility": "ppp",
+  "custom_projection_R0A66": "ppp",
+  "custom_projection_RD8": "ppp"
 }
