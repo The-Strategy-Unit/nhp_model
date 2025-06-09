@@ -1,4 +1,4 @@
-#!/opt/conda/bin/python
+#!/app/.venv/bin/python
 """Run the model inside of the docker container"""
 
 import argparse
