@@ -11,9 +11,9 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from model.data import Data
-from model.model import Model
-from model.model_iteration import ModelIteration
+from nhp.model.data import Data
+from nhp.model.model import Model
+from nhp.model.model_iteration import ModelIteration
 
 
 class InpatientsModel(Model):
@@ -320,9 +320,7 @@ class InpatientsModel(Model):
             f"{path_fn('ip_avoided')}/0.parquet"
         )
 
-    def _save_results_get_op_converted(
-        self, model_results: pd.DataFrame
-    ) -> pd.DataFrame:
+    def _save_results_get_op_converted(self, model_results: pd.DataFrame) -> pd.DataFrame:
         ix = model_results["classpat"] == "-1"
         return (
             model_results[ix]
@@ -413,9 +411,7 @@ class InpatientEfficiencies:
         if i.empty:
             return self
 
-        new = rng.binomial(
-            data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"]
-        )
+        new = rng.binomial(data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"])
 
         self.data.loc[i, "speldur"] = new.astype("int32")
 

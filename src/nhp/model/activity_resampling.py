@@ -2,8 +2,6 @@
 
 Methods for handling row resampling"""
 
-from typing import List
-
 import numpy as np
 import pandas as pd
 
@@ -11,20 +9,22 @@ import pandas as pd
 class ActivityResampling:
     """Activity Resampling
 
-    Class for handling the activity resampling methods in the model. The class keeps track of
-    the current row counts, which represent the value for the lambda parameter to a random poisson
-    when we come to resample the rows, and the step counts (the estimated effect of each step on
-    the total number of rows).
+    Class for handling the activity resampling methods in the model. The class keeps track
+    of the current row counts, which represent the value for the lambda parameter to a
+    random poisson when we come to resample the rows, and the step counts (the estimated
+    effect of each step on the total number of rows).
 
-    The public methods of this class are intended to each be called either once, or not at all.
-    These methods update the row counts by multiplying the current value by the factor generated
-    from that method.
+    The public methods of this class are intended to each be called either once, or not
+    at all.
+    These methods update the row counts by multiplying the current value by the factor
+    generated from that method.
 
-    Once all of the methods have been run, finally we need to call the `apply_resampling` method.
+    Once all of the methods have been run, finally we need to call the `apply_resampling`
+    method.
     This updates the `model_iteration` which is passed in at initialisation.
 
-    :param model_iteration: the model iteration object, which contains all of the required values to run the
-    model.
+    :param model_iteration: the model iteration object, which contains all of the required
+    values to run the model.
     :type model_iteration: ModelIteration
     """
 
@@ -88,9 +88,9 @@ class ActivityResampling:
         year = str(self.run_params["year"])
         variant = self.run_params["variant"]
 
-        factor = self.demog_factors.loc[(variant, slice(None), slice(None))][
-            year
-        ].rename("demographic_adjustment")
+        factor = self.demog_factors.loc[(variant, slice(None), slice(None))][year].rename(
+            "demographic_adjustment"
+        )
         return self._update(factor)
 
     def birth_adjustment(self):
@@ -261,8 +261,7 @@ class ActivityResampling:
 
         # reshape this to be the same as baseline counts
         overall_factor = (
-            self._model_iteration.model.baseline_counts
-            * factors.prod(axis=1).to_numpy()
+            self._model_iteration.model.baseline_counts * factors.prod(axis=1).to_numpy()
         )
 
         row_samples = rng.poisson(overall_factor)

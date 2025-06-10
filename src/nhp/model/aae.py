@@ -10,9 +10,9 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from model.data import Data
-from model.model import Model
-from model.model_iteration import ModelIteration
+from nhp.model.data import Data
+from nhp.model.model import Model
+from nhp.model.model_iteration import ModelIteration
 
 
 class AaEModel(Model):

@@ -15,9 +15,11 @@ from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 from azure.storage.filedatalake import DataLakeServiceClient
 
-import config
-from model.helpers import load_params
-from run_model import run_all
+from nhp.docker import config
+from nhp.model.__main__ import (
+    run_all,  # FIXME: Not a good idea to import from __main__.py
+)
+from nhp.model.helpers import load_params
 
 
 class RunWithLocalStorage:
@@ -51,9 +53,7 @@ class RunWithAzureStorage:
     """Methods for running with azure storage"""
 
     def __init__(self, filename: str, app_version: str = "dev"):
-        logging.getLogger("azure.storage.common.storageclient").setLevel(
-            logging.WARNING
-        )
+        logging.getLogger("azure.storage.common.storageclient").setLevel(logging.WARNING)
         logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
             logging.WARNING
         )
@@ -249,7 +249,7 @@ def parse_args():
     parser.add_argument(
         "params_file",
         nargs="?",
-        default="sample_params.json",
+        default="params-sample.json",
         help="Name of the parameters file stored in Azure",
     )
 

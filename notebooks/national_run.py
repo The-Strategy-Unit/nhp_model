@@ -44,15 +44,15 @@ import json
 import os
 from datetime import datetime
 
+import model as mdl
 import pandas as pd
 import pyspark.sql.functions as F
 from azure.storage.blob import ContainerClient
 
-import model as mdl
-from model.data.databricks import DatabricksNational
-from model.health_status_adjustment import HealthStatusAdjustmentInterpolated
-from model.results import combine_results, generate_results_json, save_results_files
-from run_model import _run_model
+from nhp.model.data.databricks import DatabricksNational
+from nhp.model.health_status_adjustment import HealthStatusAdjustmentInterpolated
+from nhp.model.results import combine_results, generate_results_json, save_results_files
+from nhp.model.run_model import _run_model
 
 os.environ["BATCH_SIZE"] = "8"
 
@@ -81,9 +81,7 @@ SAMPLE_RATE = float(dbutils.widgets.get("sample_rate"))
 if not 0 < SAMPLE_RATE <= 1:
     raise ValueError("Sample rate must be between 0 and 1")
 
-DATA_PATH = (
-    f"{dbutils.widgets.get('data_path')}/{dbutils.widgets.get('data_version')}/"
-)
+DATA_PATH = f"{dbutils.widgets.get('data_path')}/{dbutils.widgets.get('data_version')}/"
 
 nhp_data = DatabricksNational.create(spark, DATA_PATH, SAMPLE_RATE, params["seed"])
 runtime = datetime.now().strftime(format="%Y%m%d-%H%M%S")
@@ -222,7 +220,7 @@ get_principal(results["default"])
 
 # COMMAND ----------
 
-outputs_version = dbutils.widgets.get('data_version').rsplit('.', 1)[0]
+outputs_version = dbutils.widgets.get("data_version").rsplit(".", 1)[0]
 outputs_version
 
 # COMMAND ----------
@@ -285,4 +283,6 @@ for file in path.glob("**/*.parquet"):
 
 # COMMAND ----------
 
-print(f"Full results saved here; use this path for avoided_activity: \n full-model-results/{outputs_version}/{dataset}/{scenario}/{create_datetime}")
+print(
+    f"Full results saved here; use this path for avoided_activity: \n full-model-results/{outputs_version}/{dataset}/{scenario}/{create_datetime}"
+)

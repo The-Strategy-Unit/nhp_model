@@ -22,15 +22,15 @@ from typing import Any, Callable
 
 from tqdm.auto import tqdm as base_tqdm
 
-from model.aae import AaEModel
-from model.data import Data, Local
-from model.health_status_adjustment import HealthStatusAdjustmentInterpolated
-from model.helpers import load_params
-from model.inpatients import InpatientsModel
-from model.model import Model
-from model.model_iteration import ModelIteration
-from model.outpatients import OutpatientsModel
-from model.results import combine_results, generate_results_json, save_results_files
+from nhp.model.aae import AaEModel
+from nhp.model.data import Data, Local
+from nhp.model.health_status_adjustment import HealthStatusAdjustmentInterpolated
+from nhp.model.helpers import load_params
+from nhp.model.inpatients import InpatientsModel
+from nhp.model.model import Model
+from nhp.model.model_iteration import ModelIteration
+from nhp.model.outpatients import OutpatientsModel
+from nhp.model.results import combine_results, generate_results_json, save_results_files
 
 
 class tqdm(base_tqdm):  # pylint: disable=inconsistent-mro, invalid-name
@@ -214,7 +214,7 @@ def _run_model_argparser() -> argparse.Namespace:  # pragma: no cover
     parser.add_argument(
         "params_file",
         nargs="?",
-        default="queue/sample_params.json",
+        default="config/params-sample.json",
         help="Path to the params.json file",
     )
     parser.add_argument("-d", "--data-path", help="Path to the data", default="data")
