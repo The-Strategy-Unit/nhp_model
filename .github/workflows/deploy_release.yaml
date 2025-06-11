@@ -17,7 +17,7 @@ jobs:
         id: create-tag
         run: |
           TAG=`echo ${{ github.ref_name }} | awk 'BEGIN { FS="."; } { print ""$1"."$2; }'`
-          echo "TAG=$TAG" >> $$GITHUB_OUTPUT
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
 
   deploy-production:
     needs: [set-tag]
