@@ -107,22 +107,26 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Set tags
+        id: set-tags
+        run: |
+          TAGS="ghcr.io/the-strategy-unit/nhp_model:${{ inputs.docker-tag }}"
+          if [[ "${{ inputs.latest }}" == "true" ]]; then
+            TAGS="$TAGS,ghcr.io/the-strategy-unit/nhp_model:latest"
+          fi
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          echo "Deploying as: $TAGS"
+
       - name: "Build image"
         uses: docker/build-push-action@v6
         with:
           context: .
-          tags: ghcr.io/the-strategy-unit/nhp_model:${{ inputs.docker-tag }}
+          tags: ${{ steps.set-tags.outputs.tags }}
           push: true
           cache-from: type=gha
           build-args: |
             app_version=${{ inputs.app-version }}
             data_version=${{ inputs.data-version }}
-      
-      - name: 'Push latest'
-        if: ${{ inputs.latest }}
-        run: |
-          docker tag ghcr.io/the-strategy-unit/nhp_model:${{ inputs.docker-tag }} ghcr.io/the-strategy-unit/nhp_model:latest
-          docker push ghcr.io/the-strategy-unit/nhp_model:latest
 
   deploy-acr:
     runs-on: ubuntu-latest
@@ -146,22 +150,27 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Set tags
+        id: set-tags
+        run: |
+          TAGS="${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.docker-tag }}"
+          if [[ "${{ inputs.latest }}" == "true" ]]; then
+            TAGS="$TAGS,${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest"
+          fi
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          echo "Deploying as: $TAGS"
+
       - name: "Build image"
         uses: docker/build-push-action@v6
         with:
           context: .
-          tags: ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.docker-tag }}
+          tags: ${{ steps.set-tags.outputs.tags }}
           push: true
           cache-from: type=gha
           build-args: |
             app_version=${{ inputs.app-version }}
             data_version=${{ inputs.data-version }}
             storage_account=${{ secrets.NHP_STORAGE_ACCOUNT }}
-      - name: 'Push latest'
-        if: ${{ inputs.latest }}
-        run: |
-          docker tag ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:${{ inputs.docker-tag }} ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/nhp_model:latest
 
   clean-up-untagged-images:
     needs: ["build-container", "deploy-ghcr", "deploy-acr"]
