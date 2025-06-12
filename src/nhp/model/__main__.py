@@ -214,7 +214,7 @@ def _run_model_argparser() -> argparse.Namespace:  # pragma: no cover
     parser.add_argument(
         "params_file",
         nargs="?",
-        default="config/params-sample.json",
+        default="queue/params-sample.json",
         help="Path to the params.json file",
     )
     parser.add_argument("-d", "--data-path", help="Path to the data", default="data")
