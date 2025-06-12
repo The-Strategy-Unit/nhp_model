@@ -44,11 +44,11 @@ import json
 import os
 from datetime import datetime
 
-import model as mdl
 import pandas as pd
 import pyspark.sql.functions as F
 from azure.storage.blob import ContainerClient
 
+from nhp import model as mdl
 from nhp.model.data.databricks import DatabricksNational
 from nhp.model.health_status_adjustment import HealthStatusAdjustmentInterpolated
 from nhp.model.results import combine_results, generate_results_json, save_results_files
