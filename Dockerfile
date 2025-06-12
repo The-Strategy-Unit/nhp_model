@@ -19,7 +19,6 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 # Ensure Python can find installed packages and local model
 ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONPATH="/app:$PYTHONPATH" 
 
 # Copy application code (changes most frequently)
 COPY --chown=nhp:nhp src/nhp/ /app/src/nhp/
