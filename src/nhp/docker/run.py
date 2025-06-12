@@ -16,7 +16,7 @@ from azure.storage.filedatalake import DataLakeServiceClient
 
 from nhp.docker import config
 from nhp.model.__main__ import (
-    run_all,  # FIXME: Not a good idea to import from __main__.py
+    run_all,  # TODO: Not a good idea to import from __main__.py
 )
 from nhp.model.helpers import load_params
 
