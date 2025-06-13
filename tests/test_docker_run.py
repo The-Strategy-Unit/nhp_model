@@ -205,7 +205,9 @@ def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
     assert mock.download_file.call_args_list == [call() for _ in files]
     assert mock.readall.call_args_list == [call() for _ in files]
 
-    assert mock_file.call_args_list == [call(f"data/{i}/0.parquet", "wb") for i in files]
+    assert mock_file.call_args_list == [
+        call(f"data/{i}/0.parquet", "wb") for i in files
+    ]
 
 
 def test_RunWithAzureStorage_upload_results_json(mock_run_with_azure_storage, mocker):
@@ -505,7 +507,7 @@ def test_main_azure(mocker):
 
 def test_exit_container(mocker):
     m = mocker.patch("os._exit")
-    import nhp.docker.run as r  # pylint: disable=import-outside-toplevel
+    import nhp.docker.__main__ as r  # pylint: disable=import-outside-toplevel
 
     r._exit_container()
 
