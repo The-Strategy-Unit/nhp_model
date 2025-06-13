@@ -16,8 +16,8 @@ from azure.storage.filedatalake import DataLakeServiceClient
 
 from nhp.docker import config
 from nhp.model.__main__ import (
-    run_all,  # TODO: Not a good idea to import from __main__.py
-)
+    run_all,
+)  # TODO: Not a good idea to import from __main__.py
 from nhp.model.helpers import load_params
 
 
@@ -53,7 +53,9 @@ class RunWithAzureStorage:
     """Methods for running with azure storage"""
 
     def __init__(self, filename: str, app_version: str = "dev"):
-        logging.getLogger("azure.storage.common.storageclient").setLevel(logging.WARNING)
+        logging.getLogger("azure.storage.common.storageclient").setLevel(
+            logging.WARNING
+        )
         logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
             logging.WARNING
         )
@@ -299,9 +301,3 @@ def main():
     runner.finish(results_file, saved_files, args.save_full_model_results)
 
     logging.info("complete")
-
-
-# %%
-def _exit_container():
-    logging.error("\nTimed out, killing container")
-    os._exit(1)
