@@ -2,7 +2,6 @@
 
 # pylint: disable=too-few-public-methods
 
-
 from math import pi, sqrt
 from typing import List
 
@@ -10,7 +9,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats as spt
 
-from model.data import Data, reference
+from nhp.model.data import Data, reference
 
 
 class HealthStatusAdjustment:
@@ -92,9 +91,7 @@ class HealthStatusAdjustment:
         variant_lookup = reference.variant_lookup()
         return [
             values[variant_lookup[v]][i]
-            for i, v in enumerate(
-                variants + variants[0:1] * (end_year - start_year - 1)
-            )
+            for i, v in enumerate(variants + variants[0:1] * (end_year - start_year - 1))
         ]
 
     @staticmethod

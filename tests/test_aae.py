@@ -2,13 +2,13 @@
 
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring,unnecessary-lambda-assignment
 
-from unittest.mock import Mock, patch, call
+from unittest.mock import Mock, call, patch
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from model.aae import AaEModel
+from nhp.model.aae import AaEModel
 
 
 # fixtures
@@ -81,7 +81,7 @@ def mock_model():
 def test_init_calls_super_init(mocker):
     """test that the model calls the super method"""
     # arrange
-    super_mock = mocker.patch("model.aae.super")
+    super_mock = mocker.patch("nhp.model.aae.super")
     # act
     AaEModel("params", "data_path", "hsa", "run_params")
     # assert

@@ -10,7 +10,7 @@ import pandas as pd
 import pyspark.sql.functions as F
 from pyspark import SparkContext
 
-from model.data import Data
+from nhp.model.data import Data
 
 
 class Databricks(Data):
@@ -228,19 +228,10 @@ class DatabricksNational(Data):
             # TODO: temporary fix, see #353
             .withColumn("sushrg_trimmed", F.lit("HRG"))
             .withColumn("imd_quintile", F.lit(0))
-            .groupBy(
-                op.drop(
-                    "index",
-                    "fyear",
-                    "attendances",
-                    "tele_attendances"
-                ).columns
-            )
+            .groupBy(op.drop("index", "fyear", "attendances", "tele_attendances").columns)
             .agg(
                 (F.sum("attendances") * self._sample_rate).alias("attendances"),
-                (F.sum("tele_attendances") * self._sample_rate).alias(
-                    "tele_attendances"
-                ),
+                (F.sum("tele_attendances") * self._sample_rate).alias("tele_attendances"),
             )
             # TODO: how do we make this stable? at the moment we can't use full model results with
             # national

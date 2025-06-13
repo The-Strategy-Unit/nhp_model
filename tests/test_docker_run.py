@@ -7,8 +7,8 @@ from unittest.mock import Mock, call, mock_open, patch
 
 import pytest
 
-import config
-from docker_run import RunWithAzureStorage, RunWithLocalStorage, main, parse_args
+from nhp.docker import config
+from nhp.docker.run import RunWithAzureStorage, RunWithLocalStorage, main, parse_args
 
 config.STORAGE_ACCOUNT = "sa"
 config.APP_VERSION = "dev"
@@ -20,7 +20,7 @@ config.CONTAINER_TIMEOUT_SECONDS = 0.1
 
 def test_RunWithLocalStorage(mocker):
     # arrange
-    m = mocker.patch("docker_run.load_params", return_value="params")
+    m = mocker.patch("nhp.docker.run.load_params", return_value="params")
 
     # act
     s = RunWithLocalStorage("filename")
@@ -33,7 +33,7 @@ def test_RunWithLocalStorage(mocker):
 
 def test_RunWithLocalStorage_finish(mocker):
     # arrange
-    mocker.patch("docker_run.load_params", return_value="params")
+    mocker.patch("nhp.docker.run.load_params", return_value="params")
     s = RunWithLocalStorage("filename")
 
     # act
@@ -44,7 +44,7 @@ def test_RunWithLocalStorage_finish(mocker):
 
 def test_RunWithLocalStorage_progress_callback(mocker):
     # arrange
-    mocker.patch("docker_run.load_params", return_value="params")
+    mocker.patch("nhp.docker.run.load_params", return_value="params")
     s = RunWithLocalStorage("filename")
 
     # act
@@ -76,10 +76,10 @@ def test_RunWithAzureStorage_init(mocker, args, expected_version):
     # arrange
     expected_params = {"start_year": 2020, "dataset": "synthetic"}
     gpm = mocker.patch(
-        "docker_run.RunWithAzureStorage._get_params",
+        "nhp.docker.run.RunWithAzureStorage._get_params",
         return_value=expected_params,
     )
-    gdm = mocker.patch("docker_run.RunWithAzureStorage._get_data")
+    gdm = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_data")
 
     # act
     s = RunWithAzureStorage(*args)
@@ -100,9 +100,9 @@ def test_RunWithAzureStorage_get_container(mock_run_with_azure_storage, mocker):
     mock = Mock()
     mock.get_container_client.return_value = "container_client"
 
-    bsc_m = mocker.patch("docker_run.BlobServiceClient", return_value=mock)
+    bsc_m = mocker.patch("nhp.docker.run.BlobServiceClient", return_value=mock)
 
-    dac_m = mocker.patch("docker_run.DefaultAzureCredential", return_value="cred")
+    dac_m = mocker.patch("nhp.docker.run.DefaultAzureCredential", return_value="cred")
 
     # act
     actual = s._get_container("container")
@@ -121,7 +121,7 @@ def test_RunWithAzureStorage_get_params(mock_run_with_azure_storage, mocker):
 
     expected = {"dataset": "synthetic"}
 
-    m1 = mocker.patch("docker_run.RunWithAzureStorage._get_container")
+    m1 = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_container")
     m2 = Mock()
 
     m1().get_blob_client.return_value = m2
@@ -170,9 +170,9 @@ def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
     mock.download_file.return_value = mock
     mock.readall.side_effect = files
 
-    dlsc_m = mocker.patch("docker_run.DataLakeServiceClient", return_value=mock)
+    dlsc_m = mocker.patch("nhp.docker.run.DataLakeServiceClient", return_value=mock)
 
-    dac_m = mocker.patch("docker_run.DefaultAzureCredential", return_value="cred")
+    dac_m = mocker.patch("nhp.docker.run.DefaultAzureCredential", return_value="cred")
 
     # act
     with patch("builtins.open", mock_open()) as mock_file:
@@ -205,16 +205,14 @@ def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
     assert mock.download_file.call_args_list == [call() for _ in files]
     assert mock.readall.call_args_list == [call() for _ in files]
 
-    assert mock_file.call_args_list == [
-        call(f"data/{i}/0.parquet", "wb") for i in files
-    ]
+    assert mock_file.call_args_list == [call(f"data/{i}/0.parquet", "wb") for i in files]
 
 
 def test_RunWithAzureStorage_upload_results_json(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage
 
-    m = mocker.patch("docker_run.RunWithAzureStorage._get_container")
+    m = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_container")
     mocker.patch("gzip.compress", return_value="gzdata")
 
     # act
@@ -233,7 +231,7 @@ def test_RunWithAzureStorage_upload_results_files(mock_run_with_azure_storage, m
     # arrange
     s = mock_run_with_azure_storage
 
-    m = mocker.patch("docker_run.RunWithAzureStorage._get_container")
+    m = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_container")
     metadata = {"k": "v"}
 
     # act
@@ -280,8 +278,8 @@ def test_RunWithAzureStorage_upload_full_model_results(
 
     file_mocks = list(map(create_file_mock, ["1", "2", "3"]))
 
-    m = mocker.patch("docker_run.RunWithAzureStorage._get_container")
-    path_mock = mocker.patch("docker_run.Path")
+    m = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_container")
+    path_mock = mocker.patch("nhp.docker.run.Path")
     path_mock().glob.return_value = file_mocks
 
     # act
@@ -317,10 +315,10 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
 ):
     # arrange
     s = mock_run_with_azure_storage
-    m1 = mocker.patch("docker_run.RunWithAzureStorage._upload_results_json")
-    m2 = mocker.patch("docker_run.RunWithAzureStorage._upload_results_files")
-    m3 = mocker.patch("docker_run.RunWithAzureStorage._upload_full_model_results")
-    m4 = mocker.patch("docker_run.RunWithAzureStorage._cleanup")
+    m1 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_results_json")
+    m2 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_results_files")
+    m3 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_full_model_results")
+    m4 = mocker.patch("nhp.docker.run.RunWithAzureStorage._cleanup")
 
     metadata = {"id": "1", "dataset": "synthetic", "start_year": "2020"}
     params = metadata.copy()
@@ -344,10 +342,10 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
 ):
     # arrange
     s = mock_run_with_azure_storage
-    m1 = mocker.patch("docker_run.RunWithAzureStorage._upload_results_json")
-    m2 = mocker.patch("docker_run.RunWithAzureStorage._upload_results_files")
-    m3 = mocker.patch("docker_run.RunWithAzureStorage._upload_full_model_results")
-    m4 = mocker.patch("docker_run.RunWithAzureStorage._cleanup")
+    m1 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_results_json")
+    m2 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_results_files")
+    m3 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_full_model_results")
+    m4 = mocker.patch("nhp.docker.run.RunWithAzureStorage._cleanup")
 
     metadata = {"id": "1", "dataset": "synthetic", "start_year": "2020"}
     params = metadata.copy()
@@ -407,11 +405,11 @@ def test_RunWithAzureStorage_progress_callback(mock_run_with_azure_storage):
 @pytest.mark.parametrize(
     "args, expected_file, expected_local_storage, expected_save_full_model_results",
     [
-        ([], "sample_params.json", False, False),
-        (["-l"], "sample_params.json", True, False),
+        ([], "params-sample.json", False, False),
+        (["-l"], "params-sample.json", True, False),
         (["test.json"], "test.json", False, False),
         (["test.json", "-l"], "test.json", True, False),
-        (["--save-full-model-results"], "sample_params.json", False, True),
+        (["--save-full-model-results"], "params-sample.json", False, True),
     ],
 )
 def test_parse_args(
@@ -422,7 +420,7 @@ def test_parse_args(
     expected_save_full_model_results,
 ):
     # arrange
-    mocker.patch("sys.argv", ["docker_run.py"] + args)
+    mocker.patch("sys.argv", ["nhp.docker.run.py"] + args)
 
     # act
     actual = parse_args()
@@ -435,13 +433,13 @@ def test_parse_args(
 
 def test_main_local(mocker):
     # arrange
-    m = mocker.patch("docker_run.parse_args")
+    m = mocker.patch("nhp.docker.run.parse_args")
     m().params_file = "params.json"
     m().local_storage = True
     m().save_full_model_results = False
 
-    rwls = mocker.patch("docker_run.RunWithLocalStorage")
-    rwas = mocker.patch("docker_run.RunWithAzureStorage")
+    rwls = mocker.patch("nhp.docker.run.RunWithLocalStorage")
+    rwas = mocker.patch("nhp.docker.run.RunWithAzureStorage")
 
     params = {
         "model_runs": 256,
@@ -454,7 +452,7 @@ def test_main_local(mocker):
     rwls.reset_mock()
 
     ru_m = mocker.patch(
-        "docker_run.run_all", return_value=("list_of_results", "results.json")
+        "nhp.docker.run.run_all", return_value=("list_of_results", "results.json")
     )
 
     # act
@@ -471,13 +469,13 @@ def test_main_local(mocker):
 
 def test_main_azure(mocker):
     # arrange
-    m = mocker.patch("docker_run.parse_args")
+    m = mocker.patch("nhp.docker.run.parse_args")
     m().params_file = "params.json"
     m().local_storage = False
     m().save_full_model_results = False
 
-    rwls = mocker.patch("docker_run.RunWithLocalStorage")
-    rwas = mocker.patch("docker_run.RunWithAzureStorage")
+    rwls = mocker.patch("nhp.docker.run.RunWithLocalStorage")
+    rwas = mocker.patch("nhp.docker.run.RunWithAzureStorage")
 
     params = {
         "model_runs": 256,
@@ -490,7 +488,7 @@ def test_main_azure(mocker):
     rwas.reset_mock()
 
     ru_m = mocker.patch(
-        "docker_run.run_all", return_value=("list_of_results", "results.json")
+        "nhp.docker.run.run_all", return_value=("list_of_results", "results.json")
     )
 
     # act
@@ -507,7 +505,7 @@ def test_main_azure(mocker):
 
 def test_exit_container(mocker):
     m = mocker.patch("os._exit")
-    import docker_run as r  # pylint: disable=import-outside-toplevel
+    import nhp.docker.run as r  # pylint: disable=import-outside-toplevel
 
     r._exit_container()
 
@@ -516,9 +514,9 @@ def test_exit_container(mocker):
 
 def test_init(mocker):
     """it should run the main method if __name__ is __main__"""
-    import docker_run as r  # pylint: disable=import-outside-toplevel
+    import nhp.docker.__main__ as r  # pylint: disable=import-outside-toplevel
 
-    main_mock = mocker.patch("docker_run.main")
+    main_mock = mocker.patch("nhp.docker.run.main")
 
     r.init()  # should't call main
     main_mock.assert_not_called()
@@ -529,10 +527,10 @@ def test_init(mocker):
 
 
 def test_init_timeout_call_exit(mocker):
-    import docker_run as r  # pylint: disable=import-outside-toplevel
+    import nhp.docker.__main__ as r  # pylint: disable=import-outside-toplevel
 
-    main_mock = mocker.patch("docker_run.main")
-    exit_mock = mocker.patch("docker_run._exit_container")
+    main_mock = mocker.patch("nhp.docker.run.main")
+    exit_mock = mocker.patch("nhp.docker.__main__._exit_container")
     main_mock.side_effect = lambda: time.sleep(0.2)
     with patch.object(r, "__name__", "__main__"):
         r.init()
@@ -541,10 +539,10 @@ def test_init_timeout_call_exit(mocker):
 
 
 def test_init_timeout_dont_call_exit(mocker):
-    import docker_run as r  # pylint: disable=import-outside-toplevel
+    import nhp.docker.__main__ as r  # pylint: disable=import-outside-toplevel
 
-    main_mock = mocker.patch("docker_run.main")
-    exit_mock = mocker.patch("docker_run._exit_container")
+    main_mock = mocker.patch("nhp.docker.run.main")
+    exit_mock = mocker.patch("nhp.docker.__main__._exit_container")
     main_mock.side_effect = lambda: time.sleep(0.02)
     with patch.object(r, "__name__", "__main__"):
         r.init()

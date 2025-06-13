@@ -4,5 +4,5 @@ Classes for loading data for the NHP model. Each class supports loading data fro
 such as from local storage or directly from DataBricks.
 """
 
-from model.data.data import Data
-from model.data.local import Local
+from nhp.model.data.data import Data
+from nhp.model.data.local import Local

@@ -23,7 +23,13 @@ dependencies = [
 
 # Explicitly specify which packages to include
 [tool.setuptools]
-packages = ["model"]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"nhp.model.data.reference" = ["*.csv", "*.json"]
 
 [project.optional-dependencies]
 dev = [

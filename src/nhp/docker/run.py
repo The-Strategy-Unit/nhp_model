@@ -7,7 +7,6 @@ import json
 import logging
 import os
 import re
-import threading
 from pathlib import Path
 from typing import Any, Callable
 
@@ -15,9 +14,11 @@ from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 from azure.storage.filedatalake import DataLakeServiceClient
 
-import config
-from model.helpers import load_params
-from run_model import run_all
+from nhp.docker import config
+from nhp.model.__main__ import (
+    run_all,  # TODO: Not a good idea to import from __main__.py
+)
+from nhp.model.helpers import load_params
 
 
 class RunWithLocalStorage:
@@ -33,7 +34,8 @@ class RunWithLocalStorage:
 
         :param results_file: the path to the results file
         :type results_file: str
-        :param saved_files: filepaths of results, saved in parquet format and params in json format
+        :param saved_files: filepaths of results, saved in parquet format and params
+        in json format
         :type saved_files: list
         :param save_full_model_results: whether to save the full model results or not
         :type save_full_model_results: bool
@@ -51,9 +53,7 @@ class RunWithAzureStorage:
     """Methods for running with azure storage"""
 
     def __init__(self, filename: str, app_version: str = "dev"):
-        logging.getLogger("azure.storage.common.storageclient").setLevel(
-            logging.WARNING
-        )
+        logging.getLogger("azure.storage.common.storageclient").setLevel(logging.WARNING)
         logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
             logging.WARNING
         )
@@ -143,7 +143,8 @@ class RunWithAzureStorage:
     def _upload_results_files(self, files: list, metadata: dict) -> None:
         """Upload the results
 
-        once the model has run, upload the files (parquet for model results and json for model params) to blob storage
+        once the model has run, upload the files (parquet for model results and json for
+        model params) to blob storage
 
         :param files: list of files to be uploaded
         :type files: list
@@ -200,7 +201,8 @@ class RunWithAzureStorage:
 
         :param results_file: the path to the results file
         :type results_file: str
-        :param saved_files: filepaths of results, saved in parquet format and params in json format
+        :param saved_files: filepaths of results, saved in parquet format and params
+        in json format
         :type saved_files: list
         :param save_full_model_results: whether to save the full model results or not
         :type save_full_model_results: bool
@@ -249,7 +251,7 @@ def parse_args():
     parser.add_argument(
         "params_file",
         nargs="?",
-        default="sample_params.json",
+        default="params-sample.json",
         help="Name of the parameters file stored in Azure",
     )
 
@@ -265,6 +267,7 @@ def parse_args():
     return parser.parse_args()
 
 
+# %%
 def main():
     """the main method"""
 
@@ -298,21 +301,7 @@ def main():
     logging.info("complete")
 
 
+# %%
 def _exit_container():
     logging.error("\nTimed out, killing container")
     os._exit(1)
-
-
-def init():
-    """method for calling main"""
-    if __name__ == "__main__":
-        # start a timer to kill the container if we reach a timeout
-        t = threading.Timer(config.CONTAINER_TIMEOUT_SECONDS, _exit_container)
-        t.start()
-        # run the model
-        main()
-        # cancel the timer
-        t.cancel()
-
-
-init()

@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict
 
 import pandas as pd
 
-from model.data import Data
+from nhp.model.data import Data
 
 
 class Local(Data):

@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from model.activity_resampling import ActivityResampling
+from nhp.model.activity_resampling import ActivityResampling
 
 
 class ModelIteration:

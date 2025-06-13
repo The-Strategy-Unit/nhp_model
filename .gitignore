@@ -74,7 +74,7 @@ docs/_build
 _targets*/
 
 # override the data rule for model/data
-!model/data
+!src/nhp/model/data
 !tests/data
 
 # ignore schemas/ this is a worktree

@@ -17,13 +17,13 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from model.data import Data
-from model.health_status_adjustment import (
+from nhp.model.data import Data
+from nhp.model.health_status_adjustment import (
     HealthStatusAdjustment,
     HealthStatusAdjustmentInterpolated,
 )
-from model.helpers import age_groups, inrange, load_params, rnorm
-from model.model_iteration import ModelIteration
+from nhp.model.helpers import age_groups, inrange, load_params, rnorm
+from nhp.model.model_iteration import ModelIteration
 
 
 class Model:
@@ -57,7 +57,7 @@ class Model:
 
     >>> from model.aae import AaEModel
     >>> from model.helpers import load_params
-    >>> params = load_params("sample_params.json")
+    >>> params = load_params("params-sample.json")
     >>> m = AaAModel(params, "data")
     >>> change_factors, results = m.run(0)
     >>> aggregated_results = m.aggregate(reuslts, 0)
@@ -74,9 +74,9 @@ class Model:
         save_full_model_results: bool = False,
     ) -> None:
         valid_model_types = ["aae", "ip", "op"]
-        assert (
-            model_type in valid_model_types
-        ), "Model type must be one of 'aae', 'ip', or 'op'"
+        assert model_type in valid_model_types, (
+            "Model type must be one of 'aae', 'ip', or 'op'"
+        )
         self.model_type = model_type
         #
         if isinstance(params, str):
@@ -94,9 +94,7 @@ class Model:
         self._load_demog_factors()
         # create HSA object if it hasn't been passed in
         year = params["start_year"]
-        self.hsa = hsa or HealthStatusAdjustmentInterpolated(
-            self._data_loader, str(year)
-        )
+        self.hsa = hsa or HealthStatusAdjustmentInterpolated(self._data_loader, str(year))
         # generate the run parameters if they haven't been passed in
         self.run_params = run_params or self.generate_run_params(params)
         #

@@ -12,7 +12,7 @@ USER nhp
 RUN for DIR in data queue results; do mkdir -p $DIR; done
 
 # Copy dependency files first (optimal caching)
-COPY pyproject.toml uv.lock ./
+COPY --chown=nhp:nhp pyproject.toml uv.lock ./
 
 # Install dependencies only (skip local package)
 RUN uv sync --frozen --no-dev --no-install-project
@@ -21,10 +21,8 @@ RUN uv sync --frozen --no-dev --no-install-project
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy application code (changes most frequently)
-COPY model /app/model
-COPY run_model.py /app
-COPY docker_run.py /app
-COPY config.py /app
+COPY --chown=nhp:nhp src/nhp/ /app/src/nhp/
+RUN uv pip install .
 
 # define build arguments, these will set the environment variables in the container
 ARG app_version
@@ -38,4 +36,4 @@ ENV STORAGE_ACCOUNT=$storage_account
 # Define static environment variables
 ENV BATCH_SIZE=16
 
-ENTRYPOINT ["python", "./docker_run.py"]
+ENTRYPOINT ["python", "-m", "nhp.docker"]
