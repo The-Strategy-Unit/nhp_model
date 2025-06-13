@@ -512,6 +512,7 @@ def test_exit_container(mocker):
     m.assert_called_once_with(1)
 
 
+# TODO: Tests fails, most likely due to parse_args() not being mocked
 def test_init(mocker):
     """it should run the main method if __name__ is __main__"""
     import nhp.docker.__main__ as r  # pylint: disable=import-outside-toplevel

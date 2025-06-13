@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from model.inpatients import InpatientEfficiencies
+from nhp.model.inpatients import InpatientEfficiencies
 
 
 @pytest.fixture
@@ -32,8 +32,8 @@ def mock_ipe():
 
 def test_init(mocker):
     # arrange
-    mocker.patch("model.inpatients.InpatientEfficiencies._select_single_strategy")
-    mocker.patch("model.inpatients.InpatientEfficiencies._generate_losr_df")
+    mocker.patch("nhp.model.inpatients.InpatientEfficiencies._select_single_strategy")
+    mocker.patch("nhp.model.inpatients.InpatientEfficiencies._generate_losr_df")
 
     model_iteration = Mock()
     model_iteration.model_run = 0

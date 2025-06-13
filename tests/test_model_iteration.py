@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from model.model_iteration import ModelIteration
+from nhp.model.model_iteration import ModelIteration
 
 
 # fixtures
@@ -31,9 +31,9 @@ def test_init(mocker, run, rp_call):
     model._get_run_params.return_value = {"seed": 1}
 
     rng_mock = mocker.patch("numpy.random.default_rng", return_value="rng")
-    prp_mock = mocker.patch("model.model_iteration.ModelIteration._patch_run_params")
+    prp_mock = mocker.patch("nhp.model.model_iteration.ModelIteration._patch_run_params")
 
-    mocker.patch("model.model_iteration.ModelIteration._run")
+    mocker.patch("nhp.model.model_iteration.ModelIteration._run")
 
     # act
     actual = ModelIteration(model, run)
@@ -114,7 +114,7 @@ def test_run(mocker, mock_model_iteration):
     mr_mock.model_run = 1
     mr_mock.model.baseline_step_counts = "step_counts_baseline"
 
-    ar_mock = mocker.patch("model.model_iteration.ActivityResampling")
+    ar_mock = mocker.patch("nhp.model.model_iteration.ActivityResampling")
     ar_mock.return_value = ar_mock
     ar_mock.demographic_adjustment.return_value = ar_mock
     ar_mock.birth_adjustment.return_value = ar_mock
@@ -129,8 +129,9 @@ def test_run(mocker, mock_model_iteration):
 
     ar_mock.apply_resampling.return_value = (data_ar_mock := Mock()), "step_counts_ar"
     mr_mock.model.activity_avoidance.return_value = (
-        data_aa_mock := Mock()
-    ), "step_counts_aa"
+        (data_aa_mock := Mock()),
+        "step_counts_aa",
+    )
     mr_mock.model.efficiencies.return_value = (data_ef_mock := Mock()), "step_counts_ef"
     mr_mock.model.calculate_avoided_activity.return_value = "avoided_activity"
 
@@ -153,9 +154,7 @@ def test_run(mocker, mock_model_iteration):
     ar_mock.non_demographic_adjustment.assert_called_once()
     ar_mock.apply_resampling.assert_called_once()
 
-    mr_mock.model.activity_avoidance.assert_called_once_with(
-        data_ar_mock.copy(), mr_mock
-    )
+    mr_mock.model.activity_avoidance.assert_called_once_with(data_ar_mock.copy(), mr_mock)
     mr_mock.model.efficiencies.assert_called_once_with(data_aa_mock.copy(), mr_mock)
     mr_mock.model.calculate_avoided_activity.assert_called_once_with(
         data_ar_mock, data_aa_mock
@@ -176,7 +175,7 @@ def test_run_baseline(mocker, mock_model_iteration):
     mr_mock = mock_model_iteration
     mr_mock.model_run = 0
 
-    rr_mock = mocker.patch("model.model_iteration.ActivityResampling")
+    rr_mock = mocker.patch("nhp.model.model_iteration.ActivityResampling")
 
     # act
     mr_mock._run()

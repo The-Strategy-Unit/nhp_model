@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from model.inpatients import InpatientsModel
+from nhp.model.inpatients import InpatientsModel
 
 
 # fixtures
@@ -21,7 +21,7 @@ def mock_model():
     mdl.model_type = "ip"
     mdl.params = {
         "dataset": "synthetic",
-        "model_runs": 3,
+        "nhp.model_runs": 3,
         "seed": 1,
         "demographic_factors": {
             "file": "demographics_file.csv",
@@ -81,7 +81,7 @@ def mock_model():
 def test_init_calls_super_init(mocker):
     """test that the model calls the super method and loads the strategies"""
     # arrange
-    super_mock = mocker.patch("model.inpatients.super")
+    super_mock = mocker.patch("nhp.model.inpatients.super")
     # act
     InpatientsModel("params", "nhp_data", "hsa", "run_params")
     # assert
@@ -138,9 +138,7 @@ def test_add_pod_to_data(mock_model):
         (False, ["ip_elective_daycase", "ip_elective_admission"]),
     ],
 )
-def test_add_pod_to_data_separate_regular_day_attenders_param(
-    mock_model, test, expected
-):
+def test_add_pod_to_data_separate_regular_day_attenders_param(mock_model, test, expected):
     # arrange
     mock_model.data = pd.DataFrame(
         {
@@ -257,7 +255,7 @@ def test_efficiencies(mocker, mock_model):
 
     mdl = mock_model
 
-    mock = mocker.patch("model.inpatients.InpatientEfficiencies")
+    mock = mocker.patch("nhp.model.inpatients.InpatientEfficiencies")
     mock.return_value = mock
     mock.data = "data_efficiencies"
 
@@ -296,7 +294,7 @@ def test_efficiencies_no_params(mocker, mock_model):
 
     mdl = mock_model
 
-    mock = mocker.patch("model.inpatients.InpatientEfficiencies")
+    mock = mocker.patch("nhp.model.inpatients.InpatientEfficiencies")
     mock.return_value = mock
 
     mock_model_iteration = Mock()
@@ -602,14 +600,14 @@ def test_aggregate(mock_model):
     mdl.process_results = Mock(return_value="processed_data")
 
     mr_mock = Mock()
-    mr_mock.get_model_results.return_value = "model_data"
+    mr_mock.get_model_results.return_value = "nhp.model_data"
 
     # act
     actual_mr, actual_aggs = mdl.aggregate(mr_mock)
 
     # assert
 
-    mdl.process_results.assert_called_once_with("model_data")
+    mdl.process_results.assert_called_once_with("nhp.model_data")
     assert actual_mr == "processed_data"
     assert actual_aggs == [
         ["sex", "tretspef"],
