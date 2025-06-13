@@ -512,12 +512,11 @@ def test_exit_container(mocker):
     m.assert_called_once_with(1)
 
 
-# TODO: Tests fails, most likely due to parse_args() not being mocked
 def test_init(mocker):
     """it should run the main method if __name__ is __main__"""
     import nhp.docker.__main__ as r  # pylint: disable=import-outside-toplevel
 
-    main_mock = mocker.patch("nhp.docker.run.main")
+    main_mock = mocker.patch("nhp.docker.__main__.main")
 
     r.init()  # should't call main
     main_mock.assert_not_called()
@@ -530,7 +529,7 @@ def test_init(mocker):
 def test_init_timeout_call_exit(mocker):
     import nhp.docker.__main__ as r  # pylint: disable=import-outside-toplevel
 
-    main_mock = mocker.patch("nhp.docker.run.main")
+    main_mock = mocker.patch("nhp.docker.__main__.main")
     exit_mock = mocker.patch("nhp.docker.__main__._exit_container")
     main_mock.side_effect = lambda: time.sleep(0.2)
     with patch.object(r, "__name__", "__main__"):
@@ -542,7 +541,7 @@ def test_init_timeout_call_exit(mocker):
 def test_init_timeout_dont_call_exit(mocker):
     import nhp.docker.__main__ as r  # pylint: disable=import-outside-toplevel
 
-    main_mock = mocker.patch("nhp.docker.run.main")
+    main_mock = mocker.patch("nhp.docker.__main__.main")
     exit_mock = mocker.patch("nhp.docker.__main__._exit_container")
     main_mock.side_effect = lambda: time.sleep(0.02)
     with patch.object(r, "__name__", "__main__"):
