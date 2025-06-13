@@ -8,7 +8,7 @@
       "name": "Run Model",
       "type": "debugpy",
       "request": "launch",
-      "program": "run_model.py",
+      "module": "nhp.model",
       "args": [
         "${input:params_file}",
         "-d=${config:nhp.data_path}",
@@ -22,7 +22,7 @@
       "id": "params_file",
       "type": "promptString",
       "description": "Path to parameters file",
-      "default": "queue/sample_params.json"
+      "default": "queue/params-sample.json"
     },
     {
       "id": "type",
