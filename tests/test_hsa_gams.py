@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from model.hsa_gams import (
+from nhp.model.hsa_gams import (
     _create_activity_type_gams,
     _generate_activity_table,
     create_gams,
@@ -33,7 +33,7 @@ def test_create_activity_type_gams(mocker):
     mocker.patch("pandas.read_parquet", return_value=data)
 
     gam_mock = Mock()
-    mocker.patch("model.hsa_gams.GAM", return_value=gam_mock)
+    mocker.patch("nhp.model.hsa_gams.GAM", return_value=gam_mock)
     gam_mock.gridsearch.return_value = "GAM"
 
     pop = pd.DataFrame(
@@ -72,7 +72,7 @@ def test_create_activity_type_gams_no_ignored_hsagrps(mocker):
     mocker.patch("pandas.read_parquet", return_value=data)
 
     gam_mock = Mock()
-    mocker.patch("model.hsa_gams.GAM", return_value=gam_mock)
+    mocker.patch("nhp.model.hsa_gams.GAM", return_value=gam_mock)
     gam_mock.gridsearch.return_value = "GAM"
 
     pop = pd.DataFrame(
@@ -112,10 +112,10 @@ def test_create_gams(mocker):
             }
         ),
     )
-    catg_mock = mocker.patch("model.hsa_gams._create_activity_type_gams")
+    catg_mock = mocker.patch("nhp.model.hsa_gams._create_activity_type_gams")
     mocker.patch("pandas.concat", return_value="data")
     pop_expected = pd.DataFrame({"sex": [1, 1], "age": [89, 90], "base_year": [1, 5]})
-    gat_mock = mocker.patch("model.hsa_gams._generate_activity_table")
+    gat_mock = mocker.patch("nhp.model.hsa_gams._generate_activity_table")
 
     # act
     data, gams, path_fn = create_gams("test", "2020")
@@ -168,7 +168,7 @@ def test_hsa_gam_generate_activity_table(tmp_path):
 def test_run(mocker):
     """it should create the gams and save them"""
     path_fn = lambda x: x
-    mocker.patch("model.hsa_gams.create_gams", return_value=("data", "gams", path_fn))
+    mocker.patch("nhp.model.hsa_gams.create_gams", return_value=("data", "gams", path_fn))
     pickle_dump_mock = mocker.patch("pickle.dump")
     with patch("builtins.open", mock_open()) as mock_file:
         run("test", "2020")
@@ -187,16 +187,16 @@ def test_main_invalid_args(passed_args):
 def test_main_valid_args(mocker):
     """the main method should call run if correct arguments are provided"""
     with patch.object(sys, "argv", ["filename.py", "test", "2020"]):
-        run_mock = mocker.patch("model.hsa_gams.run", return_value="run")
+        run_mock = mocker.patch("nhp.model.hsa_gams.run", return_value="run")
         main()
         run_mock.assert_called_once_with("test", "2020")
 
 
 def test_init(mocker):
     """it should run the main method if __name__ is __main__"""
-    import model.hsa_gams as h
+    import nhp.model.hsa_gams as h
 
-    main_mock = mocker.patch("model.hsa_gams.main")
+    main_mock = mocker.patch("nhp.model.hsa_gams.main")
 
     init()  # should't call main
     main_mock.assert_not_called()

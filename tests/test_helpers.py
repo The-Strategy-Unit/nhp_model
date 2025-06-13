@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from model.helpers import age_groups, inrange, load_params, rnorm
+from nhp.model.helpers import age_groups, inrange, load_params, rnorm
 
 
 @pytest.mark.parametrize(

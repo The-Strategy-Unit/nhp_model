@@ -6,7 +6,7 @@ from unittest.mock import call, mock_open, patch
 
 import pandas as pd
 
-from model.data import Local
+from nhp.model.data import Local
 
 
 def test_init_sets_values():
@@ -41,7 +41,7 @@ def test_create_returns_lambda():
 
 def test_get_ip(mocker):
     # arrange
-    m = mocker.patch("model.data.Local._get_parquet", return_value="data")
+    m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
     d = Local("data", 2019, "synthetic")
 
     # act
@@ -54,7 +54,7 @@ def test_get_ip(mocker):
 
 def test_get_ip_strategies(mocker):
     # arrange
-    m = mocker.patch("model.data.Local._get_parquet", return_value="data")
+    m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
     d = Local("data", 2019, "synthetic")
 
     # act
@@ -74,7 +74,7 @@ def test_get_op(mocker):
     op_data = pd.DataFrame(
         {"col_1": [1, 2], "col_2": [3, 4], "index": [5, 6]}, index=[2, 1]
     )
-    m = mocker.patch("model.data.Local._get_parquet", return_value=op_data)
+    m = mocker.patch("nhp.model.data.Local._get_parquet", return_value=op_data)
     d = Local("data", 2019, "synthetic")
 
     # act
@@ -92,7 +92,7 @@ def test_get_aae(mocker):
     ae_data = pd.DataFrame(
         {"col_1": [1, 2], "col_2": [3, 4], "index": [5, 6]}, index=[2, 1]
     )
-    m = mocker.patch("model.data.Local._get_parquet", return_value=ae_data)
+    m = mocker.patch("nhp.model.data.Local._get_parquet", return_value=ae_data)
     d = Local("data", 2019, "synthetic")
 
     # act
@@ -107,7 +107,7 @@ def test_get_aae(mocker):
 
 def test_get_birth_factors(mocker):
     # arrange
-    m = mocker.patch("model.data.Local._get_parquet", return_value="data")
+    m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
     d = Local("data", 2019, "synthetic")
 
     # act
@@ -120,7 +120,7 @@ def test_get_birth_factors(mocker):
 
 def test_get_demographic_factors(mocker):
     # arrange
-    m = mocker.patch("model.data.Local._get_parquet", return_value="data")
+    m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
     d = Local("data", 2019, "synthetic")
 
     # act
@@ -133,7 +133,7 @@ def test_get_demographic_factors(mocker):
 
 def test_get_hsa_activity_table(mocker):
     # arrange
-    m = mocker.patch("model.data.Local._get_parquet", return_value="data")
+    m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
     d = Local("data", 2019, "synthetic")
 
     # act
@@ -161,7 +161,7 @@ def test_get_hsa_gams(mocker):
 
 def test_get_parquet(mocker):
     # arrange
-    fp = mocker.patch("model.data.Local._file_path", return_value="file_path")
+    fp = mocker.patch("nhp.model.data.Local._file_path", return_value="file_path")
     m = mocker.patch("pandas.read_parquet", return_value="data")
     d = Local("data", 2019, "synthetic")
 

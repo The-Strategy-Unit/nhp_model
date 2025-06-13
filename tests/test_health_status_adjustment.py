@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from model.health_status_adjustment import (
+from nhp.model.health_status_adjustment import (
     HealthStatusAdjustment,
     HealthStatusAdjustmentGAM,
     HealthStatusAdjustmentInterpolated,
@@ -34,10 +34,10 @@ def test_hsa_init(mocker):
     # arrange
     mocker.patch("pickle.load", return_value="pkl_load")
     lle_mock = mocker.patch(
-        "model.health_status_adjustment.HealthStatusAdjustment._load_life_expectancy_series",
+        "nhp.model.health_status_adjustment.HealthStatusAdjustment._load_life_expectancy_series",
     )
     laa_mock = mocker.patch(
-        "model.health_status_adjustment.HealthStatusAdjustment._load_activity_ages",
+        "nhp.model.health_status_adjustment.HealthStatusAdjustment._load_activity_ages",
     )
 
     # act
@@ -85,7 +85,7 @@ def test_hsa_load_life_expectancy_series(mocker, mock_hsa, year, expectation):
             "2022": [5, 21],
         }
     )
-    ref_mock = mocker.patch("model.health_status_adjustment.reference")
+    ref_mock = mocker.patch("nhp.model.health_status_adjustment.reference")
     ref_mock.life_expectancy.return_value = life_expectancy
 
     # act
@@ -108,7 +108,7 @@ def test_hsa_load_life_expectancy_series_filters_ages(mocker, mock_hsa):
             "2022": [i * 2 for i in range(100)],
         }
     )
-    ref_mock = mocker.patch("model.health_status_adjustment.reference")
+    ref_mock = mocker.patch("nhp.model.health_status_adjustment.reference")
     ref_mock.life_expectancy.return_value = life_expectancy
 
     # act
@@ -157,7 +157,7 @@ def test_load_activity_ages(mock_hsa):
 def test_generate_params(mocker, year, expected_results, expected_call):
     # arrange
     m = mocker.patch(
-        "model.health_status_adjustment.HealthStatusAdjustment.random_splitnorm"
+        "nhp.model.health_status_adjustment.HealthStatusAdjustment.random_splitnorm"
     )
     m.return_value = list(range(1, 11))
 
@@ -171,7 +171,7 @@ def test_generate_params(mocker, year, expected_results, expected_call):
             "sd2": [0, 7, 8, 9] * 2,
         }
     )
-    ref_mock = mocker.patch("model.health_status_adjustment.reference")
+    ref_mock = mocker.patch("nhp.model.health_status_adjustment.reference")
     ref_mock.split_normal_params.return_value = split_normal_params
     ref_mock.variant_lookup.return_value = {"principal_proj": "ppp"}
 
@@ -267,7 +267,7 @@ def test_hsa_run_not_cached(mocker, mock_hsa):
     ).rename_axis(["hsagrp", "sex", "age"])
     mock_hsa._predict_activity = Mock(return_value=activity)
 
-    ref_mock = mocker.patch("model.health_status_adjustment.reference")
+    ref_mock = mocker.patch("nhp.model.health_status_adjustment.reference")
     ref_mock.variant_lookup.return_value = {"principal_proj": "ppp"}
 
     # act
@@ -293,7 +293,7 @@ def test_hsa_run_cached(mocker, mock_hsa):
     # arrange
     mock_hsa._cache[(1, 2, "ppp")] = "a"
 
-    ref_mock = mocker.patch("model.health_status_adjustment.reference")
+    ref_mock = mocker.patch("nhp.model.health_status_adjustment.reference")
     ref_mock.variant_lookup.return_value = {"principal_proj": "ppp"}
 
     # act
@@ -330,7 +330,7 @@ def mock_hsa_gam():
 def test_hsa_gam_init(mocker):
     # arrange
     super_mock = mocker.patch(
-        "model.health_status_adjustment.HealthStatusAdjustment.__init__"
+        "nhp.model.health_status_adjustment.HealthStatusAdjustment.__init__"
     )
     nhp_data_mock = Mock()
     nhp_data_mock.get_hsa_gams.return_value = "hsa_gams"
@@ -370,9 +370,7 @@ def test_hsa_gam_predict_activity(mock_hsa_gam):
 @pytest.fixture
 def mock_hsa_interpolated():
     """create a mock Model instance"""
-    with patch.object(
-        HealthStatusAdjustmentInterpolated, "__init__", lambda *args: None
-    ):
+    with patch.object(HealthStatusAdjustmentInterpolated, "__init__", lambda *args: None):
         hsa = HealthStatusAdjustmentInterpolated(None, None)
 
     hsa._activity_ages = pd.Series(
@@ -405,11 +403,11 @@ def mock_hsa_interpolated():
 def test_hsa_interpolated_init(mocker):
     # arrange
     super_mock = mocker.patch(
-        "model.health_status_adjustment.HealthStatusAdjustment.__init__"
+        "nhp.model.health_status_adjustment.HealthStatusAdjustment.__init__"
     )
     lal_mock = mocker.patch(
         # pylint: disable=line-too-long
-        "model.health_status_adjustment.HealthStatusAdjustmentInterpolated._load_activity_ages_lists"
+        "nhp.model.health_status_adjustment.HealthStatusAdjustmentInterpolated._load_activity_ages_lists"
     )
 
     # act

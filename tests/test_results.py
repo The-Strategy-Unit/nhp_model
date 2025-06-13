@@ -7,7 +7,7 @@ from unittest.mock import Mock, call, mock_open, patch
 import pandas as pd
 import pytest
 
-from model.results import (
+from nhp.model.results import (
     _add_metadata_to_dataframe,
     _combine_model_results,
     _combine_step_counts,
@@ -100,7 +100,7 @@ def test_combine_model_results(mocker):
         ],
     ]
 
-    cmr_mock = mocker.patch("model.results._complete_model_runs", return_value="cmr")
+    cmr_mock = mocker.patch("nhp.model.results._complete_model_runs", return_value="cmr")
 
     # act
     actual = _combine_model_results(results)
@@ -143,7 +143,7 @@ def test_combine_step_counts(mocker):
         "model_run": [1, 1, 1, 1],
     }
 
-    cmr_mock = mocker.patch("model.results._complete_model_runs", return_value="cmr")
+    cmr_mock = mocker.patch("nhp.model.results._complete_model_runs", return_value="cmr")
 
     # act
     actual = _combine_step_counts(results)
@@ -282,12 +282,12 @@ def test_generate_results_json(mocker):
 def test_combine_results(mocker):
     # arrange
     ma = mocker.patch(
-        "model.results._combine_model_results", return_value="combined_results"
+        "nhp.model.results._combine_model_results", return_value="combined_results"
     )
     mb = mocker.patch(
-        "model.results._combine_step_counts", return_value="combined_step_counts"
+        "nhp.model.results._combine_step_counts", return_value="combined_step_counts"
     )
-    ms = mocker.patch("model.results._patch_converted_sdec_activity")
+    ms = mocker.patch("nhp.model.results._patch_converted_sdec_activity")
 
     # act
     actual = combine_results("results")
@@ -314,11 +314,11 @@ def test_save_results_files(mocker):
     }
 
     save_parquet_mock = mocker.patch(
-        "model.results._save_parquet_file",
+        "nhp.model.results._save_parquet_file",
         side_effect=["default.parquet", "step_counts.parquet"],
     )
     save_params_mock = mocker.patch(
-        "model.results._save_params_file", return_value="params.json"
+        "nhp.model.results._save_params_file", return_value="params.json"
     )
 
     os_m = mocker.patch("os.makedirs")
@@ -351,7 +351,7 @@ def test_save_parquet_file(mocker):
     df = Mock()
     params = Mock()
     add_metadata_to_dataframe_mock = mocker.patch(
-        "model.results._add_metadata_to_dataframe", return_value=df
+        "nhp.model.results._add_metadata_to_dataframe", return_value=df
     )
 
     # act

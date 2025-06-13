@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from model.outpatients import OutpatientsModel
+from nhp.model.outpatients import OutpatientsModel
 
 
 # fixtures
@@ -79,7 +79,7 @@ def mock_model():
 def test_init_calls_super_init(mocker):
     """test that the model calls the super method"""
     # arrange
-    super_mock = mocker.patch("model.outpatients.super")
+    super_mock = mocker.patch("nhp.model.outpatients.super")
     # act
     OutpatientsModel("params", "data_path", "hsa", "run_params")
     # assert
@@ -180,10 +180,7 @@ def test_convert_to_tele(mock_model):
     }
     mr_mock.model.strategies = {
         "efficiencies": pd.Series(
-            {
-                k: "convert_to_tele_a" if k % 2 else "convert_to_tele_b"
-                for k in data["rn"]
-            }
+            {k: "convert_to_tele_a" if k % 2 else "convert_to_tele_b" for k in data["rn"]}
         )
     }
 
@@ -292,9 +289,7 @@ def test_process_results(mock_model):
         }
     )
     expected = {
-        "pod": [
-            k for k in ["op_first", "op_follow-up", "op_procedure"] for _ in [0, 1]
-        ],
+        "pod": [k for k in ["op_first", "op_follow-up", "op_procedure"] for _ in [0, 1]],
         "sitetret": ["trust"] * 6,
         "measure": ["attendances", "tele_attendances"] * 3,
         "sex": [1] * 6,
