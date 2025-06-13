@@ -4,7 +4,7 @@
 
 import pytest
 
-from model.data import Data
+from nhp.model.data import Data
 
 
 def test_get_ip():
