@@ -28,9 +28,21 @@
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC # Compute Setup
+# MAGIC
+# MAGIC You need to alter the compute used to install the nhp-model library
+# MAGIC
+# MAGIC 1. go to the compute tab, and select the compute you are going to use to run the model
+# MAGIC 2. click onto the libraries tab, then click the install new button
+# MAGIC 3. select file path/adls, and choose the "Python package" option
+# MAGIC 4. paste in /Volumes/nhp/default/app/nhp_model-dev-py3-none-any.whl, changing the version as needed
+
+# COMMAND ----------
+
 dbutils.widgets.text("data_path", "/Volumes/nhp/model_data/files", "Data Path")
 dbutils.widgets.text("data_version", "dev", "Data Version")
-dbutils.widgets.text("params_file", "sample_params.json", "Params File")
+dbutils.widgets.text("params_file", "params-sample.json", "Params File")
 dbutils.widgets.text("sample_rate", "0.01", "Sample Rate")
 
 # COMMAND ----------
@@ -49,10 +61,10 @@ import pyspark.sql.functions as F
 from azure.storage.blob import ContainerClient
 
 from nhp import model as mdl
+from nhp.model.__main__ import _run_model
 from nhp.model.data.databricks import DatabricksNational
 from nhp.model.health_status_adjustment import HealthStatusAdjustmentInterpolated
 from nhp.model.results import combine_results, generate_results_json, save_results_files
-from nhp.model.run_model import _run_model
 
 os.environ["BATCH_SIZE"] = "8"
 
