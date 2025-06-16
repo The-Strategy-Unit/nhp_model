@@ -7,17 +7,10 @@ from unittest.mock import Mock, call, mock_open, patch
 import pandas as pd
 import pytest
 
-from nhp.model.__main__ import (  # TODO: change structure slightly to avoid importing from __main__
-    _run_model,
-    main,
-    run_all,
-    run_single_model_run,
-    timeit,
-    tqdm,
-)
 from nhp.model.aae import AaEModel
 from nhp.model.inpatients import InpatientsModel
 from nhp.model.outpatients import OutpatientsModel
+from nhp.model.run import _run_model, run_all, run_single_model_run, timeit, tqdm
 
 
 def test_tqdm():
@@ -53,7 +46,7 @@ def test_run_model(mocker):
     params = {"start_year": 2020, "end_year": 2022, "model_runs": 2}
     mocker.patch("os.cpu_count", return_value=2)
 
-    pool_mock = mocker.patch("nhp.model.__main__.Pool")
+    pool_mock = mocker.patch("nhp.model.run.Pool")
     pool_ctm = pool_mock.return_value.__enter__.return_value
     pool_ctm.name = "pool"
     pool_ctm.imap = Mock(wraps=lambda f, i, **kwargs: map(f, i))
@@ -72,25 +65,25 @@ def test_run_model(mocker):
 def test_run_all(mocker):
     # arrange
     grp_m = mocker.patch(
-        "nhp.model.__main__.Model.generate_run_params",
+        "nhp.model.run.Model.generate_run_params",
         return_value={"variant": "variants"},
     )
     hsa_m = mocker.patch(
-        "nhp.model.__main__.HealthStatusAdjustmentInterpolated", return_value="hsa"
+        "nhp.model.run.HealthStatusAdjustmentInterpolated", return_value="hsa"
     )
 
-    rm_m = mocker.patch("nhp.model.__main__._run_model", side_effect=["ip", "op", "aae"])
+    rm_m = mocker.patch("nhp.model.run._run_model", side_effect=["ip", "op", "aae"])
     cr_m = mocker.patch(
-        "nhp.model.__main__.combine_results",
+        "nhp.model.run.combine_results",
         return_value=({"default": "combined_results"}, "combined_step_counts"),
     )
     gr_m = mocker.patch(
-        "nhp.model.__main__.generate_results_json", return_value="results_json_path"
+        "nhp.model.run.generate_results_json", return_value="results_json_path"
     )
     sr_m = mocker.patch(
-        "nhp.model.__main__.save_results_files", return_value="results_paths"
+        "nhp.model.run.save_results_files", return_value="results_paths"
     )
-    nd_m = mocker.patch("nhp.model.__main__.Local")
+    nd_m = mocker.patch("nhp.model.run.Local")
 
     pc_m = Mock()
     pc_m().return_value = "progress callback"
@@ -158,7 +151,7 @@ def test_run_single_model_run(mocker, capsys):
     """it should run the model and display outputs"""
     # arrange
     mr_mock = Mock()
-    ndl_mock = mocker.patch("nhp.model.__main__.Local")
+    ndl_mock = mocker.patch("nhp.model.run.Local")
     ndl_mock.create.return_value = "nhp_data"
 
     results_m = {
@@ -179,7 +172,7 @@ def test_run_single_model_run(mocker, capsys):
     )
 
     timeit_mock = mocker.patch(
-        "nhp.model.__main__.timeit",
+        "nhp.model.run.timeit",
         side_effect=[None, mr_mock, (results_m, step_counts_m)],
     )
     params = {"dataset": "synthetic", "start_year": 2020, "end_year": 2025}
@@ -217,91 +210,3 @@ def test_run_single_model_run(mocker, capsys):
             "",
         ]
     )
-
-
-@pytest.mark.parametrize(
-    "activity_type, model_class",
-    [("aae", AaEModel), ("ip", InpatientsModel), ("op", OutpatientsModel)],
-)
-def test_main_debug_runs_model(mocker, activity_type, model_class):
-    # arrange
-    args = Mock
-    args.type = activity_type
-    args.data_path = "data"
-    args.model_run = 0
-    args.params_file = "queue/params.json"
-    mocker.patch("nhp.model.__main__._run_model_argparser", return_value=args)
-    ldp_mock = mocker.patch("nhp.model.__main__.load_params", return_value="params")
-
-    run_all_mock = mocker.patch("nhp.model.__main__.run_all")
-    run_single_mock = mocker.patch("nhp.model.__main__.run_single_model_run")
-
-    # act
-    main()
-
-    # assert
-    run_all_mock.assert_not_called()
-    run_single_mock.assert_called_once_with("params", "data", model_class, 0)
-    ldp_mock.assert_called_once_with("queue/params.json")
-
-
-def test_main_debug_runs_model_invalid_type(mocker):
-    # arrange
-    args = Mock
-    args.type = "invalid"
-    args.data_path = "data"
-    args.model_run = 0
-    args.params_file = "queue/params.json"
-    mocker.patch("nhp.model.__main__._run_model_argparser", return_value=args)
-    mocker.patch("nhp.model.__main__.load_params", return_value="params")
-
-    run_all_mock = mocker.patch("nhp.model.__main__.run_all")
-    run_single_mock = mocker.patch("nhp.model.__main__.run_single_model_run")
-
-    # act
-    with pytest.raises(ValueError):
-        main()
-
-    # assert
-    run_all_mock.assert_not_called()
-    run_single_mock.assert_not_called()
-
-
-def test_main_all_runs(mocker):
-    # arrange
-    args = Mock
-    args.type = "all"
-    args.data_path = "data"
-    args.params_file = "queue/params.json"
-    args.save_full_model_results = False
-    mocker.patch("nhp.model.__main__._run_model_argparser", return_value=args)
-    ldp_mock = mocker.patch("nhp.model.__main__.load_params", return_value="params")
-
-    run_all_mock = mocker.patch("nhp.model.__main__.run_all")
-    run_single_mock = mocker.patch("nhp.model.__main__.run_single_model_run")
-
-    # act
-    main()
-
-    # assert
-    run_all_mock.assert_called_once()
-    assert run_all_mock.call_args[0][0] == "params"
-    assert run_all_mock.call_args[0][1] == "data"
-    assert run_all_mock.call_args[0][2]()(0) is None
-
-    run_single_mock.assert_not_called()
-    ldp_mock.assert_called_once_with("queue/params.json")
-
-
-def test_init(mocker):
-    """it should run the main method if __name__ is __main__"""
-    import nhp.model.__main__ as r  # pylint: disable=import-outside-toplevel
-
-    main_mock = mocker.patch("nhp.model.__main__.main")
-
-    r.init()  # should't call main
-    main_mock.assert_not_called()
-
-    with patch.object(r, "__name__", "__main__"):
-        r.init()  # should call main
-        main_mock.assert_called_once()
