@@ -1,7 +1,5 @@
-#!/app/.venv/bin/python
 """Run the model inside of the docker container"""
 
-import argparse
 import gzip
 import json
 import logging
@@ -15,9 +13,6 @@ from azure.storage.blob import BlobServiceClient
 from azure.storage.filedatalake import DataLakeServiceClient
 
 from nhp.docker import config
-from nhp.model.__main__ import (
-    run_all,
-)  # TODO: Not a good idea to import from __main__.py
 from nhp.model.helpers import load_params
 
 
@@ -245,59 +240,3 @@ class RunWithAzureStorage:
             return update
 
         return callback
-
-
-def parse_args():
-    """Parse command line arguments"""
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "params_file",
-        nargs="?",
-        default="params-sample.json",
-        help="Name of the parameters file stored in Azure",
-    )
-
-    parser.add_argument(
-        "--local-storage",
-        "-l",
-        action="store_true",
-        help="Use local storage (instead of Azure)",
-    )
-
-    parser.add_argument("--save-full-model-results", action="store_true")
-
-    return parser.parse_args()
-
-
-# %%
-def main():
-    """the main method"""
-
-    args = parse_args()
-
-    logging.basicConfig(
-        format="%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s",
-        level=logging.INFO,
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
-    if args.local_storage:
-        runner = RunWithLocalStorage(args.params_file)
-    else:
-        runner = RunWithAzureStorage(args.params_file, config.APP_VERSION)
-
-    logging.info("running model for: %s", args.params_file)
-    logging.info("container timeout: %ds", config.CONTAINER_TIMEOUT_SECONDS)
-    logging.info("submitted by: %s", runner.params.get("user"))
-    logging.info("model_runs:   %s", runner.params["model_runs"])
-    logging.info("start_year:   %s", runner.params["start_year"])
-    logging.info("end_year:     %s", runner.params["end_year"])
-    logging.info("app_version:  %s", runner.params["app_version"])
-
-    saved_files, results_file = run_all(
-        runner.params, "data", runner.progress_callback, args.save_full_model_results
-    )
-
-    runner.finish(results_file, saved_files, args.save_full_model_results)
-
-    logging.info("complete")
