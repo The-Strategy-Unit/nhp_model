@@ -42,7 +42,7 @@
 
 dbutils.widgets.text("data_path", "/Volumes/nhp/model_data/files", "Data Path")
 dbutils.widgets.text("data_version", "dev", "Data Version")
-dbutils.widgets.text("params_file", "sample_params.json", "Params File")
+dbutils.widgets.text("params_file", "params-sample.json", "Params File")
 dbutils.widgets.text("sample_rate", "0.01", "Sample Rate")
 
 # COMMAND ----------
