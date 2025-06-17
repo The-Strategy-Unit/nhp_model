@@ -1,6 +1,6 @@
 [project]
 name = "nhp_model"
-version = "0.1.0"
+dynamic = ["version"]
 description = "New Hospital Programme demand model"
 
 requires-python = ">=3.11"
@@ -50,12 +50,13 @@ dev = [
     "pytest-cov>=4.0",
     "pytest-mock>=3.10",
     "ruff>=0.11.10",
+    "setuptools-scm>=8.3.1",
     "snakeviz>=2.1",
     "widgetsnbextension>=4.0",
 ]
 
 [build-system]
-requires = ["setuptools>=80", "wheel"]
+requires = ["setuptools>=80", "setuptools-scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
 
 # Ruff configuration
@@ -89,3 +90,6 @@ include = ["model", "tests"]
 exclude = ["**/node_modules", "**/__pycache__"]
 pythonVersion = "3.11"
 typeCheckingMode = "basic"
+
+[tool.setuptools_scm]
+version_file = "src/nhp/_version.py"

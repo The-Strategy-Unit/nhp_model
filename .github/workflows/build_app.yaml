@@ -1,0 +1,77 @@
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+jobs:
+  
+  build-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout GitHub Action"
+        uses: actions/checkout@v4
+        
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Build 
+        run: uv build
+
+      - name: Rename wheel if dev
+        if: github.ref == 'refs/heads/main'
+        run: mv $(ls dist/*.whl) dist/nhp_model-dev-py3-none-any.whl
+
+      - name: Generate artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-whl
+          path: dist/*.whl
+
+  upload-build-to-storage-account:
+    runs-on: ubuntu-latest
+    needs: ["build-app"]
+
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-whl
+          path: .
+
+      - name: Install Azure CLI
+        uses: Azure/setup-azd@v2
+
+      - name: Upload to blob storage
+        run: |
+          az storage blob upload \
+            --account-name ${{ secrets.NHP_STORAGE_ACCOUNT }} \
+            --container-name app \
+            --file $(ls *.whl) \
+            --sas-token "${{ secrets.APP_CONTAINER_SAS }}" \
+            --overwrite  
+
+  add-build-to-release:
+    runs-on: ubuntu-latest
+    needs: ["build-app"]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-whl
+          path: .
+      - name: Upload artifact to the GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: github.ref_type == 'tag'
+        with:
+          files: "*.whl"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
