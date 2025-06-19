@@ -1,10 +1,7 @@
 FROM ghcr.io/astral-sh/uv:python3.11-alpine
 
-
 # Create user
 RUN addgroup -g 1000 nhp && adduser -u 1000 -G nhp -s /bin/sh -h /app -D nhp
-# temporary fix, should change the api to run ./docker_run.py rather than /opt/docker_run.py
-RUN rmdir /opt && ln -s /app /opt
 WORKDIR /app
 USER nhp
 
@@ -39,5 +36,11 @@ ENV STORAGE_ACCOUNT=$storage_account
 
 # Define static environment variables
 ENV BATCH_SIZE=16
+
+# temporary patch until we update the api
+USER root
+RUN printf '#!/bin/sh\n/app/.venv/bin/python -m nhp.docker "$@"\n' > /opt/docker_run.py && \
+  chmod +x /opt/docker_run.py
+USER nhp
 
 ENTRYPOINT ["python", "-m", "nhp.docker"]
