@@ -477,7 +477,6 @@ class InpatientEfficiencies:
 
         Rows that are modelled away from elective care have the length of stay fixed to 0 days.
         """
-        #
         losr = self.losr
         data = self.data
         rng = self._model_iteration.rng

@@ -78,15 +78,13 @@ class Model:
             "Model type must be one of 'aae', 'ip', or 'op'"
         )
         self.model_type = model_type
-        #
         if isinstance(params, str):
             params = load_params(params)
         self.params = params
         # add model runtime if it doesn't exist
-        if not "create_datetime" in self.params:
+        if "create_datetime" not in self.params:
             self.params["create_datetime"] = f"{datetime.now():%Y%m%d_%H%M%S}"
         self._data_loader = data(params["start_year"], params["dataset"])
-        #
         self._measures = measures
         # load the data. we only need some of the columns for the model, so just load what we need
         self._load_data()
@@ -97,9 +95,7 @@ class Model:
         self.hsa = hsa or HealthStatusAdjustmentInterpolated(self._data_loader, str(year))
         # generate the run parameters if they haven't been passed in
         self.run_params = run_params or self.generate_run_params(params)
-        #
         self.save_full_model_results = save_full_model_results
-        #
         self._data_loader = None
 
     def _add_pod_to_data(self) -> None:

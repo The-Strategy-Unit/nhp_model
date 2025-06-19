@@ -65,7 +65,10 @@ class OutpatientsModel(Model):
 
     def get_data_counts(self, data) -> npt.ArrayLike:
         return (
-            data[["attendances", "tele_attendances"]].to_numpy().astype(float).transpose()
+            data[["attendances", "tele_attendances"]]
+            .to_numpy()
+            .astype(float)
+            .transpose()
         )
 
     def _load_strategies(self):
@@ -242,8 +245,8 @@ class OutpatientsModel(Model):
         """Save the results of running the model
 
         This method is used for saving the results of the model run to disk as a parquet file.
-        It saves just the `rn` (row number) column and the `attendances` and `tele_attendances` columns, with the intention that
-        you rejoin to the original data.
+        It saves just the `rn` (row number) column and the `attendances` and `tele_attendances
+        columns, with the intention that you rejoin to the original data.
 
         :param model_results: a DataFrame containing the results of a model iteration
         :param path_fn: a function which takes the activity type and returns a path

@@ -42,8 +42,9 @@ def _create_activity_type_gams(
     dfr = pd.read_parquet(path_fn(f"{activity_type}.parquet"))
     if ignored_hsagrps is not None:
         dfr = dfr[~dfr["hsagrp"].isin(ignored_hsagrps)]
-    dfr = dfr[dfr["age"] >= 18]
-    dfr = dfr[dfr["age"] <= 90]
+
+    MIN_AGE, MAX_AGE = 18, 90
+    dfr = dfr[(MIN_AGE <= dfr["age"]) & (dfr["age"] <= MAX_AGE)]
 
     dfr = (
         dfr.groupby(["age", "sex", "hsagrp"])
@@ -110,7 +111,6 @@ def create_gams(dataset: str, base_year: str) -> None:
             pop, path_fn, data, gams, activity_type, ignored_hsagrps
         )
 
-    #
     _generate_activity_table(path_fn("hsa_activity_table.csv"), gams)
 
     return (pd.concat(data), gams, path_fn)
@@ -138,7 +138,7 @@ def run(dataset: str, base_year: str) -> str:
 def main() -> None:
     """Main Method"""
     assert (
-        len(sys.argv) == 3
+        len(sys.argv) == 3  # noqa: PLR2004
     ), "Must provide exactly 2 argument: the path to the data and the base year"
 
     run(sys.argv[1], sys.argv[2])
