@@ -74,8 +74,8 @@ docs/_build
 _targets*/
 
 # override the data rule for model/data
-!model/data
-!tests/data
+!src/nhp/model/data
+!tests/nhp/model/data
 
 # ignore schemas/ this is a worktree
 schemas/
@@ -255,3 +255,4 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+src/nhp/_version.py
