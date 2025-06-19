@@ -66,17 +66,17 @@ class Model:
     def __init__(
         self,
         model_type: str,
-        measures: str,
+        measures: List[str],
         params: dict,
-        data: Data,
+        data: Callable[[int, str], Data],
         hsa: Any = None,
-        run_params: dict = None,
+        run_params: dict | None = None,
         save_full_model_results: bool = False,
     ) -> None:
         valid_model_types = ["aae", "ip", "op"]
-        assert model_type in valid_model_types, (
-            "Model type must be one of 'aae', 'ip', or 'op'"
-        )
+        assert (
+            model_type in valid_model_types
+        ), "Model type must be one of 'aae', 'ip', or 'op'"
         self.model_type = model_type
         if isinstance(params, str):
             params = load_params(params)
@@ -92,7 +92,9 @@ class Model:
         self._load_demog_factors()
         # create HSA object if it hasn't been passed in
         year = params["start_year"]
-        self.hsa = hsa or HealthStatusAdjustmentInterpolated(self._data_loader, str(year))
+        self.hsa = hsa or HealthStatusAdjustmentInterpolated(
+            self._data_loader, str(year)
+        )
         # generate the run parameters if they haven't been passed in
         self.run_params = run_params or self.generate_run_params(params)
         self.save_full_model_results = save_full_model_results
