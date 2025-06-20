@@ -56,7 +56,6 @@ def main() -> None:
 
     # Grab the Arguments
     args = parse_args()
-    #
     params = load_params(args.params_file)
     # define the model to run
     match args.type:

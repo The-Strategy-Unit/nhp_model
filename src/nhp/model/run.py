@@ -8,7 +8,7 @@ import logging
 import os
 import time
 from multiprocessing import Pool
-from typing import Any, Callable
+from typing import Any, Callable, Tuple, Type
 
 from tqdm.auto import tqdm as base_tqdm
 
@@ -48,14 +48,14 @@ def timeit(func: Callable, *args) -> Any:
 
 
 def _run_model(
-    model_type: Model,
+    model_type: Type[Model],
     params: dict,
-    data: Data,
+    data: Callable[[int, str], Data],
     hsa: Any,
     run_params: dict,
     progress_callback,
     save_full_model_results: bool,
-) -> dict:
+) -> list:
     """Run the model iterations
 
     Runs the model for all of the model iterations, returning the aggregated results
@@ -108,7 +108,7 @@ def _run_model(
 
 def run_all(
     params: dict, data_path: str, progress_callback, save_full_model_results: bool
-) -> str:
+) -> Tuple[list, str]:
     """Run the model
 
     runs all 3 model types, aggregates and combines the results
@@ -158,7 +158,7 @@ def run_all(
 
 
 def run_single_model_run(
-    params: dict, data_path: str, model_type: Model, model_run: int
+    params: dict, data_path: str, model_type: Type[Model], model_run: int
 ) -> None:
     """
     Runs a single model iteration for easier debugging in vscode
@@ -171,7 +171,6 @@ def run_single_model_run(
     m_run = timeit(ModelIteration, model, model_run)
     print("aggregating results... ", end="")
     model_results, step_counts = timeit(m_run.get_aggregate_results)
-    #
     print()
     print("change factors:")
     step_counts = (
@@ -182,7 +181,6 @@ def run_single_model_run(
     )
     step_counts.loc["total"] = step_counts.sum()
     print(step_counts.fillna(0).astype(int))
-    #
     print()
     print("aggregated (default) results:")
 

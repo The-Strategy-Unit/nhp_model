@@ -37,9 +37,9 @@ class AaEModel(Model):
     def __init__(
         self,
         params: dict,
-        data: Data,
+        data: Callable[[int, str], Data],
         hsa: Any = None,
-        run_params: dict = None,
+        run_params: dict | None = None,
         save_full_model_results: bool = False,
     ) -> None:
         # call the parent init function

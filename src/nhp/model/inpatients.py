@@ -40,9 +40,9 @@ class InpatientsModel(Model):
     def __init__(
         self,
         params: dict,
-        data: Data,
+        data: Callable[[int, str], Data],
         hsa: Any = None,
-        run_params: dict = None,
+        run_params: dict | None = None,
         save_full_model_results: bool = False,
     ) -> None:
         # call the parent init function
@@ -320,7 +320,9 @@ class InpatientsModel(Model):
             f"{path_fn('ip_avoided')}/0.parquet"
         )
 
-    def _save_results_get_op_converted(self, model_results: pd.DataFrame) -> pd.DataFrame:
+    def _save_results_get_op_converted(
+        self, model_results: pd.DataFrame
+    ) -> pd.DataFrame:
         ix = model_results["classpat"] == "-1"
         return (
             model_results[ix]
@@ -411,7 +413,9 @@ class InpatientEfficiencies:
         if i.empty:
             return self
 
-        new = rng.binomial(data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"])
+        new = rng.binomial(
+            data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"]
+        )
 
         self.data.loc[i, "speldur"] = new.astype("int32")
 
@@ -477,7 +481,6 @@ class InpatientEfficiencies:
 
         Rows that are modelled away from elective care have the length of stay fixed to 0 days.
         """
-        #
         losr = self.losr
         data = self.data
         rng = self._model_iteration.rng
