@@ -47,9 +47,6 @@ dbutils.widgets.text("sample_rate", "0.01", "Sample Rate")
 
 # COMMAND ----------
 
-import sys
-
-sys.path.append(spark.conf.get("bundle.sourcePath", "."))
 
 import gzip
 import json
@@ -61,10 +58,10 @@ import pyspark.sql.functions as F
 from azure.storage.blob import ContainerClient
 
 from nhp import model as mdl
-from nhp.model.__main__ import _run_model
 from nhp.model.data.databricks import DatabricksNational
 from nhp.model.health_status_adjustment import HealthStatusAdjustmentInterpolated
 from nhp.model.results import combine_results, generate_results_json, save_results_files
+from nhp.model.run import _run_model
 
 os.environ["BATCH_SIZE"] = "8"
 
