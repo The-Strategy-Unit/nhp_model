@@ -53,8 +53,8 @@ class AaEModel(Model):
             save_full_model_results,
         )
 
-    def _get_data(self) -> pd.DataFrame:
-        return self._data_loader.get_aae()
+    def _get_data(self, data_loader: Data) -> pd.DataFrame:
+        return data_loader.get_aae()
 
     def _add_pod_to_data(self) -> None:
         """Adds the POD column to data"""
@@ -70,7 +70,7 @@ class AaEModel(Model):
         """
         return np.array([data["arrivals"]]).astype(float)
 
-    def _load_strategies(self) -> None:
+    def _load_strategies(self, data_loader: Data) -> None:
         """Loads the activity mitigation strategies"""
         data = self.data.set_index("rn")
         self.strategies = {
