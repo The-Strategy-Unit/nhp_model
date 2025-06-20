@@ -74,10 +74,10 @@ class InpatientsModel(Model):
         super()._add_ndggrp_to_data()
         self.data.loc[self.data["admimeth"].isin(["82", "83"]), "ndggrp"] = "maternity"
 
-    def _get_data(self) -> pd.DataFrame:
-        return self._data_loader.get_ip()
+    def _get_data(self, data_loader: Data) -> pd.DataFrame:
+        return data_loader.get_ip()
 
-    def _load_strategies(self) -> None:
+    def _load_strategies(self, data_loader: Data) -> None:
         """Load a set of strategies"""
 
         def filter_valid(strategy_type, strats):
@@ -114,8 +114,7 @@ class InpatientsModel(Model):
             )
 
         self.strategies = {
-            k: filter_valid(k, v)
-            for k, v in self._data_loader.get_ip_strategies().items()
+            k: filter_valid(k, v) for k, v in data_loader.get_ip_strategies().items()
         }
 
         # set admissions without a strategy selected to general_los_reduction_X

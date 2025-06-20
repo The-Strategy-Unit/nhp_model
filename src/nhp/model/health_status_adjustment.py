@@ -19,14 +19,12 @@ class HealthStatusAdjustment:
 
     # load the static reference data files
 
-    def __init__(self, data: Data, base_year: str):
+    def __init__(self, data_loader: Data, base_year: str):
         self._all_ages = np.arange(0, 101)
-        self._data_loader = data
 
         self._load_life_expectancy_series(base_year)
-        self._load_activity_ages()
+        self._load_activity_ages(data_loader)
         self._cache = {}
-        self._data_loader = None
 
     def _load_life_expectancy_series(self, base_year: str):
         # the age range that health status adjustment runs for
@@ -38,9 +36,9 @@ class HealthStatusAdjustment:
         # calculate the life expectancy (change) between the model year and base year
         self._life_expectancy = lexc.apply(lambda x: x - lexc[str(base_year)])
 
-    def _load_activity_ages(self):
+    def _load_activity_ages(self, data_loader: Data):
         self._activity_ages = (
-            self._data_loader.get_hsa_activity_table()
+            data_loader.get_hsa_activity_table()
             .set_index(["hsagrp", "sex", "age"])
             .sort_index()
         )["activity"]
@@ -91,7 +89,9 @@ class HealthStatusAdjustment:
         variant_lookup = reference.variant_lookup()
         return [
             values[variant_lookup[v]][i]
-            for i, v in enumerate(variants + variants[0:1] * (end_year - start_year - 1))
+            for i, v in enumerate(
+                variants + variants[0:1] * (end_year - start_year - 1)
+            )
         ]
 
     @staticmethod

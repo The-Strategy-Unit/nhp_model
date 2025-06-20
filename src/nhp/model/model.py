@@ -84,21 +84,20 @@ class Model:
         # add model runtime if it doesn't exist
         if "create_datetime" not in self.params:
             self.params["create_datetime"] = f"{datetime.now():%Y%m%d_%H%M%S}"
-        self._data_loader = data(params["start_year"], params["dataset"])
+
+        data_loader = data(params["start_year"], params["dataset"])
+
         self._measures = measures
         # load the data. we only need some of the columns for the model, so just load what we need
-        self._load_data()
-        self._load_strategies()
-        self._load_demog_factors()
+        self._load_data(data_loader)
+        self._load_strategies(data_loader)
+        self._load_demog_factors(data_loader)
         # create HSA object if it hasn't been passed in
         year = params["start_year"]
-        self.hsa = hsa or HealthStatusAdjustmentInterpolated(
-            self._data_loader, str(year)
-        )
+        self.hsa = hsa or HealthStatusAdjustmentInterpolated(data_loader, str(year))
         # generate the run parameters if they haven't been passed in
         self.run_params = run_params or self.generate_run_params(params)
         self.save_full_model_results = save_full_model_results
-        self._data_loader = None
 
     def _add_pod_to_data(self) -> None:
         """Adds the POD column to data"""
@@ -116,12 +115,13 @@ class Model:
         """
         return self._measures
 
-    def _get_data(self) -> None:
+    def _get_data(self, data_loader: Data) -> pd.DataFrame:
         """Load the data"""
         # to be implemented by the concrete classes
+        raise NotImplementedError("Subclasses must implement this method")
 
-    def _load_data(self) -> None:
-        self.data = self._get_data().sort_values("rn")
+    def _load_data(self, data_loader: Data) -> None:
+        self.data = self._get_data(data_loader).sort_values("rn")
         self.data["age_group"] = age_groups(self.data["age"])
         # pylint: disable=assignment-from-no-return
         self.baseline_counts = self.get_data_counts(self.data)
@@ -140,12 +140,12 @@ class Model:
             .assign(change_factor="baseline", strategy="-")
         )
 
-    def _load_strategies(self) -> None:
+    def _load_strategies(self, data_loader: Data) -> None:
         """Load a set of strategies"""
         # to be implemented by the concrete classes
         self.strategies = None  # lint helper
 
-    def _load_demog_factors(self) -> None:
+    def _load_demog_factors(self, data_loader: Data) -> None:
         """Load the demographic factors
 
         Load the demographic factors csv file and calculate the demographics growth factor for the
@@ -172,8 +172,8 @@ class Model:
 
             return factors[years].apply(lambda x: x / factors[start_year])
 
-        self.demog_factors = load_factors(self._data_loader.get_demographic_factors())
-        self.birth_factors = load_factors(self._data_loader.get_birth_factors())
+        self.demog_factors = load_factors(data_loader.get_demographic_factors())
+        self.birth_factors = load_factors(data_loader.get_birth_factors())
 
     @staticmethod
     def generate_run_params(params):

@@ -158,7 +158,7 @@ def test_model_init_sets_values(mocker, model_type):
     lp_m = mocker.patch("nhp.model.model.load_params")
     hsa_m = mocker.patch("nhp.model.model.HealthStatusAdjustmentInterpolated")
     data_mock = Mock()
-    data_mock.return_value = "data"
+    data_mock.return_value = "data_loader"
 
     # act
     mdl = Model(model_type, ["measures"], params, data_mock, "hsa", "run_params")
@@ -166,11 +166,10 @@ def test_model_init_sets_values(mocker, model_type):
     # assert
     assert mdl.model_type == model_type
     assert mdl.params == params
-    assert mdl._data_loader is None
     data_mock.assert_called_once_with("2020", "synthetic")
-    mdl._load_data.assert_called_once()
-    mdl._load_strategies.assert_called_once()
-    mdl._load_demog_factors.assert_called_once()
+    mdl._load_data.assert_called_once_with("data_loader")
+    mdl._load_strategies.assert_called_once_with("data_loader")
+    mdl._load_demog_factors.assert_called_once_with("data_loader")
     assert mdl.hsa == "hsa"
     mdl.generate_run_params.assert_not_called()
     assert mdl.run_params == "run_params"
@@ -291,6 +290,15 @@ def test_measures(mock_model):
     assert actual == ["x", "y"]
 
 
+# _get_data
+
+
+def test_get_data(mock_model):
+    mdl = mock_model
+    with pytest.raises(NotImplementedError):
+        mdl._get_data(Mock())
+
+
 # _load_data
 
 
@@ -305,6 +313,8 @@ def test_load_data(mocker, mock_model):
     mocker.patch("nhp.model.model.Model._add_pod_to_data")
     mocker.patch("nhp.model.model.Model._add_ndggrp_to_data")
 
+    data_loader = Mock()
+
     mdl._get_data = Mock(
         return_value=pd.DataFrame(
             {"rn": [2, 1], "age": [2, 1], "pod": ["a", "b"], "sitetret": ["c", "d"]}
@@ -312,7 +322,7 @@ def test_load_data(mocker, mock_model):
     )
 
     # act
-    mdl._load_data()
+    mdl._load_data(data_loader)
 
     # assert
     assert mdl.data.to_dict(orient="list") == {
@@ -336,6 +346,8 @@ def test_load_data(mocker, mock_model):
         "strategy": ["-", "-"],
     }
 
+    mdl._get_data.assert_called_once_with(data_loader)
+
 
 # _load_strategies()
 
@@ -343,7 +355,7 @@ def test_load_data(mocker, mock_model):
 def test_load_stratergies(mock_model):
     # arrange
     # act
-    mock_model._load_strategies()
+    mock_model._load_strategies(None)
     # assert
     assert mock_model.strategies is None
 
@@ -366,11 +378,13 @@ def test_load_stratergies(mock_model):
         ),
     ],
 )
-def test_demog_factors_loads_correctly(mock_model, year, expected_demog, expected_birth):
+def test_demog_factors_loads_correctly(
+    mock_model, year, expected_demog, expected_birth
+):
     """test that the demographic factors are loaded correctly"""
     # arrange
-    data_mock = Mock()
-    data_mock.get_demographic_factors.return_value = pd.DataFrame(
+    data_loader = Mock()
+    data_loader.get_demographic_factors.return_value = pd.DataFrame(
         {
             "variant": ["a"] * 10 + ["b"] * 10,
             "age": list(range(1, 6)) * 4,
@@ -380,7 +394,7 @@ def test_demog_factors_loads_correctly(mock_model, year, expected_demog, expecte
             "2020": list(range(21, 41)),
         }
     )
-    data_mock.get_birth_factors.return_value = pd.DataFrame(
+    data_loader.get_birth_factors.return_value = pd.DataFrame(
         {
             "variant": ["a"] * 5 + ["b"] * 5,
             "age": list(range(1, 6)) * 2,
@@ -391,18 +405,17 @@ def test_demog_factors_loads_correctly(mock_model, year, expected_demog, expecte
         }
     )
     mdl = mock_model
-    mdl._data_loader = data_mock
     mdl.params["start_year"] = year
 
     # act
-    mdl._load_demog_factors()
+    mdl._load_demog_factors(data_loader)
 
     # assert
     assert np.equal(mdl.demog_factors["2020"], expected_demog).all()
     assert np.equal(mdl.birth_factors["2020"], expected_birth).all()
 
-    data_mock.get_demographic_factors.assert_called_once_with()
-    data_mock.get_birth_factors.assert_called_once_with()
+    data_loader.get_demographic_factors.assert_called_once_with()
+    data_loader.get_birth_factors.assert_called_once_with()
 
 
 # _generate_run_params()
@@ -639,7 +652,9 @@ def test_activity_avoidance(
         mr_mock.rng.binomial.call_args_list[1][0][1].to_dict() == expected_binomial_args
     )
 
-    assert mr_mock.fix_step_counts.call_args[0][0].to_dict("list") == {"rn": [1, 2, 3, 4]}
+    assert mr_mock.fix_step_counts.call_args[0][0].to_dict("list") == {
+        "rn": [1, 2, 3, 4]
+    }
     assert mr_mock.fix_step_counts.call_args[0][1].tolist() == [1, 2, 3, 4]
     assert mr_mock.fix_step_counts.call_args[0][2].to_dict("list") == expected_factors
     assert (

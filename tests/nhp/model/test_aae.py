@@ -91,14 +91,15 @@ def test_init_calls_super_init(mocker):
 def test_get_data(mock_model):
     # arrange
     mdl = mock_model
-    mdl._data_loader.get_aae.return_value = "aae data"
+    data_loader = Mock()
+    data_loader.get_aae.return_value = "aae data"
 
     # act
-    actual = mdl._get_data()
+    actual = mdl._get_data(data_loader)
 
     # assert
     assert actual == "aae data"
-    mdl._data_loader.get_aae.assert_called_once_with()
+    data_loader.get_aae.assert_called_once_with()
 
 
 def test_add_pod_to_data(mock_model):
@@ -137,7 +138,7 @@ def test_load_strategies(mock_model):
     )
     mdl.data["is_discharged_no_treatment"] = [False] * 16 + [True] * 4
     # act
-    mdl._load_strategies()
+    mdl._load_strategies(None)
     # assert
     assert mdl.strategies["activity_avoidance"]["strategy"].to_list() == [
         "frequent_attenders_a_a",

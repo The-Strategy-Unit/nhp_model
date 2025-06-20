@@ -24,7 +24,6 @@ def mock_hsa():
         hsa = HealthStatusAdjustment(None, None)
 
     hsa._all_ages = np.arange(0, 101)
-    hsa._data_loader = Mock()
     hsa._cache = dict()
 
     return hsa
@@ -45,11 +44,10 @@ def test_hsa_init(mocker):
 
     # assert
     assert hsa._all_ages.tolist() == list(range(0, 101))
-    assert hsa._data_loader is None
     assert hsa._cache == {}
 
     lle_mock.assert_called_once_with(2020)
-    laa_mock.assert_called_once_with()
+    laa_mock.assert_called_once_with("nhp_data")
 
 
 @pytest.mark.parametrize(
@@ -122,7 +120,8 @@ def test_hsa_load_life_expectancy_series_filters_ages(mocker, mock_hsa):
 
 def test_load_activity_ages(mock_hsa):
     # arrange
-    mock_hsa._data_loader.get_hsa_activity_table.return_value = pd.DataFrame(
+    data_loader = Mock()
+    data_loader.get_hsa_activity_table.return_value = pd.DataFrame(
         {
             "hsagrp": ["a"] * 4 + ["b"] * 4,
             "sex": [1, 2] * 4,
@@ -132,7 +131,7 @@ def test_load_activity_ages(mock_hsa):
     )
 
     # act
-    mock_hsa._load_activity_ages()
+    mock_hsa._load_activity_ages(data_loader)
 
     # assert
     assert mock_hsa._activity_ages.to_dict() == {
@@ -370,7 +369,9 @@ def test_hsa_gam_predict_activity(mock_hsa_gam):
 @pytest.fixture
 def mock_hsa_interpolated():
     """create a mock Model instance"""
-    with patch.object(HealthStatusAdjustmentInterpolated, "__init__", lambda *args: None):
+    with patch.object(
+        HealthStatusAdjustmentInterpolated, "__init__", lambda *args: None
+    ):
         hsa = HealthStatusAdjustmentInterpolated(None, None)
 
     hsa._activity_ages = pd.Series(
