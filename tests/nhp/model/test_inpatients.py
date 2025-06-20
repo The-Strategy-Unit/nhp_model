@@ -138,7 +138,9 @@ def test_add_pod_to_data(mock_model):
         (False, ["ip_elective_daycase", "ip_elective_admission"]),
     ],
 )
-def test_add_pod_to_data_separate_regular_day_attenders_param(mock_model, test, expected):
+def test_add_pod_to_data_separate_regular_day_attenders_param(
+    mock_model, test, expected
+):
     # arrange
     mock_model.data = pd.DataFrame(
         {
@@ -177,14 +179,15 @@ def test_add_pod_to_data_no_regular_attenders(mock_model):
 def test_get_data(mock_model):
     # arrange
     mdl = mock_model
-    mdl._data_loader.get_ip.return_value = "ip data"
+    data_loader = Mock()
+    data_loader.get_ip.return_value = "ip data"
 
     # act
-    actual = mdl._get_data()
+    actual = mdl._get_data(data_loader)
 
     # assert
     assert actual == "ip data"
-    mdl._data_loader.get_ip.assert_called_once_with()
+    data_loader.get_ip.assert_called_once_with()
 
 
 @pytest.mark.parametrize(
@@ -206,7 +209,9 @@ def test_load_strategies(mock_model, gen_los_type, expected):
         "activity_avoidance": {"ip": {"a": 1, "b": 2}},
         "efficiencies": {"ip": {"b": 3, "c": 4, gen_los_type: 5}},
     }
-    mdl._data_loader.get_ip_strategies.return_value = {
+
+    data_loader = Mock()
+    data_loader.get_ip_strategies.return_value = {
         "activity_avoidance": pd.DataFrame(
             {"rn": [1, 2, 3], "admission_avoidance_strategy": ["a", "b", "c"]}
         ),
@@ -222,7 +227,7 @@ def test_load_strategies(mock_model, gen_los_type, expected):
     }
 
     # act
-    mdl._load_strategies()
+    mdl._load_strategies(data_loader)
 
     # assert
     assert {k: v.to_dict() for k, v in mdl.strategies.items()} == expected

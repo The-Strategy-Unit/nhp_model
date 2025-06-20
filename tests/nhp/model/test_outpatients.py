@@ -89,14 +89,15 @@ def test_init_calls_super_init(mocker):
 def test_get_data(mock_model):
     # arrange
     mdl = mock_model
-    mdl._data_loader.get_op.return_value = "op data"
+    data_loader = Mock()
+    data_loader.get_op.return_value = "op data"
 
     # act
-    actual = mdl._get_data()
+    actual = mdl._get_data(data_loader)
 
     # assert
     assert actual == "op data"
-    mdl._data_loader.get_op.assert_called_once_with()
+    data_loader.get_op.assert_called_once_with()
 
 
 def test_add_pod_to_data(mock_model):
@@ -143,7 +144,7 @@ def test_load_strategies(mock_model):
     mdl.data["type"] = ["a", "b", "c", "d", "e"] * 4
     mdl.data["is_gp_ref"] = [False] * 10 + [True] * 10
     # act
-    mdl._load_strategies()
+    mdl._load_strategies(None)
     # assert
     assert mdl.strategies["activity_avoidance"]["strategy"].to_list() == [
         f"{i}_{j}"
@@ -180,7 +181,10 @@ def test_convert_to_tele(mock_model):
     }
     mr_mock.model.strategies = {
         "efficiencies": pd.Series(
-            {k: "convert_to_tele_a" if k % 2 else "convert_to_tele_b" for k in data["rn"]}
+            {
+                k: "convert_to_tele_a" if k % 2 else "convert_to_tele_b"
+                for k in data["rn"]
+            }
         )
     }
 
@@ -289,7 +293,9 @@ def test_process_results(mock_model):
         }
     )
     expected = {
-        "pod": [k for k in ["op_first", "op_follow-up", "op_procedure"] for _ in [0, 1]],
+        "pod": [
+            k for k in ["op_first", "op_follow-up", "op_procedure"] for _ in [0, 1]
+        ],
         "sitetret": ["trust"] * 6,
         "measure": ["attendances", "tele_attendances"] * 3,
         "sex": [1] * 6,
