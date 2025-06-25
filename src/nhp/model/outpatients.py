@@ -208,7 +208,7 @@ class OutpatientsModel(Model):
                     "age_group",
                     "age",
                     "tretspef",
-                    "tretspef_raw",
+                    "tretspef_grouped",
                 ],
                 as_index=False,
             )
@@ -234,8 +234,8 @@ class OutpatientsModel(Model):
         return (
             model_results,
             [
-                ["sex", "tretspef"],
-                ["tretspef_raw"],
+                ["sex", "tretspef_grouped"],
+                ["tretspef"],
             ],
         )
 

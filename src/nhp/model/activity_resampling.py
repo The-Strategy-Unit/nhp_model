@@ -88,9 +88,9 @@ class ActivityResampling:
         year = str(self.run_params["year"])
         variant = self.run_params["variant"]
 
-        factor = self.demog_factors.loc[(variant, slice(None), slice(None))][year].rename(
-            "demographic_adjustment"
-        )
+        factor = self.demog_factors.loc[(variant, slice(None), slice(None))][
+            year
+        ].rename("demographic_adjustment")
         return self._update(factor)
 
     def birth_adjustment(self):
@@ -169,7 +169,7 @@ class ActivityResampling:
             return self
 
         factor = pd.concat({k: pd.Series(v, name="expat") for k, v in params.items()})
-        factor.index.names = ["group", "tretspef"]
+        factor.index.names = ["group", "tretspef_grouped"]
         return self._update(factor)
 
     def repat_adjustment(self):
@@ -187,7 +187,7 @@ class ActivityResampling:
             return self
 
         factor = pd.concat(params)
-        factor.index.names = ["is_main_icb", "group", "tretspef"]
+        factor.index.names = ["is_main_icb", "group", "tretspef_grouped"]
         return self._update(factor)
 
     def baseline_adjustment(self):
@@ -207,7 +207,7 @@ class ActivityResampling:
                 for k, v in params.items()
             }
         )
-        factor.index.names = ["group", "tretspef"]
+        factor.index.names = ["group", "tretspef_grouped"]
         return self._update(factor)
 
     def waiting_list_adjustment(self):
@@ -229,7 +229,7 @@ class ActivityResampling:
 
         # update the index to include "True" for the is_wla field
         factor.index = pd.MultiIndex.from_tuples(
-            [(True, i) for i in factor.index], names=["is_wla", "tretspef"]
+            [(True, i) for i in factor.index], names=["is_wla", "tretspef_grouped"]
         )
         factor.name = "waiting_list_adjustment"
 
@@ -261,7 +261,8 @@ class ActivityResampling:
 
         # reshape this to be the same as baseline counts
         overall_factor = (
-            self._model_iteration.model.baseline_counts * factors.prod(axis=1).to_numpy()
+            self._model_iteration.model.baseline_counts
+            * factors.prod(axis=1).to_numpy()
         )
 
         row_samples = rng.poisson(overall_factor)

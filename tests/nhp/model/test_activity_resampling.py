@@ -79,7 +79,8 @@ def test_demographic_adjustment(mocker, mock_activity_resampling):
     )
 
     u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update", return_value="update"
+        "nhp.model.activity_resampling.ActivityResampling._update",
+        return_value="update",
     )
 
     # act
@@ -89,7 +90,9 @@ def test_demographic_adjustment(mocker, mock_activity_resampling):
     assert actual == "update"
     u_mock.assert_called_once()
 
-    assert u_mock.call_args[0][0].equals(pd.Series([1, 2], name="demographic_adjustment"))
+    assert u_mock.call_args[0][0].equals(
+        pd.Series([1, 2], name="demographic_adjustment")
+    )
 
 
 def test_birth_adjustment(mocker, mock_activity_resampling):
@@ -113,7 +116,8 @@ def test_birth_adjustment(mocker, mock_activity_resampling):
     )
 
     u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update", return_value="update"
+        "nhp.model.activity_resampling.ActivityResampling._update",
+        return_value="update",
     )
 
     # act
@@ -143,7 +147,8 @@ def test_health_status_adjustment_when_enabled(mocker, mock_activity_resampling)
     aa_mock._model_iteration.model.hsa.run.return_value = "hsa"
 
     u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update", return_value="update"
+        "nhp.model.activity_resampling.ActivityResampling._update",
+        return_value="update",
     )
 
     # act
@@ -180,7 +185,8 @@ def test_covid_adjustment(mocker, mock_activity_resampling):
     }
 
     u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update", return_value="update"
+        "nhp.model.activity_resampling.ActivityResampling._update",
+        return_value="update",
     )
 
     # act
@@ -198,7 +204,8 @@ def test_expat_adjustment_no_params(mocker, mock_activity_resampling):
     aa_mock._model_iteration.run_params = {"expat": {"ip": {}}}
 
     u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update", return_value="update"
+        "nhp.model.activity_resampling.ActivityResampling._update",
+        return_value="update",
     )
 
     # act
@@ -223,7 +230,8 @@ def test_expat_adjustment(mocker, mock_activity_resampling):
     }
 
     u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update", return_value="update"
+        "nhp.model.activity_resampling.ActivityResampling._update",
+        return_value="update",
     )
 
     # act
@@ -249,7 +257,8 @@ def test_repat_adjustment_no_params(mocker, mock_activity_resampling):
     }
 
     u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update", return_value="update"
+        "nhp.model.activity_resampling.ActivityResampling._update",
+        return_value="update",
     )
 
     # act
@@ -280,7 +289,8 @@ def test_repat_adjustment(mocker, mock_activity_resampling):
     }
 
     u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update", return_value="update"
+        "nhp.model.activity_resampling.ActivityResampling._update",
+        return_value="update",
     )
 
     # act
@@ -307,7 +317,8 @@ def test_baseline_adjustment_no_params(mocker, mock_activity_resampling):
     aa_mock._model_iteration.run_params = {"baseline_adjustment": {"ip": {}}}
 
     u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update", return_value="update"
+        "nhp.model.activity_resampling.ActivityResampling._update",
+        return_value="update",
     )
 
     # act
@@ -332,7 +343,8 @@ def test_baseline_adjustment(mocker, mock_activity_resampling):
     }
 
     u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update", return_value="update"
+        "nhp.model.activity_resampling.ActivityResampling._update",
+        return_value="update",
     )
 
     # act
@@ -353,7 +365,9 @@ def test_waiting_list_adjustment_aae(mocker, mock_activity_resampling):
     aa_mock = mock_activity_resampling
     aa_mock._model_iteration.model.model_type = "aae"
 
-    aa_mock._model_iteration.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
+    aa_mock._model_iteration.data = pd.DataFrame(
+        {"tretspef_grouped": ["100"] * 4 + ["200"] * 2}
+    )
 
     aa_mock._model_iteration.run_params = {
         "waiting_list_adjustment": {
@@ -365,7 +379,8 @@ def test_waiting_list_adjustment_aae(mocker, mock_activity_resampling):
     }
 
     u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update", return_value="update"
+        "nhp.model.activity_resampling.ActivityResampling._update",
+        return_value="update",
     )
 
     # act
@@ -381,12 +396,15 @@ def test_waiting_list_adjustment_no_params(mocker, mock_activity_resampling):
     aa_mock = mock_activity_resampling
     aa_mock._model_iteration.model.model_type = "ip"
 
-    aa_mock._model_iteration.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
+    aa_mock._model_iteration.data = pd.DataFrame(
+        {"tretspef_grouped": ["100"] * 4 + ["200"] * 2}
+    )
 
     aa_mock._model_iteration.run_params = {"waiting_list_adjustment": {"ip": {}}}
 
     u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update", return_value="update"
+        "nhp.model.activity_resampling.ActivityResampling._update",
+        return_value="update",
     )
 
     # act
@@ -402,7 +420,9 @@ def test_waiting_list_adjustment(mocker, mock_activity_resampling):
     aa_mock = mock_activity_resampling
     aa_mock._model_iteration.model.model_type = "ip"
 
-    aa_mock._model_iteration.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
+    aa_mock._model_iteration.data = pd.DataFrame(
+        {"tretspef_grouped": ["100"] * 4 + ["200"] * 2}
+    )
 
     aa_mock._model_iteration.run_params = {
         "waiting_list_adjustment": {
@@ -414,7 +434,8 @@ def test_waiting_list_adjustment(mocker, mock_activity_resampling):
     }
 
     u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update", return_value="update"
+        "nhp.model.activity_resampling.ActivityResampling._update",
+        return_value="update",
     )
 
     # act
@@ -446,7 +467,8 @@ def test_inequalities_adjustment_no_params(
     aa_mock._model_iteration.run_params = {"inequalities": {}}
 
     u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update", return_value="update"
+        "nhp.model.activity_resampling.ActivityResampling._update",
+        return_value="update",
     )
 
     # act
@@ -511,7 +533,8 @@ def test_inequalities_adjustment(
     }
 
     u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update", return_value="update"
+        "nhp.model.activity_resampling.ActivityResampling._update",
+        return_value="update",
     )
 
     # act
@@ -533,14 +556,17 @@ def test_non_demographic_adjustment_no_params(
     aa_mock = mock_activity_resampling
     aa_mock._model_iteration.model.model_type = model_type
 
-    aa_mock._model_iteration.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
+    aa_mock._model_iteration.data = pd.DataFrame(
+        {"tretspef_grouped": ["100"] * 4 + ["200"] * 2}
+    )
 
     aa_mock._model_iteration.run_params = {
         "non-demographic_adjustment": {"ip": {}, "op": {}, "aae": {}}
     }
 
     u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update", return_value="update"
+        "nhp.model.activity_resampling.ActivityResampling._update",
+        return_value="update",
     )
 
     # act
@@ -569,7 +595,9 @@ def test_non_demographic_adjustment(
     aa_mock = mock_activity_resampling
     aa_mock._model_iteration.model.model_type = model_type
 
-    aa_mock._model_iteration.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
+    aa_mock._model_iteration.data = pd.DataFrame(
+        {"tretspef_grouped": ["100"] * 4 + ["200"] * 2}
+    )
 
     aa_mock._model_iteration.run_params = {
         "year": year,
@@ -588,7 +616,8 @@ def test_non_demographic_adjustment(
     }
 
     u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update", return_value="update"
+        "nhp.model.activity_resampling.ActivityResampling._update",
+        return_value="update",
     )
 
     # act
