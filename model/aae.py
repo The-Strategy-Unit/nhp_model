@@ -130,21 +130,26 @@ class AaEModel(Model):
         data.rename(columns={"arrivals": "value"}, inplace=True)
 
         # summarise the results to make the create_agg steps quicker
-        data = data.groupby(
-            # note: any columns used in the calls to _create_agg, including pod and measure
-            # must be included below
-            [
-                "pod",
-                "sitetret",
-                "acuity",
-                "measure",
-                "sex",
-                "age",
-                "age_group",
-                "attendance_category",
-            ],
-            as_index=False,
-        ).agg({"value": "sum"})
+        data = (
+            data.groupby(
+                # note: any columns used in the calls to _create_agg, including pod and measure
+                # must be included below
+                [
+                    "pod",
+                    "sitetret",
+                    "acuity",
+                    "measure",
+                    "sex",
+                    "age",
+                    "age_group",
+                    "attendance_category",
+                ],
+                dropna=False,
+                as_index=False,
+            )
+            .agg({"value": "sum"})
+            .fillna("unknown")
+        )
         return data
 
     def aggregate(self, model_iteration: ModelIteration) -> Tuple[Callable, dict]:

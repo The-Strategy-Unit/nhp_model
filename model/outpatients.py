@@ -210,9 +210,11 @@ class OutpatientsModel(Model):
                     "tretspef",
                     "tretspef_raw",
                 ],
+                dropna=False,
                 as_index=False,
             )
             .agg({"value": "sum"})
+            .fillna("unknown")
         )
         return data
 
