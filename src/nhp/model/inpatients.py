@@ -214,7 +214,7 @@ class InpatientsModel(Model):
                     "sex",
                     "pod",
                     "tretspef",
-                    "tretspef_raw",
+                    "tretspef_grouped",
                     "los_group",
                 ],
                 dropna=False,
@@ -240,7 +240,7 @@ class InpatientsModel(Model):
         sdec_ix = data["pod"] == "aae_type-05"
         data.loc[sdec_ix, "measure"] = "walk-in"
         data.loc[sdec_ix, "tretspef"] = "Other"
-        data.loc[sdec_ix, "tretspef_raw"] = "Other"
+        data.loc[sdec_ix, "tretspef_grouped"] = "Other"
         data.loc[sdec_ix, "los_group"] = None
 
         # reduce any duplicated rows
@@ -267,9 +267,9 @@ class InpatientsModel(Model):
         return (
             model_results,
             [
-                ["sex", "tretspef"],
-                ["tretspef_raw"],
-                ["tretspef_raw", "los_group"],
+                ["sex", "tretspef_grouped"],
+                ["tretspef"],
+                ["tretspef", "los_group"],
             ],
         )
 
@@ -325,7 +325,7 @@ class InpatientsModel(Model):
         ix = model_results["classpat"] == "-1"
         return (
             model_results[ix]
-            .groupby(["age", "sex", "tretspef", "tretspef_raw", "sitetret"])
+            .groupby(["age", "sex", "tretspef", "tretspef_grouped", "sitetret"])
             .size()
             .to_frame("attendances")
             .assign(tele_attendances=0)
