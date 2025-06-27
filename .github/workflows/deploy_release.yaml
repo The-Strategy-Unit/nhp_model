@@ -19,15 +19,13 @@ jobs:
           TAG=`echo ${{ github.ref_name }} | awk 'BEGIN { FS="."; } { print ""$1"."$2; }'`
           echo "TAG=$TAG" >> $GITHUB_OUTPUT
 
-  deploy-production:
+  deploy-ghcr-production:
     needs: [set-tag]
-  
     uses: ./.github/workflows/build_container.yaml
     with:
-      docker-tag: ${{ needs.set-tag.outputs.tag }} 
+      docker-tag: ghcr.io/the-strategy-unit/nhp_model:${{ needs.set-tag.outputs.tag }},ghcr.io/the-strategy-unit/nhp_model:latest
       app-version: ${{ github.ref_name }} 
       data-version: ${{vars.data_version}}
-      latest: true
     secrets: inherit
 
   deploy-schema:
