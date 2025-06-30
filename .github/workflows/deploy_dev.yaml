@@ -1,6 +1,4 @@
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
   push:
     branches:
       - main
@@ -9,18 +7,16 @@ on:
 name: Deploy Dev
 
 jobs:
-  deploy-dev-model:
+  deploy-ghcr-dev:
     uses: ./.github/workflows/build_container.yaml
     with:
-      docker-tag: dev
+      docker-tag: ghcr.io/the-strategy-unit/nhp_model:dev
       app-version: dev
       data-version: dev
-      latest: false
     secrets: inherit
 
   deploy-dev-schema:
     uses: ./.github/workflows/build_schema.yaml
-    if: github.event_name == 'push'
     with:
       schema-tag: dev
     secrets: inherit
