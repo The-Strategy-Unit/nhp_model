@@ -22,8 +22,6 @@
         "start_year": {
             "type": "integer",
             "enum": [
-                2019,
-                2022,
                 2023
             ]
         },
