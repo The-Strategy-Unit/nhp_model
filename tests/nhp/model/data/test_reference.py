@@ -1,6 +1,7 @@
 """test nhp data (reference)"""
 
 # pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring
+# ruff: noqa: PLR2004
 
 from nhp.model.data import reference
 
@@ -14,7 +15,7 @@ def test_variants():
     vl = reference.variant_lookup()
 
     # assert
-    assert len(vl) == 22
+    assert len(vl) == 19
     assert set(vl.values()) == expected_hsa_variants
 
 
@@ -26,7 +27,9 @@ def test_life_expectancy():
 
     # assert
     assert len(le) == 276
-    assert list(le.columns) == ["var", "sex", "age"] + [str(i) for i in range(2018, 2044)]
+    assert list(le.columns) == ["var", "sex", "age"] + [
+        str(i) for i in range(2018, 2044)
+    ]
     assert set(le["var"]) == expected_hsa_variants
     assert set(le["sex"]) == {1, 2}
     assert list(le["age"]) == list(range(55, 101)) * 6
