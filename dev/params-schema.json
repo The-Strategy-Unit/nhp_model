@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "http:/the-strategy-unit.github.io/nhp_model/v3-4/params-schema.json",
+    "$id": "http:/the-strategy-unit.github.io/nhp_model/v3-7/params-schema.json",
     "type": "object",
     "title": "NHP model parameters",
     "properties": {
@@ -182,23 +182,23 @@
                         "properties": {
                             "1": {
                                 "type": "number",
-                                "exclusiveMinimum": 0
+                                "minimum": 0
                             },
                             "2": {
                                 "type": "number",
-                                "exclusiveMinimum": 0
+                                "minimum": 0
                             },
                             "3": {
                                 "type": "number",
-                                "exclusiveMinimum": 0
+                                "minimum": 0
                             },
                             "4": {
                                 "type": "number",
-                                "exclusiveMinimum": 0
+                                "minimum": 0
                             },
                             "5": {
                                 "type": "number",
-                                "exclusiveMinimum": 0
+                                "minimum": 0
                             }
                         },
                         "additionalProperties": false
@@ -1253,7 +1253,7 @@
             "type": "array",
             "items": {
                 "type": "number",
-                "exclusiveMinimum": 0,
+                "minimum": 0,
                 "maximum": 1
             },
             "minItems": 2,
@@ -1263,7 +1263,7 @@
             "type": "array",
             "items": {
                 "type": "number",
-                "exclusiveMinimum": 0,
+                "minimum": 0,
                 "maximum": 5
             },
             "minItems": 2,
@@ -1281,7 +1281,7 @@
         },
         "value_0-5": {
             "type": "number",
-            "exclusiveMinimum": 0,
+            "minimum": 0,
             "maximum": 5
         },
         "value_0-1": {
