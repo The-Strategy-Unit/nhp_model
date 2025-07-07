@@ -37,6 +37,7 @@ dev = [
     "ipykernel>=6.21",
     "ipython>=8.11",
     "ipywidgets>=8.0",
+    "jsonschema>=4.23.0",
     "jupyter_client>=8.0",
     "jupyter_core>=5.2",
     "jupyterlab_pygments>=0.2",
