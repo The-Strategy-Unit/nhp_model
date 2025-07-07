@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "http:/the-strategy-unit.github.io/nhp_model/v4-0/params-schema.json",
+    "$id": "http:/the-strategy-unit.github.io/nhp_model/v4.0/params-schema.json",
     "type": "object",
     "title": "NHP model parameters",
     "properties": {
