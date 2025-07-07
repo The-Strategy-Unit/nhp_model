@@ -22,8 +22,6 @@
         "start_year": {
             "type": "integer",
             "enum": [
-                2019,
-                2022,
                 2023
             ]
         },
@@ -43,12 +41,68 @@
             "type": "object",
             "properties": {
                 "variant_probabilities": {
-                    "type": "object"
+                    "type": "object",
+                    "properties": {
+                        "migration_category": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "var_proj_5_year_migration": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "var_proj_10_year_migration": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "var_proj_high_intl_migration": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "var_proj_low_intl_migration": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "var_proj_zero_net_migration": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "high_population": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "young_age_structure": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "high_fertility": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "old_age_structure": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "low_population": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "low_fertility": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "high_life_expectancy": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "low_life_expectancy": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "no_mortality_improvement": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "zero_net_migration": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "replacement_fertility": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "minProperties": 1
                 }
             },
             "required": [
                 "variant_probabilities"
-            ]
+            ],
+            "additionalProperties": false
         },
         "health_status_adjustment": {
             "type": "boolean"
@@ -1287,6 +1341,11 @@
         "value_0-1": {
             "type": "number",
             "minimum": 0,
+            "maximum": 1
+        },
+        "value_gt0-1": {
+            "type": "number",
+            "exclusiveMinimum": 0,
             "maximum": 1
         },
         "value_1-5": {
