@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "http:/the-strategy-unit.github.io/nhp_model/v3-7/params-schema.json",
+    "$id": "http:/the-strategy-unit.github.io/nhp_model/v4.0/params-schema.json",
     "type": "object",
     "title": "NHP model parameters",
     "properties": {
@@ -61,37 +61,10 @@
                         "var_proj_zero_net_migration": {
                             "$ref": "#/$defs/value_gt0-1"
                         },
-                        "high_population": {
+                        "custom_projection_R0A66": {
                             "$ref": "#/$defs/value_gt0-1"
                         },
-                        "young_age_structure": {
-                            "$ref": "#/$defs/value_gt0-1"
-                        },
-                        "high_fertility": {
-                            "$ref": "#/$defs/value_gt0-1"
-                        },
-                        "old_age_structure": {
-                            "$ref": "#/$defs/value_gt0-1"
-                        },
-                        "low_population": {
-                            "$ref": "#/$defs/value_gt0-1"
-                        },
-                        "low_fertility": {
-                            "$ref": "#/$defs/value_gt0-1"
-                        },
-                        "high_life_expectancy": {
-                            "$ref": "#/$defs/value_gt0-1"
-                        },
-                        "low_life_expectancy": {
-                            "$ref": "#/$defs/value_gt0-1"
-                        },
-                        "no_mortality_improvement": {
-                            "$ref": "#/$defs/value_gt0-1"
-                        },
-                        "zero_net_migration": {
-                            "$ref": "#/$defs/value_gt0-1"
-                        },
-                        "replacement_fertility": {
+                        "custom_projection_RD8": {
                             "$ref": "#/$defs/value_gt0-1"
                         }
                     },
