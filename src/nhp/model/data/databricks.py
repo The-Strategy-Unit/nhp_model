@@ -228,10 +228,14 @@ class DatabricksNational(Data):
             # TODO: temporary fix, see #353
             .withColumn("sushrg_trimmed", F.lit("HRG"))
             .withColumn("imd_quintile", F.lit(0))
-            .groupBy(op.drop("index", "fyear", "attendances", "tele_attendances").columns)
+            .groupBy(
+                op.drop("index", "fyear", "attendances", "tele_attendances").columns
+            )
             .agg(
                 (F.sum("attendances") * self._sample_rate).alias("attendances"),
-                (F.sum("tele_attendances") * self._sample_rate).alias("tele_attendances"),
+                (F.sum("tele_attendances") * self._sample_rate).alias(
+                    "tele_attendances"
+                ),
             )
             # TODO: how do we make this stable? at the moment we can't use full model results with
             # national
@@ -260,15 +264,18 @@ class DatabricksNational(Data):
             .toPandas()
         )
 
-    def get_birth_factors(self) -> pd.DataFrame:
+    def get_birth_factors(self, projection_year: int = 2022) -> pd.DataFrame:
         """Get the birth factors dataframe
 
+        :param projection_year: Which projection year to use?
+        :type projection_year: int, defaults to 2022
         :return: the birth factors dataframe
         :rtype: pd.DataFrame
         """
 
         return (
             self._spark.read.table("nhp.population_projections.births")
+            .filter(F.col("projection_year") == projection_year)
             .filter(F.col("area_code").rlike("^E0[6-9]"))
             .withColumn("sex", F.lit(2))
             .groupBy("projection", "age", "sex")
@@ -278,15 +285,18 @@ class DatabricksNational(Data):
             .toPandas()
         )
 
-    def get_demographic_factors(self) -> pd.DataFrame:
+    def get_demographic_factors(self, projection_year: int = 2022) -> pd.DataFrame:
         """Get the demographic factors dataframe
 
+        :param projection_year: Which projection year to use?
+        :type projection_year: int, defaults to 2022
         :return: the demographic factors dataframe
         :rtype: pd.DataFrame
         """
 
         return (
             self._spark.read.table("nhp.population_projections.demographics")
+            .filter(F.col("projection_year") == projection_year)
             .filter(F.col("area_code").rlike("^E0[6-9]"))
             .groupBy("projection", "age", "sex")
             .pivot("year")
