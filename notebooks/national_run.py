@@ -71,7 +71,6 @@ os.environ["BATCH_SIZE"] = "8"
 params = mdl.load_params(f"../queue/{dbutils.widgets.get('params_file')}")
 
 params["dataset"] = "national"
-params["demographic_factors"]["variant_probabilities"] = {"principal_proj": 1.0}
 
 # COMMAND ----------
 
