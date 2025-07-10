@@ -69,7 +69,14 @@ def test_update(mock_activity_resampling):
     assert actual == aa_mock
 
 
-def test_demographic_adjustment(mocker, mock_activity_resampling):
+@pytest.mark.parametrize(
+    "groups, expected",
+    [
+        (["elective", "non-elective", "maternity"], ["elective", "non-elective"]),
+        (["first", "follow-up"], ["first", "follow-up"]),
+    ],
+)
+def test_demographic_adjustment(mocker, mock_activity_resampling, groups, expected):
     # arrange
     aa_mock = mock_activity_resampling
     aa_mock._model_iteration.run_params = {"year": 2020, "variant": "a"}
@@ -83,6 +90,8 @@ def test_demographic_adjustment(mocker, mock_activity_resampling):
         return_value="update",
     )
 
+    aa_mock._model_iteration.data = pd.DataFrame({"group": groups})
+
     # act
     actual = aa_mock.demographic_adjustment()
 
@@ -90,9 +99,9 @@ def test_demographic_adjustment(mocker, mock_activity_resampling):
     assert actual == "update"
     u_mock.assert_called_once()
 
-    assert u_mock.call_args[0][0].equals(
-        pd.Series([1, 2], name="demographic_adjustment")
-    )
+    assert u_mock.call_args[0][0].to_dict() == {
+        (i, j): j + 1 for i in expected for j in range(2)
+    }
 
 
 def test_birth_adjustment(mocker, mock_activity_resampling):
@@ -102,12 +111,7 @@ def test_birth_adjustment(mocker, mock_activity_resampling):
     # set up demog_factors/birth_factors: we end up dividing birth factors by the demog factors, so
     # we set these up here so (roughly) birth_factors == 1 / demog_factors.
     # the result of this should be x ** 2 for the values in birth_factors
-    aa_mock._model_iteration.model.demog_factors = pd.DataFrame(
-        {"2020": [1 / (x + 1) for x in range(16)]},
-        index=pd.MultiIndex.from_tuples(
-            [(v, s, a) for s in [1, 2] for v in ["a", "b"] for a in [1, 2, 3, 4]]
-        ),
-    )
+
     aa_mock._model_iteration.model.birth_factors = pd.DataFrame(
         {"2020": [(x + 9) for x in range(8)]},
         index=pd.MultiIndex.from_tuples(
@@ -128,10 +132,10 @@ def test_birth_adjustment(mocker, mock_activity_resampling):
     u_mock.assert_called_once()
 
     assert u_mock.call_args[0][0].to_dict() == {
-        ("maternity", 2, 1): 81,
-        ("maternity", 2, 2): 100,
-        ("maternity", 2, 3): 121,
-        ("maternity", 2, 4): 144,
+        ("maternity", 2, 1): 9,
+        ("maternity", 2, 2): 10,
+        ("maternity", 2, 3): 11,
+        ("maternity", 2, 4): 12,
     }
 
 

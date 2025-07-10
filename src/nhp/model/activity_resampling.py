@@ -91,6 +91,11 @@ class ActivityResampling:
         factor = self.demog_factors.loc[(variant, slice(None), slice(None))][
             year
         ].rename("demographic_adjustment")
+
+        groups = set(self.data["group"]) - {"maternity"}
+        factor: pd.Series = pd.concat({i: factor for i in groups})  # type: ignore
+        factor.index.names = ["group"] + factor.index.names[1:]
+
         return self._update(factor)
 
     def birth_adjustment(self):
@@ -98,10 +103,7 @@ class ActivityResampling:
         year = str(self.run_params["year"])
         variant = self.run_params["variant"]
 
-        b_factor = self.birth_factors.loc[([variant], slice(None), slice(None))][year]
-        d_factor = self.demog_factors.loc[b_factor.index][year]
-
-        factor = b_factor / d_factor
+        factor = self.birth_factors.loc[([variant], slice(None), slice(None))][year]
 
         factor = pd.Series(
             factor.values,
