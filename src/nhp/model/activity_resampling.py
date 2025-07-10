@@ -92,8 +92,8 @@ class ActivityResampling:
             year
         ].rename("demographic_adjustment")
 
-        factor: pd.Series = pd.concat({"elective": factor, "non-elective": factor})
-
+        groups = self.data["group"].toset() - {"maternity"}
+        factor: pd.Series = pd.concat({i: factor for i in groups})  # type: ignore
         factor.index.names = ["group"] + factor.index.names[1:]
 
         return self._update(factor)
