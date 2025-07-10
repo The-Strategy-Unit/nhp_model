@@ -71,10 +71,10 @@ def test_update(mock_activity_resampling):
 
 @pytest.mark.parametrize(
     "groups, expected",
-    (
-        [(["elective", "non-elective", "maternity"], ["elective", "non-elective"])],
+    [
+        (["elective", "non-elective", "maternity"], ["elective", "non-elective"]),
         (["first", "follow-up"], ["first", "follow-up"]),
-    ),
+    ],
 )
 def test_demographic_adjustment(mocker, mock_activity_resampling, groups, expected):
     # arrange
