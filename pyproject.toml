@@ -68,10 +68,14 @@ target-version = "py311"
 [tool.ruff.lint]
 # Simple rules: pylint + isort
 select = [
+    "D",   # pydocstyle
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
     "I",   # isort (import sorting)
-    "PL",  # pylint rules
+    "PL",  # pylint rules,
+    "PD",  # pandas-vet
+    "NPY", # NumPy-specific rules
+    "RUF", # Ruff-specific rules
 ]
 
 [tool.ruff.lint.isort]
