@@ -69,7 +69,14 @@ def test_update(mock_activity_resampling):
     assert actual == aa_mock
 
 
-def test_demographic_adjustment(mocker, mock_activity_resampling):
+@pytest.mark.parametrize(
+    "groups, expected",
+    (
+        [(["elective", "non-elective", "maternity"], ["elective", "non-elective"])],
+        (["first", "follow-up"], ["first", "follow-up"]),
+    ),
+)
+def test_demographic_adjustment(mocker, mock_activity_resampling, groups, expected):
     # arrange
     aa_mock = mock_activity_resampling
     aa_mock._model_iteration.run_params = {"year": 2020, "variant": "a"}
@@ -83,6 +90,8 @@ def test_demographic_adjustment(mocker, mock_activity_resampling):
         return_value="update",
     )
 
+    aa_mock._model_iteration.data = pd.DataFrame({"group": groups})
+
     # act
     actual = aa_mock.demographic_adjustment()
 
@@ -91,10 +100,7 @@ def test_demographic_adjustment(mocker, mock_activity_resampling):
     u_mock.assert_called_once()
 
     assert u_mock.call_args[0][0].to_dict() == {
-        ("elective", 0): 1,
-        ("elective", 1): 2,
-        ("non-elective", 0): 1,
-        ("non-elective", 1): 2,
+        (i, j): j + 1 for i in expected for j in range(2)
     }
 
 
