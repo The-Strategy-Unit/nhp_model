@@ -264,7 +264,7 @@ class DatabricksNational(Data):
             .toPandas()
         )
 
-    def get_birth_factors(self, projection_year: int = 2022) -> pd.DataFrame:
+    def get_birth_factors(self) -> pd.DataFrame:
         """Get the birth factors dataframe
 
         :param projection_year: Which projection year to use?
@@ -273,19 +273,27 @@ class DatabricksNational(Data):
         :rtype: pd.DataFrame
         """
 
+        births_df = (
+            self._spark.read.parquet(f"{self._data_path}/birth_factors/")
+            .filter(F.col("fyear") == self._year)
+            .filter(~F.col("variant").startswith("custom"))
+        )
+
+        years = [i for i in births_df.columns if i.startswith("20")]
+        years_str = ", ".join([f"'{i}', `{i}`" for i in years])
+        expr = f"stack({len(years)}, {years_str}) as (year, value)"
+
         return (
-            self._spark.read.table("nhp.population_projections.births")
-            .filter(F.col("projection_year") == projection_year)
-            .filter(F.col("area_code").rlike("^E0[6-9]"))
-            .withColumn("sex", F.lit(2))
-            .groupBy("projection", "age", "sex")
+            births_df.selectExpr("variant", "age", "sex", expr)
+            .groupBy("variant", "age", "sex")
             .pivot("year")
-            .agg(F.sum("value").alias("value"))
+            .agg(F.sum("value"))
+            .orderBy("variant", "age", "sex")
             .withColumnRenamed("projection", "variant")
             .toPandas()
         )
 
-    def get_demographic_factors(self, projection_year: int = 2022) -> pd.DataFrame:
+    def get_demographic_factors(self) -> pd.DataFrame:
         """Get the demographic factors dataframe
 
         :param projection_year: Which projection year to use?
@@ -294,13 +302,22 @@ class DatabricksNational(Data):
         :rtype: pd.DataFrame
         """
 
+        demog_df = (
+            self._spark.read.parquet(f"{self._data_path}/demographic_factors/")
+            .filter(F.col("fyear") == self._year)
+            .filter(~F.col("variant").startswith("custom"))
+        )
+
+        years = [i for i in demog_df.columns if i.startswith("20")]
+        years_str = ", ".join([f"'{i}', `{i}`" for i in years])
+        expr = f"stack({len(years)}, {years_str}) as (year, value)"
+
         return (
-            self._spark.read.table("nhp.population_projections.demographics")
-            .filter(F.col("projection_year") == projection_year)
-            .filter(F.col("area_code").rlike("^E0[6-9]"))
-            .groupBy("projection", "age", "sex")
+            demog_df.selectExpr("variant", "age", "sex", expr)
+            .groupBy("variant", "age", "sex")
             .pivot("year")
-            .agg(F.sum("value").alias("value"))
+            .agg(F.sum("value"))
+            .orderBy("variant", "age", "sex")
             .withColumnRenamed("projection", "variant")
             .toPandas()
         )
