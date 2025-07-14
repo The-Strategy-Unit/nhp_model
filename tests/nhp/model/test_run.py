@@ -59,7 +59,7 @@ def test_run_model(mocker):
     # assert
     pool_ctm.imap.assert_called_once_with(model_m().go, [0, 1, 2], chunksize=1)
     assert actual == [model_m().go()] * 3
-    pc_m.assert_not_called()
+    pc_m.assert_called_once_with(2)
 
 
 def test_run_all(mocker):

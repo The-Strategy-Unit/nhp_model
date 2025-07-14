@@ -102,6 +102,8 @@ def _run_model(
             )
         )
     logging.info(" * finished")
+    # ensure that the callback reports all model runs are complete
+    progress_callback(params["model_runs"])
 
     return results
 
