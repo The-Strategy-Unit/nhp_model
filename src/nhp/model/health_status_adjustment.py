@@ -21,6 +21,16 @@ class HealthStatusAdjustment:
     # load the static reference data files
 
     def __init__(self, data_loader: Data, base_year: str):
+        """Initalise HealthStatusAdjustment.
+
+        Base class that should not be used directly, instead see HealthStatusAdjustmentGAM
+        or HealthStatusAdjustmentInterpolated.
+
+        :param data: the data
+        :type data: Data
+        :param base_year: the baseline year for the model run
+        :type base_year: str
+        """
         self._all_ages = np.arange(0, 101)
 
         self._load_life_expectancy_series(base_year)
@@ -167,13 +177,20 @@ class HealthStatusAdjustment:
         return factor
 
     def _predict_activity(self, adjusted_ages):
-        """"""
+        raise NotImplementedError()
 
 
 class HealthStatusAdjustmentGAM(HealthStatusAdjustment):
     """Heatlh Status Adjustment (GAMs)."""
 
     def __init__(self, data: Data, base_year: str):
+        """Initalise HealthStatusGAM.
+
+        :param data: the data
+        :type data: Data
+        :param base_year: the baseline year for the model run
+        :type base_year: str
+        """
         self._gams = data.get_hsa_gams()
 
         super().__init__(data, base_year)
@@ -194,6 +211,13 @@ class HealthStatusAdjustmentInterpolated(HealthStatusAdjustment):
     """Heatlh Status Adjustment (Interpolated)."""
 
     def __init__(self, data: Data, base_year: str):
+        """Initalise HealthStatusAdjustmentInterpolated.
+
+        :param data: the data
+        :type data: Data
+        :param base_year: the baseline year for the model run
+        :type base_year: str
+        """
         super().__init__(data, base_year)
         self._load_activity_ages_lists()
 

@@ -41,6 +41,19 @@ class AaEModel(Model):
         run_params: dict | None = None,
         save_full_model_results: bool = False,
     ) -> None:
+        """Initialise the A&E Model.
+
+        :param params: the parameters to use
+        :type params: dict
+        :param data: a method to create a Data instance
+        :type data: Callable[[int, str], Data]
+        :param hsa: _Health Status Adjustment object, defaults to None
+        :type hsa: Any, optional
+        :param run_params: the run parameters to use, defaults to None
+        :type run_params: dict | None, optional
+        :param save_full_model_results: whether to save full model results, defaults to False
+        :type save_full_model_results: bool, optional
+        """
         # call the parent init function
         super().__init__(
             "aae",

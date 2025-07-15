@@ -16,7 +16,14 @@ class ModelIteration:
     Holds all of the information for a model iteration
     """
 
-    def __init__(self, model, model_run):
+    def __init__(self, model, model_run: int):
+        """Perform an iteration of the model.
+
+        :param model: An instance of a Model object
+        :type model: Model
+        :param model_run: which model iteration to run
+        :type model_run: int
+        """
         self.model = model
 
         self.model_run = model_run

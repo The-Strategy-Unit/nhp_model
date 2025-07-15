@@ -20,6 +20,11 @@ class RunWithLocalStorage:
     """Methods for running with local storage."""
 
     def __init__(self, filename: str):
+        """Initialize the RunWithLocalStorage instance.
+
+        :param filename: Name of the parameter file to load.
+        :type filename: str
+        """
         self.params = load_params(f"queue/{filename}")
 
     def finish(
@@ -48,6 +53,13 @@ class RunWithAzureStorage:
     """Methods for running with azure storage."""
 
     def __init__(self, filename: str, app_version: str = "dev"):
+        """Initialise RunWithAzureStorage.
+
+        :param filename:
+        :type filename: str
+        :param app_version: the version of the app, where we will load data from. defaults to "dev"
+        :type app_version: str, optional
+        """
         logging.getLogger("azure.storage.common.storageclient").setLevel(
             logging.WARNING
         )

@@ -1,3 +1,5 @@
+"""Methods for running the NHP model in a Docker container."""
+
 import argparse
 import logging
 import os

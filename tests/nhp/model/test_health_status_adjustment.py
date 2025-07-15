@@ -304,8 +304,11 @@ def test_hsa_run_cached(mocker, mock_hsa):
     assert actual == "a"
 
 
-def test_hsa_predict_activity():
-    pass
+def test_hsa_predict_activity(mock_hsa):
+    # arrange
+    # act & assert
+    with pytest.raises(NotImplementedError):
+        mock_hsa._predict_activity(None)
 
 
 # GAM

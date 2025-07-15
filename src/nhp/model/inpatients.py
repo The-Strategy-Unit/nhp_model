@@ -44,6 +44,19 @@ class InpatientsModel(Model):
         run_params: dict | None = None,
         save_full_model_results: bool = False,
     ) -> None:
+        """Initialise the Inpatients Model.
+
+        :param params: the parameters to use
+        :type params: dict
+        :param data: a method to create a Data instance
+        :type data: Callable[[int, str], Data]
+        :param hsa: _Health Status Adjustment object, defaults to None
+        :type hsa: Any, optional
+        :param run_params: the run parameters to use, defaults to None
+        :type run_params: dict | None, optional
+        :param save_full_model_results: whether to save full model results, defaults to False
+        :type save_full_model_results: bool, optional
+        """
         # call the parent init function
         super().__init__(
             "ip",
@@ -361,6 +374,13 @@ class InpatientEfficiencies:
     """Apply the Inpatient Efficiency Strategies."""
 
     def __init__(self, data: pd.DataFrame, model_iteration: ModelIteration):
+        """Intialise the InpatientsEfficiencies.
+
+        :param data: the data which we are updating
+        :type data: pd.DataFrame
+        :param model_iteration: a ModelIteration instance for the current model run
+        :type model_iteration: ModelIteration
+        """
         self.data = data
         self._model_iteration = model_iteration
         self._select_single_strategy()

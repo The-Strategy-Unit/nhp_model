@@ -22,7 +22,7 @@ from nhp.model.outpatients import OutpatientsModel
 from nhp.model.run import run_all, run_single_model_run
 
 
-def parse_args() -> argparse.Namespace:  # pragma: no cover
+def _parse_args() -> argparse.Namespace:  # pragma: no cover
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "params_file",
@@ -52,7 +52,7 @@ def main() -> None:
     Runs when __name__ == "__main__"
     """
     # Grab the Arguments
-    args = parse_args()
+    args = _parse_args()
     params = load_params(args.params_file)
     # define the model to run
     match args.type:

@@ -30,6 +30,11 @@ class ActivityResampling:
     """
 
     def __init__(self, model_iteration) -> None:
+        """Initialise ActivityResampling.
+
+        :param model_iteration: the current model iteration we are performing
+        :type model_iteration: ModelIteration
+        """
         self._model_iteration = model_iteration
 
         # initialise step counts

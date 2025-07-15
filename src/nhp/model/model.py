@@ -73,6 +73,23 @@ class Model:
         run_params: dict | None = None,
         save_full_model_results: bool = False,
     ) -> None:
+        """Initialise the Model.
+
+        :param model_type: a string saying what type of model this is
+        :type model_type: str
+        :param measures: the names of the measures in this model type
+        :type measures: List[str]
+        :param params: the parameters to use
+        :type params: dict
+        :param data: a method to create a Data instance
+        :type data: Callable[[int, str], Data]
+        :param hsa: _Health Status Adjustment object, defaults to None
+        :type hsa: Any, optional
+        :param run_params: the run parameters to use, defaults to None
+        :type run_params: dict | None, optional
+        :param save_full_model_results: whether to save full model results, defaults to False
+        :type save_full_model_results: bool, optional
+        """
         valid_model_types = ["aae", "ip", "op"]
         assert (
             model_type in valid_model_types

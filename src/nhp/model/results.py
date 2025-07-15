@@ -110,15 +110,15 @@ def generate_results_json(
     """Generate the results in the json format and save."""
 
     def agg_to_dict(res):
-        df = res.set_index("model_run")
+        results_df = res.set_index("model_run")
         return (
             pd.concat(
                 [
-                    df.loc[0]
-                    .set_index([i for i in df.columns if i != "value"])
+                    results_df.loc[0]
+                    .set_index([i for i in results_df.columns if i != "value"])
                     .rename(columns={"value": "baseline"}),
-                    df.loc[df.index != 0]
-                    .groupby([i for i in df.columns if i != "value"])
+                    results_df.loc[results_df.index != 0]
+                    .groupby([i for i in results_df.columns if i != "value"])
                     .agg(list)
                     .rename(columns={"value": "model_runs"}),
                 ],
@@ -208,7 +208,7 @@ def _add_metadata_to_dataframe(df: pd.DataFrame, params: dict) -> pd.DataFrame:
 
 
 def _save_parquet_file(
-    path: str, results_name: str, df: pd.DataFrame, params: dict
+    path: str, results_name: str, results_df: pd.DataFrame, params: dict
 ) -> str:
     """Save a results dataframe as parquet.
 
@@ -216,13 +216,13 @@ def _save_parquet_file(
     :type path: str
     :param results_name: the name of this aggregation
     :type results_name: str
-    :param df: the results dataframe
-    :type df: pd.DataFrame
+    :param results_df: the results dataframe
+    :type results_df: pd.DataFrame
     :return: the filename of the saved file
     :rtype: str
     """
-    df = _add_metadata_to_dataframe(df, params)
-    df.to_parquet(filename := f"{path}/{results_name}.parquet")
+    results_df = _add_metadata_to_dataframe(results_df, params)
+    results_df.to_parquet(filename := f"{path}/{results_name}.parquet")
     return filename
 
 
@@ -245,7 +245,7 @@ def _patch_converted_sdec_activity(
     results: Dict[str, pd.DataFrame], column: str, col_value: str
 ) -> None:
     """Patch the converted SDEC activity in the dataframe."""
-    df = results[column]
+    results_df = results[column]
     agg_cols = ["pod", "sitetret", "measure", "model_run"]
 
     default_sdec = (
@@ -260,7 +260,7 @@ def _patch_converted_sdec_activity(
             [
                 default_sdec,
                 (
-                    df.query("pod == 'aae_type-05'")
+                    results_df.query("pod == 'aae_type-05'")
                     .groupby(agg_cols)["value"]
                     .sum()
                     .rename("a")
@@ -276,7 +276,7 @@ def _patch_converted_sdec_activity(
     missing_sdec_activity[column] = col_value
 
     df_fixed = (
-        pd.concat([df, missing_sdec_activity], axis=0)
+        pd.concat([results_df, missing_sdec_activity], axis=0)
         .groupby(
             ["pod", "sitetret", "measure", column, "model_run"],
             as_index=False,
