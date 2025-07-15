@@ -15,7 +15,8 @@ from nhp.model.data import Data, reference
 class HealthStatusAdjustment:
     """Health Status Adjustment
 
-    handles the logic for the health status adjustment in the model"""
+    handles the logic for the health status adjustment in the model
+    """
 
     # load the static reference data files
 
@@ -64,7 +65,6 @@ class HealthStatusAdjustment:
         :return: parameters for the health status adjustment
         :rtype: np.array
         """
-
         hsa_snp = reference.split_normal_params().set_index(["var", "sex", "year"])
 
         def gen(variant, sex):

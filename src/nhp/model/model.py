@@ -300,7 +300,7 @@ class Model:
     def activity_avoidance(
         self, data: pd.DataFrame, model_iteration: ModelIteration
     ) -> dict:
-        """perform the activity avoidance (strategies)"""
+        """Perform the activity avoidance (strategies)"""
         # if there are no items in params for activity_avoidance then exit
         if not (
             params := model_iteration.run_params["activity_avoidance"][self.model_type]

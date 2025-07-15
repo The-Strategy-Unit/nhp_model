@@ -36,7 +36,7 @@ class ModelIteration:
 
     @property
     def params(self):
-        """get the models parameters"""
+        """Get the models parameters"""
         return self.model.params
 
     def _patch_run_params(self):
@@ -169,7 +169,7 @@ class ModelIteration:
         return aggs, self.get_step_counts()
 
     def get_step_counts(self):
-        """get the step counts of a model run"""
+        """Get the step counts of a model run"""
         if self.step_counts is None:
             return None
 
@@ -268,5 +268,5 @@ class ModelIteration:
         return sc_tc_df.groupby(step_counts.index.names)["value"].sum() * -1
 
     def get_model_results(self):
-        """get the model results of a model run"""
+        """Get the model results of a model run"""
         return self.data.reset_index(drop=True).drop(columns=["hsagrp"])

@@ -1,5 +1,4 @@
-"""
-Methods to work with results of the model
+"""Methods to work with results of the model
 
 This module allows you to work with the results of the model. Namely, combining the monte-carlo runs
 into a single panda's dataframe, and helping with saving the results files.
@@ -18,8 +17,7 @@ import pandas as pd
 def _complete_model_runs(
     res: List[pd.DataFrame], model_runs: int, include_baseline: bool = True
 ) -> pd.DataFrame:
-    """
-    Complete the data frame for all model runs
+    """Complete the data frame for all model runs
 
     if any aggregation returns rows for only some of the model runs, we need to add a "0" row for
     that run
@@ -244,8 +242,7 @@ def _save_params_file(path: str, params: dict) -> str:
 def _patch_converted_sdec_activity(
     results: Dict[str, pd.DataFrame], column: str, col_value: str
 ) -> None:
-    """
-    Patch the converted SDEC activity in the dataframe.
+    """Patch the converted SDEC activity in the dataframe.
     """
     df = results[column]
     agg_cols = ["pod", "sitetret", "measure", "model_run"]
@@ -302,7 +299,6 @@ def combine_results(results: list) -> dict:
     :return: combined model results
     :rtype: dict
     """
-
     logging.info(" * starting to combine results")
 
     combined_results = _combine_model_results(results)

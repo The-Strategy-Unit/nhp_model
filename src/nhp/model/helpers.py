@@ -1,5 +1,4 @@
-"""
-Helper methods for the model package
+"""Helper methods for the model package
 """
 
 import json
@@ -84,6 +83,5 @@ def load_params(filename: str) -> dict:
     :returns: the model parameters
     :rtype: dict
     """
-
     with open(filename, "r", encoding="UTF-8") as prf:
         return json.load(prf)

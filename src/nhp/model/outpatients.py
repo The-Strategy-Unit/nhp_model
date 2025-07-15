@@ -1,5 +1,4 @@
-"""
-Outpatients Module
+"""Outpatients Module
 
 Implements the Outpatients model.
 """
@@ -16,8 +15,7 @@ from nhp.model.model_iteration import ModelIteration
 
 
 class OutpatientsModel(Model):
-    """
-    Outpatients Model
+    """Outpatients Model
 
     Implementation of the Model for Outpatient attendances.
 

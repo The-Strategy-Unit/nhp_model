@@ -38,8 +38,7 @@ def parse_args():
 
 # %%
 def main():
-    """the main method"""
-
+    """The main method"""
     args = parse_args()
 
     logging.basicConfig(
@@ -72,7 +71,7 @@ def main():
 
 # %%
 def init():
-    """method for calling main"""
+    """Method for calling main"""
     if __name__ == "__main__":
         # start a timer to kill the container if we reach a timeout
         t = threading.Timer(config.CONTAINER_TIMEOUT_SECONDS, _exit_container)

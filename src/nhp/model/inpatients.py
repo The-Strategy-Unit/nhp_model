@@ -1,5 +1,4 @@
-"""
-Inpatients Module
+"""Inpatients Module
 
 Implements the inpatients model.
 """
@@ -370,7 +369,7 @@ class InpatientEfficiencies:
 
     @property
     def strategies(self):
-        """get the efficiencies strategies"""
+        """Get the efficiencies strategies"""
         return self._model_iteration.model.strategies["efficiencies"]
 
     def _select_single_strategy(self):
@@ -421,8 +420,7 @@ class InpatientEfficiencies:
         return self
 
     def losr_sdec(self):
-        """
-        Length of Stay Reduction: SDEC reduction
+        """Length of Stay Reduction: SDEC reduction
 
         Converts IP activity to SDEC attendance for a given percentage of rows.
         """
@@ -445,8 +443,7 @@ class InpatientEfficiencies:
         return self
 
     def losr_preop(self):
-        """
-        Length of Stay Reduction: Pre-op reduction
+        """Length of Stay Reduction: Pre-op reduction
 
         Updates the length of stay to by removing 1 or 2 days for a given percentage of rows
         """
@@ -468,8 +465,7 @@ class InpatientEfficiencies:
         return self
 
     def losr_day_procedures(self, day_procedure_type: str) -> None:
-        """
-        Length of Stay Reduction: Day Procedures
+        """Length of Stay Reduction: Day Procedures
 
         This will swap rows between elective admissions and daycases into either daycases or
         outpatients, based on the given parameter values.
@@ -511,7 +507,6 @@ class InpatientEfficiencies:
 
         After running the efficiencies, update the model runs step counts object.
         """
-
         return (
             self.data
             # handle the changes of activity type

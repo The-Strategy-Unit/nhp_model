@@ -1,5 +1,4 @@
-"""
-Run the model
+"""Run the model
 
 
 """
@@ -31,15 +30,14 @@ class tqdm(base_tqdm):  # pylint: disable=inconsistent-mro, invalid-name
     progress_callback = None
 
     def update(self, n=1):
-        """overide the default tqdm update function to run the callback method"""
+        """Overide the default tqdm update function to run the callback method"""
         super().update(n)
         if tqdm.progress_callback:
             tqdm.progress_callback(self.n)  # pylint: disable=not-callable
 
 
 def timeit(func: Callable, *args) -> Any:
-    """
-    Time how long it takes to evaluate function `f` with arguments `*args`.
+    """Time how long it takes to evaluate function `f` with arguments `*args`.
     """
     start = time.time()
     results = func(*args)
@@ -162,8 +160,7 @@ def run_all(
 def run_single_model_run(
     params: dict, data_path: str, model_type: Type[Model], model_run: int
 ) -> None:
-    """
-    Runs a single model iteration for easier debugging in vscode
+    """Runs a single model iteration for easier debugging in vscode
     """
     data = Local.create(data_path)
 

@@ -1,5 +1,4 @@
-"""
-Accident and Emergency Module
+"""Accident and Emergency Module
 
 Implements the A&E model.
 """
@@ -114,7 +113,6 @@ class AaEModel(Model):
         :param model_iteration: an instance of the ModelIteration class
         :type model_iteration: model.model_iteration.ModelIteration
         """
-
         # A&E doesn't have any efficiencies steps
         return data, None
 

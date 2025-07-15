@@ -220,7 +220,6 @@ class RunWithAzureStorage:
 
         updates the metadata for the blob in the queue to give progress
         """
-
         blob = self._queue_blob
 
         current_progress = {
