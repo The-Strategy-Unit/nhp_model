@@ -110,7 +110,7 @@ class ActivityResampling:
             factor.values,
             name="birth_adjustment",
             index=pd.MultiIndex.from_tuples(
-                [("maternity", a, s) for _, a, s in factor.index.values],
+                [("maternity", a, s) for _, a, s in factor.index.to_numpy()],
                 names=["group", "age", "sex"],
             ),
         )

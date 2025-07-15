@@ -319,7 +319,7 @@ class Model:
         strategies = (
             strategies.reset_index()
             .merge(pd.Series(params, name="aaf"), left_on="strategy", right_index=True)
-            .pivot(index="rn", columns="strategy", values="aaf")
+            .pivot_table(index="rn", columns="strategy", values="aaf")
         )
 
         data_counts = self.get_data_counts(data)

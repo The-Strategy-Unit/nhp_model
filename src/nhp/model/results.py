@@ -189,7 +189,9 @@ def save_results_files(results: dict, params: dict) -> list:
 
 
 def _add_metadata_to_dataframe(df: pd.DataFrame, params: dict) -> pd.DataFrame:
-    """Add metadata as columns to the dataframe, so that the saved parquet files have useful
+    """Add metadata as columns to the dataframe.
+
+    Add metadata as columns to the dataframe, so that the saved parquet files have useful
     information regarding their provenance.
 
     :param df: The dataframe that we want to add the metadata to

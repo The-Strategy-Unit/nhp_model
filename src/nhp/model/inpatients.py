@@ -522,7 +522,7 @@ class InpatientEfficiencies:
                 # admission this column is negative values, so we need to add in order to subtract
                 + x["admissions"]
             )
-            .loc[self.data.index.notnull()]
+            .loc[self.data.index.notna()]
             .reset_index()
             .rename(columns={"index": "strategy"})
             .groupby(["pod", "sitetret", "strategy"], as_index=False)[

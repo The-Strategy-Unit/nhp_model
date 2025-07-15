@@ -61,7 +61,14 @@ class OutpatientsModel(Model):
         self.data.loc[~self.data["is_first"], "pod"] = "op_follow-up"
         self.data.loc[self.data["has_procedures"], "pod"] = "op_procedure"
 
-    def get_data_counts(self, data) -> npt.ArrayLike:
+    def get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
+        """Get row counts of data.
+
+        :param data: the data to get the counts of
+        :type data: pd.DataFrame
+        :return: the counts of the data, required for activity avoidance steps
+        :rtype: npt.ArrayLike
+        """
         return (
             data[["attendances", "tele_attendances"]]
             .to_numpy()
