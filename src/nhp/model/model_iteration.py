@@ -1,4 +1,4 @@
-"""Model Iteration
+"""Model Iteration.
 
 Provides a simple class which holds all of the data required for a model iteration
 """
@@ -11,7 +11,7 @@ from nhp.model.activity_resampling import ActivityResampling
 
 
 class ModelIteration:
-    """Model Iteration
+    """Model Iteration.
 
     Holds all of the information for a model iteration
     """
@@ -36,11 +36,11 @@ class ModelIteration:
 
     @property
     def params(self):
-        """Get the models parameters"""
+        """Get the models parameters."""
         return self.model.params
 
     def _patch_run_params(self):
-        """Patch Run Parameters
+        """Patch Run Parameters.
 
         The run parameters for some items need to be 'patched' so that they include all of the
         fields that are used in that step of the model
@@ -100,7 +100,7 @@ class ModelIteration:
         factors: npt.ArrayLike,
         term_name: str,
     ) -> None:
-        """Calculate the step counts
+        """Calculate the step counts.
 
         Calculates the step counts for the current model run, saving back to
         self._model_run.step_counts.
@@ -139,7 +139,7 @@ class ModelIteration:
         )
 
     def get_aggregate_results(self) -> dict:
-        """Aggregate the model results
+        """Aggregate the model results.
 
         Can also be used to aggregate the baseline data by passing in the raw data
 
@@ -169,7 +169,7 @@ class ModelIteration:
         return aggs, self.get_step_counts()
 
     def get_step_counts(self):
-        """Get the step counts of a model run"""
+        """Get the step counts of a model run."""
         if self.step_counts is None:
             return None
 
@@ -268,5 +268,5 @@ class ModelIteration:
         return sc_tc_df.groupby(step_counts.index.names)["value"].sum() * -1
 
     def get_model_results(self):
-        """Get the model results of a model run"""
+        """Get the model results of a model run."""
         return self.data.reset_index(drop=True).drop(columns=["hsagrp"])

@@ -1,5 +1,4 @@
-"""Helper methods for the model package
-"""
+"""Helper methods for the model package."""
 
 import json
 
@@ -8,7 +7,7 @@ import pandas as pd
 
 
 def inrange(value: float, low: float = 0, high: float = 1) -> float:
-    """Force a value to be in the interval [lo, hi]
+    """Force a value to be in the interval [lo, hi].
 
     :param value: the value we want to contrain to the interval
     :type value: float
@@ -24,7 +23,7 @@ def inrange(value: float, low: float = 0, high: float = 1) -> float:
 
 
 def rnorm(rng: np.random.BitGenerator, low: float, high: float) -> float:
-    """Create a single random normal value from a 80% confidence interval
+    """Create a single random normal value from a 80% confidence interval.
 
     :param rng: a random number generator
     :type rng: numpy.random.Generator
@@ -43,7 +42,7 @@ def rnorm(rng: np.random.BitGenerator, low: float, high: float) -> float:
 
 
 def age_groups(age: pd.Series) -> pd.Series:
-    """Cut age into groups
+    """Cut age into groups.
 
     Takes a pandas Series of age's and cut's into discrete intervals
 
@@ -75,7 +74,7 @@ def age_groups(age: pd.Series) -> pd.Series:
 
 
 def load_params(filename: str) -> dict:
-    """Load a params file
+    """Load a params file.
 
     :param filename: the full name of the file that we wish to load
     :type filename: str

@@ -1,4 +1,4 @@
-"""Outpatients Module
+"""Outpatients Module.
 
 Implements the Outpatients model.
 """
@@ -15,7 +15,7 @@ from nhp.model.model_iteration import ModelIteration
 
 
 class OutpatientsModel(Model):
-    """Outpatients Model
+    """Outpatients Model.
 
     Implementation of the Model for Outpatient attendances.
 
@@ -56,7 +56,7 @@ class OutpatientsModel(Model):
         return data_loader.get_op()
 
     def _add_pod_to_data(self) -> None:
-        """Adds the POD column to data"""
+        """Adds the POD column to data."""
         self.data.loc[self.data["is_first"], "pod"] = "op_first"
         self.data.loc[~self.data["is_first"], "pod"] = "op_follow-up"
         self.data.loc[self.data["has_procedures"], "pod"] = "op_procedure"
@@ -96,7 +96,7 @@ class OutpatientsModel(Model):
         data,
         model_iteration: ModelIteration,
     ) -> None:
-        """Convert attendances to tele-attendances
+        """Convert attendances to tele-attendances.
 
         :param rng: a random number generator created for each model iteration
         :type rng: numpy.random.Generator
@@ -140,7 +140,7 @@ class OutpatientsModel(Model):
     def apply_resampling(
         self, row_samples: npt.ArrayLike, data: pd.DataFrame
     ) -> pd.DataFrame:
-        """Apply row resampling
+        """Apply row resampling.
 
         Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
 
@@ -158,7 +158,7 @@ class OutpatientsModel(Model):
         return data
 
     def efficiencies(self, data: pd.DataFrame, model_iteration: ModelIteration) -> None:
-        """Run the efficiencies steps of the model
+        """Run the efficiencies steps of the model.
 
         :param model_iteration: an instance of the ModelIteration class
         :type model_iteration: model.model_iteration.ModelIteration
@@ -169,7 +169,7 @@ class OutpatientsModel(Model):
     def calculate_avoided_activity(
         self, data: pd.DataFrame, data_resampled: pd.DataFrame
     ) -> pd.DataFrame:
-        """Calculate the rows that have been avoided
+        """Calculate the rows that have been avoided.
 
         :param data: The data before the binomial thinning step
         :type data: pd.DataFrame
@@ -185,7 +185,7 @@ class OutpatientsModel(Model):
 
     @staticmethod
     def process_results(data: pd.DataFrame) -> pd.DataFrame:
-        """Processes the data into a format suitable for aggregation in results files
+        """Processes the data into a format suitable for aggregation in results files.
 
         :param data: Data to be processed. Format should be similar to Model.data
         :type data: pd.DataFrame
@@ -217,7 +217,7 @@ class OutpatientsModel(Model):
         return data
 
     def aggregate(self, model_iteration: ModelIteration) -> Tuple[Callable, dict]:
-        """Aggregate the model results
+        """Aggregate the model results.
 
         Can also be used to aggregate the baseline data by passing in the raw data
 
@@ -242,7 +242,7 @@ class OutpatientsModel(Model):
     def save_results(
         self, model_iteration: ModelIteration, path_fn: Callable[[str], str]
     ) -> None:
-        """Save the results of running the model
+        """Save the results of running the model.
 
         This method is used for saving the results of the model run to disk as a parquet file.
         It saves just the `rn` (row number) column and the `attendances` and `tele_attendances

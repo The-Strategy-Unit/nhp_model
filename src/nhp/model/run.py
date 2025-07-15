@@ -1,7 +1,4 @@
-"""Run the model
-
-
-"""
+"""Run the model."""
 
 import logging
 import os
@@ -22,7 +19,7 @@ from nhp.model.results import combine_results, generate_results_json, save_resul
 
 
 class tqdm(base_tqdm):  # pylint: disable=inconsistent-mro, invalid-name
-    """Custom tqdm class that provides a callback function on update"""
+    """Custom tqdm class that provides a callback function on update."""
 
     # ideally this would be set in the contstructor, but as this is a pretty
     # simple use case just implemented as a static variable. this does mean that
@@ -30,15 +27,14 @@ class tqdm(base_tqdm):  # pylint: disable=inconsistent-mro, invalid-name
     progress_callback = None
 
     def update(self, n=1):
-        """Overide the default tqdm update function to run the callback method"""
+        """Overide the default tqdm update function to run the callback method."""
         super().update(n)
         if tqdm.progress_callback:
             tqdm.progress_callback(self.n)  # pylint: disable=not-callable
 
 
 def timeit(func: Callable, *args) -> Any:
-    """Time how long it takes to evaluate function `f` with arguments `*args`.
-    """
+    """Time how long it takes to evaluate function `f` with arguments `*args`."""
     start = time.time()
     results = func(*args)
     print(f"elapsed: {time.time() - start:.3f}s")
@@ -54,7 +50,7 @@ def _run_model(
     progress_callback,
     save_full_model_results: bool,
 ) -> list:
-    """Run the model iterations
+    """Run the model iterations.
 
     Runs the model for all of the model iterations, returning the aggregated results
 
@@ -109,7 +105,7 @@ def _run_model(
 def run_all(
     params: dict, data_path: str, progress_callback, save_full_model_results: bool
 ) -> Tuple[list, str]:
-    """Run the model
+    """Run the model.
 
     runs all 3 model types, aggregates and combines the results
 
@@ -160,8 +156,7 @@ def run_all(
 def run_single_model_run(
     params: dict, data_path: str, model_type: Type[Model], model_run: int
 ) -> None:
-    """Runs a single model iteration for easier debugging in vscode
-    """
+    """Runs a single model iteration for easier debugging in vscode."""
     data = Local.create(data_path)
 
     print("initialising model...  ", end="")

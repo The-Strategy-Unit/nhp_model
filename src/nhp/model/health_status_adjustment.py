@@ -1,4 +1,4 @@
-"""_summary_"""
+"""Health Status Adjustment."""
 
 # pylint: disable=too-few-public-methods
 
@@ -13,7 +13,7 @@ from nhp.model.data import Data, reference
 
 
 class HealthStatusAdjustment:
-    """Health Status Adjustment
+    """Health Status Adjustment.
 
     handles the logic for the health status adjustment in the model
     """
@@ -52,7 +52,7 @@ class HealthStatusAdjustment:
         rng: np.random.BitGenerator,
         model_runs: int,
     ) -> np.array:
-        """Generate Health Status Adjustment Parameters
+        """Generate Health Status Adjustment Parameters.
 
         :param start_year: The baseline year for the model
         :type start_year: int
@@ -103,7 +103,7 @@ class HealthStatusAdjustment:
         sd2: float,
     ) -> np.array:
         # pylint: disable=invalid-name
-        """Generate random splitnormal values
+        """Generate random splitnormal values.
 
         :param rng: Random Number Generator
         :type rng: np.random.BitGenerator
@@ -136,7 +136,7 @@ class HealthStatusAdjustment:
         return mode + sd * spt.norm.ppf((u + x) / (a_sqrt_tau * sd))
 
     def run(self, run_params: dict):
-        """Return factor for health status adjustment
+        """Return factor for health status adjustment.
 
         :param run_params: P
         :type run_params: dict
@@ -171,7 +171,7 @@ class HealthStatusAdjustment:
 
 
 class HealthStatusAdjustmentGAM(HealthStatusAdjustment):
-    """_summary_"""
+    """Heatlh Status Adjustment (GAMs)."""
 
     def __init__(self, data: Data, base_year: str):
         self._gams = data.get_hsa_gams()
@@ -191,7 +191,7 @@ class HealthStatusAdjustmentGAM(HealthStatusAdjustment):
 
 
 class HealthStatusAdjustmentInterpolated(HealthStatusAdjustment):
-    """_summary_"""
+    """Heatlh Status Adjustment (Interpolated)."""
 
     def __init__(self, data: Data, base_year: str):
         super().__init__(data, base_year)

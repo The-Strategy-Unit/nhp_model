@@ -1,4 +1,4 @@
-"""Accident and Emergency Module
+"""Accident and Emergency Module.
 
 Implements the A&E model.
 """
@@ -15,7 +15,7 @@ from nhp.model.model_iteration import ModelIteration
 
 
 class AaEModel(Model):
-    """Accident and Emergency Model
+    """Accident and Emergency Model.
 
     Implementation of the Model for Accident and Emergency attendances.
 
@@ -56,11 +56,11 @@ class AaEModel(Model):
         return data_loader.get_aae()
 
     def _add_pod_to_data(self) -> None:
-        """Adds the POD column to data"""
+        """Adds the POD column to data."""
         self.data["pod"] = "aae_type-" + self.data["aedepttype"]
 
     def get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
-        """Get row counts of data
+        """Get row counts of data.
 
         :param data: the data to get the counts of
         :type data: pd.DataFrame
@@ -70,7 +70,7 @@ class AaEModel(Model):
         return np.array([data["arrivals"]]).astype(float)
 
     def _load_strategies(self, data_loader: Data) -> None:
-        """Loads the activity mitigation strategies"""
+        """Loads the activity mitigation strategies."""
         data = self.data.set_index("rn")
         self.strategies = {
             "activity_avoidance": pd.concat(
@@ -91,7 +91,7 @@ class AaEModel(Model):
     def apply_resampling(
         self, row_samples: npt.ArrayLike, data: pd.DataFrame
     ) -> pd.DataFrame:
-        """Apply row resampling
+        """Apply row resampling.
 
         Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
 
@@ -108,7 +108,7 @@ class AaEModel(Model):
         return data
 
     def efficiencies(self, data: pd.DataFrame, model_iteration: ModelIteration) -> None:
-        """Run the efficiencies steps of the model
+        """Run the efficiencies steps of the model.
 
         :param model_iteration: an instance of the ModelIteration class
         :type model_iteration: model.model_iteration.ModelIteration
@@ -118,14 +118,14 @@ class AaEModel(Model):
 
     @staticmethod
     def process_results(data: pd.DataFrame) -> pd.DataFrame:
-        """Processes the data into a format suitable for aggregation in results files
+        """Processes the data into a format suitable for aggregation in results files.
 
         :param data: Data to be processed. Format should be similar to Model.data
         :type data: pd.DataFrame
         """
         data["measure"] = "walk-in"
         data.loc[data["is_ambulance"], "measure"] = "ambulance"
-        data.rename(columns={"arrivals": "value"}, inplace=True)
+        data = data.rename(columns={"arrivals": "value"})
 
         # summarise the results to make the create_agg steps quicker
         data = (
@@ -151,7 +151,7 @@ class AaEModel(Model):
         return data
 
     def aggregate(self, model_iteration: ModelIteration) -> Tuple[Callable, dict]:
-        """Aggregate the model results
+        """Aggregate the model results.
 
         Can also be used to aggregate the baseline data by passing in a `ModelIteration` with
         the `model_run` argument set `-1`.
@@ -175,7 +175,7 @@ class AaEModel(Model):
     def calculate_avoided_activity(
         self, data: pd.DataFrame, data_resampled: pd.DataFrame
     ) -> pd.DataFrame:
-        """Calculate the rows that have been avoided
+        """Calculate the rows that have been avoided.
 
         :param data: The data before the binomial thinning step
         :type data: pd.DataFrame
@@ -189,7 +189,7 @@ class AaEModel(Model):
     def save_results(
         self, model_iteration: ModelIteration, path_fn: Callable[[str], str]
     ) -> None:
-        """Save the results of running the model
+        """Save the results of running the model.
 
         This method is used for saving the results of the model run to disk as a parquet file.
         It saves just the `rn` (row number) column and the `arrivals`, with the intention that

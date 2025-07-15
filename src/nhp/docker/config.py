@@ -1,4 +1,4 @@
-"""config values for docker container"""
+"""config values for docker container."""
 
 import os
 

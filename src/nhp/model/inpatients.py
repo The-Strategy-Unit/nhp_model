@@ -1,4 +1,4 @@
-"""Inpatients Module
+"""Inpatients Module.
 
 Implements the inpatients model.
 """
@@ -16,7 +16,7 @@ from nhp.model.model_iteration import ModelIteration
 
 
 class InpatientsModel(Model):
-    """Inpatients Model
+    """Inpatients Model.
 
     :param params: the parameters to run the model with, or the path to a params file to load
     :type params: dict or string
@@ -56,7 +56,7 @@ class InpatientsModel(Model):
         )
 
     def _add_pod_to_data(self) -> None:
-        """Adds the POD column to data"""
+        """Adds the POD column to data."""
         self.data["pod"] = "ip_" + self.data["group"] + "_admission"
         # update pod for daycases/regular attenders
         classpat = self.data["classpat"]
@@ -77,10 +77,10 @@ class InpatientsModel(Model):
         return data_loader.get_ip()
 
     def _load_strategies(self, data_loader: Data) -> None:
-        """Load a set of strategies"""
+        """Load a set of strategies."""
 
         def filter_valid(strategy_type, strats):
-            strats.set_index(["rn"], inplace=True)
+            strats = strats.set_index(["rn"])
             # get the valid set of valid strategies from the params
             valid_strats = self.params[strategy_type]["ip"].keys()
             # subset the strategies
@@ -124,7 +124,7 @@ class InpatientsModel(Model):
         )
 
     def get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
-        """Get row counts of data
+        """Get row counts of data.
 
         :param data: the data to get the counts of
         :type data: pd.DataFrame
@@ -138,7 +138,7 @@ class InpatientsModel(Model):
     def apply_resampling(
         self, row_samples: npt.ArrayLike, data: pd.DataFrame
     ) -> pd.DataFrame:
-        """Apply row resampling
+        """Apply row resampling.
 
         Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
 
@@ -153,7 +153,7 @@ class InpatientsModel(Model):
         return data.loc[data.index.repeat(row_samples[0])].reset_index(drop=True)
 
     def efficiencies(self, data: pd.DataFrame, model_iteration: ModelIteration) -> None:
-        """Run the efficiencies steps of the model
+        """Run the efficiencies steps of the model.
 
         :param model_iteration: an instance of the ModelIteration class
         :type model_iteration: model.model_iteration.ModelIteration
@@ -175,7 +175,7 @@ class InpatientsModel(Model):
 
     @staticmethod
     def process_results(data: pd.DataFrame) -> pd.DataFrame:
-        """Processes the data into a format suitable for aggregation in results files
+        """Processes the data into a format suitable for aggregation in results files.
 
         :param data: Data to be processed. Format should be similar to Model.data
         :type data: pd.DataFrame
@@ -250,7 +250,7 @@ class InpatientsModel(Model):
         return data
 
     def aggregate(self, model_iteration: ModelIteration) -> Tuple[Callable, dict]:
-        """Aggregate the model results
+        """Aggregate the model results.
 
         Can also be used to aggregate the baseline data by passing in a `ModelIteration` with
         the `model_run` argument set `-1`.
@@ -275,7 +275,7 @@ class InpatientsModel(Model):
     def calculate_avoided_activity(
         self, data: pd.DataFrame, data_resampled: pd.DataFrame
     ) -> pd.DataFrame:
-        """Calculate the rows that have been avoided
+        """Calculate the rows that have been avoided.
 
         :param data: The data before the binomial thinning step
         :type data: pd.DataFrame
@@ -292,7 +292,7 @@ class InpatientsModel(Model):
     def save_results(
         self, model_iteration: ModelIteration, path_fn: Callable[[str], str]
     ) -> None:
-        """Save the results of running the model
+        """Save the results of running the model.
 
         :param model_iteration: an instance of the `ModelIteration` class
         :type model_iteration: model.model_iteration.ModelIteration
@@ -358,7 +358,7 @@ class InpatientsModel(Model):
 
 
 class InpatientEfficiencies:
-    """Apply the Inpatient Efficiency Strategies"""
+    """Apply the Inpatient Efficiency Strategies."""
 
     def __init__(self, data: pd.DataFrame, model_iteration: ModelIteration):
         self.data = data
@@ -369,7 +369,7 @@ class InpatientEfficiencies:
 
     @property
     def strategies(self):
-        """Get the efficiencies strategies"""
+        """Get the efficiencies strategies."""
         return self._model_iteration.model.strategies["efficiencies"]
 
     def _select_single_strategy(self):
@@ -386,7 +386,7 @@ class InpatientEfficiencies:
             .rename(None)
         )
         # assign the selected strategies
-        self.data.set_index(selected_strategy, inplace=True)
+        self.data = self.data.set_index(selected_strategy)
 
     def _generate_losr_df(self):
         params = self._model_iteration.params["efficiencies"]["ip"]
@@ -396,7 +396,7 @@ class InpatientEfficiencies:
         self.losr = losr
 
     def losr_all(self):
-        """Length of Stay Reduction: All
+        """Length of Stay Reduction: All.
 
         Reduces all rows length of stay by sampling from a binomial distribution, using the current
         length of stay as the value for n, and the length of stay reduction factor for that strategy
@@ -420,7 +420,7 @@ class InpatientEfficiencies:
         return self
 
     def losr_sdec(self):
-        """Length of Stay Reduction: SDEC reduction
+        """Length of Stay Reduction: SDEC reduction.
 
         Converts IP activity to SDEC attendance for a given percentage of rows.
         """
@@ -443,7 +443,7 @@ class InpatientEfficiencies:
         return self
 
     def losr_preop(self):
-        """Length of Stay Reduction: Pre-op reduction
+        """Length of Stay Reduction: Pre-op reduction.
 
         Updates the length of stay to by removing 1 or 2 days for a given percentage of rows
         """
@@ -465,7 +465,7 @@ class InpatientEfficiencies:
         return self
 
     def losr_day_procedures(self, day_procedure_type: str) -> None:
-        """Length of Stay Reduction: Day Procedures
+        """Length of Stay Reduction: Day Procedures.
 
         This will swap rows between elective admissions and daycases into either daycases or
         outpatients, based on the given parameter values.
@@ -503,7 +503,7 @@ class InpatientEfficiencies:
         return self
 
     def get_step_counts(self):
-        """Updates the step counts object
+        """Updates the step counts object.
 
         After running the efficiencies, update the model runs step counts object.
         """

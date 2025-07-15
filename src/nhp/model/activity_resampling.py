@@ -1,4 +1,4 @@
-"""Inpatient Row Resampling
+"""Inpatient Row Resampling.
 
 Methods for handling row resampling
 """
@@ -8,7 +8,7 @@ import pandas as pd
 
 
 class ActivityResampling:
-    """Activity Resampling
+    """Activity Resampling.
 
     Class for handling the activity resampling methods in the model. The class keeps track
     of the current row counts, which represent the value for the lambda parameter to a
@@ -45,32 +45,32 @@ class ActivityResampling:
 
     @property
     def params(self):
-        """Get the models params"""
+        """Get the models params."""
         return self._model_iteration.params
 
     @property
     def run_params(self):
-        """Get the current params for the model run"""
+        """Get the current params for the model run."""
         return self._model_iteration.run_params
 
     @property
     def demog_factors(self):
-        """Get the demographic factors for the model"""
+        """Get the demographic factors for the model."""
         return self._model_iteration.model.demog_factors
 
     @property
     def birth_factors(self):
-        """Get the birth factors for the model"""
+        """Get the birth factors for the model."""
         return self._model_iteration.model.birth_factors
 
     @property
     def hsa(self):
-        """Get the health status adjustment GAMs for the model"""
+        """Get the health status adjustment GAMs for the model."""
         return self._model_iteration.model.hsa
 
     @property
     def data(self):
-        """Get the current model runs data"""
+        """Get the current model runs data."""
         return self._model_iteration.data
 
     def _update(self, factor: pd.Series):
@@ -85,7 +85,7 @@ class ActivityResampling:
         return self
 
     def demographic_adjustment(self):
-        """Perform the demograhic adjustment"""
+        """Perform the demograhic adjustment."""
         year = str(self.run_params["year"])
         variant = self.run_params["variant"]
 
@@ -100,7 +100,7 @@ class ActivityResampling:
         return self._update(factor)
 
     def birth_adjustment(self):
-        """Perform the birth adjustment"""
+        """Perform the birth adjustment."""
         year = str(self.run_params["year"])
         variant = self.run_params["variant"]
 
@@ -118,14 +118,14 @@ class ActivityResampling:
         return self._update(factor)
 
     def health_status_adjustment(self):
-        """Perform the health status adjustment"""
+        """Perform the health status adjustment."""
         if not self.params["health_status_adjustment"]:
             return self
 
         return self._update(self.hsa.run(self.run_params))
 
     def inequalities_adjustment(self):
-        """Perform the inequalities adjustment"""
+        """Perform the inequalities adjustment."""
         activity_type = self._activity_type
 
         match activity_type:
@@ -155,14 +155,14 @@ class ActivityResampling:
         return self._update(factor)
 
     def covid_adjustment(self):
-        """Perform the covid adjustment"""
+        """Perform the covid adjustment."""
         params = self.run_params["covid_adjustment"][self._activity_type]
         factor = pd.Series(params, name="covid_adjustment")
         factor.index.names = ["group"]
         return self._update(factor)
 
     def expat_adjustment(self):
-        """Perform the expatriation adjustment"""
+        """Perform the expatriation adjustment."""
         params = {
             k: v
             for k, v in self.run_params["expat"][self._activity_type].items()
@@ -176,7 +176,7 @@ class ActivityResampling:
         return self._update(factor)
 
     def repat_adjustment(self):
-        """Perform the repatriation adjustment"""
+        """Perform the repatriation adjustment."""
         params = {
             (is_main_icb, k): pd.Series(v, name="repat")
             for (is_main_icb, repat_type) in [
@@ -194,7 +194,7 @@ class ActivityResampling:
         return self._update(factor)
 
     def baseline_adjustment(self):
-        """Perform the baseline adjustment
+        """Perform the baseline adjustment.
 
         A value of 1 will indicate that we want to sample this row at the baseline rate. A value
         less that 1 will indicate we want to sample that row less often that in the baseline, and
@@ -214,7 +214,7 @@ class ActivityResampling:
         return self._update(factor)
 
     def waiting_list_adjustment(self):
-        """Perform the waiting list adjustment
+        """Perform the waiting list adjustment.
 
         A value of 1 will indicate that we want to sample this row at the baseline rate. A value
         less that 1 will indicate we want to sample that row less often that in the baseline, and
@@ -239,7 +239,7 @@ class ActivityResampling:
         return self._update(factor)
 
     def non_demographic_adjustment(self):
-        """Perform the non-demographic adjustment"""
+        """Perform the non-demographic adjustment."""
         if not (
             params := self.run_params["non-demographic_adjustment"][self._activity_type]
         ):
@@ -256,7 +256,7 @@ class ActivityResampling:
         return self._update(factor)
 
     def apply_resampling(self):
-        """Apply the row resampling to the data"""
+        """Apply the row resampling to the data."""
         # get the random sampling for each row
         rng = self._model_iteration.rng
         factors = pd.concat(self.factors, axis=1)
