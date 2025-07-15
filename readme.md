@@ -1,24 +1,26 @@
-# New Hospitals Demand Model
+# The New Hospital Programme Demand Model
 
 <!-- badges: start -->
 
 [![Project Status: Active – The project has reached a stable, usable
 state and is being actively
-developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
-
-[![codecov](https://codecov.io/gh/The-Strategy-Unit/nhp_model/branch/main/graph/badge.svg?token=uGmRhc1n9C)](https://codecov.io/gh/The-Strategy-Unit/nhp_model)
+developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active) [![codecov](https://codecov.io/gh/The-Strategy-Unit/nhp_model/branch/main/graph/badge.svg?token=uGmRhc1n9C)](https://codecov.io/gh/The-Strategy-Unit/nhp_model)
 
 <!-- badges: end -->
 
 ## Welcome
 
-Welcome to the New Hospital Programme demand and capacity modelling tool. The methodology underpinning this model is outlined in this [simple one page explainer](https://connect.strategyunitwm.nhs.uk/nhp_model_explainer/). We have a more technical [project information site](https://connect.strategyunitwm.nhs.uk/nhp/project_information/) which includes further details about the model and the data that the model was built on.
+Welcome to the [New Hospital Programme demand and capacity modelling tool](https://www.strategyunitwm.nhs.uk/new-hospital-programme-demand-model). 
 
-Please note that it is important that the parameters of the model are set with great care and with proper support. It is important also that healthcare system partners are appropriately involved in parameter setting. For a description of the full process and support provision that is necessary to ensure the model functions well please see the [NHS Futures workspace](https://future.nhs.uk/NewHospitalProgrammeDigital/browseFolder?fid=53572528&done=OBJChangesSaved) 
+<img width="2000" height="1414" alt="Smarter Hospital Planning" src="https://github.com/user-attachments/assets/71086d46-e6cb-4dfa-a32b-3f7d8581231e"/>
 
 This repository contains the model code but there are several other repositories which contain useful tools to [explore the data underpinning and set the parameters for the model](https://github.com/The-Strategy-Unit/nhp_inputs), as well as to [explore model outputs](https://github.com/The-Strategy-Unit/nhp_outputs). [An overview of how the different tools interact with each other is available](https://connect.strategyunitwm.nhs.uk/nhp/project_information/project_plan_and_summary/components-overview.html).
 
+The methodology underpinning this model is outlined in this [simple one page explainer](https://connect.strategyunitwm.nhs.uk/nhp_model_explainer/). We have a more technical [project information site](https://connect.strategyunitwm.nhs.uk/nhp/project_information/) which includes further details about the model and the data that the model was built on.
+
 ## Running the model
+
+Please note that it is important that the parameters of the model are set with great care and with proper support. It is important also that healthcare system partners are appropriately involved in parameter setting. For a description of the full process and support provision that is necessary to ensure the model functions well please see the [NHS Futures workspace](https://future.nhs.uk/NewHospitalProgrammeDigital/browseFolder?fid=53572528&done=OBJChangesSaved) 
 
 [We are working on providing synthetic data](https://github.com/The-Strategy-Unit/nhp_model/issues/347) so that interested parties can run the model locally to see how it works.
 
