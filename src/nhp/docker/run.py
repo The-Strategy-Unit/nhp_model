@@ -1,4 +1,4 @@
-"""Run the model inside of the docker container"""
+"""Run the model inside of the docker container."""
 
 import gzip
 import json
@@ -17,15 +17,20 @@ from nhp.model.helpers import load_params
 
 
 class RunWithLocalStorage:
-    """Methods for running with local storage"""
+    """Methods for running with local storage."""
 
     def __init__(self, filename: str):
+        """Initialize the RunWithLocalStorage instance.
+
+        :param filename: Name of the parameter file to load.
+        :type filename: str
+        """
         self.params = load_params(f"queue/{filename}")
 
     def finish(
         self, results_file: str, saved_files: list, save_full_model_results: bool
     ) -> None:
-        """Post model run steps
+        """Post model run steps.
 
         :param results_file: the path to the results file
         :type results_file: str
@@ -37,7 +42,7 @@ class RunWithLocalStorage:
         """
 
     def progress_callback(self) -> Callable[[Any], Callable[[Any], None]]:
-        """Progress callback method
+        """Progress callback method.
 
         for local storage do nothing
         """
@@ -45,9 +50,16 @@ class RunWithLocalStorage:
 
 
 class RunWithAzureStorage:
-    """Methods for running with azure storage"""
+    """Methods for running with azure storage."""
 
     def __init__(self, filename: str, app_version: str = "dev"):
+        """Initialise RunWithAzureStorage.
+
+        :param filename:
+        :type filename: str
+        :param app_version: the version of the app, where we will load data from. defaults to "dev"
+        :type app_version: str, optional
+        """
         logging.getLogger("azure.storage.common.storageclient").setLevel(
             logging.WARNING
         )
@@ -67,7 +79,7 @@ class RunWithAzureStorage:
         ).get_container_client(container_name)
 
     def _get_params(self, filename: str) -> dict:
-        """Get the parameters for the model
+        """Get the parameters for the model.
 
         :param filename: the name of the params file
         :type filename: str
@@ -83,7 +95,7 @@ class RunWithAzureStorage:
         return json.loads(params_content)
 
     def _get_data(self, year: str, dataset: str) -> None:
-        """Get data to run the model
+        """Get data to run the model.
 
         for local storage, the data is already available, so do nothing.
 
@@ -118,7 +130,7 @@ class RunWithAzureStorage:
                     local_file.write(file_client.download_file().readall())
 
     def _upload_results_json(self, results_file: str, metadata: dict) -> None:
-        """Upload the results
+        """Upload the results.
 
         once the model has run, upload the results to blob storage
 
@@ -138,7 +150,7 @@ class RunWithAzureStorage:
             )
 
     def _upload_results_files(self, files: list, metadata: dict) -> None:
-        """Upload the results
+        """Upload the results.
 
         once the model has run, upload the files (parquet for model results and json for
         model params) to blob storage
@@ -183,7 +195,7 @@ class RunWithAzureStorage:
                 )
 
     def _cleanup(self) -> None:
-        """Cleanup
+        """Cleanup.
 
         once the model has run, remove the file from the queue
         """
@@ -194,7 +206,7 @@ class RunWithAzureStorage:
     def finish(
         self, results_file: str, saved_files: list, save_full_model_results: bool
     ) -> None:
-        """Post model run steps
+        """Post model run steps.
 
         :param results_file: the path to the results file
         :type results_file: str
@@ -216,11 +228,10 @@ class RunWithAzureStorage:
         self._cleanup()
 
     def progress_callback(self) -> Callable[[Any], Callable[[Any], None]]:
-        """Progress callback method
+        """Progress callback method.
 
         updates the metadata for the blob in the queue to give progress
         """
-
         blob = self._queue_blob
 
         current_progress = {

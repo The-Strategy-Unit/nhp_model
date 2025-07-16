@@ -1,5 +1,4 @@
-"""
-Functions to run the model
+"""Functions to run the model.
 
 This module allows you to run the various models. It allows you to run a single model run of one of
 the different types of models for debugging purposes, or it allows you to run all of the models in
@@ -23,7 +22,7 @@ from nhp.model.outpatients import OutpatientsModel
 from nhp.model.run import run_all, run_single_model_run
 
 
-def parse_args() -> argparse.Namespace:  # pragma: no cover
+def _parse_args() -> argparse.Namespace:  # pragma: no cover
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "params_file",
@@ -48,14 +47,12 @@ def parse_args() -> argparse.Namespace:  # pragma: no cover
 
 
 def main() -> None:
-    """
-    Main method
+    """Main method.
 
     Runs when __name__ == "__main__"
     """
-
     # Grab the Arguments
-    args = parse_args()
+    args = _parse_args()
     params = load_params(args.params_file)
     # define the model to run
     match args.type:
@@ -86,7 +83,7 @@ def main() -> None:
 
 
 def init():
-    """method for calling main"""
+    """Method for calling main."""
     if __name__ == "__main__":
         main()
 

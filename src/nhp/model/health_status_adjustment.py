@@ -1,4 +1,4 @@
-"""_summary_"""
+"""Health Status Adjustment."""
 
 # pylint: disable=too-few-public-methods
 
@@ -13,13 +13,24 @@ from nhp.model.data import Data, reference
 
 
 class HealthStatusAdjustment:
-    """Health Status Adjustment
+    """Health Status Adjustment.
 
-    handles the logic for the health status adjustment in the model"""
+    handles the logic for the health status adjustment in the model
+    """
 
     # load the static reference data files
 
     def __init__(self, data_loader: Data, base_year: str):
+        """Initalise HealthStatusAdjustment.
+
+        Base class that should not be used directly, instead see HealthStatusAdjustmentGAM
+        or HealthStatusAdjustmentInterpolated.
+
+        :param data: the data
+        :type data: Data
+        :param base_year: the baseline year for the model run
+        :type base_year: str
+        """
         self._all_ages = np.arange(0, 101)
 
         self._load_life_expectancy_series(base_year)
@@ -51,7 +62,7 @@ class HealthStatusAdjustment:
         rng: np.random.BitGenerator,
         model_runs: int,
     ) -> np.array:
-        """Generate Health Status Adjustment Parameters
+        """Generate Health Status Adjustment Parameters.
 
         :param start_year: The baseline year for the model
         :type start_year: int
@@ -64,7 +75,6 @@ class HealthStatusAdjustment:
         :return: parameters for the health status adjustment
         :rtype: np.array
         """
-
         hsa_snp = reference.split_normal_params().set_index(["var", "sex", "year"])
 
         def gen(variant, sex):
@@ -103,7 +113,7 @@ class HealthStatusAdjustment:
         sd2: float,
     ) -> np.array:
         # pylint: disable=invalid-name
-        """Generate random splitnormal values
+        """Generate random splitnormal values.
 
         :param rng: Random Number Generator
         :type rng: np.random.BitGenerator
@@ -136,7 +146,7 @@ class HealthStatusAdjustment:
         return mode + sd * spt.norm.ppf((u + x) / (a_sqrt_tau * sd))
 
     def run(self, run_params: dict):
-        """Return factor for health status adjustment
+        """Return factor for health status adjustment.
 
         :param run_params: P
         :type run_params: dict
@@ -167,13 +177,20 @@ class HealthStatusAdjustment:
         return factor
 
     def _predict_activity(self, adjusted_ages):
-        """"""
+        raise NotImplementedError()
 
 
 class HealthStatusAdjustmentGAM(HealthStatusAdjustment):
-    """_summary_"""
+    """Heatlh Status Adjustment (GAMs)."""
 
     def __init__(self, data: Data, base_year: str):
+        """Initalise HealthStatusGAM.
+
+        :param data: the data
+        :type data: Data
+        :param base_year: the baseline year for the model run
+        :type base_year: str
+        """
         self._gams = data.get_hsa_gams()
 
         super().__init__(data, base_year)
@@ -191,9 +208,16 @@ class HealthStatusAdjustmentGAM(HealthStatusAdjustment):
 
 
 class HealthStatusAdjustmentInterpolated(HealthStatusAdjustment):
-    """_summary_"""
+    """Heatlh Status Adjustment (Interpolated)."""
 
     def __init__(self, data: Data, base_year: str):
+        """Initalise HealthStatusAdjustmentInterpolated.
+
+        :param data: the data
+        :type data: Data
+        :param base_year: the baseline year for the model run
+        :type base_year: str
+        """
         super().__init__(data, base_year)
         self._load_activity_ages_lists()
 

@@ -24,7 +24,7 @@ def test_main_debug_runs_model(mocker, activity_type, model_class):
     args.data_path = "data"
     args.model_run = 0
     args.params_file = "queue/params.json"
-    mocker.patch("nhp.model.__main__.parse_args", return_value=args)
+    mocker.patch("nhp.model.__main__._parse_args", return_value=args)
     ldp_mock = mocker.patch("nhp.model.__main__.load_params", return_value="params")
 
     run_all_mock = mocker.patch("nhp.model.__main__.run_all")
@@ -46,7 +46,7 @@ def test_main_debug_runs_model_invalid_type(mocker):
     args.data_path = "data"
     args.model_run = 0
     args.params_file = "queue/params.json"
-    mocker.patch("nhp.model.__main__.parse_args", return_value=args)
+    mocker.patch("nhp.model.__main__._parse_args", return_value=args)
     mocker.patch("nhp.model.__main__.load_params", return_value="params")
 
     run_all_mock = mocker.patch("nhp.model.__main__.run_all")
@@ -68,7 +68,7 @@ def test_main_all_runs(mocker):
     args.data_path = "data"
     args.params_file = "queue/params.json"
     args.save_full_model_results = False
-    mocker.patch("nhp.model.__main__.parse_args", return_value=args)
+    mocker.patch("nhp.model.__main__._parse_args", return_value=args)
     ldp_mock = mocker.patch("nhp.model.__main__.load_params", return_value="params")
 
     run_all_mock = mocker.patch("nhp.model.__main__.run_all")

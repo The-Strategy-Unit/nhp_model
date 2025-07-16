@@ -1,4 +1,4 @@
-"""Model Module
+"""Model Module.
 
 Implements the generic class for all other model types. This should not be directly instantiated,
 instead you should use one of the concrete classes (e.g. :class:`model.aae.AaEModel`,
@@ -27,7 +27,7 @@ from nhp.model.model_iteration import ModelIteration
 
 
 class Model:
-    """Model
+    """Model.
 
     This is a generic implementation of the model. Specific implementations of the model inherit
     from this class.
@@ -73,6 +73,23 @@ class Model:
         run_params: dict | None = None,
         save_full_model_results: bool = False,
     ) -> None:
+        """Initialise the Model.
+
+        :param model_type: a string saying what type of model this is
+        :type model_type: str
+        :param measures: the names of the measures in this model type
+        :type measures: List[str]
+        :param params: the parameters to use
+        :type params: dict
+        :param data: a method to create a Data instance
+        :type data: Callable[[int, str], Data]
+        :param hsa: _Health Status Adjustment object, defaults to None
+        :type hsa: Any, optional
+        :param run_params: the run parameters to use, defaults to None
+        :type run_params: dict | None, optional
+        :param save_full_model_results: whether to save full model results, defaults to False
+        :type save_full_model_results: bool, optional
+        """
         valid_model_types = ["aae", "ip", "op"]
         assert (
             model_type in valid_model_types
@@ -100,7 +117,7 @@ class Model:
         self.save_full_model_results = save_full_model_results
 
     def _add_pod_to_data(self) -> None:
-        """Adds the POD column to data"""
+        """Adds the POD column to data."""
         # to be implemented in ip/op/aae
 
     def _add_ndggrp_to_data(self) -> None:
@@ -108,7 +125,7 @@ class Model:
 
     @property
     def measures(self) -> List[str]:
-        """The names of the measure columns
+        """The names of the measure columns.
 
         :return: the names of the measure columns
         :rtype: List[str]
@@ -116,7 +133,7 @@ class Model:
         return self._measures
 
     def _get_data(self, data_loader: Data) -> pd.DataFrame:
-        """Load the data"""
+        """Load the data."""
         # to be implemented by the concrete classes
         raise NotImplementedError("Subclasses must implement this method")
 
@@ -141,12 +158,12 @@ class Model:
         )
 
     def _load_strategies(self, data_loader: Data) -> None:
-        """Load a set of strategies"""
+        """Load a set of strategies."""
         # to be implemented by the concrete classes
         self.strategies = None  # lint helper
 
     def _load_demog_factors(self, data_loader: Data) -> None:
-        """Load the demographic factors
+        """Load the demographic factors.
 
         Load the demographic factors csv file and calculate the demographics growth factor for the
         years in the parameters.
@@ -168,7 +185,7 @@ class Model:
 
         def load_factors(factors):
             factors[merge_cols] = factors[merge_cols].astype(int)
-            factors.set_index(["variant"] + merge_cols, inplace=True)
+            factors = factors.set_index(["variant", *merge_cols])
 
             return factors[years].apply(lambda x: x / factors[start_year])
 
@@ -177,7 +194,7 @@ class Model:
 
     @staticmethod
     def generate_run_params(params):
-        """Generate the values for each model run from the params
+        """Generate the values for each model run from the params.
 
         Our parameters are given as intervals, this will generate a single value for each model run,
         i.e. it will return a new dictionary with an array of N+1 values (+1 for the principal model
@@ -222,9 +239,10 @@ class Model:
         # this will adjust the probabiliteies to sum correctly
         probabilities = [p / sum(probabilities) for p in probabilities]
 
-        variants = [variants[np.argmax(probabilities)]] + rng.choice(
-            variants, model_runs - 1, p=probabilities
-        ).tolist()
+        variants = [
+            variants[np.argmax(probabilities)],
+            *rng.choice(variants, model_runs - 1, p=probabilities).tolist(),
+        ]
 
         return {
             "variant": variants,
@@ -263,7 +281,7 @@ class Model:
         }
 
     def _get_run_params(self, model_run: int) -> dict:
-        """Gets the parameters for a particular model run
+        """Gets the parameters for a particular model run.
 
         Takes the run_params and extracts a single item from the arrays for the current model run
 
@@ -288,7 +306,7 @@ class Model:
         }
 
     def get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
-        """Get row counts of data
+        """Get row counts of data.
 
         :param data: the data to get the counts of
         :type data: pd.DataFrame
@@ -300,7 +318,7 @@ class Model:
     def activity_avoidance(
         self, data: pd.DataFrame, model_iteration: ModelIteration
     ) -> dict:
-        """perform the activity avoidance (strategies)"""
+        """Perform the activity avoidance (strategies)."""
         # if there are no items in params for activity_avoidance then exit
         if not (
             params := model_iteration.run_params["activity_avoidance"][self.model_type]
@@ -318,7 +336,7 @@ class Model:
         strategies = (
             strategies.reset_index()
             .merge(pd.Series(params, name="aaf"), left_on="strategy", right_index=True)
-            .pivot(index="rn", columns="strategy", values="aaf")
+            .pivot_table(index="rn", columns="strategy", values="aaf")
         )
 
         data_counts = self.get_data_counts(data)
@@ -351,7 +369,7 @@ class Model:
     def calculate_avoided_activity(
         self, data: pd.DataFrame, data_resampled: pd.DataFrame
     ) -> pd.DataFrame:
-        """Calculate the rows that have been avoided
+        """Calculate the rows that have been avoided.
 
         :param data: The data before the binomial thinning step
         :type data: pd.DataFrame
@@ -362,7 +380,7 @@ class Model:
 
     # pylint: disable=invalid-name
     def go(self, model_run: int) -> dict:
-        """Run the model and get the aggregated results
+        """Run the model and get the aggregated results.
 
         Needed for running in a multiprocessing pool as you need a serializable method.
 
@@ -389,7 +407,7 @@ class Model:
 
     @staticmethod
     def get_agg(results: pd.DataFrame, *args) -> pd.Series:
-        """Get aggregation from model results
+        """Get aggregation from model results.
 
         :param results: The results of a model run
         :type results: pd.DataFrame
@@ -402,7 +420,7 @@ class Model:
     def save_results(
         self, model_iteration: ModelIteration, path_fn: Callable[[str], str]
     ) -> None:
-        """Save the results of running the model
+        """Save the results of running the model.
 
         This method is used for saving the results of the model run to disk as a parquet file.
         It saves just the `rn` (row number) column and the `arrivals`, with the intention that

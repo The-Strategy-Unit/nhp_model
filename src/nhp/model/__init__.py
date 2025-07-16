@@ -1,6 +1,4 @@
-"""
-New Hospitals Programme Model
-"""
+"""New Hospitals Programme Model."""
 
 # re-export anything useful
 from nhp.model.aae import AaEModel
