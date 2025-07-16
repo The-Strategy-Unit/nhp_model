@@ -10,16 +10,14 @@ jobs:
 
       - uses: astral-sh/ruff-action@v3
         
-      - run: ruff check
-        
   ruff-format-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: astral-sh/ruff-action@v3
-        
-      - run: ruff format --check
+        with:
+          args: format --check --diff
         
   ty-check:
     runs-on: ubuntu-latest
