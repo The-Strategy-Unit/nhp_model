@@ -1,5 +1,7 @@
-name: CI
+name: Linting and Type checking
+
 on: pull_request
+
 jobs:
   ruff-check:
     runs-on: ubuntu-latest
@@ -31,7 +33,7 @@ jobs:
           activate-environment: true
       
       - name: Install dependencies
-        run: uv pip install -e ".[dev]"
+        run: uv pip install -e ".[dev,databricks]"
 
       - name: Generate Report
         run: uvx ty check .
