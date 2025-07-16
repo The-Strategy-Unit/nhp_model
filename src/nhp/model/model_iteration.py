@@ -4,10 +4,11 @@ Provides a simple class which holds all of the data required for a model iterati
 """
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 
 from nhp.model.activity_resampling import ActivityResampling
+
+ModelRunResult = tuple[dict[str, pd.Series], pd.Series | None]
 
 
 class ModelIteration:
@@ -36,7 +37,7 @@ class ModelIteration:
         # data is mutated, so is not a property
         self.data = model.data.copy()
         self.step_counts = None
-        self.avoided_activity = None
+        self.avoided_activity = pd.DataFrame()
 
         # run the model
         self._run()
@@ -103,17 +104,26 @@ class ModelIteration:
     def fix_step_counts(
         self,
         data: pd.DataFrame,
-        future: npt.ArrayLike,
-        factors: npt.ArrayLike,
+        future: np.ndarray,
+        factors: pd.DataFrame,
         term_name: str,
-    ) -> None:
+    ) -> pd.DataFrame:
         """Calculate the step counts.
 
         Calculates the step counts for the current model run, saving back to
         self._model_run.step_counts.
 
-        :param future: The future row counts after running the poisson resampling.
-        :type future: npt.ArrayLike
+        :param data: the data for the current model run
+        :type data: pd.DataFrame
+        :param future: the future row counts after running the poisson resampling.
+        :type future: np.ndarray
+        :param factors: the factors for this current model run
+        :type factors: pd.DataFrame
+        :param term_name: the name of the interaction term for this step
+        :type term_name: str
+        :returns:
+        :return: the step counts for this step
+        :rtype: pd.DataFrame
         """
         before = self.model.get_data_counts(data)
         # convert the paramater values from a dict of 2d numpy arrays to a 3d numpy array
@@ -145,7 +155,7 @@ class ModelIteration:
             ]
         )
 
-    def get_aggregate_results(self) -> dict:
+    def get_aggregate_results(self) -> ModelRunResult:
         """Aggregate the model results.
 
         Can also be used to aggregate the baseline data by passing in the raw data
@@ -155,8 +165,8 @@ class ModelIteration:
         :param model_run: the current model run
         :type model_run: int
 
-        :returns: a dictionary containing the different aggregations of this data
-        :rtype: dict
+        :returns: a tuple containing a dictionary of results, and the step counts
+        :rtype: tuple[dict[str, pd.Series], pd.Series | None]:
         """
         # pylint: disable=assignment-from-no-return
 
@@ -175,7 +185,7 @@ class ModelIteration:
 
         return aggs, self.get_step_counts()
 
-    def get_step_counts(self):
+    def get_step_counts(self) -> pd.Series | None:
         """Get the step counts of a model run."""
         if self.step_counts is None:
             return None
@@ -203,7 +213,7 @@ class ModelIteration:
 
         return step_counts
 
-    def _step_counts_get_type_changes(self, step_counts):
+    def _step_counts_get_type_changes(self, step_counts) -> pd.Series:
         return pd.concat(
             [
                 step_counts,
@@ -211,7 +221,7 @@ class ModelIteration:
                 self._step_counts_get_type_change_outpatients(step_counts),
                 self._step_counts_get_type_change_sdec(step_counts),
             ]
-        )
+        )  # type: ignore
 
     def _step_counts_get_type_change_daycase(self, step_counts):
         # get the daycase conversion values

@@ -22,7 +22,7 @@ def inrange(value: float, low: float = 0, high: float = 1) -> float:
     return max(low, min(high, value))
 
 
-def rnorm(rng: np.random.BitGenerator, low: float, high: float) -> float:
+def rnorm(rng: np.random.Generator, low: float, high: float) -> float:
     """Create a single random normal value from a 80% confidence interval.
 
     :param rng: a random number generator

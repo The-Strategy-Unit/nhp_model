@@ -144,18 +144,20 @@ class ActivityResampling:
         if not (params := self.run_params["inequalities"]):
             return self
 
-        factor = pd.concat(
+        factor: pd.Series = pd.concat(  # type: ignore
             {
                 k: pd.Series(v, name="inequalities", dtype="float64")
                 for k, v in params.items()
             }
         )
+
         factor.index.names = ("sushrg_trimmed", "imd_quintile")
-        factor.index = factor.index.set_levels(
-            factor.index.levels[1].astype(int), level="imd_quintile"
+
+        factor.index = factor.index.set_levels(  # type: ignore
+            factor.index.levels[1].astype(int), level="imd_quintile"  # type: ignore
         )
 
-        factor = pd.concat({factor_key: factor}, names=["group"])
+        factor: pd.Series = pd.concat({factor_key: factor}, names=["group"])  # type: ignore
 
         return self._update(factor)
 
@@ -176,7 +178,7 @@ class ActivityResampling:
         if not params:
             return self
 
-        factor = pd.concat({k: pd.Series(v, name="expat") for k, v in params.items()})
+        factor: pd.Series = pd.concat({k: pd.Series(v, name="expat") for k, v in params.items()})  # type: ignore
         factor.index.names = ["group", "tretspef_grouped"]
         return self._update(factor)
 
@@ -194,7 +196,7 @@ class ActivityResampling:
         if not params:
             return self
 
-        factor = pd.concat(params)
+        factor: pd.Series = pd.concat(params)  # type: ignore
         factor.index.names = ["is_main_icb", "group", "tretspef_grouped"]
         return self._update(factor)
 
@@ -209,7 +211,7 @@ class ActivityResampling:
         if not (params := self.run_params["baseline_adjustment"][self._activity_type]):
             return self
 
-        factor = pd.concat(
+        factor: pd.Series = pd.concat(  # type: ignore
             {
                 k: pd.Series(v, name="baseline_adjustment", dtype="float64")
                 for k, v in params.items()

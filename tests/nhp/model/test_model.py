@@ -357,7 +357,7 @@ def test_load_stratergies(mock_model):
     # act
     mock_model._load_strategies(None)
     # assert
-    assert mock_model.strategies is None
+    assert not mock_model.strategies
 
 
 # _load_demog_factors()
@@ -662,6 +662,16 @@ def test_activity_avoidance(
     )
 
 
+# calculate_avoided_activity
+
+
+def test_calculate_avoided_activity(mock_model):
+    # arrange
+    # act & assert
+    with pytest.raises(NotImplementedError):
+        mock_model.calculate_avoided_activity(None, None)
+
+
 # go
 
 
@@ -802,3 +812,9 @@ def test_get_agg(mock_model, results, cols, expected):
 
     # assert
     assert actual.to_dict() == expected
+
+def test_apply_resampling(mock_model):
+    # arrange
+    # act & assert
+    with pytest.raises(NotImplementedError):
+        mock_model.apply_resampling(None, None)

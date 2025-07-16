@@ -14,7 +14,6 @@ from functools import partial
 from typing import Any, Callable, List
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 
 from nhp.model.data import Data
@@ -23,7 +22,7 @@ from nhp.model.health_status_adjustment import (
     HealthStatusAdjustmentInterpolated,
 )
 from nhp.model.helpers import age_groups, inrange, load_params, rnorm
-from nhp.model.model_iteration import ModelIteration
+from nhp.model.model_iteration import ModelIteration, ModelRunResult
 
 
 class Model:
@@ -69,7 +68,7 @@ class Model:
         measures: List[str],
         params: dict,
         data: Callable[[int, str], Data],
-        hsa: Any = None,
+        hsa: Any | None = None,
         run_params: dict | None = None,
         save_full_model_results: bool = False,
     ) -> None:
@@ -160,7 +159,7 @@ class Model:
     def _load_strategies(self, data_loader: Data) -> None:
         """Load a set of strategies."""
         # to be implemented by the concrete classes
-        self.strategies = None  # lint helper
+        self.strategies: dict[str, pd.DataFrame] = dict()
 
     def _load_demog_factors(self, data_loader: Data) -> None:
         """Load the demographic factors.
@@ -212,14 +211,15 @@ class Model:
         inrange_1_5 = partial(inrange, low=1, high=5)
 
         # function to generate a value for a model run
-        def gen_value(model_run, i):
+        def gen_value(model_run, i: list[float] | float):
             # we haven't received an interval, just a single value
             if not isinstance(i, list):
                 return i
             # for the baseline run, no params need to be set
             if model_run == 0:
                 return 1
-            return rnorm(rng, *i)  # otherwise
+            lo, hi = i
+            return rnorm(rng, lo, hi)  # otherwise
 
         # function to traverse a dictionary until we find the values to generate from
         def generate_param_values(prm, valid_range):
@@ -305,19 +305,19 @@ class Model:
             **{k: get_param_value(params[k]) for k in params.keys() if k != "seeds"},
         }
 
-    def get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
+    def get_data_counts(self, data: pd.DataFrame) -> np.ndarray:
         """Get row counts of data.
 
         :param data: the data to get the counts of
         :type data: pd.DataFrame
         :return: the counts of the data, required for activity avoidance steps
-        :rtype: npt.ArrayLike
+        :rtype: np.ndarray
         """
         raise NotImplementedError()
 
     def activity_avoidance(
         self, data: pd.DataFrame, model_iteration: ModelIteration
-    ) -> dict:
+    ) -> tuple[pd.DataFrame, pd.DataFrame | None]:
         """Perform the activity avoidance (strategies)."""
         # if there are no items in params for activity_avoidance then exit
         if not (
@@ -330,7 +330,7 @@ class Model:
         strategies = self.strategies["activity_avoidance"]
         # decide whether to sample a strategy for each row this model run
         strategies = strategies.loc[
-            rng.binomial(1, strategies["sample_rate"]).astype("bool"), "strategy"
+            rng.binomial(1, strategies["sample_rate"]).astype("bool"), "strategy"  # type: ignore
         ]
         # join the parameters, then pivot wider
         strategies = (
@@ -376,18 +376,18 @@ class Model:
         :return: The data that was avoided in the binomial thinning step
         :rtype: pd.DataFrame
         """
-        # implemented by concrete classes
+        raise NotImplementedError()
 
     # pylint: disable=invalid-name
-    def go(self, model_run: int) -> dict:
+    def go(self, model_run: int) -> ModelRunResult:
         """Run the model and get the aggregated results.
 
         Needed for running in a multiprocessing pool as you need a serializable method.
 
         :param model_run: the model run number we want to run
         :type model_run: int
-        :return: the aggregated model results
-        :rtype: dictionary
+        :returns: a tuple containing a dictionary of results, and the step counts
+        :rtype: tuple[dict[str, pd.Series], pd.Series | None]:
         """
         mr = ModelIteration(self, model_run)
 
@@ -430,3 +430,20 @@ class Model:
         :param path_fn: a function which takes the activity type and returns a path
         """
         # implemented by concrete classes
+
+    def apply_resampling(
+        self, row_samples: np.ndarray, data: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Apply row resampling.
+
+        Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
+
+        :param row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
+        values for `data["arrivals"]`
+        :type row_samples: np.ndarray
+        :param data: the data that we want to update
+        :type data: pd.DataFrame
+        :return: the updated data
+        :rtype: pd.DataFrame
+        """
+        raise NotImplementedError()

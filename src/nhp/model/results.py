@@ -13,6 +13,8 @@ from typing import Dict, List
 import janitor  # pylint: disable=unused-import
 import pandas as pd
 
+from nhp.model.model_iteration import ModelRunResult
+
 
 def _complete_model_runs(
     res: List[pd.DataFrame], model_runs: int, include_baseline: bool = True
@@ -33,7 +35,7 @@ def _complete_model_runs(
     :rtype: pd.DataFrame
     """
     results = pd.concat(res)
-    results = results.groupby(
+    results: pd.DataFrame = results.groupby(  # type: ignore
         [i for i in results.columns if i != "value"], as_index=False
     )["value"].sum()
 
@@ -45,7 +47,9 @@ def _complete_model_runs(
     )
 
 
-def _combine_model_results(results: list) -> pd.DataFrame:
+def _combine_model_results(
+    results: list[list[ModelRunResult]],
+) -> dict[str, pd.DataFrame]:
     """Combine the results of the monte carlo runs.
 
     Takes as input a list of lists, where the outer list contains an item for inpatients,
@@ -102,7 +106,7 @@ def _combine_step_counts(results: list):
 
 
 def generate_results_json(
-    combined_results: pd.DataFrame,
+    combined_results: dict[str, pd.DataFrame],
     combined_step_counts: pd.DataFrame,
     params: dict,
     run_params: dict,
@@ -289,14 +293,16 @@ def _patch_converted_sdec_activity(
     results[column] = df_fixed
 
 
-def combine_results(results: list) -> dict:
+def combine_results(
+    results: list[list[ModelRunResult]],
+) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
     """Combine the results into a single dictionary.
 
     When we run the models we have an array containing 3 items [inpatients, outpatient, a&e].
     Each of which contains one item for each model run, which is a dictionary.
 
     :param results: the results of running the models
-    :type results: list
+    :type results: list[list[ModelRunResult]]
     :return: combined model results
     :rtype: dict
     """

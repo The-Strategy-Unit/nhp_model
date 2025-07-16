@@ -6,6 +6,7 @@ import time
 from multiprocessing import Pool
 from typing import Any, Callable, Tuple, Type
 
+import pandas as pd
 from tqdm.auto import tqdm as base_tqdm
 
 from nhp.model.aae import AaEModel
@@ -13,7 +14,7 @@ from nhp.model.data import Data, Local
 from nhp.model.health_status_adjustment import HealthStatusAdjustmentInterpolated
 from nhp.model.inpatients import InpatientsModel
 from nhp.model.model import Model
-from nhp.model.model_iteration import ModelIteration
+from nhp.model.model_iteration import ModelIteration, ModelRunResult
 from nhp.model.outpatients import OutpatientsModel
 from nhp.model.results import combine_results, generate_results_json, save_results_files
 
@@ -49,7 +50,7 @@ def _run_model(
     run_params: dict,
     progress_callback,
     save_full_model_results: bool,
-) -> list:
+) -> list[ModelRunResult]:
     """Run the model iterations.
 
     Runs the model for all of the model iterations, returning the aggregated results
@@ -70,7 +71,8 @@ def _run_model(
     model_class = model_type.__name__[:-5]  # pylint: disable=protected-access
     logging.info("%s", model_class)
     logging.info(" * instantiating")
-    model = model_type(params, data, hsa, run_params, save_full_model_results)
+    # ignore type issues here: Model has different arguments to Inpatients/Outpatients/A&E
+    model = model_type(params, data, hsa, run_params, save_full_model_results)  # type: ignore
     logging.info(" * running")
 
     # set the progress callback for this run
@@ -84,7 +86,7 @@ def _run_model(
     batch_size = int(os.getenv("BATCH_SIZE", "1"))
 
     with Pool(cpus) as pool:
-        results = list(
+        results: list[ModelRunResult] = list(
             tqdm(
                 pool.imap(
                     model.go,
@@ -171,7 +173,7 @@ def run_single_model_run(
         step_counts.reset_index()
         .groupby(["change_factor", "measure"], as_index=False)["value"]
         .sum()
-        .pivot(index="change_factor", columns="measure")
+        .pivot_table(index="change_factor", columns="measure")
     )
     step_counts.loc["total"] = step_counts.sum()
     print(step_counts.fillna(0).astype(int))
@@ -183,7 +185,7 @@ def run_single_model_run(
         .reset_index()
         .groupby(["pod", "measure"], as_index=False)
         .agg({"value": "sum"})
-        .pivot(index=["pod"], columns="measure")
+        .pivot_table(index=["pod"], columns="measure")
         .fillna(0)
     )
     default_results.loc["total"] = default_results.sum()

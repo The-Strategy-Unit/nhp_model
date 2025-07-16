@@ -4,10 +4,9 @@ Implements the inpatients model.
 """
 
 from collections import defaultdict
-from typing import Any, Callable, Tuple
+from typing import Any, Callable, Self, Tuple
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 
 from nhp.model.data import Data
@@ -92,7 +91,7 @@ class InpatientsModel(Model):
     def _load_strategies(self, data_loader: Data) -> None:
         """Load a set of strategies."""
 
-        def filter_valid(strategy_type, strats):
+        def filter_valid(strategy_type: str, strats: pd.DataFrame) -> pd.DataFrame:
             strats = strats.set_index(["rn"])
             # get the valid set of valid strategies from the params
             valid_strats = self.params[strategy_type]["ip"].keys()
@@ -133,23 +132,27 @@ class InpatientsModel(Model):
         # where applicable
         self.strategies["efficiencies"] = pd.concat(
             [self.strategies["efficiencies"]]
-            + [append_general_los(*x) for x in [("1", "elective"), ("2", "emergency")]]
+            + [
+                # see https://github.com/astral-sh/ty/issues/247
+                append_general_los(*x)  # ty: ignore [missing-argument]
+                for x in [("1", "elective"), ("2", "emergency")]
+            ]
         )
 
-    def get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
+    def get_data_counts(self, data: pd.DataFrame) -> np.ndarray:
         """Get row counts of data.
 
         :param data: the data to get the counts of
         :type data: pd.DataFrame
         :return: the counts of the data, required for activity avoidance steps
-        :rtype: npt.ArrayLike
+        :rtype: np.ndarray
         """
         return np.array(
             [np.ones_like(data["rn"]), (1 + data["speldur"]).to_numpy()]
         ).astype(float)
 
     def apply_resampling(
-        self, row_samples: npt.ArrayLike, data: pd.DataFrame
+        self, row_samples: np.ndarray, data: pd.DataFrame
     ) -> pd.DataFrame:
         """Apply row resampling.
 
@@ -157,7 +160,7 @@ class InpatientsModel(Model):
 
         :param row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
         values for `data["arrivals"]`
-        :type row_samples: npt.ArrayLike
+        :type row_samples: np.ndarray
         :param data: the data that we want to update
         :type data: pd.DataFrame
         :return: the updated data
@@ -165,7 +168,9 @@ class InpatientsModel(Model):
         """
         return data.loc[data.index.repeat(row_samples[0])].reset_index(drop=True)
 
-    def efficiencies(self, data: pd.DataFrame, model_iteration: ModelIteration) -> None:
+    def efficiencies(
+        self, data: pd.DataFrame, model_iteration: ModelIteration
+    ) -> tuple[pd.DataFrame, pd.DataFrame | None]:
         """Run the efficiencies steps of the model.
 
         :param model_iteration: an instance of the ModelIteration class
@@ -262,7 +267,9 @@ class InpatientsModel(Model):
 
         return data
 
-    def aggregate(self, model_iteration: ModelIteration) -> Tuple[Callable, dict]:
+    def aggregate(
+        self, model_iteration: ModelIteration
+    ) -> tuple[pd.DataFrame, list[list[str]]]:
         """Aggregate the model results.
 
         Can also be used to aggregate the baseline data by passing in a `ModelIteration` with
@@ -271,8 +278,9 @@ class InpatientsModel(Model):
         :param model_iteration: an instance of the `ModelIteration` class
         :type model_iteration: model.model_iteration.ModelIteration
 
-        :returns: a dictionary containing the different aggregations of this data
-        :rtype: dict
+        :returns: a tuple containing the model results, and a list of lists which contain the
+            aggregations to perform
+        :rtype: tuple[pd.DataFrame, list[list[str]]]
         """
         model_results = self.process_results(model_iteration.get_model_results())
 
@@ -392,7 +400,7 @@ class InpatientEfficiencies:
         """Get the efficiencies strategies."""
         return self._model_iteration.model.strategies["efficiencies"]
 
-    def _select_single_strategy(self):
+    def _select_single_strategy(self) -> None:
         rng = self._model_iteration.rng
         selected_strategy = (
             self.data["rn"]
@@ -408,14 +416,14 @@ class InpatientEfficiencies:
         # assign the selected strategies
         self.data = self.data.set_index(selected_strategy)
 
-    def _generate_losr_df(self):
+    def _generate_losr_df(self) -> None:
         params = self._model_iteration.params["efficiencies"]["ip"]
         run_params = self._model_iteration.run_params["efficiencies"]["ip"]
         losr = pd.DataFrame.from_dict(params, orient="index")
         losr["losr_f"] = [run_params[i] for i in losr.index]
         self.losr = losr
 
-    def losr_all(self):
+    def losr_all(self) -> Self:
         """Length of Stay Reduction: All.
 
         Reduces all rows length of stay by sampling from a binomial distribution, using the current
@@ -439,7 +447,7 @@ class InpatientEfficiencies:
 
         return self
 
-    def losr_sdec(self):
+    def losr_sdec(self) -> Self:
         """Length of Stay Reduction: SDEC reduction.
 
         Converts IP activity to SDEC attendance for a given percentage of rows.
@@ -462,7 +470,7 @@ class InpatientEfficiencies:
 
         return self
 
-    def losr_preop(self):
+    def losr_preop(self) -> Self:
         """Length of Stay Reduction: Pre-op reduction.
 
         Updates the length of stay to by removing 1 or 2 days for a given percentage of rows
@@ -484,7 +492,7 @@ class InpatientEfficiencies:
 
         return self
 
-    def losr_day_procedures(self, day_procedure_type: str) -> None:
+    def losr_day_procedures(self, day_procedure_type: str) -> Self:
         """Length of Stay Reduction: Day Procedures.
 
         This will swap rows between elective admissions and daycases into either daycases or
@@ -522,7 +530,7 @@ class InpatientEfficiencies:
 
         return self
 
-    def get_step_counts(self):
+    def get_step_counts(self) -> pd.DataFrame:
         """Updates the step counts object.
 
         After running the efficiencies, update the model runs step counts object.

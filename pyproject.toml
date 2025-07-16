@@ -55,6 +55,10 @@ dev = [
     "snakeviz>=2.1",
     "widgetsnbextension>=4.0",
 ]
+databricks = [
+    "pyspark",
+    "databricks-connect"
+]
 
 [build-system]
 requires = ["setuptools>=80", "setuptools-scm>=8", "wheel"]
@@ -64,6 +68,7 @@ build-backend = "setuptools.build_meta"
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+exclude = ["tests", "tests/**", "notebooks"]
 
 [tool.ruff.lint]
 # Simple rules: pylint + isort
@@ -102,3 +107,6 @@ typeCheckingMode = "basic"
 
 [tool.setuptools_scm]
 version_file = "src/nhp/_version.py"
+
+[tool.ty]
+exclude = ["tests", "tests/**", "notebooks"]

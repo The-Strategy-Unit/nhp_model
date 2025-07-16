@@ -16,7 +16,7 @@ from nhp.model.model_iteration import ModelIteration
 def mock_model_iteration():
     """create a mock Model instance"""
     with patch.object(ModelIteration, "__init__", lambda m, c, r: None):
-        mr = ModelIteration(None, None)
+        mr = ModelIteration(None, 0)
     mr.model = Mock()
     return mr
 
@@ -31,7 +31,9 @@ def test_init(mocker, run, rp_call):
     model._get_run_params.return_value = {"seed": 1}
 
     rng_mock = mocker.patch("numpy.random.default_rng", return_value="rng")
-    prp_mock = mocker.patch("nhp.model.model_iteration.ModelIteration._patch_run_params")
+    prp_mock = mocker.patch(
+        "nhp.model.model_iteration.ModelIteration._patch_run_params"
+    )
 
     mocker.patch("nhp.model.model_iteration.ModelIteration._run")
 
@@ -45,7 +47,7 @@ def test_init(mocker, run, rp_call):
     assert actual.rng == "rng"
     assert actual.data == "data"
     assert actual.step_counts is None
-    assert not actual.avoided_activity
+    assert actual.avoided_activity.equals(pd.DataFrame())
 
     rng_mock.assert_called_once_with(1)
     prp_mock.assert_called_once_with()
@@ -154,7 +156,9 @@ def test_run(mocker, mock_model_iteration):
     ar_mock.non_demographic_adjustment.assert_called_once()
     ar_mock.apply_resampling.assert_called_once()
 
-    mr_mock.model.activity_avoidance.assert_called_once_with(data_ar_mock.copy(), mr_mock)
+    mr_mock.model.activity_avoidance.assert_called_once_with(
+        data_ar_mock.copy(), mr_mock
+    )
     mr_mock.model.efficiencies.assert_called_once_with(data_aa_mock.copy(), mr_mock)
     mr_mock.model.calculate_avoided_activity.assert_called_once_with(
         data_ar_mock, data_aa_mock

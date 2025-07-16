@@ -26,7 +26,7 @@ class Data:
         """
         raise NotImplementedError()
 
-    def get_ip_strategies(self) -> pd.DataFrame:
+    def get_ip_strategies(self) -> dict[str, pd.DataFrame]:
         """Get the inpatients strategies dataframe.
 
         :return: the inpatients strategies dataframe

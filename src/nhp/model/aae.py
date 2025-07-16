@@ -6,7 +6,6 @@ Implements the A&E model.
 from typing import Any, Callable, Tuple
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 
 from nhp.model.data import Data
@@ -72,13 +71,13 @@ class AaEModel(Model):
         """Adds the POD column to data."""
         self.data["pod"] = "aae_type-" + self.data["aedepttype"]
 
-    def get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
+    def get_data_counts(self, data: pd.DataFrame) -> np.ndarray:
         """Get row counts of data.
 
         :param data: the data to get the counts of
         :type data: pd.DataFrame
         :return: the counts of the data, required for activity avoidance steps
-        :rtype: npt.ArrayLike
+        :rtype: np.ndarray
         """
         return np.array([data["arrivals"]]).astype(float)
 
@@ -102,7 +101,7 @@ class AaEModel(Model):
         }
 
     def apply_resampling(
-        self, row_samples: npt.ArrayLike, data: pd.DataFrame
+        self, row_samples: np.ndarray, data: pd.DataFrame
     ) -> pd.DataFrame:
         """Apply row resampling.
 
@@ -110,7 +109,7 @@ class AaEModel(Model):
 
         :param row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
         values for `data["arrivals"]`
-        :type row_samples: npt.ArrayLike
+        :type row_samples: np.ndarray
         :param data: the data that we want to update
         :type data: pd.DataFrame
         :return: the updated data
@@ -120,7 +119,9 @@ class AaEModel(Model):
         # return the altered data
         return data
 
-    def efficiencies(self, data: pd.DataFrame, model_iteration: ModelIteration) -> None:
+    def efficiencies(
+        self, data: pd.DataFrame, model_iteration: ModelIteration
+    ) -> tuple[pd.DataFrame, pd.DataFrame | None]:
         """Run the efficiencies steps of the model.
 
         :param model_iteration: an instance of the ModelIteration class
@@ -163,7 +164,9 @@ class AaEModel(Model):
         )
         return data
 
-    def aggregate(self, model_iteration: ModelIteration) -> Tuple[Callable, dict]:
+    def aggregate(
+        self, model_iteration: ModelIteration
+    ) -> tuple[pd.DataFrame, list[list[str]]]:
         """Aggregate the model results.
 
         Can also be used to aggregate the baseline data by passing in a `ModelIteration` with
@@ -172,8 +175,9 @@ class AaEModel(Model):
         :param model_iteration: an instance of the `ModelIteration` class
         :type model_iteration: model.model_iteration.ModelIteration
 
-        :returns: a dictionary containing the different aggregations of this data
-        :rtype: dict
+        :returns: a tuple containing the model results, and a list of lists which contain the
+            aggregations to perform
+        :rtype: tuple[pd.DataFrame, list[list[str]]]
         """
         model_results = self.process_results(model_iteration.get_model_results())
 
