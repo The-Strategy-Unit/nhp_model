@@ -1,6 +1,4 @@
-"""test inpatients model"""
-
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring,unnecessary-lambda-assignment
+"""Test inpatients model."""
 
 from unittest.mock import Mock, call, mock_open, patch
 
@@ -14,10 +12,9 @@ from nhp.model.inpatients import InpatientsModel
 # fixtures
 @pytest.fixture
 def mock_model():
-    """create a mock Model instance"""
+    """Create a mock Model instance."""
     with patch.object(InpatientsModel, "__init__", lambda s, p, d, h, r: None):
-        mdl = InpatientsModel(None, None, None, None)
-    mdl._data_loader = Mock()
+        mdl = InpatientsModel(None, None, None, None)  # type: ignore
     mdl.model_type = "ip"
     mdl.params = {
         "dataset": "synthetic",
@@ -57,10 +54,6 @@ def mock_model():
             "b": {"b_a": {"interval": [0.4, 0.6]}, "b_b": {"interval": [0.4, 0.6]}},
         },
     }
-    mdl._data_path = "data/synthetic"
-    # create a mock object for the hsa gams
-    hsa_mock = type("mocked_hsa", (object,), {"predict": lambda x: x})
-    mdl.hsa_gams = {(i, j): hsa_mock for i in ["aae_a_a", "aae_b_b"] for j in [1, 2]}
     # create a minimal data object for testing
     mdl.data = pd.DataFrame(
         {
@@ -79,11 +72,11 @@ def mock_model():
 
 
 def test_init_calls_super_init(mocker):
-    """test that the model calls the super method and loads the strategies"""
+    """Test that the model calls the super method and loads the strategies."""
     # arrange
     super_mock = mocker.patch("nhp.model.inpatients.super")
     # act
-    InpatientsModel("params", "nhp_data", "hsa", "run_params")
+    InpatientsModel("params", "nhp_data", "hsa", "run_params")  # type: ignore
     # assert
     super_mock.assert_called_once()
 
@@ -198,7 +191,7 @@ def test_get_data(mock_model):
     ],
 )
 def test_load_strategies(mock_model, gen_los_type, expected):
-    """test that the method returns a dataframe"""
+    """Test that the method returns a dataframe."""
     # arrange
     mdl = mock_model
     mdl.data["speldur"] = np.repeat([1, 0], 10)
@@ -256,8 +249,7 @@ def test_apply_resampling(mock_model):
 
 
 def test_efficiencies(mocker, mock_model):
-    """test that it runs the model steps"""
-
+    """Test that it runs the model steps."""
     mdl = mock_model
 
     mock = mocker.patch("nhp.model.inpatients.InpatientEfficiencies")
@@ -295,8 +287,7 @@ def test_efficiencies(mocker, mock_model):
 
 
 def test_efficiencies_no_params(mocker, mock_model):
-    """test that it runs the model steps"""
-
+    """Test that it runs the model steps."""
     mdl = mock_model
 
     mock = mocker.patch("nhp.model.inpatients.InpatientEfficiencies")
@@ -593,7 +584,7 @@ def test_process_results(mock_model):
 
 
 def test_aggregate(mock_model):
-    """test that it aggregates the results correctly"""
+    """Test that it aggregates the results correctly."""
 
     # arrange
     def create_agg_stub(model_results, cols=None):
@@ -622,9 +613,10 @@ def test_aggregate(mock_model):
 
 
 def test_save_results(mocker, mock_model):
-    """test that it correctly saves the results"""
+    """Test that it correctly saves the results."""
     # arrange
-    path_fn = lambda x: x
+    def path_fn(x):
+        return x
 
     mr_mock = Mock()
     mr_mock.get_model_results.return_value = "data"

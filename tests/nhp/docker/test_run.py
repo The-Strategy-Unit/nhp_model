@@ -1,6 +1,4 @@
-"""test docker run"""
-
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name, missing-function-docstring
+"""test docker run."""
 
 import time
 from unittest.mock import Mock, call, mock_open, patch
@@ -54,9 +52,9 @@ def test_RunWithLocalStorage_progress_callback(mocker):
 
 @pytest.fixture
 def mock_run_with_azure_storage():
-    """create a mock Model instance"""
+    """Create a mock Model instance."""
     with patch.object(RunWithAzureStorage, "__init__", lambda *args: None):
-        rwas = RunWithAzureStorage(None)
+        rwas = RunWithAzureStorage(None)  # type: ignore
 
     rwas.params = {}
     rwas._app_version = "dev"
@@ -77,7 +75,7 @@ def test_RunWithAzureStorage_init(mocker, args, expected_version):
     gdm = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_data")
 
     # act
-    s = RunWithAzureStorage(*args)
+    s = RunWithAzureStorage(*args)  # type: ignore
 
     # assert
     assert s._app_version == expected_version
@@ -238,7 +236,7 @@ def test_RunWithAzureStorage_upload_results_files(mock_run_with_azure_storage, m
         s._upload_results_files(["results/filename", "results/filename.json"], metadata)
 
     # assert
-    mock_file.call_args_list == [
+    assert mock_file.call_args_list == [
         call("results/filename", "rb"),
         call("results/filename.json", "rb"),
     ]
@@ -321,8 +319,8 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
 
     metadata = {"id": "1", "dataset": "synthetic", "start_year": "2020"}
     params = metadata.copy()
-    params["list"] = [1, 2]
-    params["dict"] = {"a": 1}
+    params["list"] = [1, 2]  # type: ignore
+    params["dict"] = {"a": 1}  # type: ignore
 
     s.params = params
 
@@ -348,8 +346,8 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
 
     metadata = {"id": "1", "dataset": "synthetic", "start_year": "2020"}
     params = metadata.copy()
-    params["list"] = [1, 2]
-    params["dict"] = {"a": 1}
+    params["list"] = [1, 2]  # type: ignore
+    params["dict"] = {"a": 1}  # type: ignore
 
     s.params = params
 

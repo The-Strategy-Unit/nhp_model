@@ -1,7 +1,4 @@
-"""test nhp data (reference)"""
-
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring
-# ruff: noqa: PLR2004
+"""test nhp data (reference)."""
 
 from nhp.model.data import reference
 

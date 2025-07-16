@@ -1,6 +1,4 @@
-"""test model"""
-
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring
+"""Test model."""
 
 import re
 from unittest.mock import Mock, call, patch
@@ -15,9 +13,9 @@ from nhp.model.model import Model
 # fixtures
 @pytest.fixture
 def mock_model():
-    """create a mock Model instance"""
+    """Create a mock Model instance."""
     with patch.object(Model, "__init__", lambda s, m, p, d, c: None):
-        mdl = Model(None, None, None, None)
+        mdl = Model(None, None, None, None)  # type: ignore
     mdl.model_type = "aae"
     mdl.params = {
         "input_data": "synthetic",
@@ -69,7 +67,6 @@ def mock_model():
             "op": {"b_a": {"interval": [0.4, 0.6]}, "b_b": {"interval": [0.4, 0.6]}},
         },
     }
-    mdl._data_path = "data/synthetic"
     # create a minimal data object for testing
     mdl.data = pd.DataFrame(
         {
@@ -84,7 +81,7 @@ def mock_model():
 
 @pytest.fixture
 def mock_run_params():
-    """generate the expected run params"""
+    """Generate the expected run params."""
     return {
         "variant": ["a", "a", "b", "a"],
         "seeds": [1, 2, 3, 4],
@@ -125,7 +122,7 @@ def mock_run_params():
 
 @pytest.fixture
 def mock_model_results():
-    """creates mock of model results object"""
+    """Creates mock of model results object."""
     return pd.DataFrame(
         {
             "pod": [i for i in range(3) for _ in range(4)],
@@ -143,7 +140,7 @@ def mock_model_results():
 
 @pytest.mark.parametrize("model_type", ["aae", "ip", "op"])
 def test_model_init_sets_values(mocker, model_type):
-    """test model constructor works as expected"""
+    """Test model constructor works as expected."""
     # arrange
     params = {
         "dataset": "synthetic",
@@ -161,24 +158,24 @@ def test_model_init_sets_values(mocker, model_type):
     data_mock.return_value = "data_loader"
 
     # act
-    mdl = Model(model_type, ["measures"], params, data_mock, "hsa", "run_params")
+    mdl = Model(model_type, ["measures"], params, data_mock, "hsa", "run_params")  # type: ignore
 
     # assert
     assert mdl.model_type == model_type
     assert mdl.params == params
     data_mock.assert_called_once_with("2020", "synthetic")
-    mdl._load_data.assert_called_once_with("data_loader")
-    mdl._load_strategies.assert_called_once_with("data_loader")
-    mdl._load_demog_factors.assert_called_once_with("data_loader")
+    mdl._load_data.assert_called_once_with("data_loader")  # type: ignore
+    mdl._load_strategies.assert_called_once_with("data_loader")  # type: ignore
+    mdl._load_demog_factors.assert_called_once_with("data_loader")  # type: ignore
     assert mdl.hsa == "hsa"
-    mdl.generate_run_params.assert_not_called()
+    mdl.generate_run_params.assert_not_called()  # type: ignore
     assert mdl.run_params == "run_params"
     lp_m.assert_not_called()
     hsa_m.assert_not_called()
 
 
 def test_model_init_calls_generate_run_params(mocker):
-    """test model constructor works as expected"""
+    """Test model constructor works as expected."""
     # arrange
     params = {
         "dataset": "synthetic",
@@ -192,21 +189,21 @@ def test_model_init_calls_generate_run_params(mocker):
     mocker.patch("nhp.model.model.Model.generate_run_params", return_value="generated")
 
     # act
-    mdl = Model("aae", "arrivals", params, Mock(), "hsa")
+    mdl = Model("aae", "arrivals", params, Mock(), "hsa")  # type: ignore
 
     # assert
-    mdl.generate_run_params.assert_called_once()
+    mdl.generate_run_params.assert_called_once()  # type: ignore
     assert mdl.run_params == "generated"
 
 
 def test_model_init_validates_model_type():
-    """it raises an exception if an invalid model_type is passed"""
+    """It raises an exception if an invalid model_type is passed."""
     with pytest.raises(AssertionError):
-        Model("", None, None, None)
+        Model("", None, None, None)  # type: ignore
 
 
 def test_model_init_sets_create_datetime(mocker):
-    """it sets the create_datetime item in params if not already set"""
+    """It sets the create_datetime item in params if not already set."""
     # arrange
     params = {"dataset": "synthetic", "start_year": "2020"}
 
@@ -216,7 +213,7 @@ def test_model_init_sets_create_datetime(mocker):
     mocker.patch("nhp.model.model.Model.generate_run_params")
 
     # act
-    mdl = Model("aae", "arrivals", params, Mock(), "hsa", "run_params")
+    mdl = Model("aae", "arrivals", params, Mock(), "hsa", "run_params")  # type: ignore
 
     # assert
     assert re.match("^\\d{8}_\\d{6}$", mdl.params["create_datetime"])
@@ -234,7 +231,7 @@ def test_model_init_loads_params_if_string(mocker):
     lp_m.return_value = params
 
     # act
-    mdl = Model("aae", "arrivals", "params_path", Mock(), "hsa")
+    mdl = Model("aae", "arrivals", "params_path", Mock(), "hsa")  # type: ignore
 
     # assert
     lp_m.assert_called_once_with("params_path")
@@ -253,7 +250,7 @@ def test_model_init_initialises_hsa_if_none(mocker):
     hsa_m.return_value = "hsa"
 
     # act
-    mdl = Model("aae", "arrivals", params, Mock(return_value="data"))
+    mdl = Model("aae", "arrivals", params, Mock(return_value="data"))  # type: ignore
 
     # assert
     hsa_m.assert_called_once_with("data", "2020")
@@ -381,7 +378,7 @@ def test_load_stratergies(mock_model):
 def test_demog_factors_loads_correctly(
     mock_model, year, expected_demog, expected_birth
 ):
-    """test that the demographic factors are loaded correctly"""
+    """Test that the demographic factors are loaded correctly."""
     # arrange
     data_loader = Mock()
     data_loader.get_demographic_factors.return_value = pd.DataFrame(
@@ -422,13 +419,13 @@ def test_demog_factors_loads_correctly(
 
 
 def test_generate_run_params(mocker, mock_model, mock_run_params):
-    """test that _generate_run_params returns the run parameters"""
+    """Test that _generate_run_params returns the run parameters."""
     # arrange
     n = 0
 
-    def get_next_n(*args):  # pylint: disable=unused-argument
+    def get_next_n(*args):
         nonlocal n
-        n += 1
+        n += 1  # type: ignore
         return n
 
     rng = Mock()
@@ -536,7 +533,7 @@ def test_get_run_params(
     model_run,
     expected_run_params,
 ):
-    """tests _get_run_params gets the right params for a model run"""
+    """Tests _get_run_params gets the right params for a model run."""
     # arrange
     mdl = mock_model
     mdl.run_params = mock_run_params
@@ -676,7 +673,7 @@ def test_calculate_avoided_activity(mock_model):
 
 
 def test_go_save_full_model_results_false(mocker, mock_model):
-    """test the go method"""
+    """Test the go method."""
     # arrange
     mdl = mock_model
     mdl.save_results = Mock()
@@ -695,7 +692,7 @@ def test_go_save_full_model_results_false(mocker, mock_model):
 
 
 def test_go_save_full_model_results_true(mocker, mock_model):
-    """test the go method"""
+    """Test the go method."""
     # arrange
     mdl = mock_model
     mdl.save_results = Mock()
@@ -725,7 +722,7 @@ def test_go_save_full_model_results_true(mocker, mock_model):
 
 
 def test_go_save_full_model_results_true_baseline(mocker, mock_model):
-    """test the go method"""
+    """Test the go method."""
     # arrange
     mdl = mock_model
     mdl.save_results = Mock()
@@ -812,6 +809,7 @@ def test_get_agg(mock_model, results, cols, expected):
 
     # assert
     assert actual.to_dict() == expected
+
 
 def test_apply_resampling(mock_model):
     # arrange

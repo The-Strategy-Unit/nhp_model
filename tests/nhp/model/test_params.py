@@ -1,6 +1,4 @@
-"""test params-sample"""
-
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring
+"""Test params-sample."""
 
 import json
 

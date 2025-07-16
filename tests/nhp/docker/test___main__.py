@@ -1,6 +1,4 @@
-"""test docker run"""
-
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name, missing-function-docstring
+"""test docker run."""
 
 import time
 from unittest.mock import patch
@@ -13,7 +11,7 @@ from nhp.docker.__main__ import main, parse_args
 
 def test_exit_container(mocker):
     m = mocker.patch("os._exit")
-    import nhp.docker.__main__ as r  # pylint: disable=import-outside-toplevel
+    import nhp.docker.__main__ as r
 
     r._exit_container()
 
@@ -122,8 +120,8 @@ def test_main_azure(mocker):
 
 
 def test_init(mocker):
-    """it should run the main method if __name__ is __main__"""
-    import nhp.docker.__main__ as r  # pylint: disable=import-outside-toplevel
+    """It should run the main method if __name__ is __main__."""
+    import nhp.docker.__main__ as r
 
     main_mock = mocker.patch("nhp.docker.__main__.main")
 
@@ -138,7 +136,7 @@ def test_init(mocker):
 def test_init_timeout_call_exit(mocker):
     config.CONTAINER_TIMEOUT_SECONDS = 0.1
 
-    import nhp.docker.__main__ as r  # pylint: disable=import-outside-toplevel
+    import nhp.docker.__main__ as r
 
     main_mock = mocker.patch("nhp.docker.__main__.main")
     exit_mock = mocker.patch("nhp.docker.__main__._exit_container")
@@ -152,7 +150,7 @@ def test_init_timeout_call_exit(mocker):
 def test_init_timeout_dont_call_exit(mocker):
     config.CONTAINER_TIMEOUT_SECONDS = 0.1
 
-    import nhp.docker.__main__ as r  # pylint: disable=import-outside-toplevel
+    import nhp.docker.__main__ as r
 
     main_mock = mocker.patch("nhp.docker.__main__.main")
     exit_mock = mocker.patch("nhp.docker.__main__._exit_container")

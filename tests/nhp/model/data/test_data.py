@@ -1,6 +1,4 @@
-"""test nhp data (local)"""
-
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring
+"""test nhp data (local)."""
 
 import pytest
 

@@ -1,6 +1,4 @@
-"""test activity avoidance"""
-
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
+"""test activity avoidance."""
 
 from unittest.mock import Mock, patch
 
@@ -14,11 +12,11 @@ from nhp.model.activity_resampling import ActivityResampling
 # fixtures
 @pytest.fixture
 def mock_activity_resampling():
-    """create a mock Model instance"""
+    """Create a mock Model instance."""
     with patch.object(ActivityResampling, "__init__", lambda m, c: None):
         mdl = ActivityResampling(None)
-    mdl._model_iteration = Mock()
-    mdl._model_iteration.model.baseline_counts = np.array(
+    mdl._model_iteration = Mock()  # type: ignore
+    mdl._model_iteration.model.baseline_counts = np.array(  # type: ignore
         [[1, 2, 3, 4], [5, 6, 7, 8]]
     ).astype(float)
     return mdl
