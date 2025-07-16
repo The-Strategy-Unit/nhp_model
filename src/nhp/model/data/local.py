@@ -22,9 +22,7 @@ class Local(Data):
         self._dataset = dataset
 
     def _file_path(self, file):
-        return "/".join(
-            [self._data_path, file, f"fyear={self._year}", f"dataset={self._dataset}"]
-        )
+        return "/".join([self._data_path, file, f"fyear={self._year}", f"dataset={self._dataset}"])
 
     @staticmethod
     def create(data_path: str) -> Callable[[int, str], Any]:

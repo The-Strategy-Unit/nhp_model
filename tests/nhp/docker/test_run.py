@@ -103,9 +103,7 @@ def test_RunWithAzureStorage_get_container(mock_run_with_azure_storage, mocker):
 
     # assert
     assert actual == "container_client"
-    bsc_m.assert_called_once_with(
-        account_url="https://sa.blob.core.windows.net", credential="cred"
-    )
+    bsc_m.assert_called_once_with(account_url="https://sa.blob.core.windows.net", credential="cred")
     dac_m.assert_called_once_with()
 
 
@@ -155,10 +153,7 @@ def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
     mock.get_file_system_client.return_value = mock
     mock.get_paths.side_effect = [
         [paths_helper(f"dev/{i}") for i in files],
-        *[
-            [paths_helper("/".join(["dev", i, j])) for j in ["0.parquet", "file"]]
-            for i in files
-        ],
+        *[[paths_helper("/".join(["dev", i, j])) for j in ["0.parquet", "file"]] for i in files],
     ]
     mock.get_file_client.return_value = mock
     mock.download_file.return_value = mock
@@ -175,9 +170,7 @@ def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
 
     # assert
 
-    dlsc_m.assert_called_once_with(
-        account_url="https://sa.dfs.core.windows.net", credential="cred"
-    )
+    dlsc_m.assert_called_once_with(account_url="https://sa.dfs.core.windows.net", credential="cred")
     dac_m.assert_called_once_with()
 
     mock.get_file_system_client.assert_called_once_with("data")
@@ -194,15 +187,11 @@ def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
         call("data/aae/fyear=2020/dataset=synthetic", exist_ok=True),
     ]
 
-    assert mock.get_file_client.call_args_list == [
-        call(f"dev/{i}/0.parquet") for i in files
-    ]
+    assert mock.get_file_client.call_args_list == [call(f"dev/{i}/0.parquet") for i in files]
     assert mock.download_file.call_args_list == [call() for _ in files]
     assert mock.readall.call_args_list == [call() for _ in files]
 
-    assert mock_file.call_args_list == [
-        call(f"data/{i}/0.parquet", "wb") for i in files
-    ]
+    assert mock_file.call_args_list == [call(f"data/{i}/0.parquet", "wb") for i in files]
 
 
 def test_RunWithAzureStorage_upload_results_json(mock_run_with_azure_storage, mocker):
@@ -259,9 +248,7 @@ def test_RunWithAzureStorage_upload_results_files(mock_run_with_azure_storage, m
     )
 
 
-def test_RunWithAzureStorage_upload_full_model_results(
-    mock_run_with_azure_storage, mocker
-):
+def test_RunWithAzureStorage_upload_full_model_results(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage
     s.params["dataset"] = "synthetic"
@@ -290,8 +277,7 @@ def test_RunWithAzureStorage_upload_full_model_results(
 
     assert m().upload_blob.call_count == 3
     assert m().upload_blob.call_args_list == [
-        call(f"full-model-results/dev/{i}", "data", overwrite=True)
-        for i in ["1", "2", "3"]
+        call(f"full-model-results/dev/{i}", "data", overwrite=True) for i in ["1", "2", "3"]
     ]
 
 

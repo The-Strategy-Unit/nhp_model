@@ -100,9 +100,7 @@ class AaEModel(Model):
             .assign(sample_rate=1)
         }
 
-    def apply_resampling(
-        self, row_samples: np.ndarray, data: pd.DataFrame
-    ) -> pd.DataFrame:
+    def apply_resampling(self, row_samples: np.ndarray, data: pd.DataFrame) -> pd.DataFrame:
         """Apply row resampling.
 
         Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
@@ -164,9 +162,7 @@ class AaEModel(Model):
         )
         return data
 
-    def aggregate(
-        self, model_iteration: ModelIteration
-    ) -> tuple[pd.DataFrame, list[list[str]]]:
+    def aggregate(self, model_iteration: ModelIteration) -> tuple[pd.DataFrame, list[list[str]]]:
         """Aggregate the model results.
 
         Can also be used to aggregate the baseline data by passing in a `ModelIteration` with
@@ -203,9 +199,7 @@ class AaEModel(Model):
         data["arrivals"] = avoided
         return data
 
-    def save_results(
-        self, model_iteration: ModelIteration, path_fn: Callable[[str], str]
-    ) -> None:
+    def save_results(self, model_iteration: ModelIteration, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model.
 
         This method is used for saving the results of the model run to disk as a parquet file.

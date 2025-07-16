@@ -304,9 +304,7 @@ def test_load_data(mocker, mock_model):
     mdl = mock_model
     mdl._measures = ["x", "y"]
     mocker.patch("nhp.model.model.age_groups", return_value="age_groups")
-    mocker.patch(
-        "nhp.model.model.Model.get_data_counts", return_value=np.array([[1, 2], [3, 4]])
-    )
+    mocker.patch("nhp.model.model.Model.get_data_counts", return_value=np.array([[1, 2], [3, 4]]))
     mocker.patch("nhp.model.model.Model._add_pod_to_data")
     mocker.patch("nhp.model.model.Model._add_ndggrp_to_data")
 
@@ -375,9 +373,7 @@ def test_load_stratergies(mock_model):
         ),
     ],
 )
-def test_demog_factors_loads_correctly(
-    mock_model, year, expected_demog, expected_birth
-):
+def test_demog_factors_loads_correctly(mock_model, year, expected_demog, expected_birth):
     """Test that the demographic factors are loaded correctly."""
     # arrange
     data_loader = Mock()
@@ -472,9 +468,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "repat_local": {"ip": {"elective": {"Other": 1}}},
                 "repat_nonlocal": {"ip": {"elective": {"Other": 1}}},
                 "baseline_adjustment": {"ip": {"elective": {"Other": 1}}},
-                "inequalities": {
-                    "HRG1": {"1": 5.4321, "2": 4.321, "3": 3.21, "4": 2.21, "5": 1}
-                },
+                "inequalities": {"HRG1": {"1": 5.4321, "2": 4.321, "3": 3.21, "4": 2.21, "5": 1}},
                 "activity_avoidance": {
                     "ip": {"a_a": 1, "a_b": 1},
                     "op": {"a_a": 1, "a_b": 1},
@@ -510,9 +504,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "repat_local": {"ip": {"elective": {"Other": 20}}},
                 "repat_nonlocal": {"ip": {"elective": {"Other": 23}}},
                 "baseline_adjustment": {"ip": {"elective": {"Other": 26}}},
-                "inequalities": {
-                    "HRG1": {"1": 5.4321, "2": 4.321, "3": 3.21, "4": 2.21, "5": 1}
-                },
+                "inequalities": {"HRG1": {"1": 5.4321, "2": 4.321, "3": 3.21, "4": 2.21, "5": 1}},
                 "activity_avoidance": {
                     "ip": {"a_a": 29, "a_b": 32},
                     "op": {"a_a": 35, "a_b": 38},
@@ -594,9 +586,7 @@ def test_activity_avoidance_no_params(mock_model):
         ([0] * 9, {0: 1.0, 1: 1.0, 2: 1.0, 3: 1.0}, {}),
     ],
 )
-def test_activity_avoidance(
-    mock_model, binomial_rv, expected_binomial_args, expected_factors
-):
+def test_activity_avoidance(mock_model, binomial_rv, expected_binomial_args, expected_factors):
     # arrange
     mdl = mock_model
 
@@ -620,9 +610,7 @@ def test_activity_avoidance(
 
     mdl.model_type = "ip"
     mr_mock.run_params = {
-        "activity_avoidance": {
-            "ip": {"a": 1 / 8, "b": 2 / 8, "c": 3 / 8, "d": 4 / 8, "e": 5 / 8}
-        }
+        "activity_avoidance": {"ip": {"a": 1 / 8, "b": 2 / 8, "c": 3 / 8, "d": 4 / 8, "e": 5 / 8}}
     }
 
     mr_mock.fix_step_counts.return_value = pd.DataFrame({"change_factor": [1]})
@@ -645,18 +633,12 @@ def test_activity_avoidance(
     }
 
     assert mr_mock.rng.binomial.call_args_list[1][0][0].tolist() == [2, 3, 4, 5]
-    assert (
-        mr_mock.rng.binomial.call_args_list[1][0][1].to_dict() == expected_binomial_args
-    )
+    assert mr_mock.rng.binomial.call_args_list[1][0][1].to_dict() == expected_binomial_args
 
-    assert mr_mock.fix_step_counts.call_args[0][0].to_dict("list") == {
-        "rn": [1, 2, 3, 4]
-    }
+    assert mr_mock.fix_step_counts.call_args[0][0].to_dict("list") == {"rn": [1, 2, 3, 4]}
     assert mr_mock.fix_step_counts.call_args[0][1].tolist() == [1, 2, 3, 4]
     assert mr_mock.fix_step_counts.call_args[0][2].to_dict("list") == expected_factors
-    assert (
-        mr_mock.fix_step_counts.call_args[0][3] == "activity_avoidance_interaction_term"
-    )
+    assert mr_mock.fix_step_counts.call_args[0][3] == "activity_avoidance_interaction_term"
 
 
 # calculate_avoided_activity
@@ -765,12 +747,7 @@ def test_go_save_full_model_results_true_baseline(mocker, mock_model):
             {
                 r: i
                 for (i, r) in enumerate(
-                    [
-                        (i, j, k)
-                        for i in ["a", "b"]
-                        for j in ["c", "d"]
-                        for k in ["e", "f"]
-                    ]
+                    [(i, j, k) for i in ["a", "b"] for j in ["c", "d"] for k in ["e", "f"]]
                 )
             },
         ),

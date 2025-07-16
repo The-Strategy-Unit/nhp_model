@@ -81,22 +81,15 @@ class OutpatientsModel(Model):
         :return: the counts of the data, required for activity avoidance steps
         :rtype: np.ndarray
         """
-        return (
-            data[["attendances", "tele_attendances"]]
-            .to_numpy()
-            .astype(float)
-            .transpose()
-        )
+        return data[["attendances", "tele_attendances"]].to_numpy().astype(float).transpose()
 
     def _load_strategies(self, data_loader: Data) -> None:
         data = self.data.set_index("rn")
 
         activity_avoidance = pd.concat(
             [
-                "followup_reduction_"
-                + data[~data["is_first"] & ~data["has_procedures"]]["type"],
-                "consultant_to_consultant_reduction_"
-                + data[data["is_cons_cons_ref"]]["type"],
+                "followup_reduction_" + data[~data["is_first"] & ~data["has_procedures"]]["type"],
+                "consultant_to_consultant_reduction_" + data[data["is_cons_cons_ref"]]["type"],
                 "gp_referred_first_attendance_reduction_"
                 + data[data["is_gp_ref"] & data["is_first"]]["type"],
             ]
@@ -162,9 +155,7 @@ class OutpatientsModel(Model):
         )
         return data, step_counts
 
-    def apply_resampling(
-        self, row_samples: np.ndarray, data: pd.DataFrame
-    ) -> pd.DataFrame:
+    def apply_resampling(self, row_samples: np.ndarray, data: pd.DataFrame) -> pd.DataFrame:
         """Apply row resampling.
 
         Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
@@ -243,9 +234,7 @@ class OutpatientsModel(Model):
         )
         return data
 
-    def aggregate(
-        self, model_iteration: ModelIteration
-    ) -> tuple[pd.DataFrame, list[list[str]]]:
+    def aggregate(self, model_iteration: ModelIteration) -> tuple[pd.DataFrame, list[list[str]]]:
         """Aggregate the model results.
 
         Can also be used to aggregate the baseline data by passing in a `ModelIteration` with
@@ -268,9 +257,7 @@ class OutpatientsModel(Model):
             ],
         )
 
-    def save_results(
-        self, model_iteration: ModelIteration, path_fn: Callable[[str], str]
-    ) -> None:
+    def save_results(self, model_iteration: ModelIteration, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model.
 
         This method is used for saving the results of the model run to disk as a parquet file.

@@ -104,9 +104,7 @@ class InpatientsModel(Model):
                 return None
 
             return (
-                self.data.query(
-                    f"admimeth.str.startswith('{i}') & (speldur > 0) & classpat == '1'"
-                )
+                self.data.query(f"admimeth.str.startswith('{i}') & (speldur > 0) & classpat == '1'")
                 .set_index("rn")[[]]
                 .drop_duplicates()
                 .drop_duplicates()
@@ -145,13 +143,9 @@ class InpatientsModel(Model):
         :return: the counts of the data, required for activity avoidance steps
         :rtype: np.ndarray
         """
-        return np.array(
-            [np.ones_like(data["rn"]), (1 + data["speldur"]).to_numpy()]
-        ).astype(float)
+        return np.array([np.ones_like(data["rn"]), (1 + data["speldur"]).to_numpy()]).astype(float)
 
-    def apply_resampling(
-        self, row_samples: np.ndarray, data: pd.DataFrame
-    ) -> pd.DataFrame:
+    def apply_resampling(self, row_samples: np.ndarray, data: pd.DataFrame) -> pd.DataFrame:
         """Apply row resampling.
 
         Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
@@ -265,9 +259,7 @@ class InpatientsModel(Model):
 
         return data
 
-    def aggregate(
-        self, model_iteration: ModelIteration
-    ) -> tuple[pd.DataFrame, list[list[str]]]:
+    def aggregate(self, model_iteration: ModelIteration) -> tuple[pd.DataFrame, list[list[str]]]:
         """Aggregate the model results.
 
         Can also be used to aggregate the baseline data by passing in a `ModelIteration` with
@@ -308,9 +300,7 @@ class InpatientsModel(Model):
         )
         return rows_avoided.merge(data.drop_duplicates(), how="left", on="rn")
 
-    def save_results(
-        self, model_iteration: ModelIteration, path_fn: Callable[[str], str]
-    ) -> None:
+    def save_results(self, model_iteration: ModelIteration, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model.
 
         :param model_iteration: an instance of the `ModelIteration` class
@@ -329,17 +319,13 @@ class InpatientsModel(Model):
             f"{path_fn('sdec_conversion')}/0.parquet"
         )
         # save the ip rows
-        self._save_results_get_ip_rows(model_results).to_parquet(
-            f"{path_fn('ip')}/0.parquet"
-        )
+        self._save_results_get_ip_rows(model_results).to_parquet(f"{path_fn('ip')}/0.parquet")
         # save the avoided activity
         model_iteration.avoided_activity[["rn", "speldur", "classpat"]].to_parquet(
             f"{path_fn('ip_avoided')}/0.parquet"
         )
 
-    def _save_results_get_op_converted(
-        self, model_results: pd.DataFrame
-    ) -> pd.DataFrame:
+    def _save_results_get_op_converted(self, model_results: pd.DataFrame) -> pd.DataFrame:
         ix = model_results["classpat"] == "-1"
         return (
             model_results[ix]
@@ -350,9 +336,7 @@ class InpatientsModel(Model):
             .reset_index()
         )
 
-    def _save_results_get_sdec_converted(
-        self, model_results: pd.DataFrame
-    ) -> pd.DataFrame:
+    def _save_results_get_sdec_converted(self, model_results: pd.DataFrame) -> pd.DataFrame:
         ix = model_results["classpat"] == "-3"
         return (
             model_results[ix]
@@ -437,9 +421,7 @@ class InpatientEfficiencies:
         if i.empty:
             return self
 
-        new = rng.binomial(
-            data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"]
-        )
+        new = rng.binomial(data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"])
 
         self.data.loc[i, "speldur"] = new.astype("int32")
 
@@ -459,9 +441,9 @@ class InpatientEfficiencies:
         if i.empty:
             return self
 
-        rnd_choice = np.array(
-            rng.binomial(1, losr.loc[data.loc[i].index, "losr_f"])
-        ).astype("int32")
+        rnd_choice = np.array(rng.binomial(1, losr.loc[data.loc[i].index, "losr_f"])).astype(
+            "int32"
+        )
 
         self.data.loc[i, "classpat"] = np.where(rnd_choice == 0, "-3", "1")
         self.data.loc[i, "speldur"] = self.data.loc[i, "speldur"] * rnd_choice
@@ -536,11 +518,7 @@ class InpatientEfficiencies:
         return (
             self.data
             # handle the changes of activity type
-            .assign(
-                admissions=lambda x: np.where(
-                    x["classpat"].isin(["-1", "-2", "-3"]), -1, 0
-                )
-            )
+            .assign(admissions=lambda x: np.where(x["classpat"].isin(["-1", "-2", "-3"]), -1, 0))
             .assign(
                 beddays=lambda x: x["speldur"]
                 - self.speldur_before
@@ -551,9 +529,7 @@ class InpatientEfficiencies:
             .loc[self.data.index.notna()]
             .reset_index()
             .rename(columns={"index": "strategy"})
-            .groupby(["pod", "sitetret", "strategy"], as_index=False)[
-                ["admissions", "beddays"]
-            ]
+            .groupby(["pod", "sitetret", "strategy"], as_index=False)[["admissions", "beddays"]]
             .sum()
             .assign(change_factor="efficiencies")
         )

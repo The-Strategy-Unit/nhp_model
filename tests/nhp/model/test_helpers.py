@@ -9,9 +9,7 @@ import pytest
 from nhp.model.helpers import age_groups, inrange, load_params, rnorm
 
 
-@pytest.mark.parametrize(
-    "value, expected", [(-1.1, 0), (1.1, 1), (0, 0), (1, 1), (0.5, 0.5)]
-)
+@pytest.mark.parametrize("value, expected", [(-1.1, 0), (1.1, 1), (0, 0), (1, 1), (0.5, 0.5)])
 def test_inrange(value, expected):
     """Test that the inrange function returns expected values."""
     assert inrange(value) == expected

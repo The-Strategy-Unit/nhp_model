@@ -90,9 +90,7 @@ class Model:
         :type save_full_model_results: bool, optional
         """
         valid_model_types = ["aae", "ip", "op"]
-        assert (
-            model_type in valid_model_types
-        ), "Model type must be one of 'aae', 'ip', or 'op'"
+        assert model_type in valid_model_types, "Model type must be one of 'aae', 'ip', or 'op'"
         self.model_type = model_type
         if isinstance(params, str):
             params = load_params(params)
@@ -175,9 +173,7 @@ class Model:
           * `self._probabilities`: a list containing the probability of selecting a given variant
         """
         start_year = str(self.params["start_year"])
-        years = (
-            np.arange(self.params["start_year"], self.params["end_year"]) + 1
-        ).astype("str")
+        years = (np.arange(self.params["start_year"], self.params["end_year"]) + 1).astype("str")
 
         merge_cols = ["age", "sex"]
 
@@ -224,16 +220,12 @@ class Model:
         def generate_param_values(prm, valid_range):
             if isinstance(prm, dict):
                 if "interval" not in prm:
-                    return {
-                        k: generate_param_values(v, valid_range) for k, v in prm.items()
-                    }
+                    return {k: generate_param_values(v, valid_range) for k, v in prm.items()}
                 prm = prm["interval"]
             return [valid_range(gen_value(mr, prm)) for mr in range(model_runs)]
 
         variants = list(params["demographic_factors"]["variant_probabilities"].keys())
-        probabilities = list(
-            params["demographic_factors"]["variant_probabilities"].values()
-        )
+        probabilities = list(params["demographic_factors"]["variant_probabilities"].values())
         # there can be numerical inacurracies in the probabilities not summing to 1
         # this will adjust the probabiliteies to sum correctly
         probabilities = [p / sum(probabilities) for p in probabilities]
@@ -319,9 +311,7 @@ class Model:
     ) -> tuple[pd.DataFrame, pd.DataFrame | None]:
         """Perform the activity avoidance (strategies)."""
         # if there are no items in params for activity_avoidance then exit
-        if not (
-            params := model_iteration.run_params["activity_avoidance"][self.model_type]
-        ):
+        if not (params := model_iteration.run_params["activity_avoidance"][self.model_type]):
             return data, None
 
         rng = model_iteration.rng
@@ -415,9 +405,7 @@ class Model:
         """
         return results.groupby(["pod", "sitetret", *args, "measure"])["value"].sum()
 
-    def save_results(
-        self, model_iteration: ModelIteration, path_fn: Callable[[str], str]
-    ) -> None:
+    def save_results(self, model_iteration: ModelIteration, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model.
 
         This method is used for saving the results of the model run to disk as a parquet file.
@@ -429,9 +417,7 @@ class Model:
         """
         # implemented by concrete classes
 
-    def apply_resampling(
-        self, row_samples: np.ndarray, data: pd.DataFrame
-    ) -> pd.DataFrame:
+    def apply_resampling(self, row_samples: np.ndarray, data: pd.DataFrame) -> pd.DataFrame:
         """Apply row resampling.
 
         Called from within `model.activity_resampling.ActivityResampling.apply_resampling`

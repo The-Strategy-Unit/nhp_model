@@ -58,9 +58,7 @@ class ModelIteration:
             run_params[i]["op"] = {
                 g: run_params[i]["op"] for g in ["first", "followup", "procedure"]
             }
-            run_params[i]["aae"] = {
-                k: {"Other": v} for k, v in run_params[i]["aae"].items()
-            }
+            run_params[i]["aae"] = {k: {"Other": v} for k, v in run_params[i]["aae"].items()}
 
         run_params["baseline_adjustment"]["aae"] = {
             k: {"Other": v} for k, v in run_params["baseline_adjustment"]["aae"].items()
@@ -177,9 +175,7 @@ class ModelIteration:
 
         if self.avoided_activity is not None:
             avoided_activity_agg = self.model.process_results(self.avoided_activity)
-            aggs["avoided_activity"] = self.model.get_agg(
-                avoided_activity_agg, "sex", "age_group"
-            )
+            aggs["avoided_activity"] = self.model.get_agg(avoided_activity_agg, "sex", "age_group")
 
         return aggs, self.get_step_counts()
 

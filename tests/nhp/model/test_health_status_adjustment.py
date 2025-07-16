@@ -153,9 +153,7 @@ def test_load_activity_ages(mock_hsa):
 )
 def test_generate_params(mocker, year, expected_results, expected_call):
     # arrange
-    m = mocker.patch(
-        "nhp.model.health_status_adjustment.HealthStatusAdjustment.random_splitnorm"
-    )
+    m = mocker.patch("nhp.model.health_status_adjustment.HealthStatusAdjustment.random_splitnorm")
     m.return_value = list(range(1, 11))
 
     split_normal_params = pd.DataFrame(
@@ -174,7 +172,11 @@ def test_generate_params(mocker, year, expected_results, expected_call):
 
     # act
     actual = HealthStatusAdjustment.generate_params(
-        2020, year, ["principal_proj"] * 11, "rng", 10  # type: ignore
+        2020,
+        year,
+        ["principal_proj"] * 11,
+        "rng",  # type: ignore
+        10,
     )
 
     # assert
@@ -329,9 +331,7 @@ def mock_hsa_gam():
 
 def test_hsa_gam_init(mocker):
     # arrange
-    super_mock = mocker.patch(
-        "nhp.model.health_status_adjustment.HealthStatusAdjustment.__init__"
-    )
+    super_mock = mocker.patch("nhp.model.health_status_adjustment.HealthStatusAdjustment.__init__")
     nhp_data_mock = Mock()
     nhp_data_mock.get_hsa_gams.return_value = "hsa_gams"
 
@@ -370,9 +370,7 @@ def test_hsa_gam_predict_activity(mock_hsa_gam):
 @pytest.fixture
 def mock_hsa_interpolated():
     """Create a mock Model instance."""
-    with patch.object(
-        HealthStatusAdjustmentInterpolated, "__init__", lambda *args: None
-    ):
+    with patch.object(HealthStatusAdjustmentInterpolated, "__init__", lambda *args: None):
         hsa = HealthStatusAdjustmentInterpolated(None, None)  # type: ignore
 
     hsa._activity_ages = pd.Series(
@@ -404,9 +402,7 @@ def mock_hsa_interpolated():
 
 def test_hsa_interpolated_init(mocker):
     # arrange
-    super_mock = mocker.patch(
-        "nhp.model.health_status_adjustment.HealthStatusAdjustment.__init__"
-    )
+    super_mock = mocker.patch("nhp.model.health_status_adjustment.HealthStatusAdjustment.__init__")
     lal_mock = mocker.patch(
         "nhp.model.health_status_adjustment.HealthStatusAdjustmentInterpolated._load_activity_ages_lists"
     )

@@ -126,9 +126,7 @@ def test_load_strategies(mock_model):
     mdl = mock_model
     mdl.data["is_frequent_attender"] = [False] * 0 + [True] * 4 + [False] * 16
     mdl.data["is_left_before_treatment"] = [False] * 4 + [True] * 4 + [False] * 12
-    mdl.data["is_low_cost_referred_or_discharged"] = (
-        [False] * 12 + [True] * 4 + [False] * 4
-    )
+    mdl.data["is_low_cost_referred_or_discharged"] = [False] * 12 + [True] * 4 + [False] * 4
     mdl.data["is_discharged_no_treatment"] = [False] * 16 + [True] * 4
     # act
     mdl._load_strategies(None)
@@ -237,6 +235,7 @@ def test_process_results(mock_model):
 
 def test_save_results(mocker, mock_model):
     """Test that it correctly saves the results."""
+
     def path_fn(x):
         return x
 

@@ -155,9 +155,7 @@ def test_convert_to_tele(mock_model):
     mdl = mock_model
 
     mr_mock = Mock()
-    mr_mock.rng.binomial.return_value = np.array(
-        [10, 15, 0, 20, 25, 0, 30, 35, 0, 40, 45, 0]
-    )
+    mr_mock.rng.binomial.return_value = np.array([10, 15, 0, 20, 25, 0, 30, 35, 0, 40, 45, 0])
     data = pd.DataFrame(
         {
             "rn": range(12),
@@ -174,10 +172,7 @@ def test_convert_to_tele(mock_model):
     }
     mr_mock.model.strategies = {
         "efficiencies": pd.Series(
-            {
-                k: "convert_to_tele_a" if k % 2 else "convert_to_tele_b"
-                for k in data["rn"]
-            }
+            {k: "convert_to_tele_a" if k % 2 else "convert_to_tele_b" for k in data["rn"]}
         )
     }
 
@@ -286,9 +281,7 @@ def test_process_results(mock_model):
         }
     )
     expected = {
-        "pod": [
-            k for k in ["op_first", "op_follow-up", "op_procedure"] for _ in [0, 1]
-        ],
+        "pod": [k for k in ["op_first", "op_follow-up", "op_procedure"] for _ in [0, 1]],
         "sitetret": ["trust"] * 6,
         "measure": ["attendances", "tele_attendances"] * 3,
         "sex": [1] * 6,
@@ -333,6 +326,7 @@ def test_aggregate(mock_model):
 
 def test_save_results(mocker, mock_model):
     """Test that it correctly saves the results."""
+
     def path_fn(x):
         return x
 
@@ -355,9 +349,7 @@ def test_save_results(mocker, mock_model):
 def test_calculate_avoided_activity(mock_model):
     # arrange
     data = pd.DataFrame({"rn": [0], "attendances": [4], "tele_attendances": [3]})
-    data_resampled = pd.DataFrame(
-        {"rn": [0], "attendances": [2], "tele_attendances": [1]}
-    )
+    data_resampled = pd.DataFrame({"rn": [0], "attendances": [2], "tele_attendances": [1]})
     # act
     actual = mock_model.calculate_avoided_activity(data, data_resampled)
     # assert

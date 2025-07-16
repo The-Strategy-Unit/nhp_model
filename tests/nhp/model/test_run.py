@@ -66,21 +66,15 @@ def test_run_all(mocker):
         "nhp.model.run.Model.generate_run_params",
         return_value={"variant": "variants"},
     )
-    hsa_m = mocker.patch(
-        "nhp.model.run.HealthStatusAdjustmentInterpolated", return_value="hsa"
-    )
+    hsa_m = mocker.patch("nhp.model.run.HealthStatusAdjustmentInterpolated", return_value="hsa")
 
     rm_m = mocker.patch("nhp.model.run._run_model", side_effect=["ip", "op", "aae"])
     cr_m = mocker.patch(
         "nhp.model.run.combine_results",
         return_value=({"default": "combined_results"}, "combined_step_counts"),
     )
-    gr_m = mocker.patch(
-        "nhp.model.run.generate_results_json", return_value="results_json_path"
-    )
-    sr_m = mocker.patch(
-        "nhp.model.run.save_results_files", return_value="results_paths"
-    )
+    gr_m = mocker.patch("nhp.model.run.generate_results_json", return_value="results_json_path")
+    sr_m = mocker.patch("nhp.model.run.save_results_files", return_value="results_paths")
     nd_m = mocker.patch("nhp.model.run.Local")
 
     pc_m = Mock()

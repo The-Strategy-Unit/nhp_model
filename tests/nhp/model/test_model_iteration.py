@@ -29,9 +29,7 @@ def test_init(mocker, run, rp_call):
     model._get_run_params.return_value = {"seed": 1}
 
     rng_mock = mocker.patch("numpy.random.default_rng", return_value="rng")
-    prp_mock = mocker.patch(
-        "nhp.model.model_iteration.ModelIteration._patch_run_params"
-    )
+    prp_mock = mocker.patch("nhp.model.model_iteration.ModelIteration._patch_run_params")
 
     mocker.patch("nhp.model.model_iteration.ModelIteration._run")
 
@@ -98,9 +96,7 @@ def test_patch_run_params(mock_model_iteration):
             },
             "aae": {"ambulance": {"Other": 3}, "walk-in": {"Other": 4}},
         },
-        "baseline_adjustment": {
-            "aae": {"ambulance": {"Other": 5}, "walk-in": {"Other": 6}}
-        },
+        "baseline_adjustment": {"aae": {"ambulance": {"Other": 5}, "walk-in": {"Other": 6}}},
     }
 
 
@@ -154,13 +150,9 @@ def test_run(mocker, mock_model_iteration):
     ar_mock.non_demographic_adjustment.assert_called_once()
     ar_mock.apply_resampling.assert_called_once()
 
-    mr_mock.model.activity_avoidance.assert_called_once_with(
-        data_ar_mock.copy(), mr_mock
-    )
+    mr_mock.model.activity_avoidance.assert_called_once_with(data_ar_mock.copy(), mr_mock)
     mr_mock.model.efficiencies.assert_called_once_with(data_aa_mock.copy(), mr_mock)
-    mr_mock.model.calculate_avoided_activity.assert_called_once_with(
-        data_ar_mock, data_aa_mock
-    )
+    mr_mock.model.calculate_avoided_activity.assert_called_once_with(data_ar_mock, data_aa_mock)
 
     pd_mock.assert_called_once_with(
         ["step_counts_baseline", "step_counts_ar", "step_counts_aa", "step_counts_ef"]
@@ -200,10 +192,7 @@ def test_fix_step_counts(mock_model_iteration):
     mr_mock.model.measures = ["x", "y"]
 
     factors = pd.DataFrame(
-        {
-            k: v * np.ones_like(baseline[0])
-            for k, v in {"a": 1.5, "b": 2.0, "c": 0.5}.items()
-        }
+        {k: v * np.ones_like(baseline[0]) for k, v in {"a": 1.5, "b": 2.0, "c": 0.5}.items()}
     )
 
     data = pd.DataFrame({"pod": ["a", "a", "b"], "sitetret": ["c", "d", "c"]})
@@ -521,9 +510,7 @@ def test_step_counts_get_type_change_sdec(mock_model_iteration):
 def test_get_model_results(mock_model_iteration):
     # arrange
     mr = mock_model_iteration
-    mr.data = pd.DataFrame(
-        {"x": [1, 2, 3], "hsagrp": ["h", "h", "h"]}, index=["a", "b", "c"]
-    )
+    mr.data = pd.DataFrame({"x": [1, 2, 3], "hsagrp": ["h", "h", "h"]}, index=["a", "b", "c"])
 
     # act
     actual = mr.get_model_results()

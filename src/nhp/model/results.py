@@ -94,7 +94,10 @@ def _combine_step_counts(results: list):
             v
             # TODO: handle the case of daycase conversion, it's duplicating values
             # need to figure out exactly why, but this masks the issue for now
-            .groupby(v.index.names).sum().reset_index().assign(model_run=i)
+            .groupby(v.index.names)
+            .sum()
+            .reset_index()
+            .assign(model_run=i)
             for r in results
             for i, (_, v) in enumerate(r)
             if i > 0
@@ -180,9 +183,7 @@ def save_results_files(results: dict, params: dict) -> list:
     :return: filepaths to saved files
     :rtype: list
     """
-    path = (
-        f"results/{params['dataset']}/{params['scenario']}/{params['create_datetime']}"
-    )
+    path = f"results/{params['dataset']}/{params['scenario']}/{params['create_datetime']}"
     os.makedirs(path, exist_ok=True)
 
     return [
@@ -210,9 +211,7 @@ def _add_metadata_to_dataframe(df: pd.DataFrame, params: dict) -> pd.DataFrame:
     return df
 
 
-def _save_parquet_file(
-    path: str, results_name: str, results_df: pd.DataFrame, params: dict
-) -> str:
+def _save_parquet_file(path: str, results_name: str, results_df: pd.DataFrame, params: dict) -> str:
     """Save a results dataframe as parquet.
 
     :param path: the folder where we want to save the results to
@@ -252,10 +251,7 @@ def _patch_converted_sdec_activity(
     agg_cols = ["pod", "sitetret", "measure", "model_run"]
 
     default_sdec = (
-        results["default"]
-        .query("pod == 'aae_type-05'")
-        .set_index(agg_cols)["value"]
-        .rename("b")
+        results["default"].query("pod == 'aae_type-05'").set_index(agg_cols)["value"].rename("b")
     )
 
     missing_sdec_activity = (

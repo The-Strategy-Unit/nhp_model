@@ -131,9 +131,7 @@ def test_add_pod_to_data(mock_model):
         (False, ["ip_elective_daycase", "ip_elective_admission"]),
     ],
 )
-def test_add_pod_to_data_separate_regular_day_attenders_param(
-    mock_model, test, expected
-):
+def test_add_pod_to_data_separate_regular_day_attenders_param(mock_model, test, expected):
     # arrange
     mock_model.data = pd.DataFrame(
         {
@@ -208,15 +206,11 @@ def test_load_strategies(mock_model, gen_los_type, expected):
         "activity_avoidance": pd.DataFrame(
             {"rn": [1, 2, 3], "admission_avoidance_strategy": ["a", "b", "c"]}
         ),
-        "efficiencies": pd.DataFrame(
-            {"rn": [4, 5, 6], "los_reduction_strategy": ["a", "b", "c"]}
-        ),
+        "efficiencies": pd.DataFrame({"rn": [4, 5, 6], "los_reduction_strategy": ["a", "b", "c"]}),
     }
     expected = {
         "activity_avoidance": {"strategy": {1: "a", 2: "b"}},
-        "efficiencies": {
-            "strategy": {5: "b", 6: "c", **{i: gen_los_type for i in expected}}
-        },
+        "efficiencies": {"strategy": {5: "b", 6: "c", **{i: gen_los_type for i in expected}}},
     }
 
     # act
@@ -614,6 +608,7 @@ def test_aggregate(mock_model):
 
 def test_save_results(mocker, mock_model):
     """Test that it correctly saves the results."""
+
     # arrange
     def path_fn(x):
         return x
@@ -639,9 +634,7 @@ def test_save_results(mocker, mock_model):
 
     # assert
     mock_model._save_results_get_ip_rows.assert_called_once_with("data")
-    mock_model._save_results_get_ip_rows().to_parquet.assert_called_once_with(
-        "ip/0.parquet"
-    )
+    mock_model._save_results_get_ip_rows().to_parquet.assert_called_once_with("ip/0.parquet")
 
     mock_model._save_results_get_op_converted.assert_called_once_with("data")
     mock_model._save_results_get_op_converted().to_parquet.assert_called_once_with(

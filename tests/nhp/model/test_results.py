@@ -98,9 +98,7 @@ def test_combine_model_results(mocker):
         ],
     ]
 
-    cmr_mock = mocker.patch(
-        "nhp.model.results._complete_model_runs", return_value="cmr"
-    )
+    cmr_mock = mocker.patch("nhp.model.results._complete_model_runs", return_value="cmr")
 
     # act
     actual = _combine_model_results(results)  # type: ignore
@@ -143,9 +141,7 @@ def test_combine_step_counts(mocker):
         "model_run": [1, 1, 1, 1],
     }
 
-    cmr_mock = mocker.patch(
-        "nhp.model.results._complete_model_runs", return_value="cmr"
-    )
+    cmr_mock = mocker.patch("nhp.model.results._complete_model_runs", return_value="cmr")
 
     # act
     actual = _combine_step_counts(results)
@@ -261,9 +257,7 @@ def test_generate_results_json(mocker):
 
     # act
     with patch("builtins.open", mock_open()) as mock_file:
-        actual = generate_results_json(
-            combined_results, combined_step_counts, params, run_params
-        )
+        actual = generate_results_json(combined_results, combined_step_counts, params, run_params)
 
     # assert
     assert actual == expected
@@ -283,12 +277,8 @@ def test_generate_results_json(mocker):
 
 def test_combine_results(mocker):
     # arrange
-    ma = mocker.patch(
-        "nhp.model.results._combine_model_results", return_value="combined_results"
-    )
-    mb = mocker.patch(
-        "nhp.model.results._combine_step_counts", return_value="combined_step_counts"
-    )
+    ma = mocker.patch("nhp.model.results._combine_model_results", return_value="combined_results")
+    mb = mocker.patch("nhp.model.results._combine_step_counts", return_value="combined_step_counts")
     ms = mocker.patch("nhp.model.results._patch_converted_sdec_activity")
 
     # act
@@ -440,8 +430,6 @@ def test_patch_converted_sdec_activity():
     )
     # act
     _patch_converted_sdec_activity(results, "acuity", "standard")
-    actual = results["acuity"].sort_values(
-        ["pod", "sitetret", "measure", "acuity", "model_run"]
-    )
+    actual = results["acuity"].sort_values(["pod", "sitetret", "measure", "acuity", "model_run"])
     # assert
     pd.testing.assert_frame_equal(actual, expected)

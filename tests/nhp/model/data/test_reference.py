@@ -24,9 +24,7 @@ def test_life_expectancy():
 
     # assert
     assert len(le) == 276
-    assert list(le.columns) == ["var", "sex", "age"] + [
-        str(i) for i in range(2018, 2044)
-    ]
+    assert list(le.columns) == ["var", "sex", "age"] + [str(i) for i in range(2018, 2044)]
     assert set(le["var"]) == expected_hsa_variants
     assert set(le["sex"]) == {1, 2}
     assert list(le["age"]) == list(range(55, 101)) * 6

@@ -58,9 +58,7 @@ def test_select_single_strategy(mock_ipe):
     m._model_iteration.rng = np.random.default_rng(0)
     m.data = pd.DataFrame({"rn": list(range(5)), "admimeth": ["0"] * 4 + ["3"]})
     m._model_iteration.model.strategies = {
-        "efficiencies": pd.DataFrame(
-            {"strategy": ["a"] * 3 + ["b"] * 3}, index=[1, 2, 3] * 2
-        )
+        "efficiencies": pd.DataFrame({"strategy": ["a"] * 3 + ["b"] * 3}, index=[1, 2, 3] * 2)
     }
     m._model_iteration.params = {"efficiencies": {"ip": {"a": 2, "b": 3, "c": 4}}}
 
@@ -218,9 +216,7 @@ def test_losr_preop(mock_ipe):
         ),
     ],
 )
-def test_losr_day_procedures(
-    mock_ipe, day_procedures_type, expected_speldur, expected_classpat
-):
+def test_losr_day_procedures(mock_ipe, day_procedures_type, expected_speldur, expected_classpat):
     """Test that it reduces the speldur column for 'day_procedures' types."""
     # arrange
     m = mock_ipe

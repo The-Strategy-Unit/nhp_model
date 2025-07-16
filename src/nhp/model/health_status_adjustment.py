@@ -47,9 +47,7 @@ class HealthStatusAdjustment:
 
     def _load_activity_ages(self, data_loader: Data):
         self._activity_ages = (
-            data_loader.get_hsa_activity_table()
-            .set_index(["hsagrp", "sex", "age"])
-            .sort_index()
+            data_loader.get_hsa_activity_table().set_index(["hsagrp", "sex", "age"]).sort_index()
         )["activity"]
 
     @staticmethod
@@ -81,26 +79,21 @@ class HealthStatusAdjustment:
             return np.concatenate(
                 [
                     [mode],
-                    HealthStatusAdjustment.random_splitnorm(
-                        rng, model_runs, mode, sd1, sd2
-                    ),
-                    hsa_snp.loc[
-                        (variant, sex, np.arange(start_year + 1, end_year)), "mode"
-                    ],  # type: ignore
+                    HealthStatusAdjustment.random_splitnorm(rng, model_runs, mode, sd1, sd2),
+                    hsa_snp.loc[(variant, sex, np.arange(start_year + 1, end_year)), "mode"],  # type: ignore
                 ]
             )
 
         values = {
-            v: np.transpose([gen(v, "m"), gen(v, "f")]) for v in hsa_snp.index.levels[0]  # type: ignore
+            v: np.transpose([gen(v, "m"), gen(v, "f")])
+            for v in hsa_snp.index.levels[0]  # type: ignore
         }
 
         variant_lookup = reference.variant_lookup()
         return np.array(
             [
                 values[variant_lookup[v]][i]
-                for i, v in enumerate(
-                    variants + variants[0:1] * (end_year - start_year - 1)
-                )
+                for i, v in enumerate(variants + variants[0:1] * (end_year - start_year - 1))
             ]
         )
 

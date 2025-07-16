@@ -81,9 +81,9 @@ class ActivityResampling:
     def _update(self, factor: pd.Series):
         step = factor.name
 
-        factor = self.data.merge(
-            factor, how="left", left_on=factor.index.names, right_index=True
-        )[step].fillna(1)
+        factor = self.data.merge(factor, how="left", left_on=factor.index.names, right_index=True)[
+            step
+        ].fillna(1)
 
         self.factors.append(factor)
 
@@ -94,9 +94,9 @@ class ActivityResampling:
         year = str(self.run_params["year"])
         variant = self.run_params["variant"]
 
-        factor = self.demog_factors.loc[(variant, slice(None), slice(None))][
-            year
-        ].rename("demographic_adjustment")
+        factor = self.demog_factors.loc[(variant, slice(None), slice(None))][year].rename(
+            "demographic_adjustment"
+        )
 
         groups = set(self.data["group"]) - {"maternity"}
         factor: pd.Series = pd.concat({i: factor for i in groups})  # type: ignore
@@ -145,16 +145,14 @@ class ActivityResampling:
             return self
 
         factor: pd.Series = pd.concat(  # type: ignore
-            {
-                k: pd.Series(v, name="inequalities", dtype="float64")
-                for k, v in params.items()
-            }
+            {k: pd.Series(v, name="inequalities", dtype="float64") for k, v in params.items()}
         )
 
         factor.index.names = ("sushrg_trimmed", "imd_quintile")
 
         factor.index = factor.index.set_levels(  # type: ignore
-            factor.index.levels[1].astype(int), level="imd_quintile"  # type: ignore
+            factor.index.levels[1].astype(int),  # type: ignore
+            level="imd_quintile",
         )
 
         factor: pd.Series = pd.concat({factor_key: factor}, names=["group"])  # type: ignore
@@ -178,7 +176,9 @@ class ActivityResampling:
         if not params:
             return self
 
-        factor: pd.Series = pd.concat({k: pd.Series(v, name="expat") for k, v in params.items()})  # type: ignore
+        factor: pd.Series = pd.concat(  # type: ignore
+            {k: pd.Series(v, name="expat") for k, v in params.items()}
+        )
         factor.index.names = ["group", "tretspef_grouped"]
         return self._update(factor)
 
@@ -247,9 +247,7 @@ class ActivityResampling:
 
     def non_demographic_adjustment(self):
         """Perform the non-demographic adjustment."""
-        if not (
-            params := self.run_params["non-demographic_adjustment"][self._activity_type]
-        ):
+        if not (params := self.run_params["non-demographic_adjustment"][self._activity_type]):
             return self
 
         match self.params["non-demographic_adjustment"]["value-type"]:
@@ -270,8 +268,7 @@ class ActivityResampling:
 
         # reshape this to be the same as baseline counts
         overall_factor = (
-            self._model_iteration.model.baseline_counts
-            * factors.prod(axis=1).to_numpy()
+            self._model_iteration.model.baseline_counts * factors.prod(axis=1).to_numpy()
         )
 
         row_samples = rng.poisson(overall_factor)
