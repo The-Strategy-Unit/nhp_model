@@ -9,8 +9,7 @@ import logging
 import os
 from typing import Dict, List
 
-# janitor complains of being unused, but it is used (.complete())
-import janitor  # pylint: disable=unused-import
+import janitor
 import pandas as pd
 
 from nhp.model.model_iteration import ModelRunResult

@@ -19,7 +19,7 @@ from nhp.model.outpatients import OutpatientsModel
 from nhp.model.results import combine_results, generate_results_json, save_results_files
 
 
-class tqdm(base_tqdm):  # pylint: disable=inconsistent-mro, invalid-name
+class tqdm(base_tqdm):
     """Custom tqdm class that provides a callback function on update."""
 
     # ideally this would be set in the contstructor, but as this is a pretty
@@ -31,7 +31,7 @@ class tqdm(base_tqdm):  # pylint: disable=inconsistent-mro, invalid-name
         """Overide the default tqdm update function to run the callback method."""
         super().update(n)
         if tqdm.progress_callback:
-            tqdm.progress_callback(self.n)  # pylint: disable=not-callable
+            tqdm.progress_callback(self.n)
 
 
 def timeit(func: Callable, *args) -> Any:
@@ -68,7 +68,7 @@ def _run_model(
     :return: a dictionary containing the aggregated results
     :rtype: dict
     """
-    model_class = model_type.__name__[:-5]  # pylint: disable=protected-access
+    model_class = model_type.__name__[:-5]
     logging.info("%s", model_class)
     logging.info(" * instantiating")
     # ignore type issues here: Model has different arguments to Inpatients/Outpatients/A&E
@@ -93,7 +93,7 @@ def _run_model(
                     model_runs,
                     chunksize=batch_size,
                 ),
-                f"Running {model.__class__.__name__[:-5].rjust(11)} model",  # pylint: disable=protected-access
+                f"Running {model.__class__.__name__[:-5].rjust(11)} model",
                 total=len(model_runs),
             )
         )
@@ -150,7 +150,7 @@ def run_all(
     # TODO: once generate_results_json is deperecated this step should be moved into combine_results
     results["step_counts"] = step_counts
     # TODO: this should be what the model returns once generate_results_json is deprecated
-    saved_files = save_results_files(results, params)  # pylint: disable=unused-variable
+    saved_files = save_results_files(results, params)
 
     return saved_files, json_filename
 

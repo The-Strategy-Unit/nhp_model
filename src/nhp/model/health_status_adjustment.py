@@ -1,7 +1,5 @@
 """Health Status Adjustment."""
 
-# pylint: disable=too-few-public-methods
-
 from math import pi, sqrt
 from typing import List
 
@@ -109,12 +107,11 @@ class HealthStatusAdjustment:
     @staticmethod
     def random_splitnorm(
         rng: np.random.Generator,
-        n: int,  # pylint: disable=invalid-name
+        n: int,
         mode: float,
         sd1: float,
         sd2: float,
     ) -> np.ndarray:
-        # pylint: disable=invalid-name
         """Generate random splitnormal values.
 
         :param rng: Random Number Generator

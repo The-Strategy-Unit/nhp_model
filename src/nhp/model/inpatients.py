@@ -33,8 +33,6 @@ class InpatientsModel(Model):
     Inherits from the Model class.
     """
 
-    # pylint: disable=too-many-instance-attributes
-
     def __init__(
         self,
         params: dict,

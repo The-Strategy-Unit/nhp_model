@@ -168,8 +168,6 @@ class ModelIteration:
         :returns: a tuple containing a dictionary of results, and the step counts
         :rtype: tuple[dict[str, pd.Series], pd.Series | None]:
         """
-        # pylint: disable=assignment-from-no-return
-
         model_results, aggregations = self.model.aggregate(self)
 
         aggs = {

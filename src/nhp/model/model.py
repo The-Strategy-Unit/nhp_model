@@ -139,7 +139,6 @@ class Model:
     def _load_data(self, data_loader: Data) -> None:
         self.data = self._get_data(data_loader).sort_values("rn")
         self.data["age_group"] = age_groups(self.data["age"])
-        # pylint: disable=assignment-from-no-return
         self.baseline_counts = self.get_data_counts(self.data)
         self._add_pod_to_data()
         self._add_ndggrp_to_data()
@@ -378,7 +377,6 @@ class Model:
         """
         raise NotImplementedError()
 
-    # pylint: disable=invalid-name
     def go(self, model_run: int) -> ModelRunResult:
         """Run the model and get the aggregated results.
 
