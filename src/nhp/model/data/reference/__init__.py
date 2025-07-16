@@ -1,8 +1,9 @@
-"""Reference Data
+"""Reference Data.
 
 Any reference data needed for the model should be stored in this folder.
 
-Helper methods for loading the reference data should be created here."""
+Helper methods for loading the reference data should be created here.
+"""
 
 import json
 import pathlib
@@ -16,18 +17,17 @@ def _ref_path(filename):
 
 
 def variant_lookup() -> dict:
-    """Variant Lookup (Health Status Adjustment)
+    """Variant Lookup (Health Status Adjustment).
 
     :return: A dictionary of the variant lookups
     :rtype: dict
     """
-
     with _ref_path("variant_lookup.json").open("r", encoding="UTF-8") as vlup_file:
         return json.load(vlup_file)
 
 
 def life_expectancy() -> pd.DataFrame:
-    """Life Expectancy (Health Status Adjustment)
+    """Life Expectancy (Health Status Adjustment).
 
     :return: A pandas DataFrame
     :rtype: pd.DataFrame
@@ -36,7 +36,7 @@ def life_expectancy() -> pd.DataFrame:
 
 
 def split_normal_params() -> pd.DataFrame:
-    """Split Normal Parameters (Health Status Adjustment)
+    """Split Normal Parameters (Health Status Adjustment).
 
     :return: A pandas datafrarme
     :rtype: pd.DataFrame

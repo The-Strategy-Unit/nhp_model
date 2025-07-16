@@ -1,4 +1,4 @@
-"""NHP Data Loaders
+"""NHP Data Loaders.
 
 Classes for loading data for the NHP model. Each class supports loading data from different sources,
 such as from local storage or directly from DataBricks.
@@ -14,9 +14,10 @@ from nhp.model.data import Data
 
 
 class Databricks(Data):
-    """Load NHP data from databricks"""
+    """Load NHP data from databricks."""
 
-    def __init__(self, spark: SparkContext, data_path: str, year: int, dataset: str):
+    def __init__(self, spark: SparkSession, data_path: str, year: int, dataset: str):
+        """Initialise Databricks data loader class."""
         self._spark = spark
         self._data_path = data_path
         self._year = year
@@ -24,7 +25,7 @@ class Databricks(Data):
 
     @staticmethod
     def create(spark: SparkContext, data_path: str) -> Callable[[int, str], Any]:
-        """Create Databricks object
+        """Create Databricks object.
 
         :param spark: a SparkContext for selecting data
         :type spark: SparkContext
@@ -45,7 +46,7 @@ class Databricks(Data):
         )
 
     def get_ip(self) -> pd.DataFrame:
-        """Get the inpatients dataframe
+        """Get the inpatients dataframe.
 
         :return: the inpatients dataframe
         :rtype: pd.DataFrame
@@ -53,7 +54,7 @@ class Databricks(Data):
         return self._apc.toPandas()
 
     def get_ip_strategies(self) -> pd.DataFrame:
-        """Get the inpatients strategies dataframe
+        """Get the inpatients strategies dataframe.
 
         :return: the inpatients strategies dataframe
         :rtype: pd.DataFrame
@@ -68,7 +69,7 @@ class Databricks(Data):
         }
 
     def get_op(self) -> pd.DataFrame:
-        """Get the outpatients dataframe
+        """Get the outpatients dataframe.
 
         :return: the outpatients dataframe
         :rtype: pd.DataFrame
@@ -82,7 +83,7 @@ class Databricks(Data):
         )
 
     def get_aae(self) -> pd.DataFrame:
-        """Get the A&E dataframe
+        """Get the A&E dataframe.
 
         :return: the A&E dataframe
         :rtype: pd.DataFrame
@@ -96,12 +97,11 @@ class Databricks(Data):
         )
 
     def get_birth_factors(self) -> pd.DataFrame:
-        """Get the birth factors dataframe
+        """Get the birth factors dataframe.
 
         :return: the birth factors dataframe
         :rtype: pd.DataFrame
         """
-
         return (
             self._spark.read.parquet(f"{self._data_path}/birth_factors")
             .filter(F.col("dataset") == self._dataset)
@@ -111,12 +111,11 @@ class Databricks(Data):
         )
 
     def get_demographic_factors(self) -> pd.DataFrame:
-        """Get the demographic factors dataframe
+        """Get the demographic factors dataframe.
 
         :return: the demographic factors dataframe
         :rtype: pd.DataFrame
         """
-
         return (
             self._spark.read.parquet(f"{self._data_path}/demographic_factors")
             .filter(F.col("dataset") == self._dataset)
@@ -126,7 +125,7 @@ class Databricks(Data):
         )
 
     def get_hsa_activity_table(self) -> pd.DataFrame:
-        """Get the demographic factors dataframe
+        """Get the demographic factors dataframe.
 
         :return: the demographic factors dataframe
         :rtype: pd.DataFrame
@@ -140,13 +139,13 @@ class Databricks(Data):
         )
 
     def get_hsa_gams(self):
-        """Get the health status adjustment gams"""
+        """Get the health status adjustment gams."""
         # this is not supported in our data bricks environment currently
         raise NotImplementedError
 
 
 class DatabricksNational(Data):
-    """Load NHP data from databricks"""
+    """Load NHP data from databricks."""
 
     def __init__(
         self,
@@ -156,6 +155,7 @@ class DatabricksNational(Data):
         sample_rate: float,
         seed: int,
     ):
+        """Initialise DatabricksNational data loader class."""
         self._spark = spark
         self._data_path = data_path
         self._year = year
@@ -175,7 +175,7 @@ class DatabricksNational(Data):
     def create(
         spark: SparkContext, data_path: str, sample_rate: float, seed: int
     ) -> Callable[[int, str], Any]:
-        """Create Databricks object
+        """Create Databricks object.
 
         :param spark: a SparkContext for selecting data
         :type spark: SparkContext
@@ -191,7 +191,7 @@ class DatabricksNational(Data):
         )
 
     def get_ip(self) -> pd.DataFrame:
-        """Get the inpatients dataframe
+        """Get the inpatients dataframe.
 
         :return: the inpatients dataframe
         :rtype: pd.DataFrame
@@ -199,7 +199,7 @@ class DatabricksNational(Data):
         return self._apc.toPandas()
 
     def get_ip_strategies(self) -> pd.DataFrame:
-        """Get the inpatients strategies dataframe
+        """Get the inpatients strategies dataframe.
 
         :return: the inpatients strategies dataframe
         :rtype: pd.DataFrame
@@ -213,7 +213,7 @@ class DatabricksNational(Data):
         }
 
     def get_op(self) -> pd.DataFrame:
-        """Get the outpatients dataframe
+        """Get the outpatients dataframe.
 
         :return: the outpatients dataframe
         :rtype: pd.DataFrame
@@ -244,7 +244,7 @@ class DatabricksNational(Data):
         )
 
     def get_aae(self) -> pd.DataFrame:
-        """Get the A&E dataframe
+        """Get the A&E dataframe.
 
         :return: the A&E dataframe
         :rtype: pd.DataFrame
@@ -265,14 +265,13 @@ class DatabricksNational(Data):
         )
 
     def get_birth_factors(self) -> pd.DataFrame:
-        """Get the birth factors dataframe
+        """Get the birth factors dataframe.
 
         :param projection_year: Which projection year to use?
         :type projection_year: int, defaults to 2022
         :return: the birth factors dataframe
         :rtype: pd.DataFrame
         """
-
         births_df = (
             self._spark.read.parquet(f"{self._data_path}/birth_factors/")
             .filter(F.col("fyear") == self._year)
@@ -294,14 +293,13 @@ class DatabricksNational(Data):
         )
 
     def get_demographic_factors(self) -> pd.DataFrame:
-        """Get the demographic factors dataframe
+        """Get the demographic factors dataframe.
 
         :param projection_year: Which projection year to use?
         :type projection_year: int, defaults to 2022
         :return: the demographic factors dataframe
         :rtype: pd.DataFrame
         """
-
         demog_df = (
             self._spark.read.parquet(f"{self._data_path}/demographic_factors/")
             .filter(F.col("fyear") == self._year)
@@ -323,7 +321,7 @@ class DatabricksNational(Data):
         )
 
     def get_hsa_activity_table(self) -> pd.DataFrame:
-        """Get the demographic factors dataframe
+        """Get the demographic factors dataframe.
 
         :return: the demographic factors dataframe
         :rtype: pd.DataFrame
@@ -337,6 +335,6 @@ class DatabricksNational(Data):
         )
 
     def get_hsa_gams(self):
-        """Get the health status adjustment gams"""
+        """Get the health status adjustment gams."""
         # this is not supported in our data bricks environment currently
         raise NotImplementedError
