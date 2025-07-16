@@ -34,4 +34,4 @@ jobs:
         run: uv pip install -e ".[dev]"
 
       - name: Generate Report
-        run: uv run ty check .
+        run: uvx ty check .
