@@ -128,7 +128,7 @@ class OutpatientsModel(Model):
         params = model_iteration.run_params["efficiencies"]["op"]
         strategies = model_iteration.model.strategies["efficiencies"]
         # make sure to take the complement of the parameter
-        factor = 1 - data["rn"].map(strategies.map(params)).fillna(1)
+        factor = 1 - data["rn"].map(strategies["strategy"].map(params)).fillna(1)
         # create a value for converting attendances into tele attendances for each row
         # the value will be a random binomial value, i.e. we will convert between 0 and attendances
         # into tele attendances

@@ -171,9 +171,12 @@ def test_convert_to_tele(mock_model):
         "efficiencies": {"op": {"convert_to_tele_a": 0.25, "convert_to_tele_b": 0.5}}
     }
     mr_mock.model.strategies = {
-        "efficiencies": pd.Series(
-            {k: "convert_to_tele_a" if k % 2 else "convert_to_tele_b" for k in data["rn"]}
-        )
+        "efficiencies": pd.DataFrame(
+            [
+                {"rn": k, "strategy": "convert_to_tele_a" if k % 2 else "convert_to_tele_b"}
+                for k in data["rn"]
+            ]
+        ).set_index("rn")
     }
 
     # act
