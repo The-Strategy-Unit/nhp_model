@@ -4,10 +4,9 @@ Implements the inpatients model.
 """
 
 from collections import defaultdict
-from typing import Any, Callable, Tuple
+from typing import Any, Callable, Self, Tuple
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 
 from nhp.model.data import Data
@@ -33,8 +32,6 @@ class InpatientsModel(Model):
 
     Inherits from the Model class.
     """
-
-    # pylint: disable=too-many-instance-attributes
 
     def __init__(
         self,
@@ -92,7 +89,7 @@ class InpatientsModel(Model):
     def _load_strategies(self, data_loader: Data) -> None:
         """Load a set of strategies."""
 
-        def filter_valid(strategy_type, strats):
+        def filter_valid(strategy_type: str, strats: pd.DataFrame) -> pd.DataFrame:
             strats = strats.set_index(["rn"])
             # get the valid set of valid strategies from the params
             valid_strats = self.params[strategy_type]["ip"].keys()
@@ -107,9 +104,7 @@ class InpatientsModel(Model):
                 return None
 
             return (
-                self.data.query(
-                    f"admimeth.str.startswith('{i}') & (speldur > 0) & classpat == '1'"
-                )
+                self.data.query(f"admimeth.str.startswith('{i}') & (speldur > 0) & classpat == '1'")
                 .set_index("rn")[[]]
                 .drop_duplicates()
                 .drop_duplicates()
@@ -133,31 +128,31 @@ class InpatientsModel(Model):
         # where applicable
         self.strategies["efficiencies"] = pd.concat(
             [self.strategies["efficiencies"]]
-            + [append_general_los(*x) for x in [("1", "elective"), ("2", "emergency")]]
+            + [
+                # see https://github.com/astral-sh/ty/issues/247
+                append_general_los(*x)  # ty: ignore [missing-argument]
+                for x in [("1", "elective"), ("2", "emergency")]
+            ]
         )
 
-    def get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
+    def get_data_counts(self, data: pd.DataFrame) -> np.ndarray:
         """Get row counts of data.
 
         :param data: the data to get the counts of
         :type data: pd.DataFrame
         :return: the counts of the data, required for activity avoidance steps
-        :rtype: npt.ArrayLike
+        :rtype: np.ndarray
         """
-        return np.array(
-            [np.ones_like(data["rn"]), (1 + data["speldur"]).to_numpy()]
-        ).astype(float)
+        return np.array([np.ones_like(data["rn"]), (1 + data["speldur"]).to_numpy()]).astype(float)
 
-    def apply_resampling(
-        self, row_samples: npt.ArrayLike, data: pd.DataFrame
-    ) -> pd.DataFrame:
+    def apply_resampling(self, row_samples: np.ndarray, data: pd.DataFrame) -> pd.DataFrame:
         """Apply row resampling.
 
         Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
 
         :param row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
         values for `data["arrivals"]`
-        :type row_samples: npt.ArrayLike
+        :type row_samples: np.ndarray
         :param data: the data that we want to update
         :type data: pd.DataFrame
         :return: the updated data
@@ -165,7 +160,9 @@ class InpatientsModel(Model):
         """
         return data.loc[data.index.repeat(row_samples[0])].reset_index(drop=True)
 
-    def efficiencies(self, data: pd.DataFrame, model_iteration: ModelIteration) -> None:
+    def efficiencies(
+        self, data: pd.DataFrame, model_iteration: ModelIteration
+    ) -> tuple[pd.DataFrame, pd.DataFrame | None]:
         """Run the efficiencies steps of the model.
 
         :param model_iteration: an instance of the ModelIteration class
@@ -262,7 +259,7 @@ class InpatientsModel(Model):
 
         return data
 
-    def aggregate(self, model_iteration: ModelIteration) -> Tuple[Callable, dict]:
+    def aggregate(self, model_iteration: ModelIteration) -> tuple[pd.DataFrame, list[list[str]]]:
         """Aggregate the model results.
 
         Can also be used to aggregate the baseline data by passing in a `ModelIteration` with
@@ -271,8 +268,9 @@ class InpatientsModel(Model):
         :param model_iteration: an instance of the `ModelIteration` class
         :type model_iteration: model.model_iteration.ModelIteration
 
-        :returns: a dictionary containing the different aggregations of this data
-        :rtype: dict
+        :returns: a tuple containing the model results, and a list of lists which contain the
+            aggregations to perform
+        :rtype: tuple[pd.DataFrame, list[list[str]]]
         """
         model_results = self.process_results(model_iteration.get_model_results())
 
@@ -302,9 +300,7 @@ class InpatientsModel(Model):
         )
         return rows_avoided.merge(data.drop_duplicates(), how="left", on="rn")
 
-    def save_results(
-        self, model_iteration: ModelIteration, path_fn: Callable[[str], str]
-    ) -> None:
+    def save_results(self, model_iteration: ModelIteration, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model.
 
         :param model_iteration: an instance of the `ModelIteration` class
@@ -323,17 +319,13 @@ class InpatientsModel(Model):
             f"{path_fn('sdec_conversion')}/0.parquet"
         )
         # save the ip rows
-        self._save_results_get_ip_rows(model_results).to_parquet(
-            f"{path_fn('ip')}/0.parquet"
-        )
+        self._save_results_get_ip_rows(model_results).to_parquet(f"{path_fn('ip')}/0.parquet")
         # save the avoided activity
         model_iteration.avoided_activity[["rn", "speldur", "classpat"]].to_parquet(
             f"{path_fn('ip_avoided')}/0.parquet"
         )
 
-    def _save_results_get_op_converted(
-        self, model_results: pd.DataFrame
-    ) -> pd.DataFrame:
+    def _save_results_get_op_converted(self, model_results: pd.DataFrame) -> pd.DataFrame:
         ix = model_results["classpat"] == "-1"
         return (
             model_results[ix]
@@ -344,9 +336,7 @@ class InpatientsModel(Model):
             .reset_index()
         )
 
-    def _save_results_get_sdec_converted(
-        self, model_results: pd.DataFrame
-    ) -> pd.DataFrame:
+    def _save_results_get_sdec_converted(self, model_results: pd.DataFrame) -> pd.DataFrame:
         ix = model_results["classpat"] == "-3"
         return (
             model_results[ix]
@@ -392,7 +382,7 @@ class InpatientEfficiencies:
         """Get the efficiencies strategies."""
         return self._model_iteration.model.strategies["efficiencies"]
 
-    def _select_single_strategy(self):
+    def _select_single_strategy(self) -> None:
         rng = self._model_iteration.rng
         selected_strategy = (
             self.data["rn"]
@@ -408,14 +398,14 @@ class InpatientEfficiencies:
         # assign the selected strategies
         self.data = self.data.set_index(selected_strategy)
 
-    def _generate_losr_df(self):
+    def _generate_losr_df(self) -> None:
         params = self._model_iteration.params["efficiencies"]["ip"]
         run_params = self._model_iteration.run_params["efficiencies"]["ip"]
         losr = pd.DataFrame.from_dict(params, orient="index")
         losr["losr_f"] = [run_params[i] for i in losr.index]
         self.losr = losr
 
-    def losr_all(self):
+    def losr_all(self) -> Self:
         """Length of Stay Reduction: All.
 
         Reduces all rows length of stay by sampling from a binomial distribution, using the current
@@ -431,15 +421,13 @@ class InpatientEfficiencies:
         if i.empty:
             return self
 
-        new = rng.binomial(
-            data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"]
-        )
+        new = rng.binomial(data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"])
 
         self.data.loc[i, "speldur"] = new.astype("int32")
 
         return self
 
-    def losr_sdec(self):
+    def losr_sdec(self) -> Self:
         """Length of Stay Reduction: SDEC reduction.
 
         Converts IP activity to SDEC attendance for a given percentage of rows.
@@ -453,16 +441,16 @@ class InpatientEfficiencies:
         if i.empty:
             return self
 
-        rnd_choice = np.array(
-            rng.binomial(1, losr.loc[data.loc[i].index, "losr_f"])
-        ).astype("int32")
+        rnd_choice = np.array(rng.binomial(1, losr.loc[data.loc[i].index, "losr_f"])).astype(
+            "int32"
+        )
 
         self.data.loc[i, "classpat"] = np.where(rnd_choice == 0, "-3", "1")
         self.data.loc[i, "speldur"] = self.data.loc[i, "speldur"] * rnd_choice
 
         return self
 
-    def losr_preop(self):
+    def losr_preop(self) -> Self:
         """Length of Stay Reduction: Pre-op reduction.
 
         Updates the length of stay to by removing 1 or 2 days for a given percentage of rows
@@ -484,7 +472,7 @@ class InpatientEfficiencies:
 
         return self
 
-    def losr_day_procedures(self, day_procedure_type: str) -> None:
+    def losr_day_procedures(self, day_procedure_type: str) -> Self:
         """Length of Stay Reduction: Day Procedures.
 
         This will swap rows between elective admissions and daycases into either daycases or
@@ -522,7 +510,7 @@ class InpatientEfficiencies:
 
         return self
 
-    def get_step_counts(self):
+    def get_step_counts(self) -> pd.DataFrame:
         """Updates the step counts object.
 
         After running the efficiencies, update the model runs step counts object.
@@ -530,11 +518,7 @@ class InpatientEfficiencies:
         return (
             self.data
             # handle the changes of activity type
-            .assign(
-                admissions=lambda x: np.where(
-                    x["classpat"].isin(["-1", "-2", "-3"]), -1, 0
-                )
-            )
+            .assign(admissions=lambda x: np.where(x["classpat"].isin(["-1", "-2", "-3"]), -1, 0))
             .assign(
                 beddays=lambda x: x["speldur"]
                 - self.speldur_before
@@ -545,9 +529,7 @@ class InpatientEfficiencies:
             .loc[self.data.index.notna()]
             .reset_index()
             .rename(columns={"index": "strategy"})
-            .groupby(["pod", "sitetret", "strategy"], as_index=False)[
-                ["admissions", "beddays"]
-            ]
+            .groupby(["pod", "sitetret", "strategy"], as_index=False)[["admissions", "beddays"]]
             .sum()
             .assign(change_factor="efficiencies")
         )

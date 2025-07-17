@@ -1,7 +1,5 @@
 """Health Status Adjustment."""
 
-# pylint: disable=too-few-public-methods
-
 from math import pi, sqrt
 from typing import List
 
@@ -49,9 +47,7 @@ class HealthStatusAdjustment:
 
     def _load_activity_ages(self, data_loader: Data):
         self._activity_ages = (
-            data_loader.get_hsa_activity_table()
-            .set_index(["hsagrp", "sex", "age"])
-            .sort_index()
+            data_loader.get_hsa_activity_table().set_index(["hsagrp", "sex", "age"]).sort_index()
         )["activity"]
 
     @staticmethod
@@ -59,9 +55,9 @@ class HealthStatusAdjustment:
         start_year: int,
         end_year: int,
         variants: List[str],
-        rng: np.random.BitGenerator,
+        rng: np.random.Generator,
         model_runs: int,
-    ) -> np.array:
+    ) -> np.ndarray:
         """Generate Health Status Adjustment Parameters.
 
         :param start_year: The baseline year for the model
@@ -69,54 +65,50 @@ class HealthStatusAdjustment:
         :param end_year: The year the model is running for
         :type end_year: int
         :param rng: Random Number Generator
-        :type rng: np.random.BitGenerator
+        :type rng: np.random.Generator
         :param model_runs: Number of Model Runs
         :type model_runs: int
         :return: parameters for the health status adjustment
-        :rtype: np.array
+        :rtype: np.ndarray
         """
         hsa_snp = reference.split_normal_params().set_index(["var", "sex", "year"])
 
         def gen(variant, sex):
-            mode, sd1, sd2 = hsa_snp.loc[(variant, sex, end_year)]
+            mode, sd1, sd2 = hsa_snp.loc[(variant, sex, end_year)]  # type: ignore
 
             return np.concatenate(
                 [
                     [mode],
-                    HealthStatusAdjustment.random_splitnorm(
-                        rng, model_runs, mode, sd1, sd2
-                    ),
-                    hsa_snp.loc[
-                        (variant, sex, np.arange(start_year + 1, end_year)), "mode"
-                    ],
+                    HealthStatusAdjustment.random_splitnorm(rng, model_runs, mode, sd1, sd2),
+                    hsa_snp.loc[(variant, sex, np.arange(start_year + 1, end_year)), "mode"],  # type: ignore
                 ]
             )
 
         values = {
-            v: np.transpose([gen(v, "m"), gen(v, "f")]) for v in hsa_snp.index.levels[0]
+            v: np.transpose([gen(v, "m"), gen(v, "f")])
+            for v in hsa_snp.index.levels[0]  # type: ignore
         }
 
         variant_lookup = reference.variant_lookup()
-        return [
-            values[variant_lookup[v]][i]
-            for i, v in enumerate(
-                variants + variants[0:1] * (end_year - start_year - 1)
-            )
-        ]
+        return np.array(
+            [
+                values[variant_lookup[v]][i]
+                for i, v in enumerate(variants + variants[0:1] * (end_year - start_year - 1))
+            ]
+        )
 
     @staticmethod
     def random_splitnorm(
-        rng: np.random.BitGenerator,
-        n: int,  # pylint: disable=invalid-name
+        rng: np.random.Generator,
+        n: int,
         mode: float,
         sd1: float,
         sd2: float,
-    ) -> np.array:
-        # pylint: disable=invalid-name
+    ) -> np.ndarray:
         """Generate random splitnormal values.
 
         :param rng: Random Number Generator
-        :type rng: np.random.BitGenerator
+        :type rng: np.random.Generator
         :param n: Number of random values to generate
         :type n: int
         :param mode: the mode of the distribution
@@ -126,7 +118,7 @@ class HealthStatusAdjustment:
         :param sd2: the standard deviation of the right side of the distribution
         :type sd2: float
         :return: n random number values sampled from the split normal distribution
-        :rtype: np.array
+        :rtype: np.ndarray
         """
         # get the probability of the mode
         A = sqrt(2 / pi) / (sd1 + sd2)
@@ -159,7 +151,7 @@ class HealthStatusAdjustment:
         if cache_key in self._cache:
             return self._cache[cache_key]
 
-        lexc = self._life_expectancy.loc[(selected_variant, slice(None), slice(None))][
+        lexc = self._life_expectancy.loc[(selected_variant, slice(None), slice(None))][  # type: ignore
             str(run_params["year"])
         ]
         hsa_param = np.repeat(hsa_param, len(self._ages))
@@ -167,7 +159,7 @@ class HealthStatusAdjustment:
 
         factor = (
             self._predict_activity(adjusted_ages).rename_axis(["hsagrp", "sex", "age"])
-            / self._activity_ages.loc[slice(None), slice(None), self._ages]
+            / self._activity_ages.loc[slice(None), slice(None), self._ages]  # type: ignore
         ).rename("health_status_adjustment")
 
         # if any factor goes below 0, set it to 0
@@ -231,6 +223,6 @@ class HealthStatusAdjustmentInterpolated(HealthStatusAdjustment):
                     np.interp(adjusted_ages.loc[s], self._all_ages, v),
                     index=self._ages,
                 ).apply(lambda x: x if x > 0 else 0)
-                for (h, s), v in self._activity_ages_lists.items()
+                for (h, s), v in self._activity_ages_lists.items()  # type: ignore
             }
         )

@@ -1,6 +1,4 @@
-"""test health status adjustmente"""
-
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name, missing-function-docstring
+"""Test health status adjustmente."""
 
 from unittest.mock import Mock, patch
 
@@ -19,9 +17,9 @@ from nhp.model.health_status_adjustment import (
 
 @pytest.fixture
 def mock_hsa():
-    """create a mock Model instance"""
+    """Create a mock Model instance."""
     with patch.object(HealthStatusAdjustment, "__init__", lambda *args: None):
-        hsa = HealthStatusAdjustment(None, None)
+        hsa = HealthStatusAdjustment(None, None)  # type: ignore
 
     hsa._all_ages = np.arange(0, 101)
     hsa._cache = dict()
@@ -40,7 +38,7 @@ def test_hsa_init(mocker):
     )
 
     # act
-    hsa = HealthStatusAdjustment("nhp_data", 2020)
+    hsa = HealthStatusAdjustment("nhp_data", 2020)  # type: ignore
 
     # assert
     assert hsa._all_ages.tolist() == list(range(0, 101))
@@ -155,9 +153,7 @@ def test_load_activity_ages(mock_hsa):
 )
 def test_generate_params(mocker, year, expected_results, expected_call):
     # arrange
-    m = mocker.patch(
-        "nhp.model.health_status_adjustment.HealthStatusAdjustment.random_splitnorm"
-    )
+    m = mocker.patch("nhp.model.health_status_adjustment.HealthStatusAdjustment.random_splitnorm")
     m.return_value = list(range(1, 11))
 
     split_normal_params = pd.DataFrame(
@@ -176,7 +172,11 @@ def test_generate_params(mocker, year, expected_results, expected_call):
 
     # act
     actual = HealthStatusAdjustment.generate_params(
-        2020, year, ["principal_proj"] * 11, "rng", 10
+        2020,
+        year,
+        ["principal_proj"] * 11,
+        "rng",  # type: ignore
+        10,
     )
 
     # assert
@@ -246,22 +246,22 @@ def test_hsa_run_not_cached(mocker, mock_hsa):
     )
     mock_hsa._activity_ages = pd.Series(
         {
-            ("a", 1, 0): 0,  #
+            ("a", 1, 0): 0,
             ("a", 1, 1): 2,
             ("a", 1, 2): 3,
-            ("a", 1, 3): 0,  #
-            ("a", 2, 0): 0,  #
+            ("a", 1, 3): 0,
+            ("a", 2, 0): 0,
             ("a", 2, 1): 4,
             ("a", 2, 2): 5,
-            ("a", 3, 3): 0,  #
-            ("b", 1, 0): 0,  #
+            ("a", 3, 3): 0,
+            ("b", 1, 0): 0,
             ("b", 1, 1): 6,
             ("b", 1, 2): 7,
-            ("b", 1, 3): 0,  #
-            ("b", 2, 0): 0,  #
+            ("b", 1, 3): 0,
+            ("b", 2, 0): 0,
             ("b", 2, 1): 8,
             ("b", 2, 2): 9,
-            ("b", 2, 3): 0,  #
+            ("b", 2, 3): 0,
         }
     ).rename_axis(["hsagrp", "sex", "age"])
     mock_hsa._predict_activity = Mock(return_value=activity)
@@ -316,29 +316,27 @@ def test_hsa_predict_activity(mock_hsa):
 
 @pytest.fixture
 def mock_hsa_gam():
-    """create a mock Model instance"""
+    """Create a mock Model instance."""
     with patch.object(HealthStatusAdjustmentGAM, "__init__", lambda *args: None):
-        hsa = HealthStatusAdjustmentGAM(None, None)
+        hsa = HealthStatusAdjustmentGAM(None, None)  # type: ignore
 
     hsa_mock = type("mocked_hsa", (object,), {"predict": lambda x: x})
     hsa._gams = {(h, s): hsa_mock for h in ["a", "b"] for s in [1, 2]}
 
     hsa._all_ages = np.arange(0, 3)
-    hsa._ages = [1, 2]
+    hsa._ages = [1, 2]  # type: ignore
 
     return hsa
 
 
 def test_hsa_gam_init(mocker):
     # arrange
-    super_mock = mocker.patch(
-        "nhp.model.health_status_adjustment.HealthStatusAdjustment.__init__"
-    )
+    super_mock = mocker.patch("nhp.model.health_status_adjustment.HealthStatusAdjustment.__init__")
     nhp_data_mock = Mock()
     nhp_data_mock.get_hsa_gams.return_value = "hsa_gams"
 
     # act
-    hsa = HealthStatusAdjustmentGAM(nhp_data_mock, 2020)
+    hsa = HealthStatusAdjustmentGAM(nhp_data_mock, 2020)  # type: ignore
 
     # assert
     assert hsa._gams == "hsa_gams"
@@ -371,11 +369,9 @@ def test_hsa_gam_predict_activity(mock_hsa_gam):
 
 @pytest.fixture
 def mock_hsa_interpolated():
-    """create a mock Model instance"""
-    with patch.object(
-        HealthStatusAdjustmentInterpolated, "__init__", lambda *args: None
-    ):
-        hsa = HealthStatusAdjustmentInterpolated(None, None)
+    """Create a mock Model instance."""
+    with patch.object(HealthStatusAdjustmentInterpolated, "__init__", lambda *args: None):
+        hsa = HealthStatusAdjustmentInterpolated(None, None)  # type: ignore
 
     hsa._activity_ages = pd.Series(
         {
@@ -398,24 +394,21 @@ def mock_hsa_interpolated():
         }
     )
 
-    hsa._all_ages = [0, 1, 2, 3]
-    hsa._ages = [1, 2]
+    hsa._all_ages = [0, 1, 2, 3]  # type: ignore
+    hsa._ages = [1, 2]  # type: ignore
 
     return hsa
 
 
 def test_hsa_interpolated_init(mocker):
     # arrange
-    super_mock = mocker.patch(
-        "nhp.model.health_status_adjustment.HealthStatusAdjustment.__init__"
-    )
+    super_mock = mocker.patch("nhp.model.health_status_adjustment.HealthStatusAdjustment.__init__")
     lal_mock = mocker.patch(
-        # pylint: disable=line-too-long
         "nhp.model.health_status_adjustment.HealthStatusAdjustmentInterpolated._load_activity_ages_lists"
     )
 
     # act
-    HealthStatusAdjustmentInterpolated("data/synthetic", 2020)
+    HealthStatusAdjustmentInterpolated("data/synthetic", 2020)  # type: ignore
 
     # assert
     super_mock.assert_called_once_with("data/synthetic", 2020)

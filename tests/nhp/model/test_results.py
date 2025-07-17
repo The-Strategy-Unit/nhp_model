@@ -1,6 +1,4 @@
-"""test results.py"""
-
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name, missing-function-docstring
+"""Test results.py."""
 
 from unittest.mock import Mock, call, mock_open, patch
 
@@ -103,7 +101,7 @@ def test_combine_model_results(mocker):
     cmr_mock = mocker.patch("nhp.model.results._complete_model_runs", return_value="cmr")
 
     # act
-    actual = _combine_model_results(results)
+    actual = _combine_model_results(results)  # type: ignore
 
     # assert
     assert actual == {"default": "cmr", "other": "cmr"}
@@ -149,7 +147,7 @@ def test_combine_step_counts(mocker):
     actual = _combine_step_counts(results)
 
     # assert
-    assert actual == "cmr"
+    assert actual == "cmr"  # type: ignore
     assert all(i.to_dict("list") == expected for i in cmr_mock.call_args[0][0])
     assert cmr_mock.call_args[0][1] == 1
     assert cmr_mock.call_args[1] == {"include_baseline": False}
@@ -259,9 +257,7 @@ def test_generate_results_json(mocker):
 
     # act
     with patch("builtins.open", mock_open()) as mock_file:
-        actual = generate_results_json(
-            combined_results, combined_step_counts, params, run_params
-        )
+        actual = generate_results_json(combined_results, combined_step_counts, params, run_params)
 
     # assert
     assert actual == expected
@@ -281,16 +277,12 @@ def test_generate_results_json(mocker):
 
 def test_combine_results(mocker):
     # arrange
-    ma = mocker.patch(
-        "nhp.model.results._combine_model_results", return_value="combined_results"
-    )
-    mb = mocker.patch(
-        "nhp.model.results._combine_step_counts", return_value="combined_step_counts"
-    )
+    ma = mocker.patch("nhp.model.results._combine_model_results", return_value="combined_results")
+    mb = mocker.patch("nhp.model.results._combine_step_counts", return_value="combined_step_counts")
     ms = mocker.patch("nhp.model.results._patch_converted_sdec_activity")
 
     # act
-    actual = combine_results("results")
+    actual = combine_results("results")  # type: ignore
 
     # assert
     assert actual == ("combined_results", "combined_step_counts")
@@ -394,7 +386,7 @@ def test_save_params_file(mocker):
 
     # act
     with patch("builtins.open", mock_open()) as mock_file:
-        actual = _save_params_file("path", "params")
+        actual = _save_params_file("path", "params")  # type: ignore
 
     # assert
     assert actual == "path/params.json"
@@ -438,8 +430,6 @@ def test_patch_converted_sdec_activity():
     )
     # act
     _patch_converted_sdec_activity(results, "acuity", "standard")
-    actual = results["acuity"].sort_values(
-        ["pod", "sitetret", "measure", "acuity", "model_run"]
-    )
+    actual = results["acuity"].sort_values(["pod", "sitetret", "measure", "acuity", "model_run"])
     # assert
     pd.testing.assert_frame_equal(actual, expected)

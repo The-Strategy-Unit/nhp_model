@@ -6,7 +6,6 @@ Implements the Outpatients model.
 from typing import Any, Callable, Tuple
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 
 from nhp.model.data import Data
@@ -74,48 +73,44 @@ class OutpatientsModel(Model):
         self.data.loc[~self.data["is_first"], "pod"] = "op_follow-up"
         self.data.loc[self.data["has_procedures"], "pod"] = "op_procedure"
 
-    def get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
+    def get_data_counts(self, data: pd.DataFrame) -> np.ndarray:
         """Get row counts of data.
 
         :param data: the data to get the counts of
         :type data: pd.DataFrame
         :return: the counts of the data, required for activity avoidance steps
-        :rtype: npt.ArrayLike
+        :rtype: np.ndarray
         """
-        return (
-            data[["attendances", "tele_attendances"]]
-            .to_numpy()
-            .astype(float)
-            .transpose()
-        )
+        return data[["attendances", "tele_attendances"]].to_numpy().astype(float).transpose()
 
     def _load_strategies(self, data_loader: Data) -> None:
         data = self.data.set_index("rn")
 
-        self.strategies = {
-            "activity_avoidance": pd.concat(
-                [
-                    "followup_reduction_"
-                    + data[~data["is_first"] & ~data["has_procedures"]]["type"],
-                    "consultant_to_consultant_reduction_"
-                    + data[data["is_cons_cons_ref"]]["type"],
-                    "gp_referred_first_attendance_reduction_"
-                    + data[data["is_gp_ref"] & data["is_first"]]["type"],
-                ]
-            )
-            .rename("strategy")
-            .to_frame()
-            .assign(sample_rate=1),
-            "efficiencies": pd.concat(
-                ["convert_to_tele_" + data[~data["has_procedures"]]["type"]]
-            ),
+        activity_avoidance = pd.concat(
+            [
+                "followup_reduction_" + data[~data["is_first"] & ~data["has_procedures"]]["type"],
+                "consultant_to_consultant_reduction_" + data[data["is_cons_cons_ref"]]["type"],
+                "gp_referred_first_attendance_reduction_"
+                + data[data["is_gp_ref"] & data["is_first"]]["type"],
+            ]
+        )
+        efficiencies: pd.Series = pd.concat(  # type: ignore
+            ["convert_to_tele_" + data[~data["has_procedures"]]["type"]]
+        )
+
+        self.strategies: dict[str, pd.DataFrame] = {
+            k: v.rename("strategy").to_frame().assign(sample_rate=1)
+            for k, v in {
+                "activity_avoidance": activity_avoidance,
+                "efficiencies": efficiencies,
+            }.items()
         }
 
     @staticmethod
     def _convert_to_tele(
-        data,
+        data: pd.DataFrame,
         model_iteration: ModelIteration,
-    ) -> None:
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """Convert attendances to tele-attendances.
 
         :param rng: a random number generator created for each model iteration
@@ -124,6 +119,9 @@ class OutpatientsModel(Model):
         :type data: pandas.DataFrame
         :param run_params: the parameters to use for this model run (see `Model._get_run_params()`)
         :type run_params: dict
+
+        :returns: a tuple containing the updated data and the updated step counts
+        :rtype: tuple[pd.DataFrame, pd.DataFrame]
         """
         # TODO: we need to make sure efficiences contains convert to tele keys
         rng = model_iteration.rng
@@ -157,16 +155,14 @@ class OutpatientsModel(Model):
         )
         return data, step_counts
 
-    def apply_resampling(
-        self, row_samples: npt.ArrayLike, data: pd.DataFrame
-    ) -> pd.DataFrame:
+    def apply_resampling(self, row_samples: np.ndarray, data: pd.DataFrame) -> pd.DataFrame:
         """Apply row resampling.
 
         Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
 
         :param row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
         values for `data["arrivals"]`
-        :type row_samples: npt.ArrayLike
+        :type row_samples: np.ndarray
         :param data: the data that we want to update
         :type data: pd.DataFrame
         :return: the updated data
@@ -177,7 +173,9 @@ class OutpatientsModel(Model):
         # return the altered data
         return data
 
-    def efficiencies(self, data: pd.DataFrame, model_iteration: ModelIteration) -> None:
+    def efficiencies(
+        self, data: pd.DataFrame, model_iteration: ModelIteration
+    ) -> tuple[pd.DataFrame, pd.DataFrame | None]:
         """Run the efficiencies steps of the model.
 
         :param model_iteration: an instance of the ModelIteration class
@@ -236,18 +234,18 @@ class OutpatientsModel(Model):
         )
         return data
 
-    def aggregate(self, model_iteration: ModelIteration) -> Tuple[Callable, dict]:
+    def aggregate(self, model_iteration: ModelIteration) -> tuple[pd.DataFrame, list[list[str]]]:
         """Aggregate the model results.
 
-        Can also be used to aggregate the baseline data by passing in the raw data
+        Can also be used to aggregate the baseline data by passing in a `ModelIteration` with
+        the `model_run` argument set `-1`.
 
-        :param model_results: a DataFrame containing the results of a model iteration
-        :type model_results: pandas.DataFrame
-        :param model_run: the current model run
-        :type model_run: int
+        :param model_iteration: an instance of the `ModelIteration` class
+        :type model_iteration: model.model_iteration.ModelIteration
 
-        :returns: a dictionary containing the different aggregations of this data
-        :rtype: dict
+        :returns: a tuple containing the model results, and a list of lists which contain the
+            aggregations to perform
+        :rtype: tuple[pd.DataFrame, list[list[str]]]
         """
         model_results = self.process_results(model_iteration.get_model_results())
 
@@ -259,9 +257,7 @@ class OutpatientsModel(Model):
             ],
         )
 
-    def save_results(
-        self, model_iteration: ModelIteration, path_fn: Callable[[str], str]
-    ) -> None:
+    def save_results(self, model_iteration: ModelIteration, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model.
 
         This method is used for saving the results of the model run to disk as a parquet file.

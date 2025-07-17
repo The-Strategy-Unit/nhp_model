@@ -1,6 +1,4 @@
-"""test nhp data (local)"""
-
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name,missing-function-docstring
+"""test nhp data (local)."""
 
 from unittest.mock import call, mock_open, patch
 
@@ -71,9 +69,7 @@ def test_get_ip_strategies(mocker):
 
 def test_get_op(mocker):
     # arrange
-    op_data = pd.DataFrame(
-        {"col_1": [1, 2], "col_2": [3, 4], "index": [5, 6]}, index=[2, 1]
-    )
+    op_data = pd.DataFrame({"col_1": [1, 2], "col_2": [3, 4], "index": [5, 6]}, index=[2, 1])
     m = mocker.patch("nhp.model.data.Local._get_parquet", return_value=op_data)
     d = Local("data", 2019, "synthetic")
 
@@ -89,9 +85,7 @@ def test_get_op(mocker):
 
 def test_get_aae(mocker):
     # arrange
-    ae_data = pd.DataFrame(
-        {"col_1": [1, 2], "col_2": [3, 4], "index": [5, 6]}, index=[2, 1]
-    )
+    ae_data = pd.DataFrame({"col_1": [1, 2], "col_2": [3, 4], "index": [5, 6]}, index=[2, 1])
     m = mocker.patch("nhp.model.data.Local._get_parquet", return_value=ae_data)
     d = Local("data", 2019, "synthetic")
 

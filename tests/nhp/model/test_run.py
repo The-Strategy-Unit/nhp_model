@@ -1,6 +1,4 @@
-"""test run_model.py"""
-
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name, missing-function-docstring
+"""Test run_model.py."""
 
 from unittest.mock import Mock, call, mock_open, patch
 
@@ -14,10 +12,10 @@ from nhp.model.run import _run_model, run_all, run_single_model_run, timeit, tqd
 
 
 def test_tqdm():
-    tqdm.progress_callback = Mock()
+    tqdm.progress_callback = Mock()  # type: ignore
     t = tqdm()
     t.update(5)
-    tqdm.progress_callback.assert_called_once_with(5)
+    tqdm.progress_callback.assert_called_once_with(5)  # type: ignore
 
 
 def test_tqdm_no_callback():
@@ -27,7 +25,7 @@ def test_tqdm_no_callback():
 
 
 def test_timeit(mocker, capsys):
-    """it should evaluate a function and print how long it took to run it"""
+    """It should evaluate a function and print how long it took to run it."""
     # arrange
     m = Mock(return_value="function")
     mocker.patch("time.time", return_value=0)
@@ -54,7 +52,7 @@ def test_run_model(mocker):
     pc_m = Mock()
 
     # act
-    actual = _run_model(model_m, params, "data", "hsa", "run_params", pc_m, False)
+    actual = _run_model(model_m, params, "data", "hsa", "run_params", pc_m, False)  # type: ignore
 
     # assert
     pool_ctm.imap.assert_called_once_with(model_m().go, [0, 1, 2], chunksize=1)
@@ -68,21 +66,15 @@ def test_run_all(mocker):
         "nhp.model.run.Model.generate_run_params",
         return_value={"variant": "variants"},
     )
-    hsa_m = mocker.patch(
-        "nhp.model.run.HealthStatusAdjustmentInterpolated", return_value="hsa"
-    )
+    hsa_m = mocker.patch("nhp.model.run.HealthStatusAdjustmentInterpolated", return_value="hsa")
 
     rm_m = mocker.patch("nhp.model.run._run_model", side_effect=["ip", "op", "aae"])
     cr_m = mocker.patch(
         "nhp.model.run.combine_results",
         return_value=({"default": "combined_results"}, "combined_step_counts"),
     )
-    gr_m = mocker.patch(
-        "nhp.model.run.generate_results_json", return_value="results_json_path"
-    )
-    sr_m = mocker.patch(
-        "nhp.model.run.save_results_files", return_value="results_paths"
-    )
+    gr_m = mocker.patch("nhp.model.run.generate_results_json", return_value="results_json_path")
+    sr_m = mocker.patch("nhp.model.run.save_results_files", return_value="results_paths")
     nd_m = mocker.patch("nhp.model.run.Local")
 
     pc_m = Mock()
@@ -148,7 +140,7 @@ def test_run_all(mocker):
 
 
 def test_run_single_model_run(mocker, capsys):
-    """it should run the model and display outputs"""
+    """It should run the model and display outputs."""
     # arrange
     mr_mock = Mock()
     ndl_mock = mocker.patch("nhp.model.run.Local")
@@ -178,7 +170,7 @@ def test_run_single_model_run(mocker, capsys):
     params = {"dataset": "synthetic", "start_year": 2020, "end_year": 2025}
 
     # act
-    run_single_model_run(params, "data", "model_type", 0)
+    run_single_model_run(params, "data", "model_type", 0)  # type: ignore
 
     # assert
     ndl_mock.create.assert_called_once_with("data")

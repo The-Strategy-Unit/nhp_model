@@ -14,7 +14,6 @@ from functools import partial
 from typing import Any, Callable, List
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 
 from nhp.model.data import Data
@@ -23,7 +22,7 @@ from nhp.model.health_status_adjustment import (
     HealthStatusAdjustmentInterpolated,
 )
 from nhp.model.helpers import age_groups, inrange, load_params, rnorm
-from nhp.model.model_iteration import ModelIteration
+from nhp.model.model_iteration import ModelIteration, ModelRunResult
 
 
 class Model:
@@ -69,7 +68,7 @@ class Model:
         measures: List[str],
         params: dict,
         data: Callable[[int, str], Data],
-        hsa: Any = None,
+        hsa: Any | None = None,
         run_params: dict | None = None,
         save_full_model_results: bool = False,
     ) -> None:
@@ -91,9 +90,7 @@ class Model:
         :type save_full_model_results: bool, optional
         """
         valid_model_types = ["aae", "ip", "op"]
-        assert (
-            model_type in valid_model_types
-        ), "Model type must be one of 'aae', 'ip', or 'op'"
+        assert model_type in valid_model_types, "Model type must be one of 'aae', 'ip', or 'op'"
         self.model_type = model_type
         if isinstance(params, str):
             params = load_params(params)
@@ -140,7 +137,6 @@ class Model:
     def _load_data(self, data_loader: Data) -> None:
         self.data = self._get_data(data_loader).sort_values("rn")
         self.data["age_group"] = age_groups(self.data["age"])
-        # pylint: disable=assignment-from-no-return
         self.baseline_counts = self.get_data_counts(self.data)
         self._add_pod_to_data()
         self._add_ndggrp_to_data()
@@ -160,7 +156,7 @@ class Model:
     def _load_strategies(self, data_loader: Data) -> None:
         """Load a set of strategies."""
         # to be implemented by the concrete classes
-        self.strategies = None  # lint helper
+        self.strategies: dict[str, pd.DataFrame] = dict()
 
     def _load_demog_factors(self, data_loader: Data) -> None:
         """Load the demographic factors.
@@ -177,9 +173,7 @@ class Model:
           * `self._probabilities`: a list containing the probability of selecting a given variant
         """
         start_year = str(self.params["start_year"])
-        years = (
-            np.arange(self.params["start_year"], self.params["end_year"]) + 1
-        ).astype("str")
+        years = (np.arange(self.params["start_year"], self.params["end_year"]) + 1).astype("str")
 
         merge_cols = ["age", "sex"]
 
@@ -212,29 +206,26 @@ class Model:
         inrange_1_5 = partial(inrange, low=1, high=5)
 
         # function to generate a value for a model run
-        def gen_value(model_run, i):
+        def gen_value(model_run, i: list[float] | float):
             # we haven't received an interval, just a single value
             if not isinstance(i, list):
                 return i
             # for the baseline run, no params need to be set
             if model_run == 0:
                 return 1
-            return rnorm(rng, *i)  # otherwise
+            lo, hi = i
+            return rnorm(rng, lo, hi)  # otherwise
 
         # function to traverse a dictionary until we find the values to generate from
         def generate_param_values(prm, valid_range):
             if isinstance(prm, dict):
                 if "interval" not in prm:
-                    return {
-                        k: generate_param_values(v, valid_range) for k, v in prm.items()
-                    }
+                    return {k: generate_param_values(v, valid_range) for k, v in prm.items()}
                 prm = prm["interval"]
             return [valid_range(gen_value(mr, prm)) for mr in range(model_runs)]
 
         variants = list(params["demographic_factors"]["variant_probabilities"].keys())
-        probabilities = list(
-            params["demographic_factors"]["variant_probabilities"].values()
-        )
+        probabilities = list(params["demographic_factors"]["variant_probabilities"].values())
         # there can be numerical inacurracies in the probabilities not summing to 1
         # this will adjust the probabiliteies to sum correctly
         probabilities = [p / sum(probabilities) for p in probabilities]
@@ -305,24 +296,22 @@ class Model:
             **{k: get_param_value(params[k]) for k in params.keys() if k != "seeds"},
         }
 
-    def get_data_counts(self, data: pd.DataFrame) -> npt.ArrayLike:
+    def get_data_counts(self, data: pd.DataFrame) -> np.ndarray:
         """Get row counts of data.
 
         :param data: the data to get the counts of
         :type data: pd.DataFrame
         :return: the counts of the data, required for activity avoidance steps
-        :rtype: npt.ArrayLike
+        :rtype: np.ndarray
         """
         raise NotImplementedError()
 
     def activity_avoidance(
         self, data: pd.DataFrame, model_iteration: ModelIteration
-    ) -> dict:
+    ) -> tuple[pd.DataFrame, pd.DataFrame | None]:
         """Perform the activity avoidance (strategies)."""
         # if there are no items in params for activity_avoidance then exit
-        if not (
-            params := model_iteration.run_params["activity_avoidance"][self.model_type]
-        ):
+        if not (params := model_iteration.run_params["activity_avoidance"][self.model_type]):
             return data, None
 
         rng = model_iteration.rng
@@ -330,7 +319,7 @@ class Model:
         strategies = self.strategies["activity_avoidance"]
         # decide whether to sample a strategy for each row this model run
         strategies = strategies.loc[
-            rng.binomial(1, strategies["sample_rate"]).astype("bool"), "strategy"
+            rng.binomial(1, strategies["sample_rate"]).astype("bool"), "strategy"  # type: ignore
         ]
         # join the parameters, then pivot wider
         strategies = (
@@ -376,18 +365,17 @@ class Model:
         :return: The data that was avoided in the binomial thinning step
         :rtype: pd.DataFrame
         """
-        # implemented by concrete classes
+        raise NotImplementedError()
 
-    # pylint: disable=invalid-name
-    def go(self, model_run: int) -> dict:
+    def go(self, model_run: int) -> ModelRunResult:
         """Run the model and get the aggregated results.
 
         Needed for running in a multiprocessing pool as you need a serializable method.
 
         :param model_run: the model run number we want to run
         :type model_run: int
-        :return: the aggregated model results
-        :rtype: dictionary
+        :returns: a tuple containing a dictionary of results, and the step counts
+        :rtype: tuple[dict[str, pd.Series], pd.Series | None]:
         """
         mr = ModelIteration(self, model_run)
 
@@ -417,9 +405,7 @@ class Model:
         """
         return results.groupby(["pod", "sitetret", *args, "measure"])["value"].sum()
 
-    def save_results(
-        self, model_iteration: ModelIteration, path_fn: Callable[[str], str]
-    ) -> None:
+    def save_results(self, model_iteration: ModelIteration, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model.
 
         This method is used for saving the results of the model run to disk as a parquet file.
@@ -430,3 +416,18 @@ class Model:
         :param path_fn: a function which takes the activity type and returns a path
         """
         # implemented by concrete classes
+
+    def apply_resampling(self, row_samples: np.ndarray, data: pd.DataFrame) -> pd.DataFrame:
+        """Apply row resampling.
+
+        Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
+
+        :param row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
+        values for `data["arrivals"]`
+        :type row_samples: np.ndarray
+        :param data: the data that we want to update
+        :type data: pd.DataFrame
+        :return: the updated data
+        :rtype: pd.DataFrame
+        """
+        raise NotImplementedError()

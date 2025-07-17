@@ -8,7 +8,7 @@ from typing import Any, Callable
 
 import pandas as pd
 import pyspark.sql.functions as F
-from pyspark import SparkContext
+from pyspark.sql import SparkSession
 
 from nhp.model.data import Data
 
@@ -24,11 +24,11 @@ class Databricks(Data):
         self._dataset = dataset
 
     @staticmethod
-    def create(spark: SparkContext, data_path: str) -> Callable[[int, str], Any]:
+    def create(spark: SparkSession, data_path: str) -> Callable[[int, str], Any]:
         """Create Databricks object.
 
-        :param spark: a SparkContext for selecting data
-        :type spark: SparkContext
+        :param spark: a SparkSession for selecting data
+        :type spark: SparkSession
         :param data_path: the path to where the parquet files are stored
         :type data_path: str
         :return: a function to initialise the object
@@ -53,11 +53,11 @@ class Databricks(Data):
         """
         return self._apc.toPandas()
 
-    def get_ip_strategies(self) -> pd.DataFrame:
+    def get_ip_strategies(self) -> dict[str, pd.DataFrame]:
         """Get the inpatients strategies dataframe.
 
-        :return: the inpatients strategies dataframe
-        :rtype: pd.DataFrame
+        :return: the inpatients strategies dataframes
+        :rtype: dict[str, pd.DataFrame]
         """
         return {
             k: self._spark.read.parquet(f"{self._data_path}/ip_{k}_strategies")
@@ -149,7 +149,7 @@ class DatabricksNational(Data):
 
     def __init__(
         self,
-        spark: SparkContext,
+        spark: SparkSession,
         data_path: str,
         year: int,
         sample_rate: float,
@@ -173,12 +173,12 @@ class DatabricksNational(Data):
 
     @staticmethod
     def create(
-        spark: SparkContext, data_path: str, sample_rate: float, seed: int
+        spark: SparkSession, data_path: str, sample_rate: float, seed: int
     ) -> Callable[[int, str], Any]:
         """Create Databricks object.
 
-        :param spark: a SparkContext for selecting data
-        :type spark: SparkContext
+        :param spark: a SparkSession for selecting data
+        :type spark: SparkSession
         :param data_path: the path to where the parquet files are stored
         :type data_path: str
         :param sample_rate: the rate to sample inpatient data at
@@ -186,9 +186,7 @@ class DatabricksNational(Data):
         :return: a function to initialise the object
         :rtype: Callable[[str, str], Databricks]
         """
-        return lambda fyear, _: DatabricksNational(
-            spark, data_path, fyear, sample_rate, seed
-        )
+        return lambda fyear, _: DatabricksNational(spark, data_path, fyear, sample_rate, seed)
 
     def get_ip(self) -> pd.DataFrame:
         """Get the inpatients dataframe.
@@ -198,11 +196,11 @@ class DatabricksNational(Data):
         """
         return self._apc.toPandas()
 
-    def get_ip_strategies(self) -> pd.DataFrame:
+    def get_ip_strategies(self) -> dict[str, pd.DataFrame]:
         """Get the inpatients strategies dataframe.
 
-        :return: the inpatients strategies dataframe
-        :rtype: pd.DataFrame
+        :return: the inpatients strategies dataframes
+        :rtype: dict[str, pd.DataFrame]
         """
         return {
             k: self._spark.read.parquet(f"{self._data_path}/ip_{k}_strategies")
@@ -228,14 +226,10 @@ class DatabricksNational(Data):
             # TODO: temporary fix, see #353
             .withColumn("sushrg_trimmed", F.lit("HRG"))
             .withColumn("imd_quintile", F.lit(0))
-            .groupBy(
-                op.drop("index", "fyear", "attendances", "tele_attendances").columns
-            )
+            .groupBy(op.drop("index", "fyear", "attendances", "tele_attendances").columns)
             .agg(
                 (F.sum("attendances") * self._sample_rate).alias("attendances"),
-                (F.sum("tele_attendances") * self._sample_rate).alias(
-                    "tele_attendances"
-                ),
+                (F.sum("tele_attendances") * self._sample_rate).alias("tele_attendances"),
             )
             # TODO: how do we make this stable? at the moment we can't use full model results with
             # national
@@ -283,7 +277,7 @@ class DatabricksNational(Data):
         expr = f"stack({len(years)}, {years_str}) as (year, value)"
 
         return (
-            births_df.selectExpr("variant", "age", "sex", expr)
+            births_df.selectExpr("variant", "age", "sex", expr)  # noqa: PD010
             .groupBy("variant", "age", "sex")
             .pivot("year")
             .agg(F.sum("value"))
@@ -311,7 +305,7 @@ class DatabricksNational(Data):
         expr = f"stack({len(years)}, {years_str}) as (year, value)"
 
         return (
-            demog_df.selectExpr("variant", "age", "sex", expr)
+            demog_df.selectExpr("variant", "age", "sex", expr)  # noqa: PD010
             .groupBy("variant", "age", "sex")
             .pivot("year")
             .agg(F.sum("value"))

@@ -27,9 +27,7 @@ class RunWithLocalStorage:
         """
         self.params = load_params(f"queue/{filename}")
 
-    def finish(
-        self, results_file: str, saved_files: list, save_full_model_results: bool
-    ) -> None:
+    def finish(self, results_file: str, saved_files: list, save_full_model_results: bool) -> None:
         """Post model run steps.
 
         :param results_file: the path to the results file
@@ -60,9 +58,7 @@ class RunWithAzureStorage:
         :param app_version: the version of the app, where we will load data from. defaults to "dev"
         :type app_version: str, optional
         """
-        logging.getLogger("azure.storage.common.storageclient").setLevel(
-            logging.WARNING
-        )
+        logging.getLogger("azure.storage.common.storageclient").setLevel(logging.WARNING)
         logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
             logging.WARNING
         )
@@ -203,9 +199,7 @@ class RunWithAzureStorage:
 
         self._queue_blob.delete_blob()
 
-    def finish(
-        self, results_file: str, saved_files: list, save_full_model_results: bool
-    ) -> None:
+    def finish(self, results_file: str, saved_files: list, save_full_model_results: bool) -> None:
         """Post model run steps.
 
         :param results_file: the path to the results file

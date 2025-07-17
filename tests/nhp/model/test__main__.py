@@ -1,6 +1,4 @@
-"""test run_model.py"""
-
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name, missing-function-docstring
+"""Test run_model.py."""
 
 from unittest.mock import Mock, call, mock_open, patch
 
@@ -88,8 +86,8 @@ def test_main_all_runs(mocker):
 
 
 def test_init(mocker):
-    """it should run the main method if __name__ is __main__"""
-    import nhp.model.__main__ as r  # pylint: disable=import-outside-toplevel
+    """It should run the main method if __name__ is __main__."""
+    import nhp.model.__main__ as r
 
     main_mock = mocker.patch("nhp.model.__main__.main")
 

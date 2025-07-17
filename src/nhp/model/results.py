@@ -9,9 +9,10 @@ import logging
 import os
 from typing import Dict, List
 
-# janitor complains of being unused, but it is used (.complete())
-import janitor  # pylint: disable=unused-import
+import janitor
 import pandas as pd
+
+from nhp.model.model_iteration import ModelRunResult
 
 
 def _complete_model_runs(
@@ -33,7 +34,7 @@ def _complete_model_runs(
     :rtype: pd.DataFrame
     """
     results = pd.concat(res)
-    results = results.groupby(
+    results: pd.DataFrame = results.groupby(  # type: ignore
         [i for i in results.columns if i != "value"], as_index=False
     )["value"].sum()
 
@@ -45,7 +46,9 @@ def _complete_model_runs(
     )
 
 
-def _combine_model_results(results: list) -> pd.DataFrame:
+def _combine_model_results(
+    results: list[list[ModelRunResult]],
+) -> dict[str, pd.DataFrame]:
     """Combine the results of the monte carlo runs.
 
     Takes as input a list of lists, where the outer list contains an item for inpatients,
@@ -91,7 +94,10 @@ def _combine_step_counts(results: list):
             v
             # TODO: handle the case of daycase conversion, it's duplicating values
             # need to figure out exactly why, but this masks the issue for now
-            .groupby(v.index.names).sum().reset_index().assign(model_run=i)
+            .groupby(v.index.names)
+            .sum()
+            .reset_index()
+            .assign(model_run=i)
             for r in results
             for i, (_, v) in enumerate(r)
             if i > 0
@@ -102,7 +108,7 @@ def _combine_step_counts(results: list):
 
 
 def generate_results_json(
-    combined_results: pd.DataFrame,
+    combined_results: dict[str, pd.DataFrame],
     combined_step_counts: pd.DataFrame,
     params: dict,
     run_params: dict,
@@ -177,9 +183,7 @@ def save_results_files(results: dict, params: dict) -> list:
     :return: filepaths to saved files
     :rtype: list
     """
-    path = (
-        f"results/{params['dataset']}/{params['scenario']}/{params['create_datetime']}"
-    )
+    path = f"results/{params['dataset']}/{params['scenario']}/{params['create_datetime']}"
     os.makedirs(path, exist_ok=True)
 
     return [
@@ -207,9 +211,7 @@ def _add_metadata_to_dataframe(df: pd.DataFrame, params: dict) -> pd.DataFrame:
     return df
 
 
-def _save_parquet_file(
-    path: str, results_name: str, results_df: pd.DataFrame, params: dict
-) -> str:
+def _save_parquet_file(path: str, results_name: str, results_df: pd.DataFrame, params: dict) -> str:
     """Save a results dataframe as parquet.
 
     :param path: the folder where we want to save the results to
@@ -249,10 +251,7 @@ def _patch_converted_sdec_activity(
     agg_cols = ["pod", "sitetret", "measure", "model_run"]
 
     default_sdec = (
-        results["default"]
-        .query("pod == 'aae_type-05'")
-        .set_index(agg_cols)["value"]
-        .rename("b")
+        results["default"].query("pod == 'aae_type-05'").set_index(agg_cols)["value"].rename("b")
     )
 
     missing_sdec_activity = (
@@ -289,14 +288,16 @@ def _patch_converted_sdec_activity(
     results[column] = df_fixed
 
 
-def combine_results(results: list) -> dict:
+def combine_results(
+    results: list[list[ModelRunResult]],
+) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
     """Combine the results into a single dictionary.
 
     When we run the models we have an array containing 3 items [inpatients, outpatient, a&e].
     Each of which contains one item for each model run, which is a dictionary.
 
     :param results: the results of running the models
-    :type results: list
+    :type results: list[list[ModelRunResult]]
     :return: combined model results
     :rtype: dict
     """

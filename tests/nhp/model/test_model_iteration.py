@@ -1,6 +1,4 @@
-"""test run_model"""
-
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
+"""Test run_model."""
 
 from unittest.mock import Mock, call, patch
 
@@ -14,9 +12,9 @@ from nhp.model.model_iteration import ModelIteration
 # fixtures
 @pytest.fixture
 def mock_model_iteration():
-    """create a mock Model instance"""
+    """Create a mock Model instance."""
     with patch.object(ModelIteration, "__init__", lambda m, c, r: None):
-        mr = ModelIteration(None, None)
+        mr = ModelIteration(None, 0)
     mr.model = Mock()
     return mr
 
@@ -45,12 +43,12 @@ def test_init(mocker, run, rp_call):
     assert actual.rng == "rng"
     assert actual.data == "data"
     assert actual.step_counts is None
-    assert not actual.avoided_activity
+    assert actual.avoided_activity.equals(pd.DataFrame())
 
     rng_mock.assert_called_once_with(1)
     prp_mock.assert_called_once_with()
     model._get_run_params.assert_called_once_with(rp_call)
-    actual._run.assert_called_once()
+    actual._run.assert_called_once()  # type: ignore
 
 
 def test_patch_run_params(mock_model_iteration):
@@ -98,9 +96,7 @@ def test_patch_run_params(mock_model_iteration):
             },
             "aae": {"ambulance": {"Other": 3}, "walk-in": {"Other": 4}},
         },
-        "baseline_adjustment": {
-            "aae": {"ambulance": {"Other": 5}, "walk-in": {"Other": 6}}
-        },
+        "baseline_adjustment": {"aae": {"ambulance": {"Other": 5}, "walk-in": {"Other": 6}}},
     }
 
 
@@ -108,7 +104,7 @@ def test_patch_run_params(mock_model_iteration):
 
 
 def test_run(mocker, mock_model_iteration):
-    """test run calls the _run method correctly"""
+    """Test run calls the _run method correctly."""
     # arrange
     mr_mock = mock_model_iteration
     mr_mock.model_run = 1
@@ -156,9 +152,7 @@ def test_run(mocker, mock_model_iteration):
 
     mr_mock.model.activity_avoidance.assert_called_once_with(data_ar_mock.copy(), mr_mock)
     mr_mock.model.efficiencies.assert_called_once_with(data_aa_mock.copy(), mr_mock)
-    mr_mock.model.calculate_avoided_activity.assert_called_once_with(
-        data_ar_mock, data_aa_mock
-    )
+    mr_mock.model.calculate_avoided_activity.assert_called_once_with(data_ar_mock, data_aa_mock)
 
     pd_mock.assert_called_once_with(
         ["step_counts_baseline", "step_counts_ar", "step_counts_aa", "step_counts_ef"]
@@ -170,7 +164,7 @@ def test_run(mocker, mock_model_iteration):
 
 
 def test_run_baseline(mocker, mock_model_iteration):
-    """test run calls the _run method correctly"""
+    """Test run calls the _run method correctly."""
     # arrange
     mr_mock = mock_model_iteration
     mr_mock.model_run = 0
@@ -198,10 +192,7 @@ def test_fix_step_counts(mock_model_iteration):
     mr_mock.model.measures = ["x", "y"]
 
     factors = pd.DataFrame(
-        {
-            k: v * np.ones_like(baseline[0])
-            for k, v in {"a": 1.5, "b": 2.0, "c": 0.5}.items()
-        }
+        {k: v * np.ones_like(baseline[0]) for k, v in {"a": 1.5, "b": 2.0, "c": 0.5}.items()}
     )
 
     data = pd.DataFrame({"pod": ["a", "a", "b"], "sitetret": ["c", "d", "c"]})
@@ -224,8 +215,7 @@ def test_fix_step_counts(mock_model_iteration):
 
 
 def test_get_aggregate_results(mock_model_iteration):
-    """test the get_aggregate_results method"""
-
+    """Test the get_aggregate_results method."""
     # arrange
     mr_mock = mock_model_iteration
 
@@ -263,8 +253,7 @@ def test_get_aggregate_results(mock_model_iteration):
 
 
 def test_get_aggregate_results_avoided_activity_none(mock_model_iteration):
-    """test the get_aggregate_results method when avoided activity is None"""
-
+    """Test the get_aggregate_results method when avoided activity is None."""
     # arrange
     mr_mock = mock_model_iteration
 
@@ -282,7 +271,7 @@ def test_get_aggregate_results_avoided_activity_none(mock_model_iteration):
 
 
 def test_get_step_counts_empty(mock_model_iteration):
-    """test the get_step_counts method when step counts is empty"""
+    """Test the get_step_counts method when step counts is empty."""
     # arrange
     mr = mock_model_iteration
     mr.step_counts = None
@@ -295,8 +284,7 @@ def test_get_step_counts_empty(mock_model_iteration):
 
 
 def test_get_step_counts(mock_model_iteration):
-    """test the get_step_counts method when step counts is not empty"""
-
+    """Test the get_step_counts method when step counts is not empty."""
     # arrange
     step_counts = pd.DataFrame(
         {
@@ -522,9 +510,7 @@ def test_step_counts_get_type_change_sdec(mock_model_iteration):
 def test_get_model_results(mock_model_iteration):
     # arrange
     mr = mock_model_iteration
-    mr.data = pd.DataFrame(
-        {"x": [1, 2, 3], "hsagrp": ["h", "h", "h"]}, index=["a", "b", "c"]
-    )
+    mr.data = pd.DataFrame({"x": [1, 2, 3], "hsagrp": ["h", "h", "h"]}, index=["a", "b", "c"])
 
     # act
     actual = mr.get_model_results()

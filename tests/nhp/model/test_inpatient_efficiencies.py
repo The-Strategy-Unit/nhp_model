@@ -1,6 +1,4 @@
-"""test inpatient efficiencies"""
-
-# pylint: disable=protected-access,redefined-outer-name,no-member,invalid-name
+"""Test inpatient efficiencies."""
 
 from datetime import datetime, timedelta
 from unittest.mock import Mock, call, mock_open, patch
@@ -14,9 +12,9 @@ from nhp.model.inpatients import InpatientEfficiencies
 
 @pytest.fixture
 def mock_ipe():
-    """create a mock Model instance"""
+    """Create a mock Model instance."""
     with patch.object(InpatientEfficiencies, "__init__", lambda s, d, m: None):
-        ipe = InpatientEfficiencies(None, None)
+        ipe = InpatientEfficiencies(None, None)  # type: ignore
     ipe._model_iteration = Mock()
     ipe.losr = pd.DataFrame(
         {
@@ -50,8 +48,8 @@ def test_init(mocker):
     assert actual.strategies == "efficiencies"
     assert actual.speldur_before.to_list() == [1, 2, 3]
 
-    actual._select_single_strategy.assert_called_once()
-    actual._generate_losr_df.assert_called_once()
+    actual._select_single_strategy.assert_called_once()  # type: ignore
+    actual._generate_losr_df.assert_called_once()  # type: ignore
 
 
 def test_select_single_strategy(mock_ipe):
@@ -60,9 +58,7 @@ def test_select_single_strategy(mock_ipe):
     m._model_iteration.rng = np.random.default_rng(0)
     m.data = pd.DataFrame({"rn": list(range(5)), "admimeth": ["0"] * 4 + ["3"]})
     m._model_iteration.model.strategies = {
-        "efficiencies": pd.DataFrame(
-            {"strategy": ["a"] * 3 + ["b"] * 3}, index=[1, 2, 3] * 2
-        )
+        "efficiencies": pd.DataFrame({"strategy": ["a"] * 3 + ["b"] * 3}, index=[1, 2, 3] * 2)
     }
     m._model_iteration.params = {"efficiencies": {"ip": {"a": 2, "b": 3, "c": 4}}}
 
@@ -112,7 +108,7 @@ def test_generate_losr_df(mock_ipe):
 
 @pytest.mark.parametrize("losr_type", ["all", "sdec", "pre-op"])
 def test_losr_empty(mock_ipe, losr_type):
-    """test that if no preop strategy provided losr functions return self"""
+    """Test that if no preop strategy provided losr functions return self."""
     # arrange
     m = mock_ipe
     m.losr = m.losr[m.losr.type != losr_type]
@@ -129,7 +125,7 @@ def test_losr_empty(mock_ipe, losr_type):
 
 
 def test_losr_all(mock_ipe):
-    """test that it reduces the speldur column for 'all' types"""
+    """Test that it reduces the speldur column for 'all' types."""
     # arrange
     m = mock_ipe
     m.data = pd.DataFrame({"speldur": list(range(9))}, index=["x", "a", "b"] * 3)
@@ -149,7 +145,7 @@ def test_losr_all(mock_ipe):
 
 
 def test_losr_sdec(mock_ipe):
-    """test that it reduces the speldur column for 'aec' types"""
+    """Test that it reduces the speldur column for 'aec' types."""
     # arrange
     m = mock_ipe
     m.data = pd.DataFrame(
@@ -186,7 +182,7 @@ def test_losr_sdec(mock_ipe):
 
 
 def test_losr_preop(mock_ipe):
-    """test that is reduces the speldur column for 'pre-op' types"""
+    """Test that is reduces the speldur column for 'pre-op' types."""
     # arrange
     m = mock_ipe
     m.data = pd.DataFrame({"speldur": list(range(9))}, index=["x", "e", "f"] * 3)
@@ -220,10 +216,8 @@ def test_losr_preop(mock_ipe):
         ),
     ],
 )
-def test_losr_day_procedures(
-    mock_ipe, day_procedures_type, expected_speldur, expected_classpat
-):
-    """test that it reduces the speldur column for 'day_procedures' types"""
+def test_losr_day_procedures(mock_ipe, day_procedures_type, expected_speldur, expected_classpat):
+    """Test that it reduces the speldur column for 'day_procedures' types."""
     # arrange
     m = mock_ipe
     strats = ["day_procedures_usually_dc", "day_procedures_usually_op"]
