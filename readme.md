@@ -12,7 +12,7 @@ developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.re
 
 Welcome to the [New Hospital Programme demand and capacity modelling tool](https://www.strategyunitwm.nhs.uk/new-hospital-programme-demand-model). 
 
-<img width="2000" height="1414" alt="Smarter Hospital Planning" src="https://github.com/user-attachments/assets/71086d46-e6cb-4dfa-a32b-3f7d8581231e"/>
+<img width="2000" height="1414" alt="Smarter Hospital Planning" src="https://www.strategyunitwm.nhs.uk/sites/default/files/styles/banner/public/Nationally%20consistent%20approach.png"/>
 
 This repository contains the model code but there are several other repositories which contain useful tools to [explore the data underpinning and set the parameters for the model](https://github.com/The-Strategy-Unit/nhp_inputs), as well as to [explore model outputs](https://github.com/The-Strategy-Unit/nhp_outputs). [An overview of how the different tools interact with each other is available](https://connect.strategyunitwm.nhs.uk/nhp/project_information/project_plan_and_summary/components-overview.html).
 
