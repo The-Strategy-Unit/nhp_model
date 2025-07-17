@@ -79,7 +79,7 @@ def test_main_local(mocker):
     rwas.assert_not_called()
 
     s = rwls()
-    ru_m.assert_called_once_with(params, "data", s.progress_callback, False)
+    ru_m.assert_called_once_with(params, "data", s.progress_callback(), False)
     s.finish.assert_called_once_with("results.json", "list_of_results", False)
 
 
@@ -115,7 +115,7 @@ def test_main_azure(mocker):
     rwas.assert_called_once_with("params.json", "dev")
 
     s = rwas()
-    ru_m.assert_called_once_with(params, "data", s.progress_callback, False)
+    ru_m.assert_called_once_with(params, "data", s.progress_callback(), False)
     s.finish.assert_called_once_with("results.json", "list_of_results", False)
 
 

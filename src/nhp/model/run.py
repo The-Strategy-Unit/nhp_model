@@ -104,8 +104,16 @@ def _run_model(
     return results
 
 
+def noop_progress_callback(_: Any) -> Callable[[Any], None]:
+    """A no-op callback."""
+    return lambda _: None
+
+
 def run_all(
-    params: dict, data_path: str, progress_callback, save_full_model_results: bool
+    params: dict,
+    data_path: str,
+    progress_callback: Callable[[Any], Callable[[Any], None]] = noop_progress_callback,
+    save_full_model_results: bool = False,
 ) -> Tuple[list, str]:
     """Run the model.
 
@@ -115,6 +123,11 @@ def run_all(
     :type params: dict
     :param data_path: where the data is stored
     :type data_path: str
+    :param progress_callback: a callback function for updating progress.
+        Defaults to noop_progress_callback.
+    :type progress_callback: Callable[[str], Callable[[Any], Any]]
+    :param save_full_model_results: whether to save full model results, defaults to False
+    :type save_full_model_results: bool
     :return: the filename of the saved results
     :rtype: str
     """
@@ -128,8 +141,6 @@ def run_all(
         nhp_data(params["start_year"], params["dataset"]), params["start_year"]
     )
 
-    pcallback = progress_callback()
-
     results, step_counts = combine_results(
         [
             _run_model(
@@ -138,7 +149,7 @@ def run_all(
                 nhp_data,
                 hsa,
                 run_params,
-                pcallback(m.__name__[:-5]),
+                progress_callback(m.__name__[:-5]),
                 save_full_model_results,
             )
             for m in model_types

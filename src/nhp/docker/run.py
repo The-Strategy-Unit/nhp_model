@@ -14,6 +14,7 @@ from azure.storage.filedatalake import DataLakeServiceClient
 
 from nhp.docker import config
 from nhp.model.helpers import load_params
+from nhp.model.run import noop_progress_callback
 
 
 class RunWithLocalStorage:
@@ -44,7 +45,7 @@ class RunWithLocalStorage:
 
         for local storage do nothing
         """
-        return lambda _: lambda _: None
+        return noop_progress_callback
 
 
 class RunWithAzureStorage:
@@ -237,8 +238,8 @@ class RunWithAzureStorage:
 
         blob.set_blob_metadata({k: str(v) for k, v in current_progress.items()})
 
-        def callback(model_type):
-            def update(n_completed):
+        def callback(model_type: Any) -> Callable[[Any], None]:
+            def update(n_completed: Any) -> None:
                 current_progress[model_type] = n_completed
                 blob.set_blob_metadata({k: str(v) for k, v in current_progress.items()})
 
