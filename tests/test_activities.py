@@ -11,6 +11,11 @@ ACTIVITY_TYPES = ["ip", "op", "aae"]
 @pytest.mark.parametrize("activity_type", ACTIVITY_TYPES)
 def test_activity_execution(activity_type, test_data_dir):
     """Test that each activity type executes successfully."""
+
+    # Skip test in CI environment
+    if os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true":
+        pytest.skip("Skipping test in CI environment as it requires test data")
+
     # Expand the home directory if path contains tilde
     expanded_dir = os.path.abspath(os.path.expanduser(test_data_dir))
 
