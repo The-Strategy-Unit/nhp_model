@@ -8,7 +8,14 @@ import pytest
 from nhp.model.aae import AaEModel
 from nhp.model.inpatients import InpatientsModel
 from nhp.model.outpatients import OutpatientsModel
-from nhp.model.run import _run_model, run_all, run_single_model_run, timeit, tqdm
+from nhp.model.run import (
+    _run_model,
+    noop_progress_callback,
+    run_all,
+    run_single_model_run,
+    timeit,
+    tqdm,
+)
 
 
 def test_tqdm():
@@ -60,6 +67,11 @@ def test_run_model(mocker):
     pc_m.assert_called_once_with(2)
 
 
+def test_noop_progress_callback():
+    # arrange, act & assert
+    assert not noop_progress_callback("a")("b")
+
+
 def test_run_all(mocker):
     # arrange
     grp_m = mocker.patch(
@@ -101,8 +113,7 @@ def test_run_all(mocker):
     nd_c = nd_m.create()
     nd_c.assert_called_once_with(2020, "synthetic")
 
-    pc_m.assert_called_once_with()
-    assert pc_m().call_args_list == [
+    assert pc_m.call_args_list == [
         call("Inpatients"),
         call("Outpatients"),
         call("AaE"),
@@ -118,7 +129,7 @@ def test_run_all(mocker):
             nd_c,
             "hsa",
             {"variant": "variants"},
-            "progress callback",
+            pc_m(),
             False,
         )
         for m in [InpatientsModel, OutpatientsModel, AaEModel]

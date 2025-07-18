@@ -173,7 +173,7 @@ class ModelIteration:
             for v in [[], ["sex", "age_group"], ["age"], *aggregations]
         }
 
-        if self.avoided_activity is not None:
+        if not self.avoided_activity.empty:
             avoided_activity_agg = self.model.process_results(self.avoided_activity)
             aggs["avoided_activity"] = self.model.get_agg(avoided_activity_agg, "sex", "age_group")
 

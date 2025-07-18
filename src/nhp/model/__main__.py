@@ -66,7 +66,7 @@ def main() -> None:
             run_all(
                 params,
                 args.data_path,
-                lambda: lambda _: None,
+                lambda _: lambda _: None,
                 args.save_full_model_results,
             )
             return

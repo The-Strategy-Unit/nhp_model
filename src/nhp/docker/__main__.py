@@ -63,7 +63,7 @@ def main():
     logging.info("app_version:  %s", runner.params["app_version"])
 
     saved_files, results_file = run_all(
-        runner.params, "data", runner.progress_callback, args.save_full_model_results
+        runner.params, "data", runner.progress_callback(), args.save_full_model_results
     )
 
     runner.finish(results_file, saved_files, args.save_full_model_results)
