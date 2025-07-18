@@ -2,4 +2,4 @@
 # the repo. Unless a later match takes precedence,
 # @primary-owner and @secondary-owner will be requested for
 # review when someone opens a pull request.
-*       @tomjemmett @yiwen-h
+*       @tomjemmett @The-Strategy-Unit/nhp_model_devs
