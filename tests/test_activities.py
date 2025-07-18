@@ -65,4 +65,4 @@ def test_activity_execution(activity_type, test_data_dir):
         assert result.returncode == 0, f"Activity {activity_type} failed: {result.stderr}"
 
     except Exception as e:
-        pytest.fail(f"Error executing command: {str(e)}")
+        pytest.fail(f"Error executing command: {e!s}")

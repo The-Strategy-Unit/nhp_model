@@ -9,7 +9,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: astral-sh/ruff-action@v3
-        
+
   ruff-format-check:
     runs-on: ubuntu-latest
     steps:
@@ -17,8 +17,8 @@ jobs:
 
       - uses: astral-sh/ruff-action@v3
         with:
-          args: format --check --diff
-        
+          args: format --check --diff --fix
+
   ty-check:
     runs-on: ubuntu-latest
     steps:
@@ -29,7 +29,7 @@ jobs:
         with:
           version: "latest"
           activate-environment: true
-      
+
       - name: Install dependencies
         run: uv pip install -e ".[dev,databricks]"
 
