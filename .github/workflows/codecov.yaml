@@ -27,7 +27,7 @@ jobs:
       run: uv pip install -e ".[dev]"
 
     - name: Generate Report
-      run: uv run pytest --cov=. tests/ --ignore=tests --cov-branch --cov-report xml:coverage.xml
+      run: uv run pytest --cov=. tests/unit --ignore=tests --cov-branch --cov-report xml:coverage.xml
 
     - name: Upload Coverage to Codecov
       uses: codecov/codecov-action@v4
