@@ -4,7 +4,9 @@
     "6"
   ],
   "python.testing.pytestArgs": [
-    "tests"
+    "tests",
+    "--data-dir=data/dev",
+    "--params-file=queue/params-sample.json"
   ],
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
