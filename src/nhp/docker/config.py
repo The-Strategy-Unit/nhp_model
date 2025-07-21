@@ -1,17 +1,15 @@
 """config values for docker container."""
 
-import os
-
 import dotenv
 
-dotenv.load_dotenv()
+__config_values = dotenv.dotenv_values()
 
-APP_VERSION = os.environ.get("APP_VERSION", "dev")
-DATA_VERSION = os.environ.get("DATA_VERSION", "dev")
+APP_VERSION = __config_values.get("APP_VERSION", "dev")
+DATA_VERSION = __config_values.get("DATA_VERSION", "dev")
 
-STORAGE_ACCOUNT = os.environ.get("STORAGE_ACCOUNT", None)
+STORAGE_ACCOUNT = __config_values.get("STORAGE_ACCOUNT", None)
 
 __DEFAULT_CONTAINER_TIMEOUT_SECONDS = 60 * 60  # 1 hour
 CONTAINER_TIMEOUT_SECONDS = int(
-    os.environ.get("CONTAINER_TIMEOUT_SECONDS", __DEFAULT_CONTAINER_TIMEOUT_SECONDS)
+    __config_values.get("CONTAINER_TIMEOUT_SECONDS", __DEFAULT_CONTAINER_TIMEOUT_SECONDS)  # type: ignore
 )

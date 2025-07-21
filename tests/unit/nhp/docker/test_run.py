@@ -164,12 +164,12 @@ def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
     dac_m = mocker.patch("nhp.docker.run.DefaultAzureCredential", return_value="cred")
 
     config.STORAGE_ACCOUNT = "sa"
+
     # act
     with patch("builtins.open", mock_open()) as mock_file:
         s._get_data(2020, "synthetic")
 
     # assert
-
     dlsc_m.assert_called_once_with(account_url="https://sa.dfs.core.windows.net", credential="cred")
     dac_m.assert_called_once_with()
 
