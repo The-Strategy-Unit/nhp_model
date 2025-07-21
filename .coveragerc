@@ -1,5 +1,4 @@
 [run]
 omit =
   tests/*
-  migration/*
-  model/data/databricks.py
+  src/nhp/model/data/databricks.py
