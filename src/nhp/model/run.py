@@ -6,7 +6,6 @@ import time
 from multiprocessing import Pool
 from typing import Any, Callable, Tuple, Type
 
-import pandas as pd
 from tqdm.auto import tqdm as base_tqdm
 
 from nhp.model.aae import AaEModel
@@ -80,13 +79,14 @@ def _run_model(
 
     # model run 0 is the baseline
     # model run 1:n are the monte carlo sims
-    model_runs = list(range(params["model_runs"] + 1))
+    model_runs = [i + 1 for i in range(params["model_runs"])]
 
     cpus = os.cpu_count()
     batch_size = int(os.getenv("BATCH_SIZE", "1"))
 
     with Pool(cpus) as pool:
-        results: list[ModelRunResult] = list(
+        baseline = model.go(0)  # baseline
+        model_results: list[ModelRunResult] = list(
             tqdm(
                 pool.imap(
                     model.go,
@@ -101,7 +101,7 @@ def _run_model(
     # ensure that the callback reports all model runs are complete
     progress_callback(params["model_runs"])
 
-    return results
+    return [baseline, *model_results]
 
 
 def noop_progress_callback(_: Any) -> Callable[[Any], None]:
