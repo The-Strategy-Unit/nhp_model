@@ -3,7 +3,6 @@
 import argparse
 import logging
 import os
-import sys
 import threading
 
 from nhp.docker import config
@@ -73,21 +72,22 @@ def main():
 def init():
     """Method for calling main."""
     if __name__ == "__main__":
+        exc = None
         try:
             # start a timer to kill the container if we reach a timeout
             t = threading.Timer(config.CONTAINER_TIMEOUT_SECONDS, _exit_container)
             t.start()
             # run the model
             main()
-            exit_code = 0
         except Exception as e:
             logging.error("An error occurred: %s", str(e))
-            exit_code = 1
+            exc = e
         finally:
             # cancel the timer
             t.cancel()
-            # ensure we exit the container with the correct exit code. 0 for success, 1 for failure
-            sys.exit(exit_code)
+            # if there was an exception, raise it
+            if exc is not None:
+                raise exc
 
 
 init()
