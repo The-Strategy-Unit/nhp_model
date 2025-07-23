@@ -5,7 +5,7 @@ import logging
 import os
 import threading
 
-from nhp.docker import config
+from nhp.docker.config import Config
 from nhp.docker.run import RunWithAzureStorage, RunWithLocalStorage
 from nhp.model.run import run_all
 
@@ -37,7 +37,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main(config: Config = Config()):
     """The main method."""
     args = parse_args()
 
@@ -50,7 +50,7 @@ def main():
     if args.local_storage:
         runner = RunWithLocalStorage(args.params_file)
     else:
-        runner = RunWithAzureStorage(args.params_file, config.APP_VERSION)
+        runner = RunWithAzureStorage(args.params_file, config)
 
     logging.info("running model for: %s", args.params_file)
     logging.info("container timeout: %ds", config.CONTAINER_TIMEOUT_SECONDS)
@@ -73,12 +73,13 @@ def init():
     """Method for calling main."""
     if __name__ == "__main__":
         exc = None
+        config = Config()
         try:
             # start a timer to kill the container if we reach a timeout
             t = threading.Timer(config.CONTAINER_TIMEOUT_SECONDS, _exit_container)
             t.start()
             # run the model
-            main()
+            main(config)
         except Exception as e:
             logging.error("An error occurred: %s", str(e))
             exc = e
