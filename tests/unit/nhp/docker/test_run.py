@@ -59,14 +59,25 @@ def mock_run_with_azure_storage():
     rwas.params = {}
     rwas._app_version = "dev"
 
+    rwas._config = Mock()
+    rwas._config.APP_VERSION = "dev"
+    rwas._config.DATA_VERSION = "dev"
+    rwas._config.STORAGE_ACCOUNT = "sa"
+    rwas._config.CONTAINER_TIMEOUT_SECONDS = 3600
+
+    rwas._blob_storage_account_url = "https://sa.blob.core.windows.net"
+    rwas._adls_storage_account_url = "https://sa.dfs.core.windows.net"
+
     return rwas
 
 
-@pytest.mark.parametrize(
-    "args, expected_version", [(["filename"], "dev"), (["filename", "v0.3.5"], "v0.3")]
-)
-def test_RunWithAzureStorage_init(mocker, args, expected_version):
+@pytest.mark.parametrize("actual_version, expected_version", [("dev", "dev"), ("v0.3.5", "v0.3")])
+def test_RunWithAzureStorage_init(mocker, actual_version, expected_version):
     # arrange
+    config = mocker.patch("nhp.docker.run.Config")
+    config().APP_VERSION = actual_version
+    config().STORAGE_ACCOUNT = "sa"
+
     expected_params = {"start_year": 2020, "dataset": "synthetic"}
     gpm = mocker.patch(
         "nhp.docker.run.RunWithAzureStorage._get_params",
@@ -75,11 +86,13 @@ def test_RunWithAzureStorage_init(mocker, args, expected_version):
     gdm = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_data")
 
     # act
-    s = RunWithAzureStorage(*args)  # type: ignore
+    s = RunWithAzureStorage("filename", config())
 
     # assert
     assert s._app_version == expected_version
     assert s.params == expected_params
+    assert s._blob_storage_account_url == "https://sa.blob.core.windows.net"
+    assert s._adls_storage_account_url == "https://sa.dfs.core.windows.net"
 
     gpm.assert_called_once_with("filename")
 
@@ -97,7 +110,6 @@ def test_RunWithAzureStorage_get_container(mock_run_with_azure_storage, mocker):
 
     dac_m = mocker.patch("nhp.docker.run.DefaultAzureCredential", return_value="cred")
 
-    config.STORAGE_ACCOUNT = "sa"
     # act
     actual = s._get_container("container")
 
@@ -162,8 +174,6 @@ def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
     dlsc_m = mocker.patch("nhp.docker.run.DataLakeServiceClient", return_value=mock)
 
     dac_m = mocker.patch("nhp.docker.run.DefaultAzureCredential", return_value="cred")
-
-    config.STORAGE_ACCOUNT = "sa"
 
     # act
     with patch("builtins.open", mock_open()) as mock_file:

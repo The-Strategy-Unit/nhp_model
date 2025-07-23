@@ -1,11 +1,10 @@
 """test docker run."""
 
 import time
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-from nhp.docker import config
 from nhp.docker.__main__ import main, parse_args
 
 
@@ -93,6 +92,12 @@ def test_main_azure(mocker):
     rwls = mocker.patch("nhp.docker.__main__.RunWithLocalStorage")
     rwas = mocker.patch("nhp.docker.__main__.RunWithAzureStorage")
 
+    config = Mock()
+    config.APP_VERSION = "dev"
+    config.DATA_VERSION = "dev"
+    config.CONTAINER_TIMEOUT_SECONDS = 3600
+    config.STORAGE_ACCOUNT = "sa"
+
     params = {
         "model_runs": 256,
         "start_year": 2019,
@@ -108,11 +113,11 @@ def test_main_azure(mocker):
     )
 
     # act
-    main()
+    main(config)
 
     # assert
     rwls.assert_not_called()
-    rwas.assert_called_once_with("params.json", "dev")
+    rwas.assert_called_once_with("params.json", config)
 
     s = rwas()
     ru_m.assert_called_once_with(params, "data", s.progress_callback(), False)
@@ -121,6 +126,9 @@ def test_main_azure(mocker):
 
 def test_init(mocker):
     """It should run the main method if __name__ is __main__."""
+    config = mocker.patch("nhp.docker.__main__.Config")
+    config().CONTAINER_TIMEOUT_SECONDS = 3600
+
     import nhp.docker.__main__ as r
 
     main_mock = mocker.patch("nhp.docker.__main__.main")
@@ -130,17 +138,18 @@ def test_init(mocker):
 
     with patch.object(r, "__name__", "__main__"):
         r.init()  # should call main
-        main_mock.assert_called_once()
+        main_mock.assert_called_once_with(config())
 
 
 def test_init_timeout_call_exit(mocker):
-    config.CONTAINER_TIMEOUT_SECONDS = 0.1
+    config = mocker.patch("nhp.docker.__main__.Config")
+    config().CONTAINER_TIMEOUT_SECONDS = 0.1
 
     import nhp.docker.__main__ as r
 
     main_mock = mocker.patch("nhp.docker.__main__.main")
     exit_container_mock = mocker.patch("nhp.docker.__main__._exit_container")
-    main_mock.side_effect = lambda: time.sleep(0.2)
+    main_mock.side_effect = lambda *args, **kwargs: time.sleep(0.2)
     with patch.object(r, "__name__", "__main__"):
         r.init()
 
@@ -148,13 +157,14 @@ def test_init_timeout_call_exit(mocker):
 
 
 def test_init_timeout_dont_call_exit(mocker):
-    config.CONTAINER_TIMEOUT_SECONDS = 0.1
-
     import nhp.docker.__main__ as r
+
+    config = mocker.patch("nhp.docker.__main__.Config")
+    config().CONTAINER_TIMEOUT_SECONDS = 0.1
 
     main_mock = mocker.patch("nhp.docker.__main__.main")
     exit_container_mock = mocker.patch("nhp.docker.__main__._exit_container")
-    main_mock.side_effect = lambda: time.sleep(0.02)
+    main_mock.side_effect = lambda *args, **kwargs: time.sleep(0.02)
     with patch.object(r, "__name__", "__main__"):
         r.init()
 

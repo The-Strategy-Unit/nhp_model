@@ -1,16 +1,44 @@
 """config values for docker container."""
 
+import os
+
 import dotenv
 
-__config_values = dotenv.dotenv_values()
 
+class Config:
+    """Configuration class for Docker container."""
 
-APP_VERSION: str = __config_values.get("APP_VERSION", "dev")  # type: ignore
-DATA_VERSION: str = __config_values.get("DATA_VERSION", "dev")  # type: ignore
+    __DEFAULT_CONTAINER_TIMEOUT_SECONDS = 60 * 60  # 1 hour
 
-STORAGE_ACCOUNT: str | None = __config_values.get("STORAGE_ACCOUNT", None)
+    def __init__(self):
+        """Configuration settings for the Docker container."""
+        dotenv.load_dotenv()
 
-__DEFAULT_CONTAINER_TIMEOUT_SECONDS = 60 * 60  # 1 hour
-CONTAINER_TIMEOUT_SECONDS = int(
-    __config_values.get("CONTAINER_TIMEOUT_SECONDS", __DEFAULT_CONTAINER_TIMEOUT_SECONDS)  # type: ignore
-)
+        self._app_version = os.environ.get("APP_VERSION", "dev")
+        self._data_version = os.environ.get("DATA_VERSION", "dev")
+        self._storage_account = os.environ.get("STORAGE_ACCOUNT")
+
+        self._container_timeout_seconds = os.environ.get("CONTAINER_TIMEOUT_SECONDS")
+
+    @property
+    def APP_VERSION(self) -> str:
+        """What is the version of the app?"""
+        return self._app_version
+
+    @property
+    def DATA_VERSION(self) -> str:
+        """What version of the data are we using?"""
+        return self._data_version
+
+    @property
+    def STORAGE_ACCOUNT(self) -> str:
+        """What is the name of the storage account?"""
+        if self._storage_account is None:
+            raise ValueError("STORAGE_ACCOUNT environment variable must be set")
+        return self._storage_account
+
+    @property
+    def CONTAINER_TIMEOUT_SECONDS(self) -> int:
+        """How long should the container run before timing out?"""
+        t = self._container_timeout_seconds
+        return self.__DEFAULT_CONTAINER_TIMEOUT_SECONDS if t is None else int(t)

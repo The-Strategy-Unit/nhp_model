@@ -12,7 +12,7 @@ from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 from azure.storage.filedatalake import DataLakeServiceClient
 
-from nhp.docker import config
+from nhp.docker.config import Config
 from nhp.model.helpers import load_params
 from nhp.model.run import noop_progress_callback
 
@@ -51,27 +51,35 @@ class RunWithLocalStorage:
 class RunWithAzureStorage:
     """Methods for running with azure storage."""
 
-    def __init__(self, filename: str, app_version: str = "dev"):
+    def __init__(self, filename: str, config: Config = Config()):
         """Initialise RunWithAzureStorage.
 
         :param filename:
         :type filename: str
-        :param app_version: the version of the app, where we will load data from. defaults to "dev"
-        :type app_version: str, optional
+        :param config: The configuration for the run
+        :type config: Config
         """
         logging.getLogger("azure.storage.common.storageclient").setLevel(logging.WARNING)
         logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
             logging.WARNING
         )
+        self._config = config
 
-        self._app_version = re.sub("(\\d+\\.\\d+)\\..*", "\\1", app_version)
+        self._app_version = re.sub("(\\d+\\.\\d+)\\..*", "\\1", config.APP_VERSION)
 
         self.params = self._get_params(filename)
         self._get_data(self.params["start_year"], self.params["dataset"])
 
+        self._blob_storage_account_url = (
+            f"https://{self._config.STORAGE_ACCOUNT}.blob.core.windows.net"
+        )
+        self._adls_storage_account_url = (
+            f"https://{self._config.STORAGE_ACCOUNT}.dfs.core.windows.net"
+        )
+
     def _get_container(self, container_name: str):
         return BlobServiceClient(
-            account_url=f"https://{config.STORAGE_ACCOUNT}.blob.core.windows.net",
+            account_url=self._blob_storage_account_url,
             credential=DefaultAzureCredential(),
         ).get_container_client(container_name)
 
@@ -103,11 +111,11 @@ class RunWithAzureStorage:
         """
         logging.info("downloading data (%s / %s)", year, dataset)
         fs_client = DataLakeServiceClient(
-            account_url=f"https://{config.STORAGE_ACCOUNT}.dfs.core.windows.net",
+            account_url=self._adls_storage_account_url,
             credential=DefaultAzureCredential(),
         ).get_file_system_client("data")
 
-        version = config.DATA_VERSION
+        version = self._config.DATA_VERSION
 
         paths = [p.name for p in fs_client.get_paths(version, recursive=False)]
 
