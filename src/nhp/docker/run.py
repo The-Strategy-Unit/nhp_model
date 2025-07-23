@@ -67,15 +67,15 @@ class RunWithAzureStorage:
 
         self._app_version = re.sub("(\\d+\\.\\d+)\\..*", "\\1", config.APP_VERSION)
 
-        self.params = self._get_params(filename)
-        self._get_data(self.params["start_year"], self.params["dataset"])
-
         self._blob_storage_account_url = (
             f"https://{self._config.STORAGE_ACCOUNT}.blob.core.windows.net"
         )
         self._adls_storage_account_url = (
             f"https://{self._config.STORAGE_ACCOUNT}.dfs.core.windows.net"
         )
+
+        self.params = self._get_params(filename)
+        self._get_data(self.params["start_year"], self.params["dataset"])
 
     def _get_container(self, container_name: str):
         return BlobServiceClient(
