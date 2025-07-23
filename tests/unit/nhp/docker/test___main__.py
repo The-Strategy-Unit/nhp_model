@@ -15,7 +15,7 @@ def test_exit_container(mocker):
 
     r._exit_container()
 
-    m.assert_called_once_with(1)
+    m.assert_called_once_with(2)
 
 
 @pytest.mark.parametrize(
@@ -139,12 +139,12 @@ def test_init_timeout_call_exit(mocker):
     import nhp.docker.__main__ as r
 
     main_mock = mocker.patch("nhp.docker.__main__.main")
-    exit_mock = mocker.patch("nhp.docker.__main__._exit_container")
+    exit_container_mock = mocker.patch("nhp.docker.__main__._exit_container")
     main_mock.side_effect = lambda: time.sleep(0.2)
     with patch.object(r, "__name__", "__main__"):
         r.init()
 
-    exit_mock.assert_called_once()
+    exit_container_mock.assert_called_once()
 
 
 def test_init_timeout_dont_call_exit(mocker):
@@ -153,9 +153,25 @@ def test_init_timeout_dont_call_exit(mocker):
     import nhp.docker.__main__ as r
 
     main_mock = mocker.patch("nhp.docker.__main__.main")
-    exit_mock = mocker.patch("nhp.docker.__main__._exit_container")
+    exit_container_mock = mocker.patch("nhp.docker.__main__._exit_container")
     main_mock.side_effect = lambda: time.sleep(0.02)
     with patch.object(r, "__name__", "__main__"):
         r.init()
 
-    exit_mock.assert_not_called()
+    exit_container_mock.assert_not_called()
+
+
+def test_init_catches_exception(mocker):
+    # arrange
+    mocker.patch("nhp.docker.__main__.main", side_effect=Exception("Test error"))
+    import nhp.docker.__main__ as r
+
+    m = mocker.patch("logging.error")
+
+    # act
+    with patch.object(r, "__name__", "__main__"):
+        with pytest.raises(Exception, match="Test error"):
+            r.init()
+
+    # assert
+    m.assert_called_once_with("An error occurred: %s", "Test error")
