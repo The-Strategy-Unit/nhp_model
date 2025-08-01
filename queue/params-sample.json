@@ -10,11 +10,7 @@
   "create_datetime": "20220101_000000",
   "demographic_factors": {
     "variant_probabilities": {
-      "migration_category": 0.40,
-      "var_proj_10_year_migration": 0.15,
-      "var_proj_zero_net_migration": 0.15,
-      "var_proj_high_intl_migration": 0.15,
-      "var_proj_low_intl_migration": 0.15
+      "migration_category": 1
     }
   },
   "health_status_adjustment": true,
