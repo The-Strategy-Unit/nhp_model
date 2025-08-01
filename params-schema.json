@@ -44,32 +44,33 @@
                     "type": "object",
                     "properties": {
                         "migration_category": {
-                            "$ref": "#/$defs/value_gt0-1"
+                            "$ref": "#/$defs/value_1"
                         },
                         "var_proj_5_year_migration": {
-                            "$ref": "#/$defs/value_gt0-1"
+                            "$ref": "#/$defs/value_1"
                         },
                         "var_proj_10_year_migration": {
-                            "$ref": "#/$defs/value_gt0-1"
+                            "$ref": "#/$defs/value_1"
                         },
                         "var_proj_high_intl_migration": {
-                            "$ref": "#/$defs/value_gt0-1"
+                            "$ref": "#/$defs/value_1"
                         },
                         "var_proj_low_intl_migration": {
-                            "$ref": "#/$defs/value_gt0-1"
+                            "$ref": "#/$defs/value_1"
                         },
                         "var_proj_zero_net_migration": {
-                            "$ref": "#/$defs/value_gt0-1"
+                            "$ref": "#/$defs/value_1"
                         },
                         "custom_projection_R0A66": {
-                            "$ref": "#/$defs/value_gt0-1"
+                            "$ref": "#/$defs/value_1"
                         },
                         "custom_projection_RD8": {
-                            "$ref": "#/$defs/value_gt0-1"
+                            "$ref": "#/$defs/value_1"
                         }
                     },
                     "additionalProperties": false,
-                    "minProperties": 1
+                    "minProperties": 1,
+                    "maxProperties": 1
                 }
             },
             "required": [
@@ -1316,10 +1317,9 @@
             "minimum": 0,
             "maximum": 1
         },
-        "value_gt0-1": {
+        "value_1": {
             "type": "number",
-            "exclusiveMinimum": 0,
-            "maximum": 1
+            "const": 1
         },
         "value_1-5": {
             "type": "number",
