@@ -8,8 +8,6 @@ import dotenv
 class Config:
     """Configuration class for Docker container."""
 
-    __DEFAULT_CONTAINER_TIMEOUT_SECONDS = 60 * 60  # 1 hour
-
     def __init__(self):
         """Configuration settings for the Docker container."""
         dotenv.load_dotenv()
@@ -17,8 +15,6 @@ class Config:
         self._app_version = os.environ.get("APP_VERSION", "dev")
         self._data_version = os.environ.get("DATA_VERSION", "dev")
         self._storage_account = os.environ.get("STORAGE_ACCOUNT")
-
-        self._container_timeout_seconds = os.environ.get("CONTAINER_TIMEOUT_SECONDS")
 
     @property
     def APP_VERSION(self) -> str:
@@ -36,9 +32,3 @@ class Config:
         if self._storage_account is None:
             raise ValueError("STORAGE_ACCOUNT environment variable must be set")
         return self._storage_account
-
-    @property
-    def CONTAINER_TIMEOUT_SECONDS(self) -> int:
-        """How long should the container run before timing out?"""
-        t = self._container_timeout_seconds
-        return self.__DEFAULT_CONTAINER_TIMEOUT_SECONDS if t is None else int(t)

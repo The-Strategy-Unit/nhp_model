@@ -63,7 +63,6 @@ def mock_run_with_azure_storage():
     rwas._config.APP_VERSION = "dev"
     rwas._config.DATA_VERSION = "dev"
     rwas._config.STORAGE_ACCOUNT = "sa"
-    rwas._config.CONTAINER_TIMEOUT_SECONDS = 3600
 
     rwas._blob_storage_account_url = "https://sa.blob.core.windows.net"
     rwas._adls_storage_account_url = "https://sa.dfs.core.windows.net"

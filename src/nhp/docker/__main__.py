@@ -3,16 +3,10 @@
 import argparse
 import logging
 import os
-import threading
 
 from nhp.docker.config import Config
 from nhp.docker.run import RunWithAzureStorage, RunWithLocalStorage
 from nhp.model.run import run_all
-
-
-def _exit_container():
-    logging.error("\nTimed out, killing container")
-    os._exit(2)
 
 
 def parse_args():
@@ -53,7 +47,6 @@ def main(config: Config = Config()):
         runner = RunWithAzureStorage(args.params_file, config)
 
     logging.info("running model for: %s", args.params_file)
-    logging.info("container timeout: %ds", config.CONTAINER_TIMEOUT_SECONDS)
     logging.info("submitted by: %s", runner.params.get("user"))
     logging.info("model_runs:   %s", runner.params["model_runs"])
     logging.info("start_year:   %s", runner.params["start_year"])
@@ -72,23 +65,15 @@ def main(config: Config = Config()):
 def init():
     """Method for calling main."""
     if __name__ == "__main__":
-        exc = None
-        config = Config()
+        # run the model in a try catch block - ensures any exceptions that occur in the
+        # multiprocessing pool are handled and logged correctly.
+        # this prevents the docker container from hanging indefinitely.
         try:
-            # start a timer to kill the container if we reach a timeout
-            t = threading.Timer(config.CONTAINER_TIMEOUT_SECONDS, _exit_container)
-            t.start()
-            # run the model
+            config = Config()
             main(config)
         except Exception as e:
             logging.error("An error occurred: %s", str(e))
-            exc = e
-        finally:
-            # cancel the timer
-            t.cancel()
-            # if there was an exception, raise it
-            if exc is not None:
-                raise exc
+            raise e
 
 
 init()
