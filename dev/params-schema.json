@@ -80,9 +80,6 @@
         "health_status_adjustment": {
             "type": "boolean"
         },
-        "covid_adjustment": {
-            "$ref": "#/$defs/covid_and_ndg"
-        },
         "expat": {
             "$ref": "#/$defs/expat"
         },
@@ -176,7 +173,7 @@
                     "type": "string"
                 },
                 "values": {
-                    "$ref": "#/$defs/covid_and_ndg"
+                    "$ref": "#/$defs/ndg"
                 }
             },
             "required": [
@@ -563,9 +560,6 @@
         "time_profile_mappings": {
             "type": "object",
             "properties": {
-                "covid_adjustment": {
-                    "$ref": "#/$defs/timeprofileMappings"
-                },
                 "baseline_adjustment": {
                     "$ref": "#/$defs/timeprofileMappings"
                 },
@@ -902,7 +896,6 @@
                 }
             },
             "required": [
-                "covid_adjustment",
                 "baseline_adjustment",
                 "expat",
                 "repat_local",
@@ -1209,7 +1202,7 @@
             },
             "additionalProperties": false
         },
-        "covid_and_ndg": {
+        "ndg": {
             "type": "object",
             "properties": {
                 "ip": {
@@ -1443,7 +1436,6 @@
         "app_version",
         "demographic_factors",
         "health_status_adjustment",
-        "covid_adjustment",
         "expat",
         "repat_local",
         "repat_nonlocal",
