@@ -40,45 +40,19 @@
       }
     }
   },
-  "covid_adjustment": {
-    "aae": {
-      "ambulance": [
-        1.014531,
-        1.014531
-      ],
-      "walk-in": [
-        1.031919,
-        1.031919
-      ]
-    },
-    "ip": {
-      "elective": [
-        1.023074,
-        1.023074
-      ],
-      "maternity": [
-        1.011324,
-        1.011324
-      ],
-      "non-elective": [
-        1.016637,
-        1.016637
-      ]
-    },
-    "op": {
-      "first": [
-        1.017960,
-        1.017960
-      ],
-      "followup": [
-        1.014095,
-        1.014095
-      ],
-      "procedure": [
-        1.026097,
-        1.026097
-      ]
-    }
+  "op": {
+    "first": [
+      1.017960,
+      1.017960
+    ],
+    "followup": [
+      1.014095,
+      1.014095
+    ],
+    "procedure": [
+      1.026097,
+      1.026097
+    ]
   },
   "expat": {
     "ip": {
@@ -1485,7 +1459,6 @@
     }
   },
   "time_profile_mappings": {
-    "covid_adjustment": "none",
     "baseline_adjustment": "none",
     "expat": "linear",
     "repat_local": "linear",
