@@ -303,40 +303,26 @@ def test_load_data(mocker, mock_model):
     # arrange
     mdl = mock_model
     mdl._measures = ["x", "y"]
-    mocker.patch("nhp.model.model.age_groups", return_value="age_groups")
     mocker.patch("nhp.model.model.Model.get_data_counts", return_value=np.array([[1, 2], [3, 4]]))
-    mocker.patch("nhp.model.model.Model._add_pod_to_data")
-    mocker.patch("nhp.model.model.Model._add_ndggrp_to_data")
-
     data_loader = Mock()
 
-    mdl._get_data = Mock(
-        return_value=pd.DataFrame(
-            {"rn": [2, 1], "age": [2, 1], "pod": ["a", "b"], "sitetret": ["c", "d"]}
-        )
-    )
+    data = {"rn": [1, 2], "age": [1, 2], "pod": ["a", "b"], "sitetret": ["c", "d"]}
+
+    mdl._get_data = Mock(return_value=pd.DataFrame(data))
 
     # act
     mdl._load_data(data_loader)
 
     # assert
-    assert mdl.data.to_dict(orient="list") == {
-        "rn": [1, 2],
-        "age": [1, 2],
-        "pod": ["b", "a"],
-        "sitetret": ["d", "c"],
-        "age_group": ["age_groups"] * 2,
-    }
+    assert mdl.data.to_dict(orient="list") == data
     assert mdl.baseline_counts.tolist() == [[1, 2], [3, 4]]
     mdl.get_data_counts.call_args_list[0][0][0].equals(mdl.data)
-    mdl._add_pod_to_data.assert_called_once_with()
-    mdl._add_ndggrp_to_data.assert_called_once_with()
 
     assert mdl.baseline_step_counts.to_dict("list") == {
         "pod": ["a", "b"],
         "sitetret": ["c", "d"],
-        "x": [2, 1],
-        "y": [4, 3],
+        "x": [1, 2],
+        "y": [3, 4],
         "change_factor": ["baseline", "baseline"],
         "strategy": ["-", "-"],
     }

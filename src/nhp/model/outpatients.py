@@ -67,12 +67,6 @@ class OutpatientsModel(Model):
     def _get_data(self, data_loader: Data) -> pd.DataFrame:
         return data_loader.get_op()
 
-    def _add_pod_to_data(self) -> None:
-        """Adds the POD column to data."""
-        self.data.loc[self.data["is_first"], "pod"] = "op_first"
-        self.data.loc[~self.data["is_first"], "pod"] = "op_follow-up"
-        self.data.loc[self.data["has_procedures"], "pod"] = "op_procedure"
-
     def get_data_counts(self, data: pd.DataFrame) -> np.ndarray:
         """Get row counts of data.
 

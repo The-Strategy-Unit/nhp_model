@@ -21,7 +21,7 @@ from nhp.model.health_status_adjustment import (
     HealthStatusAdjustment,
     HealthStatusAdjustmentInterpolated,
 )
-from nhp.model.helpers import age_groups, inrange, load_params, rnorm
+from nhp.model.helpers import inrange, load_params, rnorm
 from nhp.model.model_iteration import ModelIteration, ModelRunResult
 
 
@@ -136,10 +136,7 @@ class Model:
 
     def _load_data(self, data_loader: Data) -> None:
         self.data = self._get_data(data_loader).sort_values("rn")
-        self.data["age_group"] = age_groups(self.data["age"])
         self.baseline_counts = self.get_data_counts(self.data)
-        self._add_pod_to_data()
-        self._add_ndggrp_to_data()
 
         self.baseline_step_counts = (
             pd.DataFrame(

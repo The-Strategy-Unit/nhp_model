@@ -95,21 +95,6 @@ def test_get_data(mock_model):
     data_loader.get_aae.assert_called_once_with()
 
 
-def test_add_pod_to_data(mock_model):
-    # arrange
-    mock_model.data = pd.DataFrame({"aedepttype": ["01", "02", "03", "04"]})
-    # act
-    mock_model._add_pod_to_data()
-
-    # assert
-    assert mock_model.data["pod"].to_list() == [
-        "aae_type-01",
-        "aae_type-02",
-        "aae_type-03",
-        "aae_type-04",
-    ]
-
-
 def test_get_data_counts(mock_model):
     # arrange
     mdl = mock_model
