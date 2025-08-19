@@ -28,7 +28,6 @@ def mock_model():
         "start_year": 2018,
         "end_year": 2020,
         "health_status_adjustment": [0.8, 1.0],
-        "covid_adjustment": [1.0, 1.2],
         "waiting_list_adjustment": {
             "ip": {"100": 1, "120": 2},
             "op": {"100": 3, "120": 4},
@@ -90,15 +89,14 @@ def mock_run_params():
             "a": {"a_a": [1, 1, 2, 3], "a_b": [1, 4, 5, 6]},
             "b": {"b_a": [1, 7, 8, 9], "b_b": [1, 10, 11, 12]},
         },
-        "covid_adjustment": [1, 13, 14, 15],
         "waiting_list_adjustment": {
             "ip": {"100": [1, 1, 1, 1], "120": [2, 2, 2, 2]},
             "op": {"100": [3, 3, 3, 3], "120": [4, 4, 4, 4]},
         },
-        "expat": {"ip": {"elective": {"Other": [1, 16, 17, 18]}}},
-        "repat_local": {"ip": {"elective": {"Other": [1, 19, 20, 21]}}},
-        "repat_nonlocal": {"ip": {"elective": {"Other": [1, 22, 23, 24]}}},
-        "baseline_adjustment": {"ip": {"elective": {"Other": [1, 25, 26, 27]}}},
+        "expat": {"ip": {"elective": {"Other": [1, 13, 14, 15]}}},
+        "repat_local": {"ip": {"elective": {"Other": [1, 16, 17, 18]}}},
+        "repat_nonlocal": {"ip": {"elective": {"Other": [1, 19, 20, 21]}}},
+        "baseline_adjustment": {"ip": {"elective": {"Other": [1, 22, 23, 24]}}},
         "inequalities": {
             "HRG1": {
                 "1": [5.4321, 5.4321, 5.4321, 5.4321],
@@ -109,13 +107,13 @@ def mock_run_params():
             }
         },
         "activity_avoidance": {
-            "ip": {"a_a": [1, 28, 29, 30], "a_b": [1, 31, 32, 33]},
-            "op": {"a_a": [1, 34, 35, 36], "a_b": [1, 37, 38, 39]},
-            "aae": {"a_a": [1, 40, 41, 42], "a_b": [1, 43, 44, 45]},
+            "ip": {"a_a": [1, 25, 26, 27], "a_b": [1, 28, 29, 30]},
+            "op": {"a_a": [1, 31, 32, 33], "a_b": [1, 34, 35, 36]},
+            "aae": {"a_a": [1, 37, 38, 39], "a_b": [1, 40, 41, 42]},
         },
         "efficiencies": {
-            "ip": {"b_a": [1, 46, 47, 48], "b_b": [1, 49, 50, 51]},
-            "op": {"b_a": [1, 52, 53, 54], "b_b": [1, 55, 56, 57]},
+            "ip": {"b_a": [1, 43, 44, 45], "b_b": [1, 46, 47, 48]},
+            "op": {"b_a": [1, 49, 50, 51], "b_b": [1, 52, 53, 54]},
         },
     }
 
@@ -445,7 +443,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "variant": "a",
                 "health_status_adjustment": 1,
                 "seed": 1,
-                "covid_adjustment": 1,
                 "non-demographic_adjustment": {
                     "a": {"a_a": 1, "a_b": 1},
                     "b": {"b_a": 1, "b_b": 1},
@@ -481,24 +478,23 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                     "a": {"a_a": 2, "a_b": 5},
                     "b": {"b_a": 8, "b_b": 11},
                 },
-                "covid_adjustment": 14,
                 "waiting_list_adjustment": {
                     "ip": {"100": 1, "120": 2},
                     "op": {"100": 3, "120": 4},
                 },
-                "expat": {"ip": {"elective": {"Other": 17}}},
-                "repat_local": {"ip": {"elective": {"Other": 20}}},
-                "repat_nonlocal": {"ip": {"elective": {"Other": 23}}},
-                "baseline_adjustment": {"ip": {"elective": {"Other": 26}}},
+                "expat": {"ip": {"elective": {"Other": 14}}},
+                "repat_local": {"ip": {"elective": {"Other": 17}}},
+                "repat_nonlocal": {"ip": {"elective": {"Other": 20}}},
+                "baseline_adjustment": {"ip": {"elective": {"Other": 23}}},
                 "inequalities": {"HRG1": {"1": 5.4321, "2": 4.321, "3": 3.21, "4": 2.21, "5": 1}},
                 "activity_avoidance": {
-                    "ip": {"a_a": 29, "a_b": 32},
-                    "op": {"a_a": 35, "a_b": 38},
-                    "aae": {"a_a": 41, "a_b": 44},
+                    "ip": {"a_a": 26, "a_b": 29},
+                    "op": {"a_a": 32, "a_b": 35},
+                    "aae": {"a_a": 38, "a_b": 41},
                 },
                 "efficiencies": {
-                    "ip": {"b_a": 47, "b_b": 50},
-                    "op": {"b_a": 53, "b_b": 56},
+                    "ip": {"b_a": 44, "b_b": 47},
+                    "op": {"b_a": 50, "b_b": 53},
                 },
                 "year": 2020,
             },

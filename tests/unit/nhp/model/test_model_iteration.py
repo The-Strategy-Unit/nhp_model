@@ -116,7 +116,6 @@ def test_run(mocker, mock_model_iteration):
     ar_mock.birth_adjustment.return_value = ar_mock
     ar_mock.health_status_adjustment.return_value = ar_mock
     ar_mock.inequalities_adjustment.return_value = ar_mock
-    ar_mock.covid_adjustment.return_value = ar_mock
     ar_mock.expat_adjustment.return_value = ar_mock
     ar_mock.repat_adjustment.return_value = ar_mock
     ar_mock.waiting_list_adjustment.return_value = ar_mock
@@ -142,7 +141,6 @@ def test_run(mocker, mock_model_iteration):
     ar_mock.birth_adjustment.assert_called_once()
     ar_mock.health_status_adjustment.assert_called_once()
     ar_mock.inequalities_adjustment.assert_called_once()
-    ar_mock.covid_adjustment.assert_called_once()
     ar_mock.expat_adjustment.assert_called_once()
     ar_mock.repat_adjustment.assert_called_once()
     ar_mock.waiting_list_adjustment.assert_called_once()
