@@ -81,9 +81,11 @@ class ActivityResampling:
     def _update(self, factor: pd.Series):
         step = factor.name
 
-        factor = self.data.merge(factor, how="left", left_on=factor.index.names, right_index=True)[
-            step
-        ].fillna(1)
+        factor = (
+            self.data.merge(factor, how="left", left_on=factor.index.names, right_index=True)[step]
+            .astype(float)
+            .fillna(1.0)
+        )
 
         self.factors.append(factor)
 
