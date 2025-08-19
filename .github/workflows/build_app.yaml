@@ -20,12 +20,15 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
-      - name: Build 
+      - name: Build (release)
+        if: github.ref != 'refs/heads/main'
         run: uv build
 
-      - name: Rename wheel if dev
+      - name: Build (dev)
         if: github.ref == 'refs/heads/main'
-        run: mv $(ls dist/*.whl) dist/nhp_model-dev-py3-none-any.whl
+        env:
+          SETUPTOOLS_SCM_PRETEND_VERSION: 0.dev0
+        run: uv build
 
       - name: Generate artifact
         uses: actions/upload-artifact@v4
