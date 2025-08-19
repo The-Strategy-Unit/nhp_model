@@ -174,27 +174,6 @@ def test_health_status_adjustmen_when_disabled(mock_activity_resampling):
     aa_mock.hsa.run.assert_not_called()
 
 
-def test_covid_adjustment(mocker, mock_activity_resampling):
-    # arrange
-    aa_mock = mock_activity_resampling
-    aa_mock._model_iteration.model.model_type = "ip"
-    aa_mock._model_iteration.run_params = {
-        "covid_adjustment": {"ip": {"elective": 1, "non-elective": 2}}
-    }
-
-    u_mock = mocker.patch(
-        "nhp.model.activity_resampling.ActivityResampling._update",
-        return_value="update",
-    )
-
-    # act
-    actual = aa_mock.covid_adjustment()
-
-    # assert
-    assert actual == "update"
-    assert u_mock.call_args[0][0].to_dict() == {"elective": 1, "non-elective": 2}
-
-
 def test_expat_adjustment_no_params(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
