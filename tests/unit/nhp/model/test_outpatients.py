@@ -93,26 +93,6 @@ def test_get_data(mock_model):
     data_loader.get_op.assert_called_once_with()
 
 
-def test_add_pod_to_data(mock_model):
-    # arrange
-    mock_model.data = pd.DataFrame(
-        {
-            "is_first": [True, True, False, False],
-            "has_procedures": [True, False, True, False],
-        }
-    )
-    # act
-    mock_model._add_pod_to_data()
-
-    # assert
-    assert mock_model.data["pod"].to_list() == [
-        "op_procedure",
-        "op_first",
-        "op_procedure",
-        "op_follow-up",
-    ]
-
-
 def test_get_data_counts(mock_model):
     # arrange
     mdl = mock_model

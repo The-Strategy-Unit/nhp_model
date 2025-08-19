@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from nhp.model.helpers import age_groups, inrange, load_params, rnorm
+from nhp.model.helpers import inrange, load_params, rnorm
 
 
 @pytest.mark.parametrize("value, expected", [(-1.1, 0), (1.1, 1), (0, 0), (1, 1), (0.5, 0.5)])
@@ -29,30 +29,6 @@ def test_rnorm():
     rng.normal.return_value = 1.5
     assert rnorm(rng, 1, 2) == 1.5
     rng.normal.assert_called_once_with(1.5, 0.3901520929904105)
-
-
-def test_age_groups():
-    """Test that the age_groups function returns expected values."""
-    ages = pd.Series([np.nan] + list(range(0, 90)))
-    expected = list(
-        np.concatenate(
-            [
-                ["Unknown"],
-                ["0"],
-                ["1-4"] * 4,
-                ["5-9"] * 5,
-                ["10-15"] * 6,
-                ["16-17"] * 2,
-                ["18-34"] * 17,
-                ["35-49"] * 15,
-                ["50-64"] * 15,
-                ["65-74"] * 10,
-                ["75-84"] * 10,
-                ["85+"] * 5,
-            ]
-        ).flat
-    )
-    assert np.array_equal(age_groups(ages), expected)
 
 
 def test_load_params():

@@ -67,10 +67,6 @@ class AaEModel(Model):
     def _get_data(self, data_loader: Data) -> pd.DataFrame:
         return data_loader.get_aae()
 
-    def _add_pod_to_data(self) -> None:
-        """Adds the POD column to data."""
-        self.data["pod"] = "aae_type-" + self.data["aedepttype"]
-
     def get_data_counts(self, data: pd.DataFrame) -> np.ndarray:
         """Get row counts of data.
 

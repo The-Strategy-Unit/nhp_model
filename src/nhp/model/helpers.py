@@ -41,38 +41,6 @@ def rnorm(rng: np.random.Generator, low: float, high: float) -> float:
     return rng.normal(mean, stdev)
 
 
-def age_groups(age: pd.Series) -> pd.Series:
-    """Cut age into groups.
-
-    Takes a pandas Series of age's and cut's into discrete intervals
-
-    :param age: a Series of ages
-    :type age: pandas.Series
-
-    :returns: a Series of age groups
-    :rtype: pandas.Series
-    """
-    return pd.cut(
-        age.fillna(-1),
-        [-1, 0, 1, 5, 10, 16, 18, 35, 50, 65, 75, 85, 1000],
-        right=False,
-        labels=[
-            "Unknown",
-            "0",
-            "1-4",
-            "5-9",
-            "10-15",
-            "16-17",
-            "18-34",
-            "35-49",
-            "50-64",
-            "65-74",
-            "75-84",
-            "85+",
-        ],
-    ).astype(str)
-
-
 def load_params(filename: str) -> dict:
     """Load a params file.
 
