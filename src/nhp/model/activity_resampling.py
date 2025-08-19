@@ -159,13 +159,6 @@ class ActivityResampling:
 
         return self._update(factor)
 
-    def covid_adjustment(self):
-        """Perform the covid adjustment."""
-        params = self.run_params["covid_adjustment"][self._activity_type]
-        factor = pd.Series(params, name="covid_adjustment")
-        factor.index.names = ["group"]
-        return self._update(factor)
-
     def expat_adjustment(self):
         """Perform the expatriation adjustment."""
         params = {

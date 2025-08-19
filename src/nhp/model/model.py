@@ -256,7 +256,6 @@ class Model:
             **{
                 k: generate_param_values(params[k], v)
                 for k, v in [
-                    ("covid_adjustment", lambda x: x),
                     ("waiting_list_adjustment", inrange_0_5),
                     ("expat", inrange_0_1),
                     ("repat_local", inrange_1_5),
