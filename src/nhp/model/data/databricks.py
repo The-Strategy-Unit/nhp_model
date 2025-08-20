@@ -223,6 +223,7 @@ class DatabricksNational(Data):
             .filter(F.col("fyear") == self._year)
             .withColumn("dataset", F.lit("NATIONAL"))
             .withColumn("sitetret", F.lit("NATIONAL"))
+            .withColumn("icb", F.lit("NATIONAL"))
             # TODO: temporary fix, see #353
             .withColumn("sushrg_trimmed", F.lit("HRG"))
             .withColumn("imd_quintile", F.lit(0))
@@ -250,6 +251,7 @@ class DatabricksNational(Data):
             .filter(F.col("fyear") == self._year)
             .withColumn("dataset", F.lit("NATIONAL"))
             .withColumn("sitetret", F.lit("NATIONAL"))
+            .withColumn("icb", F.lit("NATIONAL"))
             .groupBy(aae.drop("index", "fyear", "arrivals").columns)
             .agg((F.sum("arrivals") * self._sample_rate).alias("arrivals"))
             # TODO: how do we make this stable? at the moment we can't use full model results with
