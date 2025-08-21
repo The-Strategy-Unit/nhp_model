@@ -1,5 +1,5 @@
 [project]
-name = "nhp_model"
+name = "nhp-model"
 dynamic = ["version"]
 description = "New Hospital Programme demand model"
 
