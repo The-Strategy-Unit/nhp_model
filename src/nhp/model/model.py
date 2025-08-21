@@ -427,3 +427,46 @@ class Model:
         :rtype: pd.DataFrame
         """
         raise NotImplementedError()
+
+    def aggregate(self, model_iteration: ModelIteration) -> dict[str, pd.Series]:
+        """Aggregate the model results.
+
+        Can also be used to aggregate the baseline data by passing in a `ModelIteration` with
+        the `model_run` argument set `-1`.
+
+        :param model_iteration: an instance of the `ModelIteration` class
+        :type model_iteration: model.model_iteration.ModelIteration
+
+        :returns: a tuple containing the model results, and a list of lists which contain the
+            aggregations to perform
+        :rtype: tuple[pd.DataFrame, list[list[str]]]
+        """
+        model_results = self.process_results(model_iteration.get_model_results())
+
+        base_aggregations = {
+            "default": self.get_agg(model_results),
+            "sex+age_group": self.get_agg(model_results, "sex", "age_group"),
+            "age": self.get_agg(model_results, "age"),
+        }
+
+        return {**base_aggregations, **self.specific_aggregations(model_results)}
+
+    def process_results(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Processes the data into a format suitable for aggregation in results files.
+
+        :param data: Data to be processed. Format should be similar to Model.data
+        :type data: pd.DataFrame
+        :return: Processed results
+        :rtype: pd.DataFrame
+        """
+        raise NotImplementedError()
+
+    def specific_aggregations(self, model_results: pd.DataFrame) -> dict[str, pd.Series]:
+        """Create other aggregations specific to the model type.
+
+        :param model_results: the results of a model run
+        :type model_results: pd.DataFrame
+        :return: dictionary containing the specific aggregations
+        :rtype: dict[str, pd.Series]
+        """
+        raise NotImplementedError()

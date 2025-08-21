@@ -217,7 +217,7 @@ def test_get_aggregate_results(mock_model_iteration):
     # arrange
     mr_mock = mock_model_iteration
 
-    mr_mock.model.aggregate.return_value = "aggregated_results", [["a"]]
+    mr_mock.model.aggregate.return_value = {"default": "aggregated_results"}
     mr_mock.get_step_counts = Mock(return_value="step_counts")
     mr_mock.model.get_agg.return_value = "agg"
     mr_mock.avoided_activity = pd.DataFrame({"x": ["avoided_activity"]})
@@ -229,10 +229,7 @@ def test_get_aggregate_results(mock_model_iteration):
     # assert
     assert actual == (
         {
-            "default": "agg",
-            "sex+age_group": "agg",
-            "age": "agg",
-            "a": "agg",
+            "default": "aggregated_results",
             "avoided_activity": "agg",
         },
         "step_counts",
@@ -241,13 +238,7 @@ def test_get_aggregate_results(mock_model_iteration):
     mr_mock.get_step_counts.assert_called_once_with()
     mr_mock.model.process_results.assert_called_once_with(mr_mock.avoided_activity)
 
-    assert mr_mock.model.get_agg.call_args_list == [
-        call("aggregated_results"),
-        call("aggregated_results", "sex", "age_group"),
-        call("aggregated_results", "age"),
-        call("aggregated_results", "a"),
-        call("avoided_activity_agg", "sex", "age_group"),
-    ]
+    mr_mock.model.get_agg.assert_called_once_with("avoided_activity_agg", "sex", "age_group")
 
 
 def test_get_aggregate_results_avoided_activity_empty_dataframe(mock_model_iteration):
@@ -255,14 +246,14 @@ def test_get_aggregate_results_avoided_activity_empty_dataframe(mock_model_itera
     # arrange
     mr_mock = mock_model_iteration
 
-    mr_mock.model.aggregate.return_value = "aggregated_results", [["a"]]
+    mr_mock.model.aggregate.return_value = {"default": "aggregated_results"}
     mr_mock.get_step_counts = Mock(return_value="step_counts")
     mr_mock.model.get_agg.return_value = "agg"
     mr_mock.avoided_activity = pd.DataFrame
     mr_mock.model.process_results = Mock(return_value="avoided_activity_agg")
 
     # act
-    actual = mr_mock.get_aggregate_results()
+    mr_mock.get_aggregate_results()
 
     # assert
     mr_mock.model.process_results.assert_not_called()

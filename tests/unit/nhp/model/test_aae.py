@@ -157,30 +157,25 @@ def test_efficiencies(mock_model):
     assert actual == ("data", None)
 
 
-def test_aggregate(mock_model):
+def test_specific_aggregations(mocker, mock_model):
     """Test that it aggregates the results correctly."""
-
     # arrange
-    def create_agg_stub(model_results, cols=None):
-        name = "+".join(cols) if cols else "default"
-        return {name: model_results.to_dict(orient="list")}
+    m = mocker.patch("nhp.model.AaEModel.get_agg", return_value="agg_data")
 
     mdl = mock_model
-    mdl._create_agg = Mock(wraps=create_agg_stub)
-    mdl.process_results = Mock(return_value="processed_data")
-
-    mr_mock = Mock()
-    mr_mock.get_model_results.return_value = "model_results"
 
     # act
-    actual_mr, actual_aggs = mdl.aggregate(mr_mock)
+    actual = mdl.specific_aggregations("results")  # type: ignore
 
     # assert
-    mdl.process_results.assert_called_once_with("model_results")
-    assert actual_mr == "processed_data"
-    assert actual_aggs == [
-        ["acuity"],
-        ["attendance_category"],
+    assert actual == {
+        "acuity": "agg_data",
+        "attendance_category": "agg_data",
+    }
+
+    assert m.call_args_list == [
+        call("results", "acuity"),
+        call("results", "attendance_category"),
     ]
 
 

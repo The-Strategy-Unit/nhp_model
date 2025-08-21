@@ -280,30 +280,25 @@ def test_process_results(mock_model):
     assert actual.to_dict("list") == expected
 
 
-def test_aggregate(mock_model):
+def test_specific_aggregations(mocker, mock_model):
     """Test that it aggregates the results correctly."""
-
     # arrange
-    def create_agg_stub(model_results, cols=None):
-        name = "+".join(cols) if cols else "default"
-        return {name: model_results.to_dict(orient="list")}
+    m = mocker.patch("nhp.model.OutpatientsModel.get_agg", return_value="agg_data")
 
     mdl = mock_model
-    mdl._create_agg = Mock(wraps=create_agg_stub)
-    mdl.process_results = Mock(return_value="processed_data")
-
-    mr_mock = Mock()
-    mr_mock.get_model_results.return_value = "model_results"
 
     # act
-    actual_mr, actual_aggs = mdl.aggregate(mr_mock)
+    actual = mdl.specific_aggregations("results")  # type: ignore
 
     # assert
-    mdl.process_results.assert_called_once_with("model_results")
-    assert actual_mr == "processed_data"
-    assert actual_aggs == [
-        ["sex", "tretspef_grouped"],
-        ["tretspef"],
+    assert actual == {
+        "sex+tretspef_grouped": "agg_data",
+        "tretspef": "agg_data",
+    }
+
+    assert m.call_args_list == [
+        call("results", "sex", "tretspef_grouped"),
+        call("results", "tretspef"),
     ]
 
 
