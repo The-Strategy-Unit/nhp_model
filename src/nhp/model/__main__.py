@@ -16,6 +16,7 @@ import argparse
 import logging
 
 from nhp.model.aae import AaEModel
+from nhp.model.data import Local
 from nhp.model.helpers import load_params
 from nhp.model.inpatients import InpatientsModel
 from nhp.model.outpatients import OutpatientsModel
@@ -65,7 +66,7 @@ def main() -> None:
 
             run_all(
                 params,
-                args.data_path,
+                Local.create(args.data_path),
                 lambda _: lambda _: None,
                 args.save_full_model_results,
             )

@@ -87,7 +87,6 @@ def test_run_all(mocker):
     )
     gr_m = mocker.patch("nhp.model.run.generate_results_json", return_value="results_json_path")
     sr_m = mocker.patch("nhp.model.run.save_results_files", return_value="results_paths")
-    nd_m = mocker.patch("nhp.model.run.Local")
 
     pc_m = Mock()
     pc_m().return_value = "progress callback"
@@ -102,16 +101,15 @@ def test_run_all(mocker):
         "model_runs": 10,
         "create_datetime": "20230123_012345",
     }
+    data_mock = Mock(return_value="nhp_data")
 
     # act
-    actual = run_all(params, "data_path", pc_m, False)
+    actual = run_all(params, data_mock, pc_m, False)
 
     # assert
     assert actual == ("results_paths", "results_json_path")
 
-    nd_m.create.assert_called_once_with("data_path")
-    nd_c = nd_m.create()
-    nd_c.assert_called_once_with(2020, "synthetic")
+    data_mock.assert_called_once_with(2020, "synthetic")
 
     assert pc_m.call_args_list == [
         call("Inpatients"),
@@ -120,13 +118,13 @@ def test_run_all(mocker):
     ]
 
     grp_m.assert_called_once_with(params)
-    hsa_m.assert_called_once_with(nd_c(2020, "synthetic"), 2020)
+    hsa_m.assert_called_once_with("nhp_data", 2020)
 
     assert rm_m.call_args_list == [
         call(
             m,
             params,
-            nd_c,
+            data_mock,
             "hsa",
             {"variant": "variants"},
             pc_m(),
@@ -136,15 +134,12 @@ def test_run_all(mocker):
     ]
 
     cr_m.assert_called_once_with(["ip", "op", "aae"])
-    # weaker form of checking, but as we intended to drop this function in the future don't expend
-    # effort to fixing this part of the test
-    gr_m.assert_called_once()
-    # gr_m.assert_called_once_with(
-    #     {"default": "combined_results"},
-    #     "combined_step_counts",
-    #     params,
-    #     {"variant": "variants"},
-    # )
+    gr_m.assert_called_once_with(
+        {"default": "combined_results", "step_counts": "combined_step_counts"},
+        "combined_step_counts",
+        params,
+        {"variant": "variants"},
+    )
     sr_m.assert_called_once_with(
         {"default": "combined_results", "step_counts": "combined_step_counts"}, params
     )

@@ -68,6 +68,8 @@ def test_main_all_runs(mocker):
     args.save_full_model_results = False
     mocker.patch("nhp.model.__main__._parse_args", return_value=args)
     ldp_mock = mocker.patch("nhp.model.__main__.load_params", return_value="params")
+    local_data_mock = mocker.patch("nhp.model.__main__.Local")
+    local_data_mock.create.return_value = "data"
 
     run_all_mock = mocker.patch("nhp.model.__main__.run_all")
     run_single_mock = mocker.patch("nhp.model.__main__.run_single_model_run")
@@ -83,6 +85,7 @@ def test_main_all_runs(mocker):
 
     run_single_mock.assert_not_called()
     ldp_mock.assert_called_once_with("queue/params.json")
+    local_data_mock.create.assert_called_once_with("data")
 
 
 def test_init(mocker):

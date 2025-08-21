@@ -65,8 +65,9 @@ def test_all_model_runs(params_path, data_dir):
     params = load_params(params_path)
     params["model_runs"] = 4
 
+    nhp_data = Local.create(data_dir)
     # act
-    actual = run_all(params, data_dir)
+    actual = run_all(params, nhp_data)
 
     # assert
     res_path = "results/synthetic/test/20220101_000000"

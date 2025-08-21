@@ -111,7 +111,7 @@ def noop_progress_callback(_: Any) -> Callable[[Any], None]:
 
 def run_all(
     params: dict,
-    data_path: str,
+    nhp_data: Callable[[int, str], Data],
     progress_callback: Callable[[Any], Callable[[Any], None]] = noop_progress_callback,
     save_full_model_results: bool = False,
 ) -> Tuple[list, str]:
@@ -121,8 +121,8 @@ def run_all(
 
     :param params: the parameters to use for this model run
     :type params: dict
-    :param data_path: where the data is stored
-    :type data_path: str
+    :param nhp_data: the Data class to use for loading data
+    :type nhp_data: Callable[[int, str], Data]
     :param progress_callback: a callback function for updating progress.
         Defaults to noop_progress_callback.
     :type progress_callback: Callable[[str], Callable[[Any], Any]]
@@ -133,8 +133,6 @@ def run_all(
     """
     model_types = [InpatientsModel, OutpatientsModel, AaEModel]
     run_params = Model.generate_run_params(params)
-
-    nhp_data = Local.create(data_path)
 
     # set the data path in the HealthStatusAdjustment class
     hsa = HealthStatusAdjustmentInterpolated(

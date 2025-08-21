@@ -2,10 +2,10 @@
 
 import argparse
 import logging
-import os
 
 from nhp.docker.config import Config
 from nhp.docker.run import RunWithAzureStorage, RunWithLocalStorage
+from nhp.model.data import Local
 from nhp.model.run import run_all
 
 
@@ -54,7 +54,10 @@ def main(config: Config = Config()):
     logging.info("app_version:  %s", runner.params["app_version"])
 
     saved_files, results_file = run_all(
-        runner.params, "data", runner.progress_callback(), args.save_full_model_results
+        runner.params,
+        Local.create("data"),
+        runner.progress_callback(),
+        args.save_full_model_results,
     )
 
     runner.finish(results_file, saved_files, args.save_full_model_results)
