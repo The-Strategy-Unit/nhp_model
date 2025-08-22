@@ -46,6 +46,9 @@ def test_main_local(mocker):
     rwls = mocker.patch("nhp.docker.__main__.RunWithLocalStorage")
     rwas = mocker.patch("nhp.docker.__main__.RunWithAzureStorage")
 
+    local_data_mock = mocker.patch("nhp.docker.__main__.Local")
+    local_data_mock.create.return_value = "data"
+
     params = {
         "model_runs": 256,
         "start_year": 2019,
@@ -71,6 +74,8 @@ def test_main_local(mocker):
     ru_m.assert_called_once_with(params, "data", s.progress_callback(), False)
     s.finish.assert_called_once_with("results.json", "list_of_results", False)
 
+    local_data_mock.create.assert_called_once_with("data")
+
 
 def test_main_azure(mocker):
     # arrange
@@ -81,6 +86,9 @@ def test_main_azure(mocker):
 
     rwls = mocker.patch("nhp.docker.__main__.RunWithLocalStorage")
     rwas = mocker.patch("nhp.docker.__main__.RunWithAzureStorage")
+
+    local_data_mock = mocker.patch("nhp.docker.__main__.Local")
+    local_data_mock.create.return_value = "data"
 
     config = Mock()
     config.APP_VERSION = "dev"
@@ -111,6 +119,8 @@ def test_main_azure(mocker):
     s = rwas()
     ru_m.assert_called_once_with(params, "data", s.progress_callback(), False)
     s.finish.assert_called_once_with("results.json", "list_of_results", False)
+
+    local_data_mock.create.assert_called_once_with("data")
 
 
 def test_init(mocker):
