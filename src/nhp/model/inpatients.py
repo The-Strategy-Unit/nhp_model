@@ -207,6 +207,7 @@ class InpatientsModel(Model):
                     "tretspef",
                     "tretspef_grouped",
                     "los_group",
+                    "maternity_delivery_in_spell",
                 ],
                 dropna=False,
             )[["admissions", "beddays", "procedures"]]
@@ -241,29 +242,22 @@ class InpatientsModel(Model):
 
         return data
 
-    def aggregate(self, model_iteration: ModelIteration) -> tuple[pd.DataFrame, list[list[str]]]:
-        """Aggregate the model results.
+    def specific_aggregations(self, model_results: pd.DataFrame) -> dict[str, pd.Series]:
+        """Create other aggregations specific to the model type.
 
-        Can also be used to aggregate the baseline data by passing in a `ModelIteration` with
-        the `model_run` argument set `-1`.
-
-        :param model_iteration: an instance of the `ModelIteration` class
-        :type model_iteration: model.model_iteration.ModelIteration
-
-        :returns: a tuple containing the model results, and a list of lists which contain the
-            aggregations to perform
-        :rtype: tuple[pd.DataFrame, list[list[str]]]
+        :param model_results: the results of a model run
+        :type model_results: pd.DataFrame
+        :return: dictionary containing the specific aggregations
+        :rtype: dict[str, pd.Series]
         """
-        model_results = self.process_results(model_iteration.get_model_results())
-
-        return (
-            model_results,
-            [
-                ["sex", "tretspef_grouped"],
-                ["tretspef"],
-                ["tretspef", "los_group"],
-            ],
-        )
+        return {
+            "sex+tretspef_grouped": self.get_agg(model_results, "sex", "tretspef_grouped"),
+            "tretspef": self.get_agg(model_results, "tretspef"),
+            "tretspef+los_group": self.get_agg(model_results, "tretspef", "los_group"),
+            "delivery_episode_in_spell": self.get_agg(
+                model_results[model_results["maternity_delivery_in_spell"]]
+            ),
+        }
 
     def calculate_avoided_activity(
         self, data: pd.DataFrame, data_resampled: pd.DataFrame

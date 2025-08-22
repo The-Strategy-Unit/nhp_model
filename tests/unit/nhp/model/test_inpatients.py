@@ -5,6 +5,7 @@ from unittest.mock import Mock, call, mock_open, patch
 import numpy as np
 import pandas as pd
 import pytest
+from pandas.testing import assert_frame_equal
 
 from nhp.model.inpatients import InpatientsModel
 
@@ -239,6 +240,7 @@ def test_process_results(mock_model):
             "rn": [1] * 12,
             "has_procedure": [0, 1] * 6,
             "speldur": list(range(12)),
+            "maternity_delivery_in_spell": [True, False] * 6,
         }
     )
     df["pod"] = "ip_" + df["group"] + "_admission"
@@ -431,6 +433,21 @@ def test_process_results(mock_model):
                 "8-14 days",
                 np.nan,
             ],
+            "maternity_delivery_in_spell": [
+                True,
+                True,
+                False,
+                False,
+                False,
+                True,
+                False,
+                False,
+                False,
+                True,
+                True,
+                False,
+            ]
+            * 2,
             "measure": [
                 "admissions",
                 "beddays",
@@ -491,32 +508,31 @@ def test_process_results(mock_model):
     pd.testing.assert_frame_equal(actual, expected)
 
 
-def test_aggregate(mock_model):
+def test_specific_aggregations(mocker, mock_model):
     """Test that it aggregates the results correctly."""
-
     # arrange
-    def create_agg_stub(model_results, cols=None):
-        name = "+".join(cols) if cols else "default"
-        return {name: model_results.to_dict(orient="list")}
+    m = mocker.patch("nhp.model.InpatientsModel.get_agg", return_value="agg_data")
 
     mdl = mock_model
-    mdl._create_agg = Mock(wraps=create_agg_stub)
-    mdl.process_results = Mock(return_value="processed_data")
 
-    mr_mock = Mock()
-    mr_mock.get_model_results.return_value = "nhp.model_data"
+    mock_data = pd.DataFrame({"maternity_delivery_in_spell": [True, False], "value": [1, 2]})
 
     # act
-    actual_mr, actual_aggs = mdl.aggregate(mr_mock)
+    actual = mdl.specific_aggregations(mock_data)
 
     # assert
+    assert actual == {
+        "sex+tretspef_grouped": "agg_data",
+        "tretspef": "agg_data",
+        "tretspef+los_group": "agg_data",
+        "delivery_episode_in_spell": "agg_data",
+    }
 
-    mdl.process_results.assert_called_once_with("nhp.model_data")
-    assert actual_mr == "processed_data"
-    assert actual_aggs == [
-        ["sex", "tretspef_grouped"],
-        ["tretspef"],
-        ["tretspef", "los_group"],
+    assert [(len(i[0][0]), *i[0][1:]) for i in m.call_args_list] == [
+        (2, "sex", "tretspef_grouped"),
+        (2, "tretspef"),
+        (2, "tretspef", "los_group"),
+        (1,),
     ]
 
 

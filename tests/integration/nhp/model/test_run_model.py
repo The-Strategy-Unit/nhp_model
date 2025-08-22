@@ -13,11 +13,7 @@ from nhp.model.run import run_all
     [
         (
             InpatientsModel,
-            {
-                "sex+tretspef_grouped",
-                "tretspef",
-                "tretspef+los_group",
-            },
+            {"sex+tretspef_grouped", "tretspef", "tretspef+los_group", "delivery_episode_in_spell"},
         ),
         (
             OutpatientsModel,
@@ -79,6 +75,7 @@ def test_all_model_runs(params_path, data_dir):
                 "attendance_category",
                 "avoided_activity",
                 "default",
+                "delivery_episode_in_spell",
                 "sex+age_group",
                 "sex+tretspef_grouped",
                 "tretspef",

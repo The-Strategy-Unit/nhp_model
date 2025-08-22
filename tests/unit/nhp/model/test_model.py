@@ -775,3 +775,49 @@ def test_apply_resampling(mock_model):
     # act & assert
     with pytest.raises(NotImplementedError):
         mock_model.apply_resampling(None, None)
+
+
+def test_aggregate(mock_model):
+    # arrange
+    mdl = mock_model
+    mdl.process_results = Mock(return_value="processed_results")
+    mdl.get_agg = Mock(return_value="agg")
+    mdl.specific_aggregations = Mock(return_value={"1": "agg", "2": "agg"})
+
+    mi_mock = Mock()
+    mi_mock.get_model_results.return_value = "results"
+
+    # act
+    actual = mdl.aggregate(mi_mock)
+
+    # assert
+    mi_mock.get_model_results.assert_called()
+    mdl.process_results.assert_called_once_with("results")
+    assert mdl.get_agg.call_args_list == [
+        call("processed_results"),
+        call("processed_results", "sex", "age_group"),
+        call("processed_results", "age"),
+    ]
+    mdl.specific_aggregations.assert_called_once_with("processed_results")
+
+    assert actual == {
+        "default": "agg",
+        "sex+age_group": "agg",
+        "age": "agg",
+        "1": "agg",
+        "2": "agg",
+    }
+
+
+def test_process_results(mock_model):
+    # arrange
+    # act & assert
+    with pytest.raises(NotImplementedError):
+        mock_model.process_results(None)
+
+
+def test_specific_aggregations(mock_model):
+    # arrange
+    # act & assert
+    with pytest.raises(NotImplementedError):
+        mock_model.specific_aggregations(None)

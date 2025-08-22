@@ -165,18 +165,15 @@ class ModelIteration:
         :returns: a tuple containing a dictionary of results, and the step counts
         :rtype: tuple[dict[str, pd.Series], pd.Series | None]:
         """
-        model_results, aggregations = self.model.aggregate(self)
-
-        aggs = {
-            "default" if not v else "+".join(v): self.model.get_agg(model_results, *v)
-            for v in [[], ["sex", "age_group"], ["age"], *aggregations]
-        }
+        aggregations = self.model.aggregate(self)
 
         if not self.avoided_activity.empty:
             avoided_activity_agg = self.model.process_results(self.avoided_activity)
-            aggs["avoided_activity"] = self.model.get_agg(avoided_activity_agg, "sex", "age_group")
+            aggregations["avoided_activity"] = self.model.get_agg(
+                avoided_activity_agg, "sex", "age_group"
+            )
 
-        return aggs, self.get_step_counts()
+        return aggregations, self.get_step_counts()
 
     def get_step_counts(self) -> pd.Series | None:
         """Get the step counts of a model run."""
