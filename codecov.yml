@@ -1,4 +1,0 @@
-# sample regex patterns
-ignore:
-  - "tests/test*.py"
-  - "migration/*.py"

@@ -1,1 +1,0 @@
-"""NHP Demand Model."""

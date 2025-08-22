@@ -1,5 +1,5 @@
 [project]
-name = "nhp_model"
+name = "nhp-model"
 dynamic = ["version"]
 description = "New Hospital Programme demand model"
 
@@ -116,7 +116,7 @@ pythonVersion = "3.11"
 typeCheckingMode = "basic"
 
 [tool.setuptools_scm]
-version_file = "src/nhp/_version.py"
+version_file = "src/nhp/model/_version.py"
 
 [tool.ty.src]
 exclude = ["notebooks"]
