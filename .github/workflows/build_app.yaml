@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout GitHub Action"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v6
@@ -72,7 +72,7 @@ jobs:
           name: dist-whl
           path: .
       - name: Upload artifact to the GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: github.ref_type == 'tag'
         with:
           files: "*.whl"
