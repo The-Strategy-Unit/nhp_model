@@ -15,7 +15,7 @@ jobs:
         shell: bash -l {0}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
         
     - name: Install the latest version of uv
       uses: astral-sh/setup-uv@v6
@@ -30,6 +30,6 @@ jobs:
       run: uv run pytest --cov=. tests/unit --ignore=tests --cov-branch --cov-report xml:coverage.xml
 
     - name: Upload Coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
