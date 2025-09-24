@@ -19,26 +19,13 @@
   },
   "health_status_adjustment": true,
   "inequalities": {
-    "HRG1": {
-      "option": "level_up",
-      "values": {
-        "1": 2,
-        "2": 1.75,
-        "3": 1.5,
-        "4": 1.25,
-        "5": 1
-      }
-    },
-    "HRG2": {
-      "option": "zero_sum",
-      "values": {
-        "1": 2,
-        "2": 1.5,
-        "3": 1,
-        "4": 0.75,
-        "5": 0.5
-      }
-    }
+    "level_up": [
+      "HRG1"
+    ],
+    "zero_sum": [
+      "HRG2"
+    ],
+    "level_down": []
   },
   "op": {
     "first": [
