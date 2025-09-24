@@ -77,3 +77,11 @@ class Data:
     def get_hsa_gams(self):
         """Get the health status adjustment gams."""
         raise NotImplementedError()
+
+    def get_inequalities(self):
+        """Get the inequalities dataframe.
+
+        :return: the inequalities dataframe
+        :rtype: pd.DataFrame
+        """
+        raise NotImplementedError()
