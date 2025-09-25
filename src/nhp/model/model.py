@@ -194,12 +194,12 @@ class Model:
         inequalities_df = data_loader.get_inequalities().set_index("sushrg_trimmed")
         inequalities_factors = pd.concat(
             [
-                inequalities_df.loc[hrgs][["icb", "provider", "imd_quintile", inequality_method]]
+                inequalities_df.loc[hrgs][["icb", "imd_quintile", inequality_method]]
                 .reset_index()
                 .rename(columns={inequality_method: "factor"})
                 for inequality_method, hrgs in self.params["inequalities"].items()
             ]
-        )
+        ).reset_index(drop=True)
 
         self.inequalities_factors = inequalities_factors
 

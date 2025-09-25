@@ -120,5 +120,4 @@ class Local(Data):
         :rtype: pd.DataFrame
         """
         inequalities_df = pd.read_parquet(self._file_path(file))
-        inequalities_df["provider"] = self._dataset  # need provider for PBM
         return inequalities_df

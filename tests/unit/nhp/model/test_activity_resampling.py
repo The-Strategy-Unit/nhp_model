@@ -33,6 +33,7 @@ def test_init():
     model_iteration.model.demog_factors = "demog_factors"
     model_iteration.model.birth_factors = "birth_factors"
     model_iteration.model.hsa = "hsa"
+    model_iteration.model.inequalities_factors = "inequalities_factors"
 
     # act
     actual = ActivityResampling(model_iteration)
@@ -45,6 +46,7 @@ def test_init():
     assert actual.demog_factors == "demog_factors"
     assert actual.birth_factors == "birth_factors"
     assert actual.hsa == "hsa"
+    assert actual.inequalities_factors == "inequalities_factors"
     assert actual._baseline_counts.tolist() == [[1, 2, 3], [4, 5, 6]]
 
 
@@ -428,12 +430,13 @@ def test_inequalities_adjustment_no_params(mocker, mock_activity_resampling, mod
     aa_mock._model_iteration.data = pd.DataFrame(
         {
             "group": [group, None] * 5,
+            "icb": ["ICB"] * 10,
             "sushrg_trimmed": ["HRG1"] * 5 + ["HRG2"] * 5,
             "imd_quintile": [1, 2, 3, 4, 5] * 2,
         }
     )
 
-    aa_mock._model_iteration.run_params = {"inequalities": {}}
+    aa_mock._model_iteration.params = {"inequalities": {}}
 
     u_mock = mocker.patch(
         "nhp.model.activity_resampling.ActivityResampling._update",
@@ -455,22 +458,22 @@ def test_inequalities_adjustment_no_params(mocker, mock_activity_resampling, mod
             "ip",
             "elective",
             {
-                ("elective", "HRG1", 1): 5.4321,
-                ("elective", "HRG1", 2): 4.321,
-                ("elective", "HRG1", 3): 3.21,
-                ("elective", "HRG1", 4): 2.21,
-                ("elective", "HRG1", 5): 1.0,
+                ("elective", "ICB", "HRG1", 1): 5.4321,
+                ("elective", "ICB", "HRG1", 2): 4.321,
+                ("elective", "ICB", "HRG1", 3): 3.21,
+                ("elective", "ICB", "HRG1", 4): 2.21,
+                ("elective", "ICB", "HRG1", 5): 1.0,
             },
         ),
         (
             "op",
             "procedure",
             {
-                ("procedure", "HRG1", 1): 5.4321,
-                ("procedure", "HRG1", 2): 4.321,
-                ("procedure", "HRG1", 3): 3.21,
-                ("procedure", "HRG1", 4): 2.21,
-                ("procedure", "HRG1", 5): 1.0,
+                ("procedure", "ICB", "HRG1", 1): 5.4321,
+                ("procedure", "ICB", "HRG1", 2): 4.321,
+                ("procedure", "ICB", "HRG1", 3): 3.21,
+                ("procedure", "ICB", "HRG1", 4): 2.21,
+                ("procedure", "ICB", "HRG1", 5): 1.0,
             },
         ),
         ("aae", None, None),
@@ -490,15 +493,23 @@ def test_inequalities_adjustment(
     aa_mock._model_iteration.data = pd.DataFrame(
         {
             "group": [group, None] * 5,
+            "icb": ["ICB"] * 10,
             "sushrg_trimmed": ["HRG1"] * 5 + ["HRG2"] * 5,
             "imd_quintile": [1, 2, 3, 4, 5] * 2,
         }
     )
 
-    aa_mock._model_iteration.run_params = {
-        "inequalities": {
-            "HRG1": {"1": 5.4321, "2": 4.321, "3": 3.21, "4": 2.21, "5": 1},
+    aa_mock._model_iteration.model.inequalities_factors = pd.DataFrame(
+        {
+            "icb": ["ICB"] * 5,
+            "sushrg_trimmed": ["HRG1"] * 5,
+            "imd_quintile": [1, 2, 3, 4, 5],
+            "factor": [5.4321, 4.321, 3.21, 2.21, 1],
         }
+    )
+
+    aa_mock._model_iteration.params = {
+        "inequalities": {"level_up": ["HRG1"], "level_down": [], "zero_sum": []}
     }
 
     u_mock = mocker.patch(
