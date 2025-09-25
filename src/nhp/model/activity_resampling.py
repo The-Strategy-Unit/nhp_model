@@ -74,6 +74,11 @@ class ActivityResampling:
         return self._model_iteration.model.hsa
 
     @property
+    def inequalities_factors(self):
+        """Get the inequalities factors for the model."""
+        return self._model_iteration.model.inequalities_factors
+
+    @property
     def data(self):
         """Get the current model runs data."""
         return self._model_iteration.data
@@ -143,22 +148,18 @@ class ActivityResampling:
             case _:
                 return self
 
-        if not (params := self.run_params["inequalities"]):
+        if not (params := self.params["inequalities"]):
             return self
 
-        factor: pd.Series = pd.concat(  # type: ignore
-            {k: pd.Series(v, name="inequalities", dtype="float64") for k, v in params.items()}
-        )
+        # TODO: currently only works for provider level model (we overwrite provider in PBM)
+        # We need to match on ICB *and* provider for PBM
 
-        factor.index.names = ("sushrg_trimmed", "imd_quintile")
-
-        factor.index = factor.index.set_levels(  # type: ignore
-            factor.index.levels[1].astype(int),  # type: ignore
-            level="imd_quintile",
-        )
+        factor = self.inequalities_factors.set_index(["icb", "sushrg_trimmed", "imd_quintile"])[
+            "factor"
+        ]
 
         factor: pd.Series = pd.concat({factor_key: factor}, names=["group"])  # type: ignore
-
+        factor.name = "inequalities"
         return self._update(factor)
 
     def expat_adjustment(self):
