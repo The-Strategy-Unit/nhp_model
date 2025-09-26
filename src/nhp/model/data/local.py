@@ -103,12 +103,21 @@ class Local(Data):
         with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
             return pickle.load(hsa_pkl)
 
-    def _get_parquet(self, file) -> pd.DataFrame:
-        """_summary_.
+    def get_inequalities(self):
+        """Get the inequalities dataframe.
 
-        :param file: _description_
-        :type file: _type_
-        :return: _description_
+        :return: the inequalities dataframe
         :rtype: pd.DataFrame
         """
-        return pd.read_parquet(self._file_path(file))
+        return self._get_parquet("inequalities")
+
+    def _get_parquet(self, file) -> pd.DataFrame:
+        """Load specific parquet file using Pandas.
+
+        :param file: Specific parquet filename to open
+        :type file: str
+        :return: DataFrame containing the data
+        :rtype: pd.DataFrame
+        """
+        inequalities_df = pd.read_parquet(self._file_path(file))
+        return inequalities_df

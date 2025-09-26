@@ -51,3 +51,9 @@ def test_get_hsa_gams():
     d = Data()
     with pytest.raises(NotImplementedError):
         d.get_hsa_gams()
+
+
+def test_get_inequalities():
+    d = Data()
+    with pytest.raises(NotImplementedError):
+        d.get_inequalities()

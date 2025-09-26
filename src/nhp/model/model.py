@@ -106,6 +106,7 @@ class Model:
         self._load_data(data_loader)
         self._load_strategies(data_loader)
         self._load_demog_factors(data_loader)
+        self._load_inequalities_factors(data_loader)
         # create HSA object if it hasn't been passed in
         year = params["start_year"]
         self.hsa = hsa or HealthStatusAdjustmentInterpolated(data_loader, str(year))
@@ -183,6 +184,25 @@ class Model:
         self.demog_factors = load_factors(data_loader.get_demographic_factors())
         self.birth_factors = load_factors(data_loader.get_birth_factors())
 
+    def _load_inequalities_factors(self, data_loader: Data) -> None:
+        """Load the inequalities factors.
+
+        Creates 1 private variable:
+        * | `self.inequalities_factors`: a pandas.DataFrame containing the inequalities
+          | factors to be used for the model iterations, given model parameters
+        """
+        inequalities_df = data_loader.get_inequalities().set_index("sushrg_trimmed")
+        inequalities_factors = pd.concat(
+            [
+                inequalities_df.loc[hrgs][["icb", "imd_quintile", inequality_method]]
+                .reset_index()
+                .rename(columns={inequality_method: "factor"})
+                for inequality_method, hrgs in self.params["inequalities"].items()
+            ]
+        ).reset_index(drop=True)
+
+        self.inequalities_factors = inequalities_factors
+
     @staticmethod
     def generate_run_params(params):
         """Generate the values for each model run from the params.
@@ -245,10 +265,6 @@ class Model:
             "non-demographic_adjustment": {
                 k: generate_param_values(v, inrange_0_5)
                 for k, v in params["non-demographic_adjustment"]["values"].items()
-            },
-            "inequalities": {
-                k: generate_param_values(v["values"], lambda x: x)
-                for k, v in params["inequalities"].items()
             },
             # generate param values for the different items in params: this will traverse the dicts
             # until a value is reached that isn't a dict. Then it will generate the required amount

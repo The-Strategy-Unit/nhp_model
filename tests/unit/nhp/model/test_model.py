@@ -36,12 +36,7 @@ def mock_model():
         "repat_local": {"ip": {"elective": {"Other": [1.0, 1.2]}}},
         "repat_nonlocal": {"ip": {"elective": {"Other": [1.3, 1.5]}}},
         "baseline_adjustment": {"ip": {"elective": {"Other": [1.5, 1.7]}}},
-        "inequalities": {
-            "HRG1": {
-                "option": "level_up",
-                "values": {"1": 5.4321, "2": 4.321, "3": 3.21, "4": 2.21, "5": 1},
-            }
-        },
+        "inequalities": {"level_up": ["HRG1"], "level_down": ["HRG2"], "zero_sum": []},
         "non-demographic_adjustment": {
             "variant": "ndg-test",
             "variant-type": "year-on-year-growth",
@@ -97,15 +92,6 @@ def mock_run_params():
         "repat_local": {"ip": {"elective": {"Other": [1, 16, 17, 18]}}},
         "repat_nonlocal": {"ip": {"elective": {"Other": [1, 19, 20, 21]}}},
         "baseline_adjustment": {"ip": {"elective": {"Other": [1, 22, 23, 24]}}},
-        "inequalities": {
-            "HRG1": {
-                "1": [5.4321, 5.4321, 5.4321, 5.4321],
-                "2": [4.321, 4.321, 4.321, 4.321],
-                "3": [3.21, 3.21, 3.21, 3.21],
-                "4": [2.21, 2.21, 2.21, 2.21],
-                "5": [1, 1, 1, 1],
-            }
-        },
         "activity_avoidance": {
             "ip": {"a_a": [1, 25, 26, 27], "a_b": [1, 28, 29, 30]},
             "op": {"a_a": [1, 31, 32, 33], "a_b": [1, 34, 35, 36]},
@@ -149,6 +135,7 @@ def test_model_init_sets_values(mocker, model_type):
     mocker.patch("nhp.model.model.Model._load_data")
     mocker.patch("nhp.model.model.Model._load_strategies")
     mocker.patch("nhp.model.model.Model._load_demog_factors")
+    mocker.patch("nhp.model.model.Model._load_inequalities_factors")
     mocker.patch("nhp.model.model.Model.generate_run_params")
     lp_m = mocker.patch("nhp.model.model.load_params")
     hsa_m = mocker.patch("nhp.model.model.HealthStatusAdjustmentInterpolated")
@@ -165,6 +152,7 @@ def test_model_init_sets_values(mocker, model_type):
     mdl._load_data.assert_called_once_with("data_loader")  # type: ignore
     mdl._load_strategies.assert_called_once_with("data_loader")  # type: ignore
     mdl._load_demog_factors.assert_called_once_with("data_loader")  # type: ignore
+    mdl._load_inequalities_factors.assert_called_once_with("data_loader")  # type: ignore
     assert mdl.hsa == "hsa"
     mdl.generate_run_params.assert_not_called()  # type: ignore
     assert mdl.run_params == "run_params"
@@ -184,6 +172,7 @@ def test_model_init_calls_generate_run_params(mocker):
     mocker.patch("nhp.model.model.Model._load_data")
     mocker.patch("nhp.model.model.Model._load_strategies")
     mocker.patch("nhp.model.model.Model._load_demog_factors")
+    mocker.patch("nhp.model.model.Model._load_inequalities_factors")
     mocker.patch("nhp.model.model.Model.generate_run_params", return_value="generated")
 
     # act
@@ -208,6 +197,7 @@ def test_model_init_sets_create_datetime(mocker):
     mocker.patch("nhp.model.model.Model._load_data")
     mocker.patch("nhp.model.model.Model._load_strategies")
     mocker.patch("nhp.model.model.Model._load_demog_factors")
+    mocker.patch("nhp.model.model.Model._load_inequalities_factors")
     mocker.patch("nhp.model.model.Model.generate_run_params")
 
     # act
@@ -224,6 +214,7 @@ def test_model_init_loads_params_if_string(mocker):
     mocker.patch("nhp.model.model.Model._load_data")
     mocker.patch("nhp.model.model.Model._load_strategies")
     mocker.patch("nhp.model.model.Model._load_demog_factors")
+    mocker.patch("nhp.model.model.Model._load_inequalities_factors")
     mocker.patch("nhp.model.model.Model.generate_run_params")
     lp_m = mocker.patch("nhp.model.model.load_params")
     lp_m.return_value = params
@@ -243,6 +234,7 @@ def test_model_init_initialises_hsa_if_none(mocker):
     mocker.patch("nhp.model.model.Model._load_data")
     mocker.patch("nhp.model.model.Model._load_strategies")
     mocker.patch("nhp.model.model.Model._load_demog_factors")
+    mocker.patch("nhp.model.model.Model._load_inequalities_factors")
     mocker.patch("nhp.model.model.Model.generate_run_params")
     hsa_m = mocker.patch("nhp.model.model.HealthStatusAdjustmentInterpolated")
     hsa_m.return_value = "hsa"
@@ -331,7 +323,7 @@ def test_load_data(mocker, mock_model):
 # _load_strategies()
 
 
-def test_load_stratergies(mock_model):
+def test_load_strategies(mock_model):
     # arrange
     # act
     mock_model._load_strategies(None)
@@ -451,7 +443,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "repat_local": {"ip": {"elective": {"Other": 1}}},
                 "repat_nonlocal": {"ip": {"elective": {"Other": 1}}},
                 "baseline_adjustment": {"ip": {"elective": {"Other": 1}}},
-                "inequalities": {"HRG1": {"1": 5.4321, "2": 4.321, "3": 3.21, "4": 2.21, "5": 1}},
                 "activity_avoidance": {
                     "ip": {"a_a": 1, "a_b": 1},
                     "op": {"a_a": 1, "a_b": 1},
@@ -486,7 +477,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "repat_local": {"ip": {"elective": {"Other": 17}}},
                 "repat_nonlocal": {"ip": {"elective": {"Other": 20}}},
                 "baseline_adjustment": {"ip": {"elective": {"Other": 23}}},
-                "inequalities": {"HRG1": {"1": 5.4321, "2": 4.321, "3": 3.21, "4": 2.21, "5": 1}},
                 "activity_avoidance": {
                     "ip": {"a_a": 26, "a_b": 29},
                     "op": {"a_a": 32, "a_b": 35},
@@ -807,6 +797,34 @@ def test_aggregate(mock_model):
         "1": "agg",
         "2": "agg",
     }
+
+
+def test_load_inequalities_factors(mock_model):
+    # arrange
+    mdl = mock_model
+    data_loader = Mock()
+    data_loader.get_inequalities.return_value = pd.DataFrame(
+        {
+            "icb": ["ICB"] * 10,
+            "sushrg_trimmed": ["HRG1"] * 5 + ["HRG2"] * 5,
+            "imd_quintile": list(range(1, 6)) * 2,
+            "level_up": [1] * 10,
+            "level_down": [2] * 10,
+            "zero_sum": [3] * 10,
+        }
+    )
+    expected = pd.DataFrame(
+        {
+            "sushrg_trimmed": ["HRG1"] * 5 + ["HRG2"] * 5,
+            "icb": ["ICB"] * 10,
+            "imd_quintile": list(range(1, 6)) * 2,
+            "factor": [1] * 5 + [2] * 5,
+        }
+    )
+    # act
+    mdl._load_inequalities_factors(data_loader)
+    # assert
+    pd.testing.assert_frame_equal(mdl.inequalities_factors, expected)
 
 
 def test_process_results(mock_model):

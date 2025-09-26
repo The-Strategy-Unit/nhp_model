@@ -153,6 +153,19 @@ def test_get_hsa_gams(mocker):
     m.assert_called_once_with(mock_file())
 
 
+def test_get_inequalities(mocker):
+    # arrange
+    m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
+    d = Local("data", 2019, "synthetic")
+
+    # act
+    actual = d.get_inequalities()
+
+    # assert
+    assert actual == "data"
+    m.assert_called_once_with("inequalities")
+
+
 def test_get_parquet(mocker):
     # arrange
     fp = mocker.patch("nhp.model.data.Local._file_path", return_value="file_path")

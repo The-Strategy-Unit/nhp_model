@@ -334,3 +334,13 @@ class DatabricksNational(Data):
         """Get the health status adjustment gams."""
         # this is not supported in our data bricks environment currently
         raise NotImplementedError
+
+    def get_inequalities(self) -> pd.DataFrame:
+        """Get the inequalities dataframe.
+
+        :return: the inequalities dataframe
+        :rtype: pd.DataFrame
+        """
+        return self._spark.read.table("nhp.default.inequalities").filter(
+            F.col("fyear") == self._year * 100 + (self._year + 1) % 100
+        )
