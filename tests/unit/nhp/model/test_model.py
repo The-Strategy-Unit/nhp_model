@@ -151,7 +151,7 @@ def test_model_init_sets_values(mocker, model_type):
     data_mock.assert_called_once_with("2020", "synthetic")
     mdl._load_data.assert_called_once_with("data_loader")  # type: ignore
     mdl._load_strategies.assert_called_once_with("data_loader")  # type: ignore
-    mdl._load_demog_factors.assert_called_once_with("data_loader")
+    mdl._load_demog_factors.assert_called_once_with("data_loader")  # type: ignore
     mdl._load_inequalities_factors.assert_called_once_with("data_loader")  # type: ignore
     assert mdl.hsa == "hsa"
     mdl.generate_run_params.assert_not_called()  # type: ignore
@@ -443,7 +443,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "repat_local": {"ip": {"elective": {"Other": 1}}},
                 "repat_nonlocal": {"ip": {"elective": {"Other": 1}}},
                 "baseline_adjustment": {"ip": {"elective": {"Other": 1}}},
-                "inequalities": {"HRG1": {"1": 5.4321, "2": 4.321, "3": 3.21, "4": 2.21, "5": 1}},
                 "activity_avoidance": {
                     "ip": {"a_a": 1, "a_b": 1},
                     "op": {"a_a": 1, "a_b": 1},
@@ -478,7 +477,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
                 "repat_local": {"ip": {"elective": {"Other": 17}}},
                 "repat_nonlocal": {"ip": {"elective": {"Other": 20}}},
                 "baseline_adjustment": {"ip": {"elective": {"Other": 23}}},
-                "inequalities": {"HRG1": {"1": 5.4321, "2": 4.321, "3": 3.21, "4": 2.21, "5": 1}},
                 "activity_avoidance": {
                     "ip": {"a_a": 26, "a_b": 29},
                     "op": {"a_a": 32, "a_b": 35},
