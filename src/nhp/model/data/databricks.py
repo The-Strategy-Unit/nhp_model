@@ -341,6 +341,8 @@ class DatabricksNational(Data):
         :return: the inequalities dataframe
         :rtype: pd.DataFrame
         """
-        return self._spark.read.table("nhp.default.inequalities").filter(
-            F.col("fyear") == self._year * 100 + (self._year + 1) % 100
+        return (
+            self._spark.read.table("nhp.default.inequalities")
+            .filter(F.col("fyear") == self._year * 100 + (self._year + 1) % 100)
+            .toPandas()
         )
