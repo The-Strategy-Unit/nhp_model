@@ -208,11 +208,6 @@
                     }
                 }
             },
-            "required": [
-                "level_up",
-                "zero_sum",
-                "level_down"
-            ],
             "additionalProperties": false
         },
         "activity_avoidance": {

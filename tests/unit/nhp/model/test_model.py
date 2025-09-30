@@ -808,6 +808,8 @@ def test_load_inequalities_factors(mock_model):
             "icb": ["ICB"] * 10,
             "sushrg_trimmed": ["HRG1"] * 5 + ["HRG2"] * 5,
             "imd_quintile": list(range(1, 6)) * 2,
+            "activity_rate": [0.1] * 10,
+            "fitted_line": [0.2] * 10,
             "level_up": [1] * 10,
             "level_down": [2] * 10,
             "zero_sum": [3] * 10,
@@ -815,8 +817,8 @@ def test_load_inequalities_factors(mock_model):
     )
     expected = pd.DataFrame(
         {
-            "sushrg_trimmed": ["HRG1"] * 5 + ["HRG2"] * 5,
             "icb": ["ICB"] * 10,
+            "sushrg_trimmed": ["HRG1"] * 5 + ["HRG2"] * 5,
             "imd_quintile": list(range(1, 6)) * 2,
             "factor": [1] * 5 + [2] * 5,
         }
@@ -825,6 +827,30 @@ def test_load_inequalities_factors(mock_model):
     mdl._load_inequalities_factors(data_loader)
     # assert
     pd.testing.assert_frame_equal(mdl.inequalities_factors, expected)
+
+
+def test_load_inequalities_factors_when_empty(mock_model):
+    # arrange
+    mdl = mock_model
+    mdl.params["inequalities"] = {}
+    data_loader = Mock()
+    data_loader.get_inequalities.return_value = pd.DataFrame(
+        {
+            "icb": ["ICB"] * 10,
+            "sushrg_trimmed": ["HRG1"] * 5 + ["HRG2"] * 5,
+            "imd_quintile": list(range(1, 6)) * 2,
+            "activity_rate": [0.1] * 10,
+            "fitted_line": [0.2] * 10,
+            "level_up": [1] * 10,
+            "level_down": [2] * 10,
+            "zero_sum": [3] * 10,
+        }
+    )
+    expected = pd.DataFrame([], columns=["icb", "sushrg_trimmed", "imd_quintile", "factor"])
+    # act
+    mdl._load_inequalities_factors(data_loader)
+    # assert
+    assert len(mdl.inequalities_factors) == 0
 
 
 def test_process_results(mock_model):
