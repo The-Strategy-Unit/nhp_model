@@ -191,17 +191,28 @@ class Model:
         * | `self.inequalities_factors`: a pandas.DataFrame containing the inequalities
           | factors to be used for the model iterations, given model parameters
         """
-        inequalities_df = data_loader.get_inequalities().set_index("sushrg_trimmed")
-        inequalities_factors = pd.concat(
+        inequalities_params = pd.DataFrame(
             [
-                inequalities_df.loc[hrgs][["icb", "imd_quintile", inequality_method]]
-                .reset_index()
-                .rename(columns={inequality_method: "factor"})
-                for inequality_method, hrgs in self.params["inequalities"].items()
-            ]
-        ).reset_index(drop=True)
+                {"inequality_type": k, "sushrg_trimmed": v}
+                for k, hrgs in self.params["inequalities"].items()
+                for v in hrgs
+            ],
+            columns=["inequality_type", "sushrg_trimmed"],
+        )
 
-        self.inequalities_factors = inequalities_factors
+        inequalities_df = (
+            data_loader.get_inequalities()
+            .drop(columns=["activity_rate", "fitted_line"])
+            .melt(
+                id_vars=["icb", "sushrg_trimmed", "imd_quintile"],
+                var_name="inequality_type",
+                value_name="factor",
+            )
+        )
+
+        self.inequalities_factors = inequalities_df.merge(
+            inequalities_params, on=["sushrg_trimmed", "inequality_type"], how="inner"
+        ).drop(columns=["inequality_type"])
 
     @staticmethod
     def generate_run_params(params):
