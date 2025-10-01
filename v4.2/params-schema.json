@@ -1,0 +1,1425 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://the-strategy-unit.github.io/nhp_model/v4.2/params-schema.json",
+    "type": "object",
+    "title": "NHP model parameters",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "scenario": {
+            "type": "string"
+        },
+        "dataset": {
+            "type": "string"
+        },
+        "seed": {
+            "type": "integer"
+        },
+        "model_runs": {
+            "type": "integer"
+        },
+        "start_year": {
+            "type": "integer",
+            "enum": [
+                2023
+            ]
+        },
+        "end_year": {
+            "type": "integer",
+            "minimum": 2025,
+            "maximum": 2041
+        },
+        "app_version": {
+            "type": "string",
+            "pattern": "^(v\\d+\\.\\d+|dev)$"
+        },
+        "create_datetime": {
+            "type": "string"
+        },
+        "demographic_factors": {
+            "type": "object",
+            "properties": {
+                "variant_probabilities": {
+                    "type": "object",
+                    "properties": {
+                        "migration_category": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "var_proj_5_year_migration": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "var_proj_10_year_migration": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "var_proj_high_intl_migration": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "var_proj_low_intl_migration": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "var_proj_zero_net_migration": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "custom_projection_R0A66": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        },
+                        "custom_projection_RD8": {
+                            "$ref": "#/$defs/value_gt0-1"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "minProperties": 1
+                }
+            },
+            "required": [
+                "variant_probabilities"
+            ],
+            "additionalProperties": false
+        },
+        "health_status_adjustment": {
+            "type": "boolean"
+        },
+        "expat": {
+            "$ref": "#/$defs/expat"
+        },
+        "repat_local": {
+            "$ref": "#/$defs/repat"
+        },
+        "repat_nonlocal": {
+            "$ref": "#/$defs/repat"
+        },
+        "baseline_adjustment": {
+            "type": "object",
+            "properties": {
+                "ip": {
+                    "type": "object",
+                    "properties": {
+                        "elective": {
+                            "$ref": "#/$defs/tretspef_groups_0-5"
+                        },
+                        "non-elective": {
+                            "$ref": "#/$defs/tretspef_groups_0-5"
+                        },
+                        "maternity": {
+                            "type": "object",
+                            "properties": {
+                                "Other (Medical)": {
+                                    "$ref": "#/$defs/value_0-5"
+                                }
+                            }
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "op": {
+                    "type": "object",
+                    "properties": {
+                        "first": {
+                            "$ref": "#/$defs/tretspef_groups_0-5"
+                        },
+                        "followup": {
+                            "$ref": "#/$defs/tretspef_groups_0-5"
+                        },
+                        "procedure": {
+                            "$ref": "#/$defs/tretspef_groups_0-5"
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "aae": {
+                    "type": "object",
+                    "properties": {
+                        "ambulance": {
+                            "$ref": "#/$defs/value_0-5"
+                        },
+                        "walk-in": {
+                            "$ref": "#/$defs/value_0-5"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "required": [
+                "ip",
+                "op",
+                "aae"
+            ]
+        },
+        "waiting_list_adjustment": {
+            "type": "object",
+            "properties": {
+                "ip": {
+                    "type": "object",
+                    "$ref": "#/$defs/tretspef_groups_0-5"
+                },
+                "op": {
+                    "type": "object",
+                    "$ref": "#/$defs/tretspef_groups_0-5"
+                }
+            },
+            "required": [
+                "ip",
+                "op"
+            ]
+        },
+        "non-demographic_adjustment": {
+            "type": "object",
+            "properties": {
+                "variant": {
+                    "type": "string"
+                },
+                "value-type": {
+                    "type": "string"
+                },
+                "values": {
+                    "$ref": "#/$defs/ndg"
+                }
+            },
+            "required": [
+                "variant",
+                "value-type",
+                "values"
+            ],
+            "additionalProperties": false
+        },
+        "inequalities": {
+            "type": "object",
+            "properties": {
+                "level_up": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9]{4}$"
+                    }
+                },
+                "zero_sum": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9]{4}$"
+                    }
+                },
+                "level_down": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9]{4}$"
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        "activity_avoidance": {
+            "type": "object",
+            "properties": {
+                "ip": {
+                    "type": "object",
+                    "properties": {
+                        "alcohol_partially_attributable_acute": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "alcohol_partially_attributable_chronic": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "alcohol_wholly_attributable": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "ambulatory_care_conditions_acute": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "ambulatory_care_conditions_chronic": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "ambulatory_care_conditions_vaccine_preventable": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "cancelled_operations": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "eol_care_2_days": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "eol_care_3_to_14_days": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "evidence_based_interventions_ent": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "evidence_based_interventions_general_surgery": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "evidence_based_interventions_gi_surgical": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "evidence_based_interventions_msk": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "evidence_based_interventions_vascular_varicose_veins": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "evidence_based_interventions_urology": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "falls_related_admissions": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "frail_elderly_high": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "frail_elderly_intermediate": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "intentional_self_harm": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "medically_unexplained_related_admissions": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "medicines_related_admissions_explicit": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "medicines_related_admissions_implicit_anti-diabetics": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "medicines_related_admissions_implicit_benzodiasepines": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "medicines_related_admissions_implicit_diurectics": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "medicines_related_admissions_implicit_nsaids": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "obesity_related_admissions": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "raid_ae": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "readmission_within_28_days": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "smoking": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "virtual_wards_activity_avoidance_ari": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "virtual_wards_activity_avoidance_heart_failure": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "zero_los_no_procedure_adult": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "zero_los_no_procedure_child": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "op": {
+                    "type": "object",
+                    "properties": {
+                        "consultant_to_consultant_reduction_adult_surgical": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "consultant_to_consultant_reduction_adult_non-surgical": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "consultant_to_consultant_reduction_child_surgical": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "consultant_to_consultant_reduction_child_non-surgical": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "followup_reduction_adult_surgical": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "followup_reduction_adult_non-surgical": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "followup_reduction_child_surgical": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "followup_reduction_child_non-surgical": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "gp_referred_first_attendance_reduction_adult_non-surgical": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "gp_referred_first_attendance_reduction_adult_surgical": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "gp_referred_first_attendance_reduction_child_non-surgical": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "gp_referred_first_attendance_reduction_child_surgical": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "aae": {
+                    "type": "object",
+                    "properties": {
+                        "frequent_attenders_adult_ambulance": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "frequent_attenders_adult_walk-in": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "frequent_attenders_child_ambulance": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "frequent_attenders_child_walk-in": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "left_before_seen_adult_ambulance": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "left_before_seen_adult_walk-in": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "left_before_seen_child_ambulance": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "left_before_seen_child_walk-in": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "low_cost_discharged_adult_ambulance": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "low_cost_discharged_adult_walk-in": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "low_cost_discharged_child_ambulance": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "low_cost_discharged_child_walk-in": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "discharged_no_treatment_adult_ambulance": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "discharged_no_treatment_adult_walk-in": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "discharged_no_treatment_child_ambulance": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "discharged_no_treatment_child_walk-in": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "additionalProperties": false
+        },
+        "efficiencies": {
+            "type": "object",
+            "properties": {
+                "ip": {
+                    "type": "object",
+                    "properties": {
+                        "same_day_emergency_care_low": {
+                            "$ref": "#/$defs/mitigator_withType_sdec"
+                        },
+                        "same_day_emergency_care_moderate": {
+                            "$ref": "#/$defs/mitigator_withType_sdec"
+                        },
+                        "same_day_emergency_care_high": {
+                            "$ref": "#/$defs/mitigator_withType_sdec"
+                        },
+                        "same_day_emergency_care_very_high": {
+                            "$ref": "#/$defs/mitigator_withType_sdec"
+                        },
+                        "emergency_elderly": {
+                            "$ref": "#/$defs/mitigator_withType_all"
+                        },
+                        "enhanced_recovery_bladder": {
+                            "$ref": "#/$defs/mitigator_withType_all"
+                        },
+                        "enhanced_recovery_breast": {
+                            "$ref": "#/$defs/mitigator_withType_all"
+                        },
+                        "enhanced_recovery_colectomy": {
+                            "$ref": "#/$defs/mitigator_withType_all"
+                        },
+                        "enhanced_recovery_hip": {
+                            "$ref": "#/$defs/mitigator_withType_all"
+                        },
+                        "enhanced_recovery_hysterectomy": {
+                            "$ref": "#/$defs/mitigator_withType_all"
+                        },
+                        "enhanced_recovery_knee": {
+                            "$ref": "#/$defs/mitigator_withType_all"
+                        },
+                        "enhanced_recovery_prostate": {
+                            "$ref": "#/$defs/mitigator_withType_all"
+                        },
+                        "enhanced_recovery_rectum": {
+                            "$ref": "#/$defs/mitigator_withType_all"
+                        },
+                        "excess_beddays_elective": {
+                            "$ref": "#/$defs/mitigator_withType_all"
+                        },
+                        "excess_beddays_emergency": {
+                            "$ref": "#/$defs/mitigator_withType_all"
+                        },
+                        "pre-op_los_1-day": {
+                            "$ref": "#/$defs/mitigator_withType_PreOp"
+                        },
+                        "pre-op_los_2-day": {
+                            "$ref": "#/$defs/mitigator_withType_PreOp"
+                        },
+                        "raid_ip": {
+                            "$ref": "#/$defs/mitigator_withType_all"
+                        },
+                        "stroke_early_supported_discharge": {
+                            "$ref": "#/$defs/mitigator_withType_all"
+                        },
+                        "day_procedures_occasionally_dc": {
+                            "$ref": "#/$defs/mitigator_withType_dayProcedures"
+                        },
+                        "day_procedures_occasionally_op": {
+                            "$ref": "#/$defs/mitigator_withType_dayProcedures"
+                        },
+                        "day_procedures_usually_dc": {
+                            "$ref": "#/$defs/mitigator_withType_dayProcedures"
+                        },
+                        "day_procedures_usually_op": {
+                            "$ref": "#/$defs/mitigator_withType_dayProcedures"
+                        },
+                        "general_los_reduction_emergency": {
+                            "$ref": "#/$defs/mitigator_withType_all"
+                        },
+                        "general_los_reduction_elective": {
+                            "$ref": "#/$defs/mitigator_withType_all"
+                        },
+                        "virtual_wards_efficiencies_ari": {
+                            "$ref": "#/$defs/mitigator_withType_all"
+                        },
+                        "virtual_wards_efficiencies_heart_failure": {
+                            "$ref": "#/$defs/mitigator_withType_all"
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "op": {
+                    "type": "object",
+                    "properties": {
+                        "convert_to_tele_adult_surgical": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "convert_to_tele_adult_non-surgical": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "convert_to_tele_child_surgical": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        },
+                        "convert_to_tele_child_non-surgical": {
+                            "$ref": "#/$defs/mitigator_intervalOnly"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "required": [
+                "ip",
+                "op"
+            ],
+            "additionalProperties": false
+        },
+        "time_profile_mappings": {
+            "type": "object",
+            "properties": {
+                "baseline_adjustment": {
+                    "$ref": "#/$defs/timeprofileMappings"
+                },
+                "expat": {
+                    "$ref": "#/$defs/timeprofileMappings"
+                },
+                "repat_local": {
+                    "$ref": "#/$defs/timeprofileMappings"
+                },
+                "repat_nonlocal": {
+                    "$ref": "#/$defs/timeprofileMappings"
+                },
+                "non-demographic_adjustment": {
+                    "$ref": "#/$defs/timeprofileMappings"
+                },
+                "activity_avoidance": {
+                    "type": "object",
+                    "properties": {
+                        "aae": {
+                            "type": "object",
+                            "properties": {
+                                "frequent_attenders_adult_ambulance": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "frequent_attenders_adult_walk-in": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "frequent_attenders_child_ambulance": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "frequent_attenders_child_walk-in": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "left_before_seen_adult_ambulance": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "left_before_seen_adult_walk-in": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "left_before_seen_child_ambulance": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "left_before_seen_child_walk-in": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "low_cost_discharged_adult_ambulance": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "low_cost_discharged_adult_walk-in": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "low_cost_discharged_child_ambulance": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "low_cost_discharged_child_walk-in": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "discharged_no_treatment_adult_ambulance": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "discharged_no_treatment_adult_walk-in": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "discharged_no_treatment_child_ambulance": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "discharged_no_treatment_child_walk-in": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                }
+                            },
+                            "additionalProperties": false
+                        },
+                        "ip": {
+                            "type": "object",
+                            "properties": {
+                                "alcohol_partially_attributable_acute": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "alcohol_partially_attributable_chronic": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "alcohol_wholly_attributable": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "ambulatory_care_conditions_acute": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "ambulatory_care_conditions_chronic": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "ambulatory_care_conditions_vaccine_preventable": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "cancelled_operations": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "eol_care_2_days": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "eol_care_3_to_14_days": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "evidence_based_interventions_ent": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "evidence_based_interventions_general_surgery": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "evidence_based_interventions_gi_surgical": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "evidence_based_interventions_msk": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "evidence_based_interventions_vascular_varicose_veins": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "evidence_based_interventions_urology": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "falls_related_admissions": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "frail_elderly_high": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "frail_elderly_intermediate": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "intentional_self_harm": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "medically_unexplained_related_admissions": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "medicines_related_admissions_explicit": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "medicines_related_admissions_implicit_anti-diabetics": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "medicines_related_admissions_implicit_benzodiasepines": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "medicines_related_admissions_implicit_diurectics": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "medicines_related_admissions_implicit_nsaids": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "obesity_related_admissions": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "raid_ae": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "readmission_within_28_days": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "smoking": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "virtual_wards_activity_avoidance_ari": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "virtual_wards_activity_avoidance_heart_failure": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "zero_los_no_procedure_adult": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "zero_los_no_procedure_child": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                }
+                            },
+                            "additionalProperties": false
+                        },
+                        "op": {
+                            "type": "object",
+                            "properties": {
+                                "consultant_to_consultant_reduction_adult_surgical": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "consultant_to_consultant_reduction_adult_non-surgical": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "consultant_to_consultant_reduction_child_surgical": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "consultant_to_consultant_reduction_child_non-surgical": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "followup_reduction_adult_surgical": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "followup_reduction_adult_non-surgical": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "followup_reduction_child_surgical": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "followup_reduction_child_non-surgical": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "gp_referred_first_attendance_reduction_adult_non-surgical": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "gp_referred_first_attendance_reduction_adult_surgical": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "gp_referred_first_attendance_reduction_child_non-surgical": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "gp_referred_first_attendance_reduction_child_surgical": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    }
+                },
+                "efficiencies": {
+                    "type": "object",
+                    "properties": {
+                        "ip": {
+                            "type": "object",
+                            "properties": {
+                                "same_day_emergency_care_low": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "same_day_emergency_care_moderate": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "same_day_emergency_care_high": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "same_day_emergency_care_very_high": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "emergency_elderly": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "enhanced_recovery_bladder": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "enhanced_recovery_breast": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "enhanced_recovery_colectomy": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "enhanced_recovery_hip": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "enhanced_recovery_hysterectomy": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "enhanced_recovery_knee": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "enhanced_recovery_prostate": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "enhanced_recovery_rectum": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "excess_beddays_elective": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "excess_beddays_emergency": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "pre-op_los_1-day": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "pre-op_los_2-day": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "raid_ip": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "stroke_early_supported_discharge": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "day_procedures_occasionally_dc": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "day_procedures_occasionally_op": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "day_procedures_usually_dc": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "day_procedures_usually_op": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "general_los_reduction_emergency": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "general_los_reduction_elective": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "virtual_wards_efficiencies_ari": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "virtual_wards_efficiencies_heart_failure": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                }
+                            },
+                            "additionalProperties": false
+                        },
+                        "op": {
+                            "type": "object",
+                            "properties": {
+                                "convert_to_tele_adult_surgical": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "convert_to_tele_adult_non-surgical": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "convert_to_tele_child_surgical": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                },
+                                "convert_to_tele_child_non-surgical": {
+                                    "$ref": "#/$defs/timeprofileMappings"
+                                }
+                            }
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "waiting_list_adjustment": {
+                    "$ref": "#/$defs/timeprofileMappings"
+                }
+            },
+            "required": [
+                "baseline_adjustment",
+                "expat",
+                "repat_local",
+                "repat_nonlocal",
+                "non-demographic_adjustment",
+                "activity_avoidance",
+                "efficiencies",
+                "waiting_list_adjustment"
+            ]
+        },
+        "viewable": {
+            "type": "boolean"
+        },
+        "reasons": {
+            "type": "object"
+        }
+    },
+    "$defs": {
+        "expat": {
+            "type": "object",
+            "properties": {
+                "ip": {
+                    "type": "object",
+                    "properties": {
+                        "elective": {
+                            "$ref": "#/$defs/tretspef_groups_0-1"
+                        },
+                        "non-elective": {
+                            "$ref": "#/$defs/tretspef_groups_0-1"
+                        },
+                        "maternity": {
+                            "type": "object",
+                            "properties": {
+                                "Other (Medical)": {
+                                    "$ref": "#/$defs/confidence_interval_0-1"
+                                }
+                            }
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "op": {
+                    "$ref": "#/$defs/tretspef_groups_0-1"
+                },
+                "aae": {
+                    "type": "object",
+                    "properties": {
+                        "ambulance": {
+                            "$ref": "#/$defs/confidence_interval_0-1"
+                        },
+                        "walk-in": {
+                            "$ref": "#/$defs/confidence_interval_0-1"
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "additionalProperties": false
+            }
+        },
+        "repat": {
+            "type": "object",
+            "properties": {
+                "ip": {
+                    "type": "object",
+                    "properties": {
+                        "elective": {
+                            "$ref": "#/$defs/tretspef_groups_1-5"
+                        },
+                        "non-elective": {
+                            "$ref": "#/$defs/tretspef_groups_1-5"
+                        },
+                        "maternity": {
+                            "type": "object",
+                            "properties": {
+                                "Other (Medical)": {
+                                    "$ref": "#/$defs/confidence_interval_1-5"
+                                }
+                            }
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "op": {
+                    "$ref": "#/$defs/tretspef_groups_1-5"
+                },
+                "aae": {
+                    "type": "object",
+                    "properties": {
+                        "ambulance": {
+                            "$ref": "#/$defs/confidence_interval_1-5"
+                        },
+                        "walk-in": {
+                            "$ref": "#/$defs/confidence_interval_1-5"
+                        }
+                    }
+                },
+                "additionalProperties": false
+            }
+        },
+        "tretspef_groups_0-5": {
+            "type": "object",
+            "properties": {
+                "100": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "101": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "110": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "120": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "130": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "140": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "150": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "160": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "170": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "300": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "301": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "320": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "330": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "340": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "400": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "410": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "430": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "502": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "Other (Medical)": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "Other (Surgical)": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "Other": {
+                    "$ref": "#/$defs/value_0-5"
+                }
+            },
+            "additionalProperties": false
+        },
+        "tretspef_groups_0-1": {
+            "type": "object",
+            "properties": {
+                "100": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "101": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "110": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "120": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "130": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "140": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "150": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "160": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "170": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "300": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "301": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "320": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "330": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "340": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "400": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "410": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "430": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "502": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "Other (Medical)": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "Other (Surgical)": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "Other": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                }
+            },
+            "additionalProperties": false
+        },
+        "tretspef_groups_1-5": {
+            "type": "object",
+            "properties": {
+                "100": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "101": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "110": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "120": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "130": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "140": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "150": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "160": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "170": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "300": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "301": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "320": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "330": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "340": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "400": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "410": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "430": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "502": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "Other (Medical)": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "Other (Surgical)": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "Other": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                }
+            },
+            "additionalProperties": false
+        },
+        "ndg": {
+            "type": "object",
+            "properties": {
+                "ip": {
+                    "type": "object",
+                    "properties": {
+                        "elective": {
+                            "$ref": "#/$defs/confidence_interval_0-5"
+                        },
+                        "non-elective": {
+                            "$ref": "#/$defs/confidence_interval_0-5"
+                        },
+                        "maternity": {
+                            "$ref": "#/$defs/confidence_interval_0-5"
+                        }
+                    },
+                    "required": [
+                        "elective",
+                        "non-elective",
+                        "maternity"
+                    ],
+                    "additionalProperties": false
+                },
+                "op": {
+                    "type": "object",
+                    "properties": {
+                        "first": {
+                            "$ref": "#/$defs/confidence_interval_0-5"
+                        },
+                        "followup": {
+                            "$ref": "#/$defs/confidence_interval_0-5"
+                        },
+                        "procedure": {
+                            "$ref": "#/$defs/confidence_interval_0-5"
+                        }
+                    },
+                    "required": [
+                        "first",
+                        "followup",
+                        "procedure"
+                    ],
+                    "additionalProperties": false
+                },
+                "aae": {
+                    "type": "object",
+                    "properties": {
+                        "ambulance": {
+                            "$ref": "#/$defs/confidence_interval_0-5"
+                        },
+                        "walk-in": {
+                            "$ref": "#/$defs/confidence_interval_0-5"
+                        }
+                    },
+                    "required": [
+                        "ambulance",
+                        "walk-in"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            "required": [
+                "ip",
+                "op",
+                "aae"
+            ],
+            "additionalProperties": false
+        },
+        "confidence_interval_0-1": {
+            "type": "array",
+            "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+            },
+            "minItems": 2,
+            "maxItems": 2
+        },
+        "confidence_interval_0-5": {
+            "type": "array",
+            "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 5
+            },
+            "minItems": 2,
+            "maxItems": 2
+        },
+        "confidence_interval_1-5": {
+            "type": "array",
+            "items": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 5
+            },
+            "minItems": 2,
+            "maxItems": 2
+        },
+        "value_0-5": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 5
+        },
+        "value_0-1": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+        },
+        "value_gt0-1": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 1
+        },
+        "value_1-5": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5
+        },
+        "mitigator_intervalOnly": {
+            "type": "object",
+            "properties": {
+                "interval": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                }
+            },
+            "required": [
+                "interval"
+            ]
+        },
+        "mitigator_withType_sdec": {
+            "allOf": [
+                {
+                    "$ref": "#/$defs/mitigator_intervalOnly"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "sdec"
+                        }
+                    }
+                }
+            ],
+            "required": [
+                "type",
+                "interval"
+            ]
+        },
+        "mitigator_withType_all": {
+            "allOf": [
+                {
+                    "$ref": "#/$defs/mitigator_intervalOnly"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "all"
+                        }
+                    }
+                }
+            ],
+            "required": [
+                "type",
+                "interval"
+            ]
+        },
+        "mitigator_withType_dayProcedures": {
+            "allOf": [
+                {
+                    "$ref": "#/$defs/mitigator_intervalOnly"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "pattern": "^day_procedures_\\w*"
+                        }
+                    }
+                }
+            ],
+            "required": [
+                "type",
+                "interval"
+            ]
+        },
+        "mitigator_withType_PreOp": {
+            "allOf": [
+                {
+                    "$ref": "#/$defs/mitigator_intervalOnly"
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "const": "pre-op"
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "pre-op_days": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 2
+                        }
+                    },
+                    "required": [
+                        "pre-op_days"
+                    ]
+                }
+            ],
+            "required": [
+                "type",
+                "interval",
+                "pre-op_days"
+            ]
+        },
+        "timeprofileMappings": {
+            "type": "string",
+            "pattern": "^(none|linear|front_loaded|back_loaded|step\\d{4})$"
+        }
+    },
+    "required": [
+        "scenario",
+        "dataset",
+        "seed",
+        "model_runs",
+        "start_year",
+        "end_year",
+        "app_version",
+        "demographic_factors",
+        "health_status_adjustment",
+        "expat",
+        "repat_local",
+        "repat_nonlocal",
+        "inequalities",
+        "baseline_adjustment",
+        "waiting_list_adjustment",
+        "non-demographic_adjustment",
+        "activity_avoidance",
+        "efficiencies",
+        "time_profile_mappings"
+    ]
+}
