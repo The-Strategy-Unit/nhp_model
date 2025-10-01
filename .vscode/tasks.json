@@ -6,6 +6,12 @@
       "label": "Run Code Coverage",
       "command": "${command:python.interpreterPath} -m pytest --cov=. tests/unit --cov-branch --cov-report xml:coverage.xml --cov-report term",
       "problemMatcher": []
+    },
+    {
+      "type": "shell",
+      "label": "Download synth data",
+      "command": "az storage blob download-batch -d data -s data --pattern 'synth/**.parquet' --account-name nhpsa --auth-mode login --overwrite",
+      "problemMatcher": []
     }
   ]
 }
