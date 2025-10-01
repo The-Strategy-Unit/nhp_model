@@ -2,7 +2,6 @@
   "recommendations": [
     "ryanluker.vscode-coverage-gutters",
     "ms-python.python",
-    "ms-python.black-formatter",
     "ms-toolsai.jupyter",
     "ms-python.pylint"
   ]
