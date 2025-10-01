@@ -51,12 +51,15 @@ def test_run_model(mocker):
     params = {"start_year": 2020, "end_year": 2022, "model_runs": 2}
     mocker.patch("os.cpu_count", return_value=2)
 
-    pool_mock = mocker.patch("nhp.model.run.Pool")
+    pool_ctx_mock = mocker.patch("multiprocessing.get_context")
+    pool_mock = pool_ctx_mock().Pool
     pool_ctm = pool_mock.return_value.__enter__.return_value
     pool_ctm.name = "pool"
     pool_ctm.imap = Mock(wraps=lambda f, i, **kwargs: map(f, i))
 
     pc_m = Mock()
+
+    pool_ctx_mock.reset_mock()
 
     # act
     actual = _run_model(model_m, params, "data", "hsa", "run_params", pc_m, False)  # type: ignore
@@ -65,6 +68,9 @@ def test_run_model(mocker):
     pool_ctm.imap.assert_called_once_with(model_m().go, [1, 2], chunksize=1)
     assert actual == [model_m().go()] * 3
     pc_m.assert_called_once_with(2)
+
+    pool_ctx_mock.assert_called_once_with("spawn")
+    pool_mock.assert_called_once_with(2)
 
 
 def test_noop_progress_callback():

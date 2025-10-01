@@ -1,9 +1,9 @@
 """Run the model."""
 
 import logging
+import multiprocessing
 import os
 import time
-from multiprocessing import Pool
 from typing import Any, Callable, Tuple, Type
 
 from tqdm.auto import tqdm as base_tqdm
@@ -84,7 +84,8 @@ def _run_model(
     cpus = os.cpu_count()
     batch_size = int(os.getenv("BATCH_SIZE", "1"))
 
-    with Pool(cpus) as pool:
+    ctx = multiprocessing.get_context("spawn")
+    with ctx.Pool(cpus) as pool:
         baseline = model.go(0)  # baseline
         model_results: list[ModelRunResult] = list(
             tqdm(
