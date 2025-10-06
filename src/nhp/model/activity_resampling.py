@@ -24,16 +24,16 @@ class ActivityResampling:
     method.
     This updates the `model_iteration` which is passed in at initialisation.
 
-    :param model_iteration: the model iteration object, which contains all of the required
-    values to run the model.
-    :type model_iteration: ModelIteration
+    Args:
+        model_iteration: The model iteration object, which contains all of the required
+            values to run the model.
     """
 
     def __init__(self, model_iteration) -> None:
         """Initialise ActivityResampling.
 
-        :param model_iteration: the current model iteration we are performing
-        :type model_iteration: ModelIteration
+        Args:
+            model_iteration: The current model iteration we are performing.
         """
         self._model_iteration = model_iteration
 

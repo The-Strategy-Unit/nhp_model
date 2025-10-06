@@ -52,20 +52,19 @@ def _run_model(
 ) -> list[ModelRunResult]:
     """Run the model iterations.
 
-    Runs the model for all of the model iterations, returning the aggregated results
+    Runs the model for all of the model iterations, returning the aggregated results.
 
-    :param model_type: the type of model that we want to run
-    :type model_type: Model
-    :param params: the parameters to run the model with
-    :type params: dict
-    :param path: where the data is stored
-    :type path: str
-    :param hsa: an instance of the HealthStatusAdjustment class
-    :type hsa: HealthStatusAdjustment
-    :param run_params: the generated run parameters for the model run
-    :type run_params: dict
-    :return: a dictionary containing the aggregated results
-    :rtype: dict
+    Args:
+        model_type: The type of model that we want to run.
+        params: The parameters to run the model with.
+        data: A callable that creates a Data instance.
+        hsa: An instance of the HealthStatusAdjustment class.
+        run_params: The generated run parameters for the model run.
+        progress_callback: A callback function for progress updates.
+        save_full_model_results: Whether to save full model results.
+
+    Returns:
+        A list containing the aggregated results for all model runs.
     """
     model_class = model_type.__name__[:-5]
     logging.info("%s", model_class)
@@ -118,19 +117,17 @@ def run_all(
 ) -> Tuple[list, str]:
     """Run the model.
 
-    runs all 3 model types, aggregates and combines the results
+    Runs all 3 model types, aggregates and combines the results.
 
-    :param params: the parameters to use for this model run
-    :type params: dict
-    :param nhp_data: the Data class to use for loading data
-    :type nhp_data: Callable[[int, str], Data]
-    :param progress_callback: a callback function for updating progress.
-        Defaults to noop_progress_callback.
-    :type progress_callback: Callable[[str], Callable[[Any], Any]]
-    :param save_full_model_results: whether to save full model results, defaults to False
-    :type save_full_model_results: bool
-    :return: the filename of the saved results
-    :rtype: str
+    Args:
+        params: The parameters to use for this model run.
+        nhp_data: The Data class to use for loading data.
+        progress_callback: A callback function for updating progress.
+            Defaults to noop_progress_callback.
+        save_full_model_results: Whether to save full model results. Defaults to False.
+
+    Returns:
+        A tuple containing the list of saved files and the filename of the JSON results.
     """
     model_types = [InpatientsModel, OutpatientsModel, AaEModel]
     run_params = Model.generate_run_params(params)

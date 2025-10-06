@@ -20,18 +20,16 @@ def _complete_model_runs(
 ) -> pd.DataFrame:
     """Complete the data frame for all model runs.
 
-    if any aggregation returns rows for only some of the model runs, we need to add a "0" row for
-    that run
+    If any aggregation returns rows for only some of the model runs, we need to add a "0" row for
+    that run.
 
-    :param res: list of model results
-    :type res: List[pd.DataFrame]
-    :param model_runs: the number of model runs
-    :type model_runs: int
-    :param include_baseline: whether to include model run 0 (the baseline) or not, optional
-        (defaults to True)
-    :type include_baseline: bool
-    :return: combined and completed data frame
-    :rtype: pd.DataFrame
+    Args:
+        res: List of model results.
+        model_runs: The number of model runs.
+        include_baseline: Whether to include model run 0 (the baseline) or not. Defaults to True.
+
+    Returns:
+        Combined and completed data frame.
     """
     results = pd.concat(res)
     results: pd.DataFrame = results.groupby(  # type: ignore
@@ -54,10 +52,11 @@ def _combine_model_results(
     Takes as input a list of lists, where the outer list contains an item for inpatients,
     outpatients and a&e runs, and the inner list contains the results of the monte carlo runs.
 
-    :param results: a list containing the model results
-    :type results: list
-    :return: DataFrame containing the model results
-    :rtype: pd.DataFrame
+    Args:
+        results: A list containing the model results.
+
+    Returns:
+        Dictionary containing the combined model results.
     """
     aggregations = sorted(list({k for r in results for v, _ in r for k in v.keys()}))
 
@@ -83,10 +82,11 @@ def _combine_step_counts(results: list):
     Takes as input a list of lists, where the outer list contains an item for inpatients,
     outpatients and a&e runs, and the inner list contains the results of the monte carlo runs.
 
-    :param results: a list containing the model results
-    :type results: list
-    :return: DataFrame containing the model step counts
-    :rtype: pd.DataFrame
+    Args:
+        results: A list containing the model results.
+
+    Returns:
+        DataFrame containing the model step counts.
     """
     model_runs = len(results[0]) - 1
     return _complete_model_runs(
@@ -174,14 +174,14 @@ def generate_results_json(
 
 
 def save_results_files(results: dict, params: dict) -> list:
-    """Saves aggregated and combined results as parquet, and params as JSON.
+    """Save aggregated and combined results as parquet, and params as JSON.
 
-    :param dict_results: the results of running the models, processed into one dictionary
-    :type dict_results: dict
-    :param params: the parameters used for the model run
-    :type params: dict
-    :return: filepaths to saved files
-    :rtype: list
+    Args:
+        results: The results of running the models, processed into one dictionary.
+        params: The parameters used for the model run.
+
+    Returns:
+        Filepaths to saved files.
     """
     path = f"results/{params['dataset']}/{params['scenario']}/{params['create_datetime']}"
     os.makedirs(path, exist_ok=True)
@@ -198,12 +198,12 @@ def _add_metadata_to_dataframe(df: pd.DataFrame, params: dict) -> pd.DataFrame:
     Add metadata as columns to the dataframe, so that the saved parquet files have useful
     information regarding their provenance.
 
-    :param df: The dataframe that we want to add the metadata to
-    :type df: pd.DataFrame
-    :param params: The parameters for the model run, which include metadata
-    :type params: dict
-    :return: The dataframe, with additional columns "dataset", "scenario" and "create_datetime"
-    :rtype: pd.DataFrame
+    Args:
+        df: The dataframe that we want to add the metadata to.
+        params: The parameters for the model run, which include metadata.
+
+    Returns:
+        The dataframe, with additional columns "dataset", "scenario" and "create_datetime".
     """
     metadata_to_save = ["dataset", "scenario", "app_version", "create_datetime"]
     for m in metadata_to_save:
@@ -214,14 +214,14 @@ def _add_metadata_to_dataframe(df: pd.DataFrame, params: dict) -> pd.DataFrame:
 def _save_parquet_file(path: str, results_name: str, results_df: pd.DataFrame, params: dict) -> str:
     """Save a results dataframe as parquet.
 
-    :param path: the folder where we want to save the results to
-    :type path: str
-    :param results_name: the name of this aggregation
-    :type results_name: str
-    :param results_df: the results dataframe
-    :type results_df: pd.DataFrame
-    :return: the filename of the saved file
-    :rtype: str
+    Args:
+        path: The folder where we want to save the results to.
+        results_name: The name of this aggregation.
+        results_df: The results dataframe.
+        params: The parameters for the model run.
+
+    Returns:
+        The filename of the saved file.
     """
     results_df = _add_metadata_to_dataframe(results_df, params)
     results_df.to_parquet(filename := f"{path}/{results_name}.parquet")
@@ -231,12 +231,12 @@ def _save_parquet_file(path: str, results_name: str, results_df: pd.DataFrame, p
 def _save_params_file(path: str, params: dict) -> str:
     """Save the model runs parameters as json.
 
-    :param path: the folder where we want to save the results to
-    :type path: str
-    :param params: the parameters the model was run with
-    :type params: dict
-    :return: the filename of the saved file
-    :rtype: str
+    Args:
+        path: The folder where we want to save the results to.
+        params: The parameters the model was run with.
+
+    Returns:
+        The filename of the saved file.
     """
     with open(filename := f"{path}/params.json", "w", encoding="utf-8") as file:
         json.dump(params, file)
@@ -296,10 +296,11 @@ def combine_results(
     When we run the models we have an array containing 3 items [inpatients, outpatient, a&e].
     Each of which contains one item for each model run, which is a dictionary.
 
-    :param results: the results of running the models
-    :type results: list[list[ModelRunResult]]
-    :return: combined model results
-    :rtype: dict
+    Args:
+        results: The results of running the models.
+
+    Returns:
+        Tuple containing combined model results dictionary and combined step counts DataFrame.
     """
     logging.info(" * starting to combine results")
 
