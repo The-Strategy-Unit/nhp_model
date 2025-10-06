@@ -23,27 +23,27 @@ class RunWithLocalStorage:
     def __init__(self, filename: str):
         """Initialize the RunWithLocalStorage instance.
 
-        :param filename: Name of the parameter file to load.
-        :type filename: str
+        Args:
+            filename: Name of the parameter file to load.
         """
         self.params = load_params(f"queue/{filename}")
 
     def finish(self, results_file: str, saved_files: list, save_full_model_results: bool) -> None:
         """Post model run steps.
 
-        :param results_file: the path to the results file
-        :type results_file: str
-        :param saved_files: filepaths of results, saved in parquet format and params
-        in json format
-        :type saved_files: list
-        :param save_full_model_results: whether to save the full model results or not
-        :type save_full_model_results: bool
+        Args:
+            results_file: The path to the results file.
+            saved_files: Filepaths of results, saved in parquet format and params in json format.
+            save_full_model_results: Whether to save the full model results or not.
         """
 
     def progress_callback(self) -> Callable[[Any], Callable[[Any], None]]:
         """Progress callback method.
 
-        for local storage do nothing
+        For local storage do nothing.
+
+        Returns:
+            A no-op progress callback function.
         """
         return noop_progress_callback
 
@@ -54,10 +54,9 @@ class RunWithAzureStorage:
     def __init__(self, filename: str, config: Config = Config()):
         """Initialise RunWithAzureStorage.
 
-        :param filename:
-        :type filename: str
-        :param config: The configuration for the run
-        :type config: Config
+        Args:
+            filename: Name of the parameter file to load.
+            config: The configuration for the run. Defaults to Config().
         """
         logging.getLogger("azure.storage.common.storageclient").setLevel(logging.WARNING)
         logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
@@ -86,10 +85,11 @@ class RunWithAzureStorage:
     def _get_params(self, filename: str) -> dict:
         """Get the parameters for the model.
 
-        :param filename: the name of the params file
-        :type filename: str
-        :return: the parameters for the model
-        :rtype: dict
+        Args:
+            filename: The name of the params file.
+
+        Returns:
+            The parameters for the model.
         """
         logging.info("downloading params: %s", filename)
 
@@ -102,12 +102,11 @@ class RunWithAzureStorage:
     def _get_data(self, year: str, dataset: str) -> None:
         """Get data to run the model.
 
-        for local storage, the data is already available, so do nothing.
+        Downloads data from Azure storage for the specified year and dataset.
 
-        :param year: the year of data to load
-        :type year: str
-        :param year: the year of data to load
-        :type year: str
+        Args:
+            year: The year of data to load.
+            dataset: The dataset to load.
         """
         logging.info("downloading data (%s / %s)", year, dataset)
         fs_client = DataLakeServiceClient(
@@ -137,12 +136,11 @@ class RunWithAzureStorage:
     def _upload_results_json(self, results_file: str, metadata: dict) -> None:
         """Upload the results.
 
-        once the model has run, upload the results to blob storage
+        Once the model has run, upload the results to blob storage.
 
-        :param results_file: the saved results file
-        :type results_file: str
-        :param metadata: the metadata to attach to the blob
-        :type metadata: dict
+        Args:
+            results_file: The saved results file.
+            metadata: The metadata to attach to the blob.
         """
         container = self._get_container("results")
 
@@ -157,14 +155,12 @@ class RunWithAzureStorage:
     def _upload_results_files(self, files: list, metadata: dict) -> None:
         """Upload the results.
 
-        once the model has run, upload the files (parquet for model results and json for
-        model params) to blob storage
+        Once the model has run, upload the files (parquet for model results and json for
+        model params) to blob storage.
 
-        :param files: list of files to be uploaded
-        :type files: list
-        :param metadata: the metadata to attach to the blob
-        :type metadata: dict
-
+        Args:
+            files: List of files to be uploaded.
+            metadata: The metadata to attach to the blob.
         """
         container = self._get_container("results")
         for file in files:
@@ -202,7 +198,7 @@ class RunWithAzureStorage:
     def _cleanup(self) -> None:
         """Cleanup.
 
-        once the model has run, remove the file from the queue
+        Once the model has run, remove the file from the queue.
         """
         logging.info("cleaning up queue")
 
@@ -211,13 +207,10 @@ class RunWithAzureStorage:
     def finish(self, results_file: str, saved_files: list, save_full_model_results: bool) -> None:
         """Post model run steps.
 
-        :param results_file: the path to the results file
-        :type results_file: str
-        :param saved_files: filepaths of results, saved in parquet format and params
-        in json format
-        :type saved_files: list
-        :param save_full_model_results: whether to save the full model results or not
-        :type save_full_model_results: bool
+        Args:
+            results_file: The path to the results file.
+            saved_files: Filepaths of results, saved in parquet format and params in json format.
+            save_full_model_results: Whether to save the full model results or not.
         """
         metadata = {
             k: str(v)
@@ -233,7 +226,10 @@ class RunWithAzureStorage:
     def progress_callback(self) -> Callable[[Any], Callable[[Any], None]]:
         """Progress callback method.
 
-        updates the metadata for the blob in the queue to give progress
+        Updates the metadata for the blob in the queue to give progress.
+
+        Returns:
+            A callback function that updates progress for each model type.
         """
         blob = self._queue_blob
 
