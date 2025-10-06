@@ -95,7 +95,7 @@ class Local(Data):
         """
         return self._get_parquet("hsa_activity_tables")
 
-    def get_hsa_gams(self):
+    def get_hsa_gams(self) -> Any:
         """Get the health status adjustment gams.
 
         Returns:
@@ -104,7 +104,7 @@ class Local(Data):
         with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
             return pickle.load(hsa_pkl)
 
-    def get_inequalities(self):
+    def get_inequalities(self) -> pd.DataFrame:
         """Get the inequalities dataframe.
 
         Returns:

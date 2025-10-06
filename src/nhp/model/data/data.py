@@ -4,6 +4,8 @@ Classes for loading data for the NHP model. Each class supports loading data fro
 such as from local storage or directly from DataBricks.
 """
 
+from typing import Any
+
 import pandas as pd
 
 
@@ -74,7 +76,7 @@ class Data:
         """
         raise NotImplementedError()
 
-    def get_hsa_gams(self):
+    def get_hsa_gams(self) -> Any:
         """Get the health status adjustment gams.
 
         Returns:
@@ -82,7 +84,7 @@ class Data:
         """
         raise NotImplementedError()
 
-    def get_inequalities(self):
+    def get_inequalities(self) -> pd.DataFrame:
         """Get the inequalities dataframe.
 
         Returns:

@@ -3,12 +3,17 @@
 Provides a simple class which holds all of the data required for a model iteration
 """
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pandas as pd
 
 from nhp.model.activity_resampling import ActivityResampling
 
 ModelRunResult = tuple[dict[str, pd.Series], pd.Series | None]
+
+if TYPE_CHECKING:
+    from nhp.model.model import Model
 
 
 class ModelIteration:
@@ -17,7 +22,7 @@ class ModelIteration:
     Holds all of the information for a model iteration.
     """
 
-    def __init__(self, model, model_run: int):
+    def __init__(self, model: "Model", model_run: int):
         """Perform an iteration of the model.
 
         Args:

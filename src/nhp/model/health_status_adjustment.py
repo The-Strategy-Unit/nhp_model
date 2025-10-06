@@ -132,7 +132,7 @@ class HealthStatusAdjustment:
 
         return mode + sd * spt.norm.ppf((u + x) / (a_sqrt_tau * sd))
 
-    def run(self, run_params: dict):
+    def run(self, run_params: dict) -> pd.Series:
         """Return factor for health status adjustment.
 
         Args:

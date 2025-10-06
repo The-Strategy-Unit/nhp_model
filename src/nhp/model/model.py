@@ -2,7 +2,7 @@
 
 Implements the generic class for all other model types. This should not be directly instantiated,
 instead you should use one of the concrete classes (e.g. [`AaEModel`][nhp.model.aae.AaEModel],
-[`InpatientsModel`][model.inpatients.InpatientsModel],
+[`InpatientsModel`][nhp.model.inpatients.InpatientsModel],
 [`OutpatientsModel`][nhp.model.outpatients.OutpatientsModel]).
 
 You can then run a model using the `run` method, and aggregate the results using the `aggregate`
@@ -410,7 +410,7 @@ class Model:
         return mr.get_aggregate_results()
 
     @staticmethod
-    def get_agg(results: pd.DataFrame, *args) -> pd.Series:
+    def get_agg(results: pd.DataFrame, *args: list[str]) -> pd.Series:
         """Get aggregation from model results.
 
         Args:
