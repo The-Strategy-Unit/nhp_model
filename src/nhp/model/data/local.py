@@ -112,7 +112,7 @@ class Local(Data):
         """
         return self._get_parquet("inequalities")
 
-    def _get_parquet(self, file) -> pd.DataFrame:
+    def _get_parquet(self, file: str) -> pd.DataFrame:
         """Load specific parquet file using Pandas.
 
         Args:

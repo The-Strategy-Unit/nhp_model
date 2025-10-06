@@ -47,7 +47,7 @@ def _run_model(
     data: Callable[[int, str], Data],
     hsa: Any,
     run_params: dict,
-    progress_callback,
+    progress_callback: Callable[[Any], None],
     save_full_model_results: bool,
 ) -> list[ModelRunResult]:
     """Run the model iterations.

@@ -76,7 +76,7 @@ def _combine_model_results(
     }
 
 
-def _combine_step_counts(results: list):
+def _combine_step_counts(results: list) -> pd.DataFrame:
     """Combine the step counts of the monte carlo runs.
 
     Takes as input a list of lists, where the outer list contains an item for inpatients,
