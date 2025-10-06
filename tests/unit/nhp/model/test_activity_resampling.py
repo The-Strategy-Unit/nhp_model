@@ -14,7 +14,7 @@ from nhp.model.activity_resampling import ActivityResampling
 def mock_activity_resampling():
     """Create a mock Model instance."""
     with patch.object(ActivityResampling, "__init__", lambda m, c: None):
-        mdl = ActivityResampling(None)
+        mdl = ActivityResampling(None)  # ty: ignore[invalid-argument-type]
     mdl._model_iteration = Mock()  # type: ignore
     mdl._model_iteration.model.baseline_counts = np.array(  # type: ignore
         [[1, 2, 3, 4], [5, 6, 7, 8]]
