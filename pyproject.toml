@@ -57,6 +57,14 @@ databricks = [
     "pyspark",
     "databricks-connect"
 ]
+docs = [
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocstrings[python]",
+    "mkdocs-gen-files",
+    "mkdocs-literate-nav",
+    "mkdocs-section-index"
+]
 
 [build-system]
 requires = ["setuptools>=80", "setuptools-scm>=8", "wheel"]
