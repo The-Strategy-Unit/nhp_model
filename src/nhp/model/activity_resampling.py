@@ -3,8 +3,13 @@
 Methods for handling row resampling
 """
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pandas as pd
+
+if TYPE_CHECKING:
+    from nhp.model.model_iteration import ModelIteration
 
 
 class ActivityResampling:
@@ -29,7 +34,7 @@ class ActivityResampling:
             values to run the model.
     """
 
-    def __init__(self, model_iteration) -> None:
+    def __init__(self, model_iteration: "ModelIteration") -> None:
         """Initialise ActivityResampling.
 
         Args:

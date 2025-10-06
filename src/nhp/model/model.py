@@ -60,7 +60,7 @@ class Model:
         self,
         model_type: str,
         measures: List[str],
-        params: dict,
+        params: dict | str,
         data: Callable[[int, str], Data],
         hsa: Any | None = None,
         run_params: dict | None = None,

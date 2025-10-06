@@ -31,7 +31,7 @@ class InpatientsModel(Model):
 
     def __init__(
         self,
-        params: dict,
+        params: dict | str,
         data: Callable[[int, str], Data],
         hsa: Any = None,
         run_params: dict | None = None,
