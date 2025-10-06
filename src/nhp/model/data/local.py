@@ -5,7 +5,7 @@ such as from local storage or directly from DataBricks.
 """
 
 import pickle
-from typing import Any, Callable, Dict
+from typing import Any, Callable
 
 import pandas as pd
 
@@ -28,26 +28,27 @@ class Local(Data):
     def create(data_path: str) -> Callable[[int, str], Any]:
         """Create Local Data object.
 
-        :param data_path: the path to where the data is stored locally
-        :type data_path: str
-        :return: a function to initialise the object
-        :rtype: Callable[[str, str], Local]
+        Args:
+            data_path: The path to where the data is stored locally.
+
+        Returns:
+            A function to initialise the object.
         """
         return lambda year, dataset: Local(data_path, year, dataset)
 
     def get_ip(self) -> pd.DataFrame:
         """Get the inpatients dataframe.
 
-        :return: the inpatients dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The inpatients dataframe.
         """
         return self._get_parquet("ip")
 
     def get_ip_strategies(self) -> dict[str, pd.DataFrame]:
         """Get the inpatients strategies dataframe.
 
-        :return: the inpatients strategies dataframes
-        :rtype: dict[str, pd.DataFrame]
+        Returns:
+            The inpatients strategies dataframes.
         """
         return {
             i: self._get_parquet(f"ip_{i}_strategies")
@@ -57,48 +58,48 @@ class Local(Data):
     def get_op(self) -> pd.DataFrame:
         """Get the outpatients dataframe.
 
-        :return: the outpatients dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The outpatients dataframe.
         """
         return self._get_parquet("op").rename(columns={"index": "rn"})
 
     def get_aae(self) -> pd.DataFrame:
         """Get the A&E dataframe.
 
-        :return: the A&E dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The A&E dataframe.
         """
         return self._get_parquet("aae").rename(columns={"index": "rn"})
 
     def get_birth_factors(self) -> pd.DataFrame:
         """Get the birth factors dataframe.
 
-        :return: the birth factors dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The birth factors dataframe.
         """
         return self._get_parquet("birth_factors")
 
     def get_demographic_factors(self) -> pd.DataFrame:
         """Get the demographic factors dataframe.
 
-        :return: the demographic factors dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The demographic factors dataframe.
         """
         return self._get_parquet("demographic_factors")
 
     def get_hsa_activity_table(self) -> pd.DataFrame:
         """Get the demographic factors dataframe.
 
-        :return: the demographic factors dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The demographic factors dataframe.
         """
         return self._get_parquet("hsa_activity_tables")
 
     def get_hsa_gams(self):
         """Get the health status adjustment gams.
 
-        :return: the health status adjustment gams
-        :rtype: _
+        Returns:
+            The health status adjustment gams.
         """
         with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
             return pickle.load(hsa_pkl)
@@ -106,18 +107,19 @@ class Local(Data):
     def get_inequalities(self):
         """Get the inequalities dataframe.
 
-        :return: the inequalities dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The inequalities dataframe.
         """
         return self._get_parquet("inequalities")
 
     def _get_parquet(self, file) -> pd.DataFrame:
         """Load specific parquet file using Pandas.
 
-        :param file: Specific parquet filename to open
-        :type file: str
-        :return: DataFrame containing the data
-        :rtype: pd.DataFrame
+        Args:
+            file: Specific parquet filename to open.
+
+        Returns:
+            DataFrame containing the data.
         """
         inequalities_df = pd.read_parquet(self._file_path(file))
         return inequalities_df

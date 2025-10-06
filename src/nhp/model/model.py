@@ -1,8 +1,9 @@
 """Model Module.
 
 Implements the generic class for all other model types. This should not be directly instantiated,
-instead you should use one of the concrete classes (e.g. :class:`model.aae.AaEModel`,
-:class:`model.inpatients.InpatientsModel`, :class:`model.outpatients.OutpatientsModel`).
+instead you should use one of the concrete classes (e.g. [`AaEModel`][nhp.model.aae.AaEModel],
+[`InpatientsModel`][model.inpatients.InpatientsModel],
+[`OutpatientsModel`][nhp.model.outpatients.OutpatientsModel]).
 
 You can then run a model using the `run` method, and aggregate the results using the `aggregate`
 method.

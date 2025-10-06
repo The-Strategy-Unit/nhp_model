@@ -21,67 +21,71 @@ class Data:
     def get_ip(self) -> pd.DataFrame:
         """Get the inpatients dataframe.
 
-        :return: the inpatients dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The inpatients dataframe.
         """
         raise NotImplementedError()
 
     def get_ip_strategies(self) -> dict[str, pd.DataFrame]:
         """Get the inpatients strategies dataframe.
 
-        :return: the inpatients strategies dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The inpatients strategies dataframe.
         """
         raise NotImplementedError()
 
     def get_op(self) -> pd.DataFrame:
         """Get the outpatients dataframe.
 
-        :return: the outpatients dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The outpatients dataframe.
         """
         raise NotImplementedError()
 
     def get_aae(self) -> pd.DataFrame:
         """Get the A&E dataframe.
 
-        :return: the A&E dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The A&E dataframe.
         """
         raise NotImplementedError()
 
     def get_birth_factors(self) -> pd.DataFrame:
         """Get the birth factors dataframe.
 
-        :return: the birth factors dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The birth factors dataframe.
         """
         raise NotImplementedError()
 
     def get_demographic_factors(self) -> pd.DataFrame:
         """Get the demographic factors dataframe.
 
-        :return: the demographic factors dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The demographic factors dataframe.
         """
         raise NotImplementedError()
 
     def get_hsa_activity_table(self) -> pd.DataFrame:
         """Get the demographic factors dataframe.
 
-        :return: the demographic factors dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The demographic factors dataframe.
         """
         raise NotImplementedError()
 
     def get_hsa_gams(self):
-        """Get the health status adjustment gams."""
+        """Get the health status adjustment gams.
+
+        Returns:
+            The health status adjustment gams.
+        """
         raise NotImplementedError()
 
     def get_inequalities(self):
         """Get the inequalities dataframe.
 
-        :return: the inequalities dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The inequalities dataframe.
         """
         raise NotImplementedError()
