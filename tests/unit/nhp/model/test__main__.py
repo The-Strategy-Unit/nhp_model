@@ -17,7 +17,7 @@ from nhp.model.outpatients import OutpatientsModel
 )
 def test_main_debug_runs_model(mocker, activity_type, model_class):
     # arrange
-    args = Mock
+    args = Mock()
     args.type = activity_type
     args.data_path = "data"
     args.model_run = 0
@@ -39,7 +39,7 @@ def test_main_debug_runs_model(mocker, activity_type, model_class):
 
 def test_main_can_use_sample_params(mocker):
     # arrange
-    args = Mock
+    args = Mock()
     args.type = "ip"
     args.data_path = "data"
     args.model_run = 0
@@ -63,7 +63,7 @@ def test_main_can_use_sample_params(mocker):
 
 def test_main_debug_runs_model_invalid_type(mocker):
     # arrange
-    args = Mock
+    args = Mock()
     args.type = "invalid"
     args.data_path = "data"
     args.model_run = 0
@@ -85,7 +85,7 @@ def test_main_debug_runs_model_invalid_type(mocker):
 
 def test_main_all_runs(mocker):
     # arrange
-    args = Mock
+    args = Mock()
     args.type = "all"
     args.data_path = "data"
     args.params_file = "queue/params.json"
