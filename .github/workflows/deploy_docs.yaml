@@ -50,7 +50,7 @@ jobs:
           name: site
           path: ./site
 
-      - name: Install uv
+      - name: Install uv (for rsconnect)
         uses: astral-sh/setup-uv@v6
 
       - name: Configure Connect
