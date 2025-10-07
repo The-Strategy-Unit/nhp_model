@@ -17,10 +17,6 @@ RUN uv sync --frozen --no-dev --no-install-project
 # Ensure Python can find installed packages and local model
 ENV PATH="/app/.venv/bin:$PATH"
 
-# TODO: in order to build the docker container, we need to force the version number
-# might be worth building the .whl and copying that into the container instead
-ENV SETUPTOOLS_SCM_PRETEND_VERSION=v0.0.0
-
 # Copy application code (changes most frequently)
 COPY --chown=nhp:nhp src/nhp/ /app/src/nhp/
 RUN uv pip install .

@@ -118,6 +118,7 @@ line-ending = "auto"
 
 [tool.setuptools_scm]
 version_file = "src/nhp/model/_version.py"
+fallback_version = "0.0.0"
 
 [tool.ty.src]
 exclude = ["notebooks", "docs"]
