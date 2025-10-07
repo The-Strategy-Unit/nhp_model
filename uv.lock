@@ -936,6 +936,15 @@ wheels = [
 ]
 
 [[package]]
+name = "importlib-resources"
+version = "6.5.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/cf/8c/f834fbf984f691b4f7ff60f50b514cc3de5cc08abfc3295564dd89c5e2e7/importlib_resources-6.5.2.tar.gz", hash = "sha256:185f87adef5bcc288449d98fb4fba07cea78bc036455dd44c5fc4a2fe78fed2c", size = 44693, upload-time = "2025-01-03T18:51:56.698Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a4/ed/1f1afb2e9e7f38a545d628f864d562a5ae64fe6f7a10e28ffb9b185b4e89/importlib_resources-6.5.2-py3-none-any.whl", hash = "sha256:789cfdc3ed28c78b67a06acb8126751ced69a3d5f79c095a98298cd8a760ccec", size = 37461, upload-time = "2025-01-03T18:51:54.306Z" },
+]
+
+[[package]]
 name = "iniconfig"
 version = "2.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1806,6 +1815,8 @@ dependencies = [
     { name = "azure-identity" },
     { name = "azure-storage-blob" },
     { name = "azure-storage-file-datalake" },
+    { name = "importlib-resources" },
+    { name = "jsonschema" },
     { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.3.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "pandas" },
@@ -1828,7 +1839,6 @@ dev = [
     { name = "ipykernel" },
     { name = "ipython" },
     { name = "ipywidgets" },
-    { name = "jsonschema" },
     { name = "jupyter-client" },
     { name = "jupyter-core" },
     { name = "jupyterlab-pygments" },
@@ -1862,10 +1872,11 @@ requires-dist = [
     { name = "azure-storage-file-datalake", specifier = ">=12.10" },
     { name = "coverage", marker = "extra == 'dev'", specifier = ">=7.2" },
     { name = "databricks-connect", marker = "extra == 'databricks'" },
+    { name = "importlib-resources", specifier = ">=6.5.2" },
     { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.21" },
     { name = "ipython", marker = "extra == 'dev'", specifier = ">=8.11" },
     { name = "ipywidgets", marker = "extra == 'dev'", specifier = ">=8.0" },
-    { name = "jsonschema", marker = "extra == 'dev'", specifier = ">=4.23.0" },
+    { name = "jsonschema", specifier = ">=4.23.0" },
     { name = "jupyter-client", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "jupyter-core", marker = "extra == 'dev'", specifier = ">=5.2" },
     { name = "jupyterlab-pygments", marker = "extra == 'dev'", specifier = ">=0.2" },

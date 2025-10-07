@@ -17,9 +17,9 @@ import logging
 
 from nhp.model.aae import AaEModel
 from nhp.model.data import Local
-from nhp.model.helpers import load_params
 from nhp.model.inpatients import InpatientsModel
 from nhp.model.outpatients import OutpatientsModel
+from nhp.model.params import load_params, load_sample_params
 from nhp.model.run import run_all, run_single_model_run
 
 
@@ -28,8 +28,8 @@ def _parse_args() -> argparse.Namespace:  # pragma: no cover
     parser.add_argument(
         "params_file",
         nargs="?",
-        default="queue/params-sample.json",
-        help="Path to the params.json file",
+        default="",
+        help="Path to the params.json file (leave empty to use sample parameters).",
     )
     parser.add_argument("-d", "--data-path", help="Path to the data", default="data")
     parser.add_argument(
@@ -54,7 +54,10 @@ def main() -> None:
     """
     # Grab the Arguments
     args = _parse_args()
-    params = load_params(args.params_file)
+    if args.params_file == "":
+        params = load_sample_params()
+    else:
+        params = load_params(args.params_file)
     # define the model to run
     match args.type:
         case "all":

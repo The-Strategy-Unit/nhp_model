@@ -22,8 +22,9 @@ from nhp.model.health_status_adjustment import (
     HealthStatusAdjustment,
     HealthStatusAdjustmentInterpolated,
 )
-from nhp.model.helpers import inrange, load_params, rnorm
+from nhp.model.helpers import inrange, rnorm
 from nhp.model.model_iteration import ModelIteration, ModelRunResult
+from nhp.model.params import load_params
 
 
 class Model:
@@ -50,8 +51,8 @@ class Model:
 
     Example:
         >>> from nhp.model.aae import AaEModel
-        >>> from nhp.model.helpers import load_params
-        >>> params = load_params("params-sample.json")
+        >>> from nhp.model.params import load_sample_params
+        >>> params = load_sample_params()
         >>> m = AaEModel(params, data)
         >>> model_iteration = ModelIteration(m, 0)
         >>> aggregated_results, step_counts = model_iteration.get_aggregate_results()

@@ -9,6 +9,8 @@ dependencies = [
     "azure-identity>=1.12",
     "azure-storage-blob>=12.15",
     "azure-storage-file-datalake>=12.10",
+    "importlib-resources>=6.5.2",
+    "jsonschema>=4.23.0",
     "numpy>=1.23",
     "pandas>=1.5",
     "pyarrow>=20.0",
@@ -28,6 +30,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "nhp.model.data.reference" = ["*.csv", "*.json"]
+"nhp.model.params" = ["*.json"]
 
 [project.optional-dependencies]
 dev = [
@@ -35,7 +38,6 @@ dev = [
     "ipykernel>=6.21",
     "ipython>=8.11",
     "ipywidgets>=8.0",
-    "jsonschema>=4.23.0",
     "jupyter_client>=8.0",
     "jupyter_core>=5.2",
     "jupyterlab_pygments>=0.2",
