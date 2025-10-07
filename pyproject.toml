@@ -120,4 +120,4 @@ line-ending = "auto"
 version_file = "src/nhp/model/_version.py"
 
 [tool.ty.src]
-exclude = ["notebooks"]
+exclude = ["notebooks", "docs"]
