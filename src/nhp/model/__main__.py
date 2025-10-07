@@ -7,7 +7,7 @@ parallel saving the results to disk.
 There are existing launch profiles for vscode that use this file, or you can use it directly in the
 console, e.g.
 
-    python run_model.py data/[DATASET]/results/[SCENARIO]/[RUN_TIME] 0 1 --debug -t=ip
+    python -m nhp.model -d data --model-run 1 -t ip
 
 will run a single run of the inpatients model, returning the results to display.
 """

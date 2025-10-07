@@ -14,7 +14,7 @@ from nhp.model.model_iteration import ModelIteration
 def mock_model_iteration():
     """Create a mock Model instance."""
     with patch.object(ModelIteration, "__init__", lambda m, c, r: None):
-        mr = ModelIteration(None, 0)
+        mr = ModelIteration(None, 0)  # ty: ignore[invalid-argument-type]
     mr.model = Mock()
     return mr
 

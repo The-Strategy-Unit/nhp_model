@@ -1,8 +1,9 @@
 """Model Module.
 
 Implements the generic class for all other model types. This should not be directly instantiated,
-instead you should use one of the concrete classes (e.g. :class:`model.aae.AaEModel`,
-:class:`model.inpatients.InpatientsModel`, :class:`model.outpatients.OutpatientsModel`).
+instead you should use one of the concrete classes (e.g. [`AaEModel`][nhp.model.aae.AaEModel],
+[`InpatientsModel`][nhp.model.inpatients.InpatientsModel],
+[`OutpatientsModel`][nhp.model.outpatients.OutpatientsModel]).
 
 You can then run a model using the `run` method, and aggregate the results using the `aggregate`
 method.
@@ -31,42 +32,36 @@ class Model:
     This is a generic implementation of the model. Specific implementations of the model inherit
     from this class.
 
-    :param model_type: the type of model, either "aae", "ip", or "op"
-    :type model_type: str
-    :param measures: the names of the measures in the model
-    :type measures: str
-    :param params: the parameters to run the model with, or the path to a params file to load
-    :type params: dict or string
-    :param data: a Data class ready to be constructed
-    :type data: Data
-    :param hsa: An instance of the HealthStatusAdjustment class. If left as None an instance is
-    created
-    :type hsa: HealthStatusAdjustment, optional
-    :param run_params: the parameters to use for each model run. generated automatically if left as
-    None
-    :type run_params: dict
-    :param save_full_model_results: whether to save the full model results or not
-    :type save_full_model_results: bool, optional
+    Args:
+        model_type: The type of model, either "aae", "ip", or "op".
+        measures: The names of the measures in the model.
+        params: The parameters to run the model with, or the path to a params file to load.
+        data: A callable that creates a Data instance.
+        hsa: An instance of the HealthStatusAdjustment class. If left as None an instance is
+            created. Defaults to None.
+        run_params: The parameters to use for each model run. Generated automatically if left as
+            None. Defaults to None.
+        save_full_model_results: Whether to save the full model results or not. Defaults to False.
 
-    :ivar str model_type: a string describing the type of model, must be one of "aae", "ip", or "op"
-    :ivar dict params: the parameters that are to be used by this model instance
-    :ivar pandas.DataFrame data: the HES data extract used by this model instance
+    Attributes:
+        model_type: A string describing the type of model, must be one of "aae", "ip", or "op".
+        params: The parameters that are to be used by this model instance.
+        data: The HES data extract used by this model instance.
 
-    :Example:
-
-    >>> from model.aae import AaEModel
-    >>> from model.helpers import load_params
-    >>> params = load_params("params-sample.json")
-    >>> m = AaAModel(params, "data")
-    >>> change_factors, results = m.run(0)
-    >>> aggregated_results = m.aggregate(reuslts, 0)
+    Example:
+        >>> from nhp.model.aae import AaEModel
+        >>> from nhp.model.helpers import load_params
+        >>> params = load_params("params-sample.json")
+        >>> m = AaEModel(params, data)
+        >>> model_iteration = ModelIteration(m, 0)
+        >>> aggregated_results, step_counts = model_iteration.get_aggregate_results()
     """
 
     def __init__(
         self,
         model_type: str,
         measures: List[str],
-        params: dict,
+        params: dict | str,
         data: Callable[[int, str], Data],
         hsa: Any | None = None,
         run_params: dict | None = None,
@@ -74,20 +69,14 @@ class Model:
     ) -> None:
         """Initialise the Model.
 
-        :param model_type: a string saying what type of model this is
-        :type model_type: str
-        :param measures: the names of the measures in this model type
-        :type measures: List[str]
-        :param params: the parameters to use
-        :type params: dict
-        :param data: a method to create a Data instance
-        :type data: Callable[[int, str], Data]
-        :param hsa: _Health Status Adjustment object, defaults to None
-        :type hsa: Any, optional
-        :param run_params: the run parameters to use, defaults to None
-        :type run_params: dict | None, optional
-        :param save_full_model_results: whether to save full model results, defaults to False
-        :type save_full_model_results: bool, optional
+        Args:
+            model_type: A string saying what type of model this is.
+            measures: The names of the measures in this model type.
+            params: The parameters to use.
+            data: A method to create a Data instance.
+            hsa: Health Status Adjustment object. Defaults to None.
+            run_params: The run parameters to use. Defaults to None.
+            save_full_model_results: Whether to save full model results. Defaults to False.
         """
         valid_model_types = ["aae", "ip", "op"]
         assert model_type in valid_model_types, "Model type must be one of 'aae', 'ip', or 'op'"
@@ -125,8 +114,8 @@ class Model:
     def measures(self) -> List[str]:
         """The names of the measure columns.
 
-        :return: the names of the measure columns
-        :rtype: List[str]
+        Returns:
+            The names of the measure columns.
         """
         return self._measures
 
@@ -295,15 +284,15 @@ class Model:
         }
 
     def _get_run_params(self, model_run: int) -> dict:
-        """Gets the parameters for a particular model run.
+        """Get the parameters for a particular model run.
 
-        Takes the run_params and extracts a single item from the arrays for the current model run
+        Takes the run_params and extracts a single item from the arrays for the current model run.
 
-        :param model_run: the current model run
-        :type model_run: int
+        Args:
+            model_run: The current model run.
 
-        :returns: the run parameters for the given model run
-        :rtype: dict
+        Returns:
+            The run parameters for the given model run.
         """
         params = self.run_params
 
@@ -322,10 +311,11 @@ class Model:
     def get_data_counts(self, data: pd.DataFrame) -> np.ndarray:
         """Get row counts of data.
 
-        :param data: the data to get the counts of
-        :type data: pd.DataFrame
-        :return: the counts of the data, required for activity avoidance steps
-        :rtype: np.ndarray
+        Args:
+            data: The data to get the counts of.
+
+        Returns:
+            The counts of the data, required for activity avoidance steps.
         """
         raise NotImplementedError()
 
@@ -383,10 +373,12 @@ class Model:
     ) -> pd.DataFrame:
         """Calculate the rows that have been avoided.
 
-        :param data: The data before the binomial thinning step
-        :type data: pd.DataFrame
-        :return: The data that was avoided in the binomial thinning step
-        :rtype: pd.DataFrame
+        Args:
+            data: The data before the binomial thinning step.
+            data_resampled: The data after the binomial thinning step.
+
+        Returns:
+            The data that was avoided in the binomial thinning step.
         """
         raise NotImplementedError()
 
@@ -395,10 +387,11 @@ class Model:
 
         Needed for running in a multiprocessing pool as you need a serializable method.
 
-        :param model_run: the model run number we want to run
-        :type model_run: int
-        :returns: a tuple containing a dictionary of results, and the step counts
-        :rtype: tuple[dict[str, pd.Series], pd.Series | None]:
+        Args:
+            model_run: The model run number we want to run.
+
+        Returns:
+            A tuple containing a dictionary of results, and the step counts.
         """
         mr = ModelIteration(self, model_run)
 
@@ -417,14 +410,15 @@ class Model:
         return mr.get_aggregate_results()
 
     @staticmethod
-    def get_agg(results: pd.DataFrame, *args) -> pd.Series:
+    def get_agg(results: pd.DataFrame, *args: list[str]) -> pd.Series:
         """Get aggregation from model results.
 
-        :param results: The results of a model run
-        :type results: pd.DataFrame
-        :param *args: Any columns you wish to aggregate on
-        :return: Aggregated results
-        :rtype: pd.Series
+        Args:
+            results: The results of a model run.
+            *args: Any columns you wish to aggregate on.
+
+        Returns:
+            Aggregated results.
         """
         return results.groupby(["pod", "sitetret", *args, "measure"])["value"].sum()
 
@@ -432,26 +426,27 @@ class Model:
         """Save the results of running the model.
 
         This method is used for saving the results of the model run to disk as a parquet file.
-        It saves just the `rn` (row number) column and the `arrivals`, with the intention that
+        It saves just the `rn` (row number) column and the measure columns, with the intention that
         you rejoin to the original data.
 
-        :param model_results: a DataFrame containing the results of a model iteration
-        :param path_fn: a function which takes the activity type and returns a path
+        Args:
+            model_iteration: An instance of the ModelIteration class.
+            path_fn: A function which takes the activity type and returns a path.
         """
         # implemented by concrete classes
 
     def apply_resampling(self, row_samples: np.ndarray, data: pd.DataFrame) -> pd.DataFrame:
         """Apply row resampling.
 
-        Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
+        Called from within `model.activity_resampling.ActivityResampling.apply_resampling`.
 
-        :param row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
-        values for `data["arrivals"]`
-        :type row_samples: np.ndarray
-        :param data: the data that we want to update
-        :type data: pd.DataFrame
-        :return: the updated data
-        :rtype: pd.DataFrame
+        Args:
+            row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
+                values for the measure columns.
+            data: The data that we want to update.
+
+        Returns:
+            The updated data.
         """
         raise NotImplementedError()
 
@@ -459,14 +454,13 @@ class Model:
         """Aggregate the model results.
 
         Can also be used to aggregate the baseline data by passing in a `ModelIteration` with
-        the `model_run` argument set `-1`.
+        the `model_run` argument set to `-1`.
 
-        :param model_iteration: an instance of the `ModelIteration` class
-        :type model_iteration: model.model_iteration.ModelIteration
+        Args:
+            model_iteration: An instance of the ModelIteration class.
 
-        :returns: a tuple containing the model results, and a list of lists which contain the
-            aggregations to perform
-        :rtype: tuple[pd.DataFrame, list[list[str]]]
+        Returns:
+            A dictionary containing the aggregated results.
         """
         model_results = self.process_results(model_iteration.get_model_results())
 
@@ -479,21 +473,23 @@ class Model:
         return {**base_aggregations, **self.specific_aggregations(model_results)}
 
     def process_results(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Processes the data into a format suitable for aggregation in results files.
+        """Process the data into a format suitable for aggregation in results files.
 
-        :param data: Data to be processed. Format should be similar to Model.data
-        :type data: pd.DataFrame
-        :return: Processed results
-        :rtype: pd.DataFrame
+        Args:
+            data: Data to be processed. Format should be similar to Model.data.
+
+        Returns:
+            Processed results.
         """
         raise NotImplementedError()
 
     def specific_aggregations(self, model_results: pd.DataFrame) -> dict[str, pd.Series]:
         """Create other aggregations specific to the model type.
 
-        :param model_results: the results of a model run
-        :type model_results: pd.DataFrame
-        :return: dictionary containing the specific aggregations
-        :rtype: dict[str, pd.Series]
+        Args:
+            model_results: The results of a model run.
+
+        Returns:
+            Dictionary containing the specific aggregations.
         """
         raise NotImplementedError()

@@ -18,23 +18,19 @@ class AaEModel(Model):
 
     Implementation of the Model for Accident and Emergency attendances.
 
-    :param params: the parameters to run the model with, or the path to a params file to load
-    :type params: dict or string
-    :param data: a Data class ready to be constructed
-    :type data: Data
-    :param hsa: An instance of the HealthStatusAdjustment class. If left as None an instance is
-    created
-    :type hsa: HealthStatusAdjustment, optional
-    :param run_params: the parameters to use for each model run. generated automatically if left as
-    None
-    :type run_params: dict
-    :param save_full_model_results: whether to save the full model results or not
-    :type save_full_model_results: bool, optional
+    Args:
+        params: The parameters to run the model with, or the path to a params file to load.
+        data: A callable that creates a Data instance.
+        hsa: An instance of the HealthStatusAdjustment class. If left as None an instance is
+            created. Defaults to None.
+        run_params: The parameters to use for each model run. Generated automatically if left as
+            None. Defaults to None.
+        save_full_model_results: Whether to save the full model results or not. Defaults to False.
     """
 
     def __init__(
         self,
-        params: dict,
+        params: dict | str,
         data: Callable[[int, str], Data],
         hsa: Any = None,
         run_params: dict | None = None,
@@ -42,16 +38,12 @@ class AaEModel(Model):
     ) -> None:
         """Initialise the A&E Model.
 
-        :param params: the parameters to use
-        :type params: dict
-        :param data: a method to create a Data instance
-        :type data: Callable[[int, str], Data]
-        :param hsa: _Health Status Adjustment object, defaults to None
-        :type hsa: Any, optional
-        :param run_params: the run parameters to use, defaults to None
-        :type run_params: dict | None, optional
-        :param save_full_model_results: whether to save full model results, defaults to False
-        :type save_full_model_results: bool, optional
+        Args:
+            params: The parameters to use.
+            data: A method to create a Data instance.
+            hsa: Health Status Adjustment object. Defaults to None.
+            run_params: The run parameters to use. Defaults to None.
+            save_full_model_results: Whether to save full model results. Defaults to False.
         """
         # call the parent init function
         super().__init__(
@@ -70,10 +62,11 @@ class AaEModel(Model):
     def get_data_counts(self, data: pd.DataFrame) -> np.ndarray:
         """Get row counts of data.
 
-        :param data: the data to get the counts of
-        :type data: pd.DataFrame
-        :return: the counts of the data, required for activity avoidance steps
-        :rtype: np.ndarray
+        Args:
+            data: The data to get the counts of.
+
+        Returns:
+            The counts of the data, required for activity avoidance steps.
         """
         return np.array([data["arrivals"]]).astype(float)
 
@@ -99,15 +92,15 @@ class AaEModel(Model):
     def apply_resampling(self, row_samples: np.ndarray, data: pd.DataFrame) -> pd.DataFrame:
         """Apply row resampling.
 
-        Called from within `model.activity_resampling.ActivityResampling.apply_resampling`
+        Called from within `model.activity_resampling.ActivityResampling.apply_resampling`.
 
-        :param row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
-        values for `data["arrivals"]`
-        :type row_samples: np.ndarray
-        :param data: the data that we want to update
-        :type data: pd.DataFrame
-        :return: the updated data
-        :rtype: pd.DataFrame
+        Args:
+            row_samples: [1xn] array, where n is the number of rows in `data`, containing the new
+                values for `data["arrivals"]`.
+            data: The data that we want to update.
+
+        Returns:
+            The updated data.
         """
         data["arrivals"] = row_samples[0]
         # return the altered data
@@ -118,18 +111,25 @@ class AaEModel(Model):
     ) -> tuple[pd.DataFrame, pd.DataFrame | None]:
         """Run the efficiencies steps of the model.
 
-        :param model_iteration: an instance of the ModelIteration class
-        :type model_iteration: model.model_iteration.ModelIteration
+        Args:
+            data: The data to apply efficiencies to.
+            model_iteration: An instance of the ModelIteration class.
+
+        Returns:
+            Tuple containing the updated data and step counts (None for A&E).
         """
         # A&E doesn't have any efficiencies steps
         return data, None
 
     @staticmethod
     def process_results(data: pd.DataFrame) -> pd.DataFrame:
-        """Processes the data into a format suitable for aggregation in results files.
+        """Process the data into a format suitable for aggregation in results files.
 
-        :param data: Data to be processed. Format should be similar to Model.data
-        :type data: pd.DataFrame
+        Args:
+            data: Data to be processed. Format should be similar to Model.data.
+
+        Returns:
+            Processed results.
         """
         data["measure"] = "walk-in"
         data.loc[data["is_ambulance"], "measure"] = "ambulance"
@@ -161,10 +161,11 @@ class AaEModel(Model):
     def specific_aggregations(self, model_results: pd.DataFrame) -> dict[str, pd.Series]:
         """Create other aggregations specific to the model type.
 
-        :param model_results: the results of a model run
-        :type model_results: pd.DataFrame
-        :return: dictionary containing the specific aggregations
-        :rtype: dict[str, pd.Series]
+        Args:
+            model_results: The results of a model run.
+
+        Returns:
+            Dictionary containing the specific aggregations.
         """
         return {
             "acuity": self.get_agg(model_results, "acuity"),
@@ -176,10 +177,12 @@ class AaEModel(Model):
     ) -> pd.DataFrame:
         """Calculate the rows that have been avoided.
 
-        :param data: The data before the binomial thinning step
-        :type data: pd.DataFrame
-        :return: The data that was avoided in the binomial thinning step
-        :rtype: pd.DataFrame
+        Args:
+            data: The data before the binomial thinning step.
+            data_resampled: The data after the binomial thinning step.
+
+        Returns:
+            The data that was avoided in the binomial thinning step.
         """
         avoided = data["arrivals"] - data_resampled["arrivals"]
         data["arrivals"] = avoided
@@ -192,10 +195,9 @@ class AaEModel(Model):
         It saves just the `rn` (row number) column and the `arrivals`, with the intention that
         you rejoin to the original data.
 
-        :param model_iteration: an instance of the `ModelIteration` class
-        :type model_iteration: model.model_iteration.ModelIteration
-        :param path_fn: a function which takes the activity type and returns a path
-        :type path_fn: Callable[[str], str]
+        Args:
+            model_iteration: An instance of the ModelIteration class.
+            path_fn: A function which takes the activity type and returns a path.
         """
         model_iteration.get_model_results().set_index(["rn"])[["arrivals"]].to_parquet(
             f"{path_fn('aae')}/0.parquet"

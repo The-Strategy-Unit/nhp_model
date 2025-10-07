@@ -27,12 +27,12 @@ class Databricks(Data):
     def create(spark: SparkSession, data_path: str) -> Callable[[int, str], Any]:
         """Create Databricks object.
 
-        :param spark: a SparkSession for selecting data
-        :type spark: SparkSession
-        :param data_path: the path to where the parquet files are stored
-        :type data_path: str
-        :return: a function to initialise the object
-        :rtype: Callable[[str, str], Databricks]
+        Args:
+            spark: A SparkSession for selecting data.
+            data_path: The path to where the parquet files are stored.
+
+        Returns:
+            A function to initialise the object.
         """
         return lambda fyear, dataset: Databricks(spark, data_path, fyear, dataset)
 
@@ -48,16 +48,16 @@ class Databricks(Data):
     def get_ip(self) -> pd.DataFrame:
         """Get the inpatients dataframe.
 
-        :return: the inpatients dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The inpatients dataframe.
         """
         return self._apc.toPandas()
 
     def get_ip_strategies(self) -> dict[str, pd.DataFrame]:
         """Get the inpatients strategies dataframe.
 
-        :return: the inpatients strategies dataframes
-        :rtype: dict[str, pd.DataFrame]
+        Returns:
+            The inpatients strategies dataframes.
         """
         return {
             k: self._spark.read.parquet(f"{self._data_path}/ip_{k}_strategies")
@@ -71,8 +71,8 @@ class Databricks(Data):
     def get_op(self) -> pd.DataFrame:
         """Get the outpatients dataframe.
 
-        :return: the outpatients dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The outpatients dataframe.
         """
         return (
             self._spark.read.parquet(f"{self._data_path}/op")
@@ -85,8 +85,8 @@ class Databricks(Data):
     def get_aae(self) -> pd.DataFrame:
         """Get the A&E dataframe.
 
-        :return: the A&E dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The A&E dataframe.
         """
         return (
             self._spark.read.parquet(f"{self._data_path}/aae")
@@ -99,8 +99,8 @@ class Databricks(Data):
     def get_birth_factors(self) -> pd.DataFrame:
         """Get the birth factors dataframe.
 
-        :return: the birth factors dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The birth factors dataframe.
         """
         return (
             self._spark.read.parquet(f"{self._data_path}/birth_factors")
@@ -113,8 +113,8 @@ class Databricks(Data):
     def get_demographic_factors(self) -> pd.DataFrame:
         """Get the demographic factors dataframe.
 
-        :return: the demographic factors dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The demographic factors dataframe.
         """
         return (
             self._spark.read.parquet(f"{self._data_path}/demographic_factors")
@@ -127,8 +127,8 @@ class Databricks(Data):
     def get_hsa_activity_table(self) -> pd.DataFrame:
         """Get the demographic factors dataframe.
 
-        :return: the demographic factors dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The demographic factors dataframe.
         """
         return (
             self._spark.read.parquet(f"{self._data_path}/hsa_activity_tables")
@@ -139,7 +139,11 @@ class Databricks(Data):
         )
 
     def get_hsa_gams(self):
-        """Get the health status adjustment gams."""
+        """Get the health status adjustment gams.
+
+        Raises:
+            NotImplementedError: This is not supported in our databricks environment currently.
+        """
         # this is not supported in our data bricks environment currently
         raise NotImplementedError
 
@@ -177,30 +181,30 @@ class DatabricksNational(Data):
     ) -> Callable[[int, str], Any]:
         """Create Databricks object.
 
-        :param spark: a SparkSession for selecting data
-        :type spark: SparkSession
-        :param data_path: the path to where the parquet files are stored
-        :type data_path: str
-        :param sample_rate: the rate to sample inpatient data at
-        :type sample_rate: float
-        :return: a function to initialise the object
-        :rtype: Callable[[str, str], Databricks]
+        Args:
+            spark: A SparkSession for selecting data.
+            data_path: The path to where the parquet files are stored.
+            sample_rate: The rate to sample inpatient data at.
+            seed: The random seed for sampling.
+
+        Returns:
+            A function to initialise the object.
         """
         return lambda fyear, _: DatabricksNational(spark, data_path, fyear, sample_rate, seed)
 
     def get_ip(self) -> pd.DataFrame:
         """Get the inpatients dataframe.
 
-        :return: the inpatients dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The inpatients dataframe.
         """
         return self._apc.toPandas()
 
     def get_ip_strategies(self) -> dict[str, pd.DataFrame]:
         """Get the inpatients strategies dataframe.
 
-        :return: the inpatients strategies dataframes
-        :rtype: dict[str, pd.DataFrame]
+        Returns:
+            The inpatients strategies dataframes.
         """
         return {
             k: self._spark.read.parquet(f"{self._data_path}/ip_{k}_strategies")
@@ -213,8 +217,8 @@ class DatabricksNational(Data):
     def get_op(self) -> pd.DataFrame:
         """Get the outpatients dataframe.
 
-        :return: the outpatients dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The outpatients dataframe.
         """
         op = self._spark.read.parquet(f"{self._data_path}/op")
 
@@ -241,8 +245,8 @@ class DatabricksNational(Data):
     def get_aae(self) -> pd.DataFrame:
         """Get the A&E dataframe.
 
-        :return: the A&E dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The A&E dataframe.
         """
         aae = self._spark.read.parquet(f"{self._data_path}/aae")
 
@@ -263,10 +267,8 @@ class DatabricksNational(Data):
     def get_birth_factors(self) -> pd.DataFrame:
         """Get the birth factors dataframe.
 
-        :param projection_year: Which projection year to use?
-        :type projection_year: int, defaults to 2022
-        :return: the birth factors dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The birth factors dataframe.
         """
         births_df = (
             self._spark.read.parquet(f"{self._data_path}/birth_factors/")
@@ -291,10 +293,8 @@ class DatabricksNational(Data):
     def get_demographic_factors(self) -> pd.DataFrame:
         """Get the demographic factors dataframe.
 
-        :param projection_year: Which projection year to use?
-        :type projection_year: int, defaults to 2022
-        :return: the demographic factors dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The demographic factors dataframe.
         """
         demog_df = (
             self._spark.read.parquet(f"{self._data_path}/demographic_factors/")
@@ -319,8 +319,8 @@ class DatabricksNational(Data):
     def get_hsa_activity_table(self) -> pd.DataFrame:
         """Get the demographic factors dataframe.
 
-        :return: the demographic factors dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The demographic factors dataframe.
         """
         return (
             self._spark.read.table("nhp.default.hsa_activity_tables_national")
@@ -331,15 +331,19 @@ class DatabricksNational(Data):
         )
 
     def get_hsa_gams(self):
-        """Get the health status adjustment gams."""
+        """Get the health status adjustment gams.
+
+        Raises:
+            NotImplementedError: This is not supported in our databricks environment currently.
+        """
         # this is not supported in our data bricks environment currently
         raise NotImplementedError
 
     def get_inequalities(self) -> pd.DataFrame:
         """Get the inequalities dataframe.
 
-        :return: the inequalities dataframe
-        :rtype: pd.DataFrame
+        Returns:
+            The inequalities dataframe.
         """
         return (
             self._spark.read.table("nhp.default.inequalities")

@@ -3,6 +3,8 @@
 Provides a simple class which holds all of the data required for a model iteration
 """
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pandas as pd
 
@@ -10,20 +12,22 @@ from nhp.model.activity_resampling import ActivityResampling
 
 ModelRunResult = tuple[dict[str, pd.Series], pd.Series | None]
 
+if TYPE_CHECKING:
+    from nhp.model.model import Model
+
 
 class ModelIteration:
     """Model Iteration.
 
-    Holds all of the information for a model iteration
+    Holds all of the information for a model iteration.
     """
 
-    def __init__(self, model, model_run: int):
+    def __init__(self, model: "Model", model_run: int):
         """Perform an iteration of the model.
 
-        :param model: An instance of a Model object
-        :type model: Model
-        :param model_run: which model iteration to run
-        :type model_run: int
+        Args:
+            model: An instance of a Model object.
+            model_run: Which model iteration to run.
         """
         self.model = model
 
@@ -110,17 +114,14 @@ class ModelIteration:
         Calculates the step counts for the current model run, saving back to
         self._model_run.step_counts.
 
-        :param data: the data for the current model run
-        :type data: pd.DataFrame
-        :param future: the future row counts after running the poisson resampling.
-        :type future: np.ndarray
-        :param factors: the factors for this current model run
-        :type factors: pd.DataFrame
-        :param term_name: the name of the interaction term for this step
-        :type term_name: str
-        :returns:
-        :return: the step counts for this step
-        :rtype: pd.DataFrame
+        Args:
+            data: The data for the current model run.
+            future: The future row counts after running the poisson resampling.
+            factors: The factors for this current model run.
+            term_name: The name of the interaction term for this step.
+
+        Returns:
+            The step counts for this step.
         """
         before = self.model.get_data_counts(data)
         # convert the paramater values from a dict of 2d numpy arrays to a 3d numpy array
@@ -155,15 +156,10 @@ class ModelIteration:
     def get_aggregate_results(self) -> ModelRunResult:
         """Aggregate the model results.
 
-        Can also be used to aggregate the baseline data by passing in the raw data
+        Can also be used to aggregate the baseline data by passing in the raw data.
 
-        :param model_results: a DataFrame containing the results of a model iteration
-        :type model_results: pandas.DataFrame
-        :param model_run: the current model run
-        :type model_run: int
-
-        :returns: a tuple containing a dictionary of results, and the step counts
-        :rtype: tuple[dict[str, pd.Series], pd.Series | None]:
+        Returns:
+            A tuple containing a dictionary of results, and the step counts.
         """
         aggregations = self.model.aggregate(self)
 

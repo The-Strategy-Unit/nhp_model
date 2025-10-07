@@ -19,8 +19,8 @@ def _ref_path(filename):
 def variant_lookup() -> dict:
     """Variant Lookup (Health Status Adjustment).
 
-    :return: A dictionary of the variant lookups
-    :rtype: dict
+    Returns:
+        A dictionary of the variant lookups.
     """
     with _ref_path("variant_lookup.json").open("r", encoding="UTF-8") as vlup_file:
         return json.load(vlup_file)
@@ -29,8 +29,8 @@ def variant_lookup() -> dict:
 def life_expectancy() -> pd.DataFrame:
     """Life Expectancy (Health Status Adjustment).
 
-    :return: A pandas DataFrame
-    :rtype: pd.DataFrame
+    Returns:
+        A pandas DataFrame containing life expectancy data.
     """
     return pd.read_csv(_ref_path("life_expectancy.csv"))
 
@@ -38,7 +38,7 @@ def life_expectancy() -> pd.DataFrame:
 def split_normal_params() -> pd.DataFrame:
     """Split Normal Parameters (Health Status Adjustment).
 
-    :return: A pandas datafrarme
-    :rtype: pd.DataFrame
+    Returns:
+        A pandas DataFrame containing split normal parameters.
     """
     return pd.read_csv(_ref_path("hsa_split_normal_params.csv"))

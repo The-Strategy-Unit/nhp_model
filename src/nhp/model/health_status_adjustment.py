@@ -13,21 +13,20 @@ from nhp.model.data import Data, reference
 class HealthStatusAdjustment:
     """Health Status Adjustment.
 
-    handles the logic for the health status adjustment in the model
+    Handles the logic for the health status adjustment in the model.
     """
 
     # load the static reference data files
 
     def __init__(self, data_loader: Data, base_year: str):
-        """Initalise HealthStatusAdjustment.
+        """Initialise HealthStatusAdjustment.
 
         Base class that should not be used directly, instead see HealthStatusAdjustmentGAM
         or HealthStatusAdjustmentInterpolated.
 
-        :param data: the data
-        :type data: Data
-        :param base_year: the baseline year for the model run
-        :type base_year: str
+        Args:
+            data_loader: The data loader.
+            base_year: The baseline year for the model run.
         """
         self._all_ages = np.arange(0, 101)
 
@@ -60,16 +59,15 @@ class HealthStatusAdjustment:
     ) -> np.ndarray:
         """Generate Health Status Adjustment Parameters.
 
-        :param start_year: The baseline year for the model
-        :type start_year: int
-        :param end_year: The year the model is running for
-        :type end_year: int
-        :param rng: Random Number Generator
-        :type rng: np.random.Generator
-        :param model_runs: Number of Model Runs
-        :type model_runs: int
-        :return: parameters for the health status adjustment
-        :rtype: np.ndarray
+        Args:
+            start_year: The baseline year for the model.
+            end_year: The year the model is running for.
+            variants: List of population variants.
+            rng: Random Number Generator.
+            model_runs: Number of Model Runs.
+
+        Returns:
+            Parameters for the health status adjustment.
         """
         hsa_snp = reference.split_normal_params().set_index(["var", "sex", "year"])
 
@@ -107,18 +105,15 @@ class HealthStatusAdjustment:
     ) -> np.ndarray:
         """Generate random splitnormal values.
 
-        :param rng: Random Number Generator
-        :type rng: np.random.Generator
-        :param n: Number of random values to generate
-        :type n: int
-        :param mode: the mode of the distribution
-        :type mode: float
-        :param sd1: the standard deviation of the left side of the distribution
-        :type sd1: float
-        :param sd2: the standard deviation of the right side of the distribution
-        :type sd2: float
-        :return: n random number values sampled from the split normal distribution
-        :rtype: np.ndarray
+        Args:
+            rng: Random Number Generator.
+            n: Number of random values to generate.
+            mode: The mode of the distribution.
+            sd1: The standard deviation of the left side of the distribution.
+            sd2: The standard deviation of the right side of the distribution.
+
+        Returns:
+            n random number values sampled from the split normal distribution.
         """
         # get the probability of the mode
         A = sqrt(2 / pi) / (sd1 + sd2)
@@ -137,13 +132,14 @@ class HealthStatusAdjustment:
 
         return mode + sd * spt.norm.ppf((u + x) / (a_sqrt_tau * sd))
 
-    def run(self, run_params: dict):
+    def run(self, run_params: dict) -> pd.Series:
         """Return factor for health status adjustment.
 
-        :param run_params: P
-        :type run_params: dict
-        :return: factor
-        :rtype: float
+        Args:
+            run_params: The run parameters.
+
+        Returns:
+            The health status adjustment factor.
         """
         hsa_param = run_params["health_status_adjustment"]
         selected_variant = reference.variant_lookup()[run_params["variant"]]
@@ -173,15 +169,14 @@ class HealthStatusAdjustment:
 
 
 class HealthStatusAdjustmentGAM(HealthStatusAdjustment):
-    """Heatlh Status Adjustment (GAMs)."""
+    """Health Status Adjustment (GAMs)."""
 
     def __init__(self, data: Data, base_year: str):
-        """Initalise HealthStatusGAM.
+        """Initialise HealthStatusAdjustmentGAM.
 
-        :param data: the data
-        :type data: Data
-        :param base_year: the baseline year for the model run
-        :type base_year: str
+        Args:
+            data: The data loader.
+            base_year: The baseline year for the model run.
         """
         self._gams = data.get_hsa_gams()
 
@@ -200,15 +195,14 @@ class HealthStatusAdjustmentGAM(HealthStatusAdjustment):
 
 
 class HealthStatusAdjustmentInterpolated(HealthStatusAdjustment):
-    """Heatlh Status Adjustment (Interpolated)."""
+    """Health Status Adjustment (Interpolated)."""
 
     def __init__(self, data: Data, base_year: str):
-        """Initalise HealthStatusAdjustmentInterpolated.
+        """Initialise HealthStatusAdjustmentInterpolated.
 
-        :param data: the data
-        :type data: Data
-        :param base_year: the baseline year for the model run
-        :type base_year: str
+        Args:
+            data: The data loader.
+            base_year: The baseline year for the model run.
         """
         super().__init__(data, base_year)
         self._load_activity_ages_lists()
