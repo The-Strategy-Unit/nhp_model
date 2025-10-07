@@ -5,7 +5,7 @@ Welcome to the NHP Model documentation. This project provides modeling capabilit
 ## Features
 
 - Multiple model types (inpatients, outpatients, A&E)
-- Support to load data from different sources
+- Support for loading data from different sources
 - Docker containerization
 
 ## Quick Start
