@@ -1757,7 +1757,7 @@ requires-dist = [
     { name = "notebook", marker = "extra == 'dev'", specifier = ">=6.5" },
     { name = "numpy", specifier = ">=1.23" },
     { name = "pandas", specifier = ">=1.5" },
-    { name = "pyarrow", specifier = "==20.0" },
+    { name = "pyarrow", specifier = ">=20.0" },
     { name = "pygam", marker = "extra == 'dev'", specifier = ">=0.8" },
     { name = "pyjanitor", specifier = ">=0.23" },
     { name = "pyspark", marker = "extra == 'databricks'" },
