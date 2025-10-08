@@ -32,7 +32,7 @@
         },
         "app_version": {
             "type": "string",
-            "pattern": "^(v\\d+\\.\\d+|dev)$"
+            "pattern": "^(v\\d+\\.\\d+|dev|pr-\\d+)$"
         },
         "create_datetime": {
             "type": "string"
