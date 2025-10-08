@@ -18,6 +18,16 @@ uv run python -m nhp.model -d data/synth --type all
 
 to run the model with the sample parameters.
 
+### Generating Sample Parameters
+
+you can generate sample parameters using the CLI command:
+
+``` bash
+python -m nhp.model.params --dataset [dataset] --scenario [scenario] --app-version dev > params.json
+```
+
+replacing the values as needed. This will generate a file `params.json` with the sample parameters.
+
 ## API Reference
 
 See the [Model Reference](reference/nhp/model/index.md) for detailed documentation of all classes and functions.
