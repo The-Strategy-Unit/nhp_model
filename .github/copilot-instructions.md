@@ -27,17 +27,16 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync
 
 # Install with dev dependencies for development/testing (RECOMMENDED for development)
-# Note: CI uses this pattern for linting and testing
-uv pip install -e ".[dev]"
+uv sync --extra dev
 
 # Install with docs dependencies for documentation
-uv pip install -e ".[docs]"
+uv sync --extra docs
 
 # Install multiple extras at once
-uv pip install -e ".[dev,docs]"
+uv sync --extra dev --extra docs
 ```
 
-**Important:** The `uv sync` command only installs production dependencies. For development work (linting, testing), you MUST install the dev extras using `uv pip install -e ".[dev]"`. This is the pattern used in the CI workflows.
+**Important:** The `uv sync` command only installs production dependencies. For development work (linting, testing), use `uv sync --extra dev` to install the dev dependencies.
 
 **Python Version:** The project requires Python 3.11+. The CI uses Python 3.11 specifically via `uv python install` in workflows.
 
@@ -270,7 +269,7 @@ The model is containerized using:
 ```bash
 # Setup (production + dev dependencies)
 curl -LsSf https://astral.sh/uv/install.sh | sh
-uv sync && uv pip install -e ".[dev]"
+uv sync --extra dev
 
 # Lint (MUST pass)
 uvx ruff check .
@@ -286,7 +285,7 @@ uv build
 uv run python -m nhp.model queue/params-sample.json -d data --type all
 
 # Build docs (requires docs extras)
-uv pip install -e ".[docs]"
+uv sync --extra docs
 uv run mkdocs build --clean
 ```
 
