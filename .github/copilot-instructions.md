@@ -10,7 +10,7 @@ This is the **New Hospital Programme (NHP) Demand Model**, a Python package for 
 - **Package Manager:** `uv` (modern Python package manager from Astral)
 - **Build System:** setuptools with setuptools-scm for versioning
 - **Primary Language:** Python
-- **Project Size:** Medium (~45 Python files across src/nhp, ~20 test files)
+- **Project Size:** Medium-sized Python project
 - **Main Modules:** nhp.model (core model code), nhp.docker (Docker runtime)
 
 ## Environment Setup and Build Instructions
@@ -20,8 +20,8 @@ This is the **New Hospital Programme (NHP) Demand Model**, a Python package for 
 **ALWAYS start by installing uv and project dependencies:**
 
 ```bash
-# Install uv if not already available (may already be installed via pip)
-pip install uv
+# Install uv using the recommended approach from Astral
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Install project dependencies (production only)
 uv sync
@@ -64,7 +64,7 @@ The build creates:
 **Unit Tests (ALWAYS run these before committing):**
 
 ```bash
-# Run all unit tests (takes ~6-7 seconds)
+# Run all unit tests
 uv run pytest tests/unit --verbose
 
 # Run unit tests with coverage report
@@ -79,7 +79,7 @@ uv run pytest --cov=. tests/unit --ignore=tests --cov-branch --cov-report xml:co
 uv run pytest tests/integration --verbose
 ```
 
-**All unit tests must pass (233 tests as of latest run). Test failures are NOT acceptable.**
+**All unit tests must pass. Test failures are NOT acceptable.**
 
 ### Linting and Formatting
 
@@ -87,13 +87,13 @@ uv run pytest tests/integration --verbose
 
 ```bash
 # Run ruff linting check
-uv run ruff check .
+uvx ruff check .
 
 # Run ruff format check (no auto-formatting)
-uv run ruff format --check .
+uvx ruff format --check .
 
 # Auto-format code (if needed)
-uv run ruff format .
+uvx ruff format .
 
 # Run type checking with ty
 uvx ty check .
@@ -159,7 +159,7 @@ The model expects data in parquet format organized by fiscal year and dataset:
 - `.github/workflows/` - CI/CD pipelines (linting, codecov, build, deploy)
 - `src/nhp/model/` - Core model: `__main__.py`, `model.py`, `inpatients.py`, `outpatients.py`, `aae.py`, `run.py`, `results.py`, `data/`
 - `src/nhp/docker/` - Docker runtime with Azure Storage integration
-- `tests/unit/` - 233 unit tests (~6s runtime)
+- `tests/unit/` - Unit tests
 - `tests/integration/` - Integration tests (require data)
 - `docs/` - MkDocs documentation
 - `notebooks/` - Databricks notebooks (excluded from linting)
@@ -238,7 +238,7 @@ The model is containerized using:
 
 ## Testing Strategy
 
-- **Unit Tests**: `tests/unit/` - 233 tests (~6s), mock-based, parameterized. **ALWAYS run before committing.**
+- **Unit Tests**: `tests/unit/` - Mock-based, parameterized. **ALWAYS run before committing.**
 - **Integration Tests**: `tests/integration/` - Require properly formatted test data, test end-to-end runs
 - **Test Organization**: pytest-mock for mocking, fixtures in `tests/conftest.py`
 - **Coverage**: High coverage maintained via Codecov integration
@@ -247,9 +247,9 @@ The model is containerized using:
 
 1. **ALWAYS install dependencies first**: Run `uv sync --extra dev` before any development work.
 
-2. **ALWAYS run linting before committing**: Run `uv run ruff check .` and `uv run ruff format --check .` - these MUST pass.
+2. **ALWAYS run linting before committing**: Run `uvx ruff check .` and `uvx ruff format --check .` - these MUST pass.
 
-3. **ALWAYS run unit tests**: Run `uv run pytest tests/unit` before committing - all 233 tests MUST pass.
+3. **ALWAYS run unit tests**: Run `uv run pytest tests/unit` before committing - all tests MUST pass.
 
 4. **Follow Google docstring convention**: All public functions/classes must have Google-style docstrings (enforced by ruff).
 
@@ -269,11 +269,12 @@ The model is containerized using:
 
 ```bash
 # Setup (production + dev dependencies)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync && uv pip install -e ".[dev]"
 
 # Lint (MUST pass)
-uv run ruff check .
-uv run ruff format --check .
+uvx ruff check .
+uvx ruff format --check .
 
 # Test (MUST pass)  
 uv run pytest tests/unit --verbose
