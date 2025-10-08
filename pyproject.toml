@@ -3,7 +3,7 @@ name = "nhp-model"
 dynamic = ["version"]
 description = "New Hospital Programme demand model"
 
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 
 dependencies = [
     "azure-identity>=1.12",
@@ -11,7 +11,7 @@ dependencies = [
     "azure-storage-file-datalake>=12.10",
     "numpy>=1.23",
     "pandas>=1.5",
-    "pyarrow>=20.0",
+    "pyarrow==20.0",
     "pyjanitor>=0.23",
     "python-dotenv>=1.0",
     "scipy>=1.10",
