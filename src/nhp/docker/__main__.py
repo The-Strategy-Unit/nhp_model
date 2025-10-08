@@ -14,8 +14,6 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "params_file",
-        nargs="?",
-        default="params-sample.json",
         help="Name of the parameters file stored in Azure",
     )
 
