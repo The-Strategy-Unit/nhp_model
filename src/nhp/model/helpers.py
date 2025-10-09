@@ -35,16 +35,3 @@ def rnorm(rng: np.random.Generator, low: float, high: float) -> float:
     mean = (high + low) / 2
     stdev = (high - low) / q
     return rng.normal(mean, stdev)
-
-
-def load_params(filename: str) -> dict:
-    """Load a params file.
-
-    Args:
-        filename: The full name of the file that we wish to load.
-
-    Returns:
-        The model parameters.
-    """
-    with open(filename, "r", encoding="UTF-8") as prf:
-        return json.load(prf)

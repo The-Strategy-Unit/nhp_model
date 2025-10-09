@@ -13,7 +13,7 @@ from azure.storage.blob import BlobServiceClient
 from azure.storage.filedatalake import DataLakeServiceClient
 
 from nhp.docker.config import Config
-from nhp.model.helpers import load_params
+from nhp.model.params import load_params
 from nhp.model.run import noop_progress_callback
 
 

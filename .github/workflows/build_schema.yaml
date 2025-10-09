@@ -1,4 +1,4 @@
-name: Deploy schema.json to GitHub Pages 
+name: Deploy schema.json to GitHub Pages
 
 on:
   workflow_call:
@@ -6,7 +6,7 @@ on:
       schema-tag:
         required: true
         default: dev
-        type: string  
+        type: string
 
 permissions:
   pages: write
@@ -28,7 +28,7 @@ jobs:
       - name: Copy schema to app version path
         run: |
           mkdir -p schemas/${{ inputs.schema-tag }}
-          sed '/$id/ s/dev/${{ inputs.schema-tag }}/' params-schema.json > schemas/${{ inputs.schema-tag }}/params-schema.json
+          sed '/$id/ s/dev/${{ inputs.schema-tag }}/' src/nhp/model/params/params-schema.json > schemas/${{ inputs.schema-tag }}/params-schema.json
 
       - name: Commit the schema
         run: |
@@ -39,7 +39,7 @@ jobs:
           git commit -m "adding schema for ${{ inputs.schema-tag }}" || echo "No changes to commit"
           git push origin schemas
           popd
-      
+
       - name: Upload to GitHub Pages
         uses: actions/upload-pages-artifact@v4
         with:

@@ -3,7 +3,13 @@
 import pandas as pd
 import pytest
 
-from nhp.model import AaEModel, InpatientsModel, ModelIteration, OutpatientsModel, load_params
+from nhp.model import (
+    AaEModel,
+    InpatientsModel,
+    ModelIteration,
+    OutpatientsModel,
+    load_sample_params,
+)
 from nhp.model.data import Local
 from nhp.model.run import run_all
 
@@ -31,9 +37,9 @@ from nhp.model.run import run_all
         ),
     ],
 )
-def test_single_model_run(model_class, expected_aggregations, params_path, data_dir):
+def test_single_model_run(model_class, expected_aggregations, data_dir):
     # arrange
-    params = load_params(params_path)
+    params = load_sample_params()
     data = Local.create(data_dir)
     model = model_class(params, data)
     expected_aggregations |= {
@@ -56,10 +62,9 @@ def test_single_model_run(model_class, expected_aggregations, params_path, data_
     assert isinstance(step_counts, pd.Series)
 
 
-def test_all_model_runs(params_path, data_dir):
+def test_all_model_runs(data_dir):
     # arrange
-    params = load_params(params_path)
-    params["model_runs"] = 4
+    params = load_sample_params(model_runs=4)
 
     nhp_data = Local.create(data_dir)
     # act

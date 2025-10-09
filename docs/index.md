@@ -13,8 +13,20 @@ Welcome to the NHP Model documentation. This project provides modeling capabilit
 Download and install [`uv`](https://docs.astral.sh/uv/getting-started/installation/), then run `uv sync`. Download data locally, e.g., download a synthetic dataset to `data/synth`. Then, run the model with:
 
 ``` bash
-uv run python -m nhp.model queue/params-sample.json -d data/synth --type all
+uv run python -m nhp.model -d data/synth --type all
 ```
+
+to run the model with the sample parameters.
+
+### Generating Sample Parameters
+
+you can generate sample parameters using the CLI command:
+
+``` bash
+python -m nhp.model.params --dataset [dataset] --scenario [scenario] --app-version dev > params.json
+```
+
+replacing the values as needed. This will generate a file `params.json` with the sample parameters.
 
 ## API Reference
 

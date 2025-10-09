@@ -17,11 +17,11 @@ from nhp.model.outpatients import OutpatientsModel
 )
 def test_main_debug_runs_model(mocker, activity_type, model_class):
     # arrange
-    args = Mock
+    args = Mock()
     args.type = activity_type
     args.data_path = "data"
     args.model_run = 0
-    args.params_file = "queue/params.json"
+    args.params_file = "params.json"
     mocker.patch("nhp.model.__main__._parse_args", return_value=args)
     ldp_mock = mocker.patch("nhp.model.__main__.load_params", return_value="params")
 
@@ -34,12 +34,36 @@ def test_main_debug_runs_model(mocker, activity_type, model_class):
     # assert
     run_all_mock.assert_not_called()
     run_single_mock.assert_called_once_with("params", "data", model_class, 0)
-    ldp_mock.assert_called_once_with("queue/params.json")
+    ldp_mock.assert_called_once_with("params.json")
+
+
+def test_main_can_use_sample_params(mocker):
+    # arrange
+    args = Mock()
+    args.type = "ip"
+    args.data_path = "data"
+    args.model_run = 0
+    args.params_file = ""
+    mocker.patch("nhp.model.__main__._parse_args", return_value=args)
+    ldp_mock = mocker.patch("nhp.model.__main__.load_params", return_value="params")
+    ldsp_mock = mocker.patch("nhp.model.__main__.load_sample_params", return_value="params")
+
+    run_all_mock = mocker.patch("nhp.model.__main__.run_all")
+    run_single_mock = mocker.patch("nhp.model.__main__.run_single_model_run")
+
+    # act
+    main()
+
+    # assert
+    run_all_mock.assert_not_called()
+    run_single_mock.assert_called_once_with("params", "data", InpatientsModel, 0)
+    ldp_mock.assert_not_called()
+    ldsp_mock.assert_called_once()
 
 
 def test_main_debug_runs_model_invalid_type(mocker):
     # arrange
-    args = Mock
+    args = Mock()
     args.type = "invalid"
     args.data_path = "data"
     args.model_run = 0
@@ -61,7 +85,7 @@ def test_main_debug_runs_model_invalid_type(mocker):
 
 def test_main_all_runs(mocker):
     # arrange
-    args = Mock
+    args = Mock()
     args.type = "all"
     args.data_path = "data"
     args.params_file = "queue/params.json"

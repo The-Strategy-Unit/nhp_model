@@ -21,8 +21,8 @@
     {
       "id": "params_file",
       "type": "promptString",
-      "description": "Path to parameters file",
-      "default": "queue/params-sample.json"
+      "description": "Path to parameters file (leave empty to use sample parameters)",
+      "default": ""
     },
     {
       "id": "type",

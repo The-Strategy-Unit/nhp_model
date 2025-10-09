@@ -10,11 +10,11 @@ from nhp.docker.__main__ import main, parse_args
 @pytest.mark.parametrize(
     "args, expected_file, expected_local_storage, expected_save_full_model_results",
     [
-        ([], "params-sample.json", False, False),
-        (["-l"], "params-sample.json", True, False),
         (["test.json"], "test.json", False, False),
         (["test.json", "-l"], "test.json", True, False),
-        (["--save-full-model-results"], "params-sample.json", False, True),
+        (["test.json"], "test.json", False, False),
+        (["test.json", "-l"], "test.json", True, False),
+        (["test.json", "--save-full-model-results"], "test.json", False, True),
     ],
 )
 def test_parse_args(

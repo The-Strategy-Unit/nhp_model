@@ -5,8 +5,7 @@
   ],
   "python.testing.pytestArgs": [
     "tests",
-    "--data-dir=data/synth",
-    "--params-file=queue/params-sample.json"
+    "--data-dir=data/synth"
   ],
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
