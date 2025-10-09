@@ -1,4 +1,3 @@
 [run]
 omit =
   tests/*
-  src/nhp/model/data/databricks.py
