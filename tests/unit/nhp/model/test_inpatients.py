@@ -589,6 +589,7 @@ def test_save_results_get_op_converted(mock_model):
             "classpat": ["-1", "1"] * 3,
             "speldur": [0, 1] * 3,
             "age": [1, 2] * 3,
+            "age_group": ["a", "b"] * 3,
             "sex": [1, 2] * 3,
             "tretspef": ["a", "b"] * 3,
             "tretspef_grouped": ["a", "b"] * 3,
@@ -598,6 +599,7 @@ def test_save_results_get_op_converted(mock_model):
     expected = pd.DataFrame(
         {
             "age": [1, 1],
+            "age_group": ["a", "a"],
             "sex": [1, 1],
             "tretspef": ["a", "a"],
             "tretspef_grouped": ["a", "a"],
@@ -624,6 +626,7 @@ def test_save_results_get_sdec_converted(mock_model):
             "classpat": ["-3", "1"] * 3,
             "speldur": [0, 1] * 3,
             "age": [1, 2] * 3,
+            "age_group": ["a", "b"] * 3,
             "sex": [1, 2] * 3,
             "tretspef": ["a", "b"] * 3,
             "tretspef_grouped": ["a", "b"] * 3,
@@ -633,6 +636,7 @@ def test_save_results_get_sdec_converted(mock_model):
     expected = pd.DataFrame(
         {
             "age": [1, 1],
+            "age_group": ["a", "a"],
             "sex": [1, 1],
             "sitetret": ["1", "2"],
             "arrivals": [2, 1],

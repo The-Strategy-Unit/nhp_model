@@ -307,7 +307,7 @@ class InpatientsModel(Model):
         ix = model_results["classpat"] == "-1"
         return (
             model_results[ix]
-            .groupby(["age", "sex", "tretspef", "tretspef_grouped", "sitetret"])
+            .groupby(["age", "age_group", "sex", "tretspef", "tretspef_grouped", "sitetret"])
             .size()
             .to_frame("attendances")
             .assign(tele_attendances=0)
@@ -318,7 +318,7 @@ class InpatientsModel(Model):
         ix = model_results["classpat"] == "-3"
         return (
             model_results[ix]
-            .groupby(["age", "sex", "sitetret"])
+            .groupby(["age", "age_group", "sex", "sitetret"])
             .size()
             .to_frame("arrivals")
             .assign(
