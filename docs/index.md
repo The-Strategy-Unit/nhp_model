@@ -23,7 +23,7 @@ to run the model with the sample parameters.
 you can generate sample parameters using the CLI command:
 
 ``` bash
-python -m nhp.model.params --dataset [dataset] --scenario [scenario] --app-version dev > params.json
+uv run python -m nhp.model.params --dataset [dataset] --scenario [scenario] --app-version dev > params.json
 ```
 
 replacing the values as needed. This will generate a file `params.json` with the sample parameters.
