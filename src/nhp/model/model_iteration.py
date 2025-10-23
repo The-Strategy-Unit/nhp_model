@@ -29,7 +29,7 @@ class ModelIteration:
             model: An instance of a Model object.
             model_run: Which model iteration to run.
         """
-        self.model = model
+        self.model: Model = model
 
         self.model_run = model_run
         # if model_run == -1, then use model_run = 0 for run params
@@ -93,14 +93,15 @@ class ModelIteration:
         self.avoided_activity = self.model.calculate_avoided_activity(data_ar, data_aa)
 
         self.data = data_ef
-        self.step_counts = pd.concat(
-            [
-                self.model.baseline_step_counts,
-                step_counts_ar,
-                step_counts_aa,
-                step_counts_ef,
-            ]
-        )
+
+        step_counts_dfs_to_concat: list[pd.DataFrame] = [
+            self.model.baseline_step_counts,
+            step_counts_ar,
+            step_counts_aa if step_counts_aa is not None else pd.DataFrame(),
+            step_counts_ef if step_counts_ef is not None else pd.DataFrame(),
+        ]
+
+        self.step_counts = pd.concat(step_counts_dfs_to_concat)
 
     def fix_step_counts(
         self,

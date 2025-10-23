@@ -320,6 +320,17 @@ def test_load_data(mocker, mock_model):
     mdl._get_data.assert_called_once_with(data_loader)
 
 
+def test_baseline_step_counts(mock_model):
+    # arrange
+    mock_model._baseline_step_counts = "test_baseline_step_counts"
+
+    # act
+    actual = mock_model.baseline_step_counts
+
+    # assert
+    assert actual == "test_baseline_step_counts"
+
+
 # _load_strategies()
 
 
@@ -765,6 +776,13 @@ def test_apply_resampling(mock_model):
     # act & assert
     with pytest.raises(NotImplementedError):
         mock_model.apply_resampling(None, None)
+
+
+def test_efficiencies(mock_model):
+    # arrange
+    # act & assert
+    with pytest.raises(NotImplementedError):
+        mock_model.efficiencies(None, None)
 
 
 def test_aggregate(mock_model):

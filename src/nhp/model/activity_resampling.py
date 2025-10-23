@@ -88,7 +88,7 @@ class ActivityResampling:
         """Get the current model runs data."""
         return self._model_iteration.data
 
-    def _update(self, factor: pd.Series):
+    def _update(self, factor: pd.Series) -> "ActivityResampling":
         step = factor.name
 
         factor = (
@@ -101,7 +101,7 @@ class ActivityResampling:
 
         return self
 
-    def demographic_adjustment(self):
+    def demographic_adjustment(self) -> "ActivityResampling":
         """Perform the demograhic adjustment."""
         year = str(self.run_params["year"])
         variant = self.run_params["variant"]
@@ -116,7 +116,7 @@ class ActivityResampling:
 
         return self._update(factor)
 
-    def birth_adjustment(self):
+    def birth_adjustment(self) -> "ActivityResampling":
         """Perform the birth adjustment."""
         year = str(self.run_params["year"])
         variant = self.run_params["variant"]
@@ -134,14 +134,14 @@ class ActivityResampling:
 
         return self._update(factor)
 
-    def health_status_adjustment(self):
+    def health_status_adjustment(self) -> "ActivityResampling":
         """Perform the health status adjustment."""
         if not self.params["health_status_adjustment"]:
             return self
 
         return self._update(self.hsa.run(self.run_params))
 
-    def inequalities_adjustment(self):
+    def inequalities_adjustment(self) -> "ActivityResampling":
         """Perform the inequalities adjustment."""
         activity_type = self._activity_type
 
@@ -153,7 +153,7 @@ class ActivityResampling:
             case _:
                 return self
 
-        if not (params := self.params["inequalities"]):
+        if not self.params["inequalities"]:
             return self
 
         # TODO: currently only works for provider level model (we overwrite provider in PBM)
@@ -167,7 +167,7 @@ class ActivityResampling:
         factor.name = "inequalities"
         return self._update(factor)
 
-    def expat_adjustment(self):
+    def expat_adjustment(self) -> "ActivityResampling":
         """Perform the expatriation adjustment."""
         params = {
             k: v
@@ -183,7 +183,7 @@ class ActivityResampling:
         factor.index.names = ["group", "tretspef_grouped"]
         return self._update(factor)
 
-    def repat_adjustment(self):
+    def repat_adjustment(self) -> "ActivityResampling":
         """Perform the repatriation adjustment."""
         params = {
             (is_main_icb, k): pd.Series(v, name="repat")
@@ -201,7 +201,7 @@ class ActivityResampling:
         factor.index.names = ["is_main_icb", "group", "tretspef_grouped"]
         return self._update(factor)
 
-    def baseline_adjustment(self):
+    def baseline_adjustment(self) -> "ActivityResampling":
         """Perform the baseline adjustment.
 
         A value of 1 will indicate that we want to sample this row at the baseline rate. A value
@@ -221,7 +221,7 @@ class ActivityResampling:
         factor.index.names = ["group", "tretspef_grouped"]
         return self._update(factor)
 
-    def waiting_list_adjustment(self):
+    def waiting_list_adjustment(self) -> "ActivityResampling":
         """Perform the waiting list adjustment.
 
         A value of 1 will indicate that we want to sample this row at the baseline rate. A value
@@ -246,7 +246,7 @@ class ActivityResampling:
 
         return self._update(factor)
 
-    def non_demographic_adjustment(self):
+    def non_demographic_adjustment(self) -> "ActivityResampling":
         """Perform the non-demographic adjustment."""
         if not (params := self.run_params["non-demographic_adjustment"][self._activity_type]):
             return self
@@ -261,7 +261,7 @@ class ActivityResampling:
         factor.index.names = ["ndggrp"]
         return self._update(factor)
 
-    def apply_resampling(self):
+    def apply_resampling(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """Apply the row resampling to the data."""
         # get the random sampling for each row
         rng = self._model_iteration.rng
@@ -272,7 +272,7 @@ class ActivityResampling:
             self._model_iteration.model.baseline_counts * factors.prod(axis=1).to_numpy()
         )
 
-        row_samples = rng.poisson(overall_factor)
+        row_samples: np.ndarray = rng.poisson(overall_factor)  # ty: ignore[invalid-assignment]
 
         step_counts = self._model_iteration.fix_step_counts(
             self.data, row_samples, factors, "model_interaction_term"
