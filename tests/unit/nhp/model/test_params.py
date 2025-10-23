@@ -1,10 +1,6 @@
 """Test params-sample."""
 
-from unittest import mock
 from unittest.mock import mock_open, patch
-
-import jsonschema
-import pytest
 
 from nhp.model.params import load_params, load_sample_params, validate_params
 

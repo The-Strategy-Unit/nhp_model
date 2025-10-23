@@ -1,11 +1,9 @@
 """test docker run."""
 
-import time
 from unittest.mock import Mock, call, mock_open, patch
 
 import pytest
 
-from nhp.docker import config
 from nhp.docker.run import RunWithAzureStorage, RunWithLocalStorage
 
 # RunWithLocalStorage
