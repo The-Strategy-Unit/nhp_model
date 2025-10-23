@@ -475,7 +475,7 @@ class InpatientEfficiencies:
             right_index=True,
         )["losr_f"]
 
-        dont_change_classpat = rng.binomial(1, factor).astype(bool)
+        dont_change_classpat: np.ndarray = rng.binomial(1, factor).astype(bool)  # ty: ignore[possibly-missing-attribute]
         data.loc[i, "speldur"] *= dont_change_classpat
 
         # change the classpat column

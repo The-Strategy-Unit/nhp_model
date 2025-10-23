@@ -2,7 +2,6 @@
 
 import json
 
-import jsonschema
 from importlib_resources import files
 
 from nhp.model import params as params_module
@@ -17,6 +16,9 @@ def validate_params(params: dict) -> None:
     Raises:
         jsonschema.ValidationError: If the parameters are not valid.
     """
+    # lazy load for test collection performance
+    import jsonschema  # noqa: PLC0415
+
     with (
         files(params_module)
         .joinpath("params-schema.json")

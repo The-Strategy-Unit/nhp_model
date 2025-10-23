@@ -5,7 +5,6 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-import scipy.stats as spt
 
 from nhp.model.data import Data, reference
 
@@ -115,6 +114,9 @@ class HealthStatusAdjustment:
         Returns:
             n random number values sampled from the split normal distribution.
         """
+        # lazy import for performance
+        import scipy.stats as spt  # noqa: PLC0415
+
         # get the probability of the mode
         A = sqrt(2 / pi) / (sd1 + sd2)
         a_sqrt_tau = A * sqrt(2 * pi)

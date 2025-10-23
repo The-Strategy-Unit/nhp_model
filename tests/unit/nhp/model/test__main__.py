@@ -1,8 +1,7 @@
 """Test run_model.py."""
 
-from unittest.mock import Mock, call, mock_open, patch
+from unittest.mock import Mock, patch
 
-import pandas as pd
 import pytest
 
 from nhp.model.__main__ import main

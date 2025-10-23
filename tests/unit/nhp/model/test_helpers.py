@@ -1,9 +1,7 @@
 """Test helper methods."""
 
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import Mock
 
-import numpy as np
-import pandas as pd
 import pytest
 
 from nhp.model.helpers import inrange, rnorm
