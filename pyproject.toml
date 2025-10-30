@@ -119,8 +119,13 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.setuptools_scm]
-version_file = "src/nhp/model/_version.py"
+write_to = "src/nhp/model/_version.py"
 fallback_version = "0.0.0"
 
 [tool.ty.src]
 exclude = ["docs"]
+
+[tool.pytest.ini_options]
+testpaths=["tests/unit", "tests/integration"]
+python_files=["test_*.py"]
+norecursedirs=["docs", "*.egg-info", ".git", "appdir", ".tox", "__pycache__"]

@@ -129,7 +129,7 @@ class Model:
         self.data = self._get_data(data_loader).sort_values("rn")
         self.baseline_counts = self.get_data_counts(self.data)
 
-        self.baseline_step_counts = (
+        self._baseline_step_counts = (
             pd.DataFrame(
                 self.baseline_counts.transpose(),
                 columns=self.measures,
@@ -140,6 +140,15 @@ class Model:
             .reset_index()
             .assign(change_factor="baseline", strategy="-")
         )
+
+    @property
+    def baseline_step_counts(self) -> pd.DataFrame:
+        """Get the baseline step counts.
+
+        Returns:
+            The baseline step counts.
+        """
+        return self._baseline_step_counts
 
     def _load_strategies(self, data_loader: Data) -> None:
         """Load a set of strategies."""
@@ -411,7 +420,7 @@ class Model:
         return mr.get_aggregate_results()
 
     @staticmethod
-    def get_agg(results: pd.DataFrame, *args: list[str]) -> pd.Series:
+    def get_agg(results: pd.DataFrame, *args: str) -> pd.Series:
         """Get aggregation from model results.
 
         Args:
@@ -448,6 +457,20 @@ class Model:
 
         Returns:
             The updated data.
+        """
+        raise NotImplementedError()
+
+    def efficiencies(
+        self, data: pd.DataFrame, model_iteration: ModelIteration
+    ) -> tuple[pd.DataFrame, pd.DataFrame | None]:
+        """Run the efficiencies steps of the model.
+
+        Args:
+            data: The data to apply efficiencies to.
+            model_iteration: An instance of the ModelIteration class.
+
+        Returns:
+            Tuple containing the updated data and step counts.
         """
         raise NotImplementedError()
 

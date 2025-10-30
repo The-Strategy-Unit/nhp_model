@@ -18,7 +18,7 @@ from nhp.model.outpatients import OutpatientsModel
 from nhp.model.results import combine_results, generate_results_json, save_results_files
 
 
-class tqdm(base_tqdm):
+class tqdm(base_tqdm):  # ty: ignore[unsupported-base]
     """Custom tqdm class that provides a callback function on update."""
 
     # ideally this would be set in the contstructor, but as this is a pretty

@@ -1,7 +1,6 @@
 """Test inpatient efficiencies."""
 
-from datetime import datetime, timedelta
-from unittest.mock import Mock, call, mock_open, patch
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pandas as pd
