@@ -28,13 +28,20 @@ class RunWithLocalStorage:
         """
         self.params = load_params(f"queue/{filename}")
 
-    def finish(self, results_file: str, saved_files: list, save_full_model_results: bool) -> None:
+    def finish(
+        self,
+        results_file: str,
+        saved_files: list,
+        save_full_model_results: bool,
+        additional_metadata: dict,
+    ) -> None:
         """Post model run steps.
 
         Args:
             results_file: The path to the results file.
             saved_files: Filepaths of results, saved in parquet format and params in json format.
             save_full_model_results: Whether to save the full model results or not.
+            additional_metadata: Additional metadata to log.
         """
 
     def progress_callback(self) -> Callable[[Any], Callable[[Any], None]]:
@@ -204,19 +211,28 @@ class RunWithAzureStorage:
 
         self._queue_blob.delete_blob()
 
-    def finish(self, results_file: str, saved_files: list, save_full_model_results: bool) -> None:
+    def finish(
+        self,
+        results_file: str,
+        saved_files: list,
+        save_full_model_results: bool,
+        additional_metadata: dict,
+    ) -> None:
         """Post model run steps.
 
         Args:
             results_file: The path to the results file.
             saved_files: Filepaths of results, saved in parquet format and params in json format.
             save_full_model_results: Whether to save the full model results or not.
+            additional_metadata: Additional metadata to log.
         """
         metadata = {
             k: str(v)
             for k, v in self.params.items()
             if not isinstance(v, dict) and not isinstance(v, list)
         }
+        metadata.update(additional_metadata)
+
         self._upload_results_json(results_file, metadata)
         self._upload_results_files(saved_files, metadata)
         if save_full_model_results:
