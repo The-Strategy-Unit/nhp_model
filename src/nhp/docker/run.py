@@ -231,7 +231,7 @@ class RunWithAzureStorage:
             for k, v in self.params.items()
             if not isinstance(v, dict) and not isinstance(v, list)
         }
-        metadata.update(additional_metadata)
+        metadata.update({k: str(v) for k, v in additional_metadata.items()})
 
         self._upload_results_json(results_file, metadata)
         self._upload_results_files(saved_files, metadata)
