@@ -1,6 +1,6 @@
 """Test run_model."""
 
-from unittest.mock import Mock, call, patch
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pandas as pd

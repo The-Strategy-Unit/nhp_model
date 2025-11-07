@@ -1,6 +1,6 @@
 """Test outpatients model."""
 
-from unittest.mock import Mock, call, mock_open, patch
+from unittest.mock import Mock, call, patch
 
 import numpy as np
 import pandas as pd

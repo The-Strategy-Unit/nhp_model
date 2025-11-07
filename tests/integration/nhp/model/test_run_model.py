@@ -65,13 +65,13 @@ def test_single_model_run(model_class, expected_aggregations, data_dir):
 def test_all_model_runs(data_dir):
     # arrange
     params = load_sample_params(model_runs=4)
-
     nhp_data = Local.create(data_dir)
+    res_path = "results/synthetic/test/20220101_000000"
+
     # act
     actual = run_all(params, nhp_data)
 
     # assert
-    res_path = "results/synthetic/test/20220101_000000"
     assert actual == (
         [
             f"{res_path}/{i}.parquet"

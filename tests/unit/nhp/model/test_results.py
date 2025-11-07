@@ -3,7 +3,6 @@
 from unittest.mock import Mock, call, mock_open, patch
 
 import pandas as pd
-import pytest
 
 from nhp.model.results import (
     _add_metadata_to_dataframe,

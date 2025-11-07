@@ -2,9 +2,6 @@
 
 from unittest.mock import mock_open, patch
 
-import jsonschema
-import pytest
-
 from nhp.model.params import load_params, load_sample_params, validate_params
 
 
@@ -35,18 +32,14 @@ def test_load_params(mocker):
         m_vp.assert_called_once_with({"params": 0})
 
 
-def test_load_sample_params():
+def test_load_sample_params(mocker):
     # arrange
+    m_validate = mocker.patch("nhp.model.params.validate_params")
+
     # act
     actual = load_sample_params(dataset="dev", scenario="unit-test")
 
     # assert
     assert actual["dataset"] == "dev"
     assert actual["scenario"] == "unit-test"
-
-
-def test_load_sample_params_validation_fails():
-    # arrange
-    # act
-    with pytest.raises(jsonschema.ValidationError):
-        load_sample_params(demographic_factors="invalid-factor")
+    m_validate.assert_called_once_with(actual)
