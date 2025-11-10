@@ -1,5 +1,6 @@
 """test docker run."""
 
+from datetime import datetime
 from unittest.mock import Mock, patch
 
 import pytest
@@ -43,6 +44,11 @@ def test_main_local(mocker):
     m().local_storage = True
     m().save_full_model_results = False
 
+    m_start_time = datetime(2025, 1, 1, 12, 0, 0)
+    m_end_time = datetime(2025, 1, 1, 12, 0, 2)
+    m_datetime = mocker.patch("nhp.docker.__main__.datetime")
+    m_datetime.now.side_effect = [m_start_time, m_end_time]
+
     rwls = mocker.patch("nhp.docker.__main__.RunWithLocalStorage")
     rwas = mocker.patch("nhp.docker.__main__.RunWithAzureStorage")
 
@@ -63,6 +69,12 @@ def test_main_local(mocker):
         "nhp.docker.__main__.run_all", return_value=("list_of_results", "results.json")
     )
 
+    expected_additional_metadata = {
+        "model_run_start_time": m_start_time.isoformat(),
+        "model_run_end_time": m_end_time.isoformat(),
+        "model_run_elapsed_time_seconds": 2.0,
+    }
+
     # act
     main()
 
@@ -72,7 +84,9 @@ def test_main_local(mocker):
 
     s = rwls()
     ru_m.assert_called_once_with(params, "data", s.progress_callback(), False)
-    s.finish.assert_called_once_with("results.json", "list_of_results", False)
+    s.finish.assert_called_once_with(
+        "results.json", "list_of_results", False, expected_additional_metadata
+    )
 
     local_data_mock.create.assert_called_once_with("data")
 
@@ -83,6 +97,11 @@ def test_main_azure(mocker):
     m().params_file = "params.json"
     m().local_storage = False
     m().save_full_model_results = False
+
+    m_start_time = datetime(2025, 1, 1, 12, 0, 0)
+    m_end_time = datetime(2025, 1, 1, 12, 0, 2)
+    m_datetime = mocker.patch("nhp.docker.__main__.datetime")
+    m_datetime.now.side_effect = [m_start_time, m_end_time]
 
     rwls = mocker.patch("nhp.docker.__main__.RunWithLocalStorage")
     rwas = mocker.patch("nhp.docker.__main__.RunWithAzureStorage")
@@ -109,6 +128,12 @@ def test_main_azure(mocker):
         "nhp.docker.__main__.run_all", return_value=("list_of_results", "results.json")
     )
 
+    expected_additional_metadata = {
+        "model_run_start_time": m_start_time.isoformat(),
+        "model_run_end_time": m_end_time.isoformat(),
+        "model_run_elapsed_time_seconds": 2.0,
+    }
+
     # act
     main(config)
 
@@ -118,7 +143,9 @@ def test_main_azure(mocker):
 
     s = rwas()
     ru_m.assert_called_once_with(params, "data", s.progress_callback(), False)
-    s.finish.assert_called_once_with("results.json", "list_of_results", False)
+    s.finish.assert_called_once_with(
+        "results.json", "list_of_results", False, expected_additional_metadata
+    )
 
     local_data_mock.create.assert_called_once_with("data")
 

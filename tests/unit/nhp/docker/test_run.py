@@ -28,7 +28,7 @@ def test_RunWithLocalStorage_finish(mocker):
     s = RunWithLocalStorage("filename")
 
     # act
-    s.finish("results", ["saved_files"], False)
+    s.finish("results", ["saved_files"], False, {})
 
     # assert (nothing to assert)
 
@@ -317,12 +317,17 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
 
     s.params = params
 
+    additional_metadata = {"elapsed_time_seconds": "3600"}
+
+    metadata_expected = metadata.copy()
+    metadata_expected.update(additional_metadata)
+
     # act
-    s.finish("results_file", ["saved_files"], False)
+    s.finish("results_file", ["saved_files"], False, additional_metadata)
 
     # assert
-    m1.assert_called_once_with("results_file", metadata)
-    m2.assert_called_once_with(["saved_files"], metadata)
+    m1.assert_called_once_with("results_file", metadata_expected)
+    m2.assert_called_once_with(["saved_files"], metadata_expected)
     m3.assert_not_called()
     m4.assert_called_once()
 
@@ -344,12 +349,17 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
 
     s.params = params
 
+    additional_metadata = {"elapsed_time_seconds": "3600"}
+
+    metadata_expected = metadata.copy()
+    metadata_expected.update(additional_metadata)
+
     # act
-    s.finish("results_file", ["saved_files"], True)
+    s.finish("results_file", ["saved_files"], True, additional_metadata)
 
     # assert
-    m1.assert_called_once_with("results_file", metadata)
-    m2.assert_called_once_with(["saved_files"], metadata)
+    m1.assert_called_once_with("results_file", metadata_expected)
+    m2.assert_called_once_with(["saved_files"], metadata_expected)
     m3.assert_called_once()
     m4.assert_called_once()
 

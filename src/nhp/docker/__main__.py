@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+from datetime import datetime
 
 from nhp.docker.config import Config
 from nhp.docker.run import RunWithAzureStorage, RunWithLocalStorage
@@ -51,6 +52,8 @@ def main(config: Config = Config()):
     logging.info("end_year:     %s", runner.params["end_year"])
     logging.info("app_version:  %s", runner.params["app_version"])
 
+    start_time = datetime.now()
+
     saved_files, results_file = run_all(
         runner.params,
         Local.create("data"),
@@ -58,7 +61,16 @@ def main(config: Config = Config()):
         args.save_full_model_results,
     )
 
-    runner.finish(results_file, saved_files, args.save_full_model_results)
+    end_time = datetime.now()
+    elapsed_time = end_time - start_time
+
+    additional_metadata = {
+        "model_run_start_time": start_time.isoformat(),
+        "model_run_end_time": end_time.isoformat(),
+        "model_run_elapsed_time_seconds": elapsed_time.total_seconds(),
+    }
+
+    runner.finish(results_file, saved_files, args.save_full_model_results, additional_metadata)
 
     logging.info("complete")
 
