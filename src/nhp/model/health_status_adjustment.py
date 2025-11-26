@@ -71,6 +71,9 @@ class HealthStatusAdjustment:
         hsa_snp = reference.split_normal_params().set_index(["var", "sex", "year"])
 
         def gen(variant, sex):
+            mode: float
+            sd1: float
+            sd2: float
             mode, sd1, sd2 = hsa_snp.loc[(variant, sex, end_year)]  # type: ignore
 
             return np.concatenate(

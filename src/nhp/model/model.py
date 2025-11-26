@@ -133,7 +133,7 @@ class Model:
             pd.DataFrame(
                 self.baseline_counts.transpose(),
                 columns=self.measures,
-                index=pd.MultiIndex.from_frame(self.data[["pod", "sitetret"]]),
+                index=pd.MultiIndex.from_frame(self.data[["pod", "sitetret"]]),  # ty: ignore[invalid-argument-type]
             )
             .groupby(level=[0, 1])
             .sum()
@@ -430,7 +430,7 @@ class Model:
         Returns:
             Aggregated results.
         """
-        return results.groupby(["pod", "sitetret", *args, "measure"])["value"].sum()
+        return results.groupby(["pod", "sitetret", *args, "measure"])["value"].sum()  # ty: ignore[no-matching-overload]
 
     def save_results(self, model_iteration: ModelIteration, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model.

@@ -133,7 +133,7 @@ class OutpatientsModel(Model):
                     "tele_attendances": tele_conversion,
                 }
             )
-            .groupby(["pod", "sitetret", "change_factor", "strategy"], as_index=False)
+            .groupby(["pod", "sitetret", "change_factor", "strategy"], as_index=False)  # ty: ignore[no-matching-overload]
             .sum()
             .query("attendances<0")
         )
@@ -202,26 +202,28 @@ class OutpatientsModel(Model):
             Processed results.
         """
         measures = data.melt(["rn"], ["attendances", "tele_attendances"], "measure")
+
+        # note: any columns used in the calls to _create_agg, including pod and measure
+        # must be included below
+        agg_cols = [
+            "pod",
+            "sitetret",
+            "measure",
+            "sex",
+            "age_group",
+            "age",
+            "tretspef",
+            "tretspef_grouped",
+        ]
         data = (
             data.drop(["attendances", "tele_attendances"], axis="columns")
             .merge(measures, on="rn")
             # summarise the results to make the create_agg steps quicker
             .groupby(
-                # note: any columns used in the calls to _create_agg, including pod and measure
-                # must be included below
-                [
-                    "pod",
-                    "sitetret",
-                    "measure",
-                    "sex",
-                    "age_group",
-                    "age",
-                    "tretspef",
-                    "tretspef_grouped",
-                ],
+                agg_cols,
                 dropna=False,
                 as_index=False,
-            )
+            )  # ty: ignore[no-matching-overload]
             .agg({"value": "sum"})
             .fillna("unknown")
         )
