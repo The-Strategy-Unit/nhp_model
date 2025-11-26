@@ -137,7 +137,7 @@ class AaEModel(Model):
 
         # summarise the results to make the create_agg steps quicker
         data = (
-            data.groupby(
+            data.groupby(  # ty: ignore[no-matching-overload]
                 # note: any columns used in the calls to _create_agg, including pod and measure
                 # must be included below
                 [

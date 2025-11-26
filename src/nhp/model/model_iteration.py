@@ -139,7 +139,7 @@ class ModelIteration:
         diff = future - (before + param_simple_effects.sum(axis=0))
         # convert the 3d numpy array back to a pandas dataframe aggregated by the columns we are
         # interested in
-        idx = pd.MultiIndex.from_frame(data[["pod", "sitetret"]])
+        idx = pd.MultiIndex.from_frame(data[["pod", "sitetret"]])  # ty: ignore[invalid-argument-type]
         return pd.concat(
             [
                 pd.DataFrame(v.transpose(), columns=self.model.measures, index=idx)

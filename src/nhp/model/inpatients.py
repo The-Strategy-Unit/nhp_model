@@ -4,7 +4,7 @@ Implements the inpatients model.
 """
 
 from collections import defaultdict
-from typing import Any, Callable, Self, Tuple
+from typing import Any, Callable, Self, cast
 
 import numpy as np
 import pandas as pd
@@ -68,9 +68,8 @@ class InpatientsModel(Model):
             # get the valid set of valid strategies from the params
             valid_strats = self.params[strategy_type]["ip"].keys()
             # subset the strategies
-            return strats[strats.iloc[:, 0].isin(valid_strats)].rename(
-                columns={strats.columns[0]: "strategy"}
-            )
+            strats_subset = strats.loc[strats.iloc[:, 0].isin(valid_strats)]
+            return strats_subset.rename({strats.columns[0]: "strategy"}, axis="columns")  # ty: ignore[]
 
         def append_general_los(i, j):
             j = f"general_los_reduction_{j}"
@@ -133,7 +132,8 @@ class InpatientsModel(Model):
         Returns:
             The updated data.
         """
-        return data.loc[data.index.repeat(row_samples[0])].reset_index(drop=True)
+        res = data.loc[data.index.repeat(row_samples[0])].reset_index(drop=True)
+        return cast(pd.DataFrame, res)
 
     def efficiencies(
         self, data: pd.DataFrame, model_iteration: ModelIteration
@@ -190,7 +190,19 @@ class InpatientsModel(Model):
             },
         )
 
-        data = (
+        agg_cols = [
+            "sitetret",
+            "age",
+            "age_group",
+            "sex",
+            "pod",
+            "tretspef",
+            "tretspef_grouped",
+            "los_group",
+            "maternity_delivery_in_spell",
+        ]
+        data = cast(
+            pd.DataFrame,
             data.assign(
                 los_group=lambda x: x["speldur"].map(los_groups),
                 admissions=1,
@@ -198,20 +210,10 @@ class InpatientsModel(Model):
                 procedures=lambda x: x["has_procedure"],
             )
             .groupby(
-                [
-                    "sitetret",
-                    "age",
-                    "age_group",
-                    "sex",
-                    "pod",
-                    "tretspef",
-                    "tretspef_grouped",
-                    "los_group",
-                    "maternity_delivery_in_spell",
-                ],
+                agg_cols,
                 dropna=False,
-            )[["admissions", "beddays", "procedures"]]
-            .sum()
+            )[["admissions", "beddays", "procedures"]]  # ty: ignore[no-matching-overload]
+            .sum(),
         )
         # handle any outpatients/sdec rows
         data.loc[
@@ -236,9 +238,8 @@ class InpatientsModel(Model):
         data.loc[sdec_ix, "los_group"] = None
 
         # reduce any duplicated rows
-        data = data.groupby(
-            data.drop(columns="value").columns.tolist(), as_index=False, dropna=False
-        ).sum()
+        agg_cols = data.drop(columns="value").columns.tolist()
+        data = data.groupby(agg_cols, as_index=False, dropna=False).sum()  # ty: ignore[no-matching-overload]
 
         return data
 
@@ -307,7 +308,7 @@ class InpatientsModel(Model):
         ix = model_results["classpat"] == "-1"
         return (
             model_results[ix]
-            .groupby(["age", "age_group", "sex", "tretspef", "tretspef_grouped", "sitetret"])
+            .groupby(["age", "age_group", "sex", "tretspef", "tretspef_grouped", "sitetret"])  # ty: ignore[no-matching-overload]
             .size()
             .to_frame("attendances")
             .assign(tele_attendances=0)
@@ -318,7 +319,7 @@ class InpatientsModel(Model):
         ix = model_results["classpat"] == "-3"
         return (
             model_results[ix]
-            .groupby(["age", "age_group", "sex", "sitetret"])
+            .groupby(["age", "age_group", "sex", "sitetret"])  # ty: ignore[no-matching-overload]
             .size()
             .to_frame("arrivals")
             .assign(

@@ -137,7 +137,7 @@ def generate_results_json(
     dict_results = {k: agg_to_dict(v) for k, v in combined_results.items()}
 
     dict_results["step_counts"] = (
-        combined_step_counts.groupby(
+        combined_step_counts.groupby(  # ty: ignore[no-matching-overload]
             [
                 "pod",
                 "change_factor",
@@ -260,7 +260,7 @@ def _patch_converted_sdec_activity(
                 default_sdec,
                 (
                     results_df.query("pod == 'aae_type-05'")
-                    .groupby(agg_cols)["value"]
+                    .groupby(agg_cols)["value"]  # ty: ignore[no-matching-overload]
                     .sum()
                     .rename("a")
                 ),
@@ -279,7 +279,7 @@ def _patch_converted_sdec_activity(
         .groupby(
             ["pod", "sitetret", "measure", column, "model_run"],
             as_index=False,
-        )
+        )  # ty: ignore[no-matching-overload]
         .sum()
     )
 
