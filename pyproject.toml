@@ -13,6 +13,7 @@ dependencies = [
     "jsonschema>=4.23.0",
     "numpy>=1.23",
     "pandas>=1.5",
+    "pandas-flavor<0.8",
     "pyarrow>=20.0",
     "pyjanitor>=0.23",
     "python-dotenv>=1.0",
