@@ -22,7 +22,7 @@ The methodology underpinning this model is outlined in this [simple one page exp
 
 ### For external users
 
-Although all the code is available openly, it is virtually impossible to run the model if you do not have access to the data and infrastructure at the Strategy Unit.
+Although all the code is available openly, it is challenging to run the model if you do not have access to the data and infrastructure at the Strategy Unit.
 
 We use national [Hospital Episode Statistics](https://digital.nhs.uk/services/data-access-request-service-dars/dars-products-and-services/data-set-catalogue/hospital-episode-statistics) data which goes through extensive processing, as detailed in the [nhp_data repository](https://github.com/The-Strategy-Unit/nhp_data).
 Some of the types of potentially mitigable activity rely on having access to the full national dataset, not just a local dataset.
