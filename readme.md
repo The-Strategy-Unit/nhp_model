@@ -10,7 +10,7 @@ developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.re
 
 ## Welcome
 
-Welcome to the [New Hospital Programme demand and capacity modelling tool](https://www.strategyunitwm.nhs.uk/new-hospital-programme-demand-model). 
+Welcome to the [New Hospital Programme demand and capacity modelling tool](https://www.strategyunitwm.nhs.uk/new-hospital-programme-demand-model).
 
 <img width="2000" height="1414" alt="Smarter Hospital Planning" src="https://www.strategyunitwm.nhs.uk/sites/default/files/styles/banner/public/Nationally%20consistent%20approach.png"/>
 
@@ -20,9 +20,21 @@ The methodology underpinning this model is outlined in this [simple one page exp
 
 ## Running the model
 
-Please note that it is important that the parameters of the model are set with great care and with proper support. It is important also that healthcare system partners are appropriately involved in parameter setting. For a description of the full process and support provision that is necessary to ensure the model functions well please see the [NHS Futures workspace](https://future.nhs.uk/NewHospitalProgrammeDigital/browseFolder?fid=53572528&done=OBJChangesSaved) 
+### For external users
+
+Although all the code is available openly, it is challenging to run the model if you do not have access to the data and infrastructure at the Strategy Unit.
+
+We use national [Hospital Episode Statistics](https://digital.nhs.uk/services/data-access-request-service-dars/dars-products-and-services/data-set-catalogue/hospital-episode-statistics) data which goes through extensive processing, as detailed in the [nhp_data repository](https://github.com/The-Strategy-Unit/nhp_data).
+Some of the types of potentially mitigable activity rely on having access to the full national dataset, not just a local dataset.
+Without this data and infrastructure, your data will not be correctly formatted to run in the model.
 
 [We are working on providing synthetic data](https://github.com/The-Strategy-Unit/nhp_model/issues/347) so that interested parties can run the model locally to see how it works.
+
+Prospective users of the model should [contact the Strategy Unit](mailto:strategy.unit@nhs.net) to enquire about using the model on our existing infrastructure.
+
+Please note that it is important that the parameters of the model are set with great care and with proper support. It is important also that healthcare system partners are appropriately involved in parameter setting. For a description of the full process and support provision that is necessary to ensure the model functions well please see the [NHS Futures workspace](https://future.nhs.uk/NewHospitalProgrammeDigital/browseFolder?fid=53572528&done=OBJChangesSaved)
+
+### For internal users with full access to correctly formatted data
 
 Assuming you have your data in the correct format, store it in the `data` folder. [Further details on the correct formatting for the data to follow](https://github.com/The-Strategy-Unit/nhp_model/issues/419).
 
@@ -44,5 +56,6 @@ The model is deployed to Azure Container Registry and GitHub Container Registry 
 ## JSON Schema
 
 Parameters for the model are set in JSON format; an example can be seen in `src/nhp/model/params/params-sample.json`. As the model develops, requirements for this JSON file change over time. We use [JSON schema](https://json-schema.org/understanding-json-schema/about) to manage changes to the parameters file. From model v3.5 onwards, these are deployed to GitHub pages, following this pattern:
+
 - on merge to `main`, the schema is deployed to `https://the-strategy-unit.github.io/nhp_model/dev/params-schema.json`
 - on release of new model version vX.X, the schema is deployed to `https://the-strategy-unit.github.io/nhp_model/vX.X/params-schema.json`
