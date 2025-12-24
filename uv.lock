@@ -1695,7 +1695,6 @@ dependencies = [
     { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "pandas" },
-    { name = "pandas-flavor" },
     { name = "pandas-stubs" },
     { name = "pyarrow" },
     { name = "pyjanitor" },
@@ -1770,11 +1769,10 @@ requires-dist = [
     { name = "notebook", marker = "extra == 'dev'", specifier = ">=6.5" },
     { name = "numpy", specifier = ">=1.23" },
     { name = "pandas", specifier = ">=1.5" },
-    { name = "pandas-flavor", specifier = "<0.8" },
     { name = "pandas-stubs", specifier = ">=2.3.2.250926" },
     { name = "pyarrow", specifier = ">=20.0" },
     { name = "pygam", marker = "extra == 'dev'", specifier = ">=0.8" },
-    { name = "pyjanitor", specifier = ">=0.23" },
+    { name = "pyjanitor", specifier = ">=0.32.2" },
     { name = "pyspark", marker = "extra == 'databricks'" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.2" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0" },
@@ -1977,15 +1975,15 @@ wheels = [
 
 [[package]]
 name = "pandas-flavor"
-version = "0.7.0"
+version = "0.8.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pandas" },
     { name = "xarray" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f4/f3/be418c6244854bf66e3ec08c996a4b2b666536f2d09c1b9f2de8dd0eff73/pandas_flavor-0.7.0.tar.gz", hash = "sha256:617bf9f96902017afc9bd284f611592bce91806d3c7ae34ad64f6edab3edaf7e", size = 11057, upload-time = "2025-04-11T04:00:12.388Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/86/60/901bacfcc4e67499e37198ad199fb7c113b06814148f7f4822816467a925/pandas_flavor-0.8.1.tar.gz", hash = "sha256:255fa5851833ee0132c4fdd6c1565ec1e938a8c2671c37e408006da6b2bdc366", size = 98266, upload-time = "2025-11-22T11:03:11.209Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5d/e6/71ed4d95676098159b533c4a4c424cf453fec9614edaff1a0633fe228eef/pandas_flavor-0.7.0-py3-none-any.whl", hash = "sha256:7ee81e834b111e424679776f49c51abcffec88203b3ff0df2c9cb75550e06b1a", size = 8375, upload-time = "2025-04-11T04:00:11.182Z" },
+    { url = "https://files.pythonhosted.org/packages/30/04/b57109ac39c90054ca8239daa61f619042b73406309c33df06d3b73a48a7/pandas_flavor-0.8.1-py3-none-any.whl", hash = "sha256:6a74c48a7014e27117a164b687c23ca9f7da46c5b198a516ab4ebaa22435292b", size = 8528, upload-time = "2025-11-22T11:03:10.368Z" },
 ]
 
 [[package]]
@@ -2326,7 +2324,7 @@ wheels = [
 
 [[package]]
 name = "pyjanitor"
-version = "0.31.0"
+version = "0.32.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "multipledispatch" },
@@ -2334,9 +2332,9 @@ dependencies = [
     { name = "pandas-flavor" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/00/f1/37304e2eab81d532ca8931595cd5acb55be5d44b246123acb995d42ba102/pyjanitor-0.31.0.tar.gz", hash = "sha256:50307d1117e6cd812953e2200a72db4bd91ec1fd3d8c5b99a16d5a6db2311a27", size = 215005, upload-time = "2025-03-07T00:16:24.993Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/84/8b/9dc0fe0ba1173772225dedc16d5fad455f40c30bd56dce40314bbb425405/pyjanitor-0.32.4.tar.gz", hash = "sha256:083156df4579b8f6782212fa6a00de57ee83e68cfa963a5594277b68fdd85bc8", size = 225724, upload-time = "2025-12-23T20:08:15.56Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/38/b5/0f79360a302b14a76ec5649403325fbe66580514b7a8f94d34aa6598c04c/pyjanitor-0.31.0-py3-none-any.whl", hash = "sha256:c8c5888e6b4d30854c9d302348ff6816091c749c7d2ee160c96064dfff611850", size = 215419, upload-time = "2025-03-07T00:16:23.113Z" },
+    { url = "https://files.pythonhosted.org/packages/6e/c1/0e7def0bf2a1cddc49c03d605398dbff9e03da37ccc18fb3795f3c879c27/pyjanitor-0.32.4-py3-none-any.whl", hash = "sha256:14b81ef701ae401b209036714babb203c3c309332a8f5fd7a3278aa5ce12700d", size = 220547, upload-time = "2025-12-23T20:08:16.942Z" },
 ]
 
 [[package]]
