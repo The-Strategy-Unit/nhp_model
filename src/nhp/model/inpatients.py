@@ -502,7 +502,8 @@ class InpatientEfficiencies:
                     x["speldur"]
                     - self.speldur_before
                     # any admissions that are converted to outpatients will reduce 1 bedday per
-                    # admission this column is negative values, so we need to add in order to subtract
+                    # admission this column is negative values,
+                    # so we need to add in order to subtract
                     + x["admissions"]
                 )
             )
