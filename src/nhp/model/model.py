@@ -496,7 +496,8 @@ class Model:
 
         return {**base_aggregations, **self.specific_aggregations(model_results)}
 
-    def process_results(self, data: pd.DataFrame) -> pd.DataFrame:
+    @staticmethod
+    def process_results(data: pd.DataFrame) -> pd.DataFrame:
         """Process the data into a format suitable for aggregation in results files.
 
         Args:
