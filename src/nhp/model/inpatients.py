@@ -498,11 +498,13 @@ class InpatientEfficiencies:
             # handle the changes of activity type
             .assign(admissions=lambda x: np.where(x["classpat"].isin(["-1", "-2", "-3"]), -1, 0))
             .assign(
-                beddays=lambda x: x["speldur"]
-                - self.speldur_before
-                # any admissions that are converted to outpatients will reduce 1 bedday per
-                # admission this column is negative values, so we need to add in order to subtract
-                + x["admissions"]
+                beddays=lambda x: (
+                    x["speldur"]
+                    - self.speldur_before
+                    # any admissions that are converted to outpatients will reduce 1 bedday per
+                    # admission this column is negative values, so we need to add in order to subtract
+                    + x["admissions"]
+                )
             )
             .loc[self.data.index.notna()]
             .reset_index()
