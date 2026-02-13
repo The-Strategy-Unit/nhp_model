@@ -111,7 +111,7 @@ class ActivityResampling:
         )
 
         groups = set(self.data["group"]) - {"maternity"}
-        factor: pd.Series = pd.concat({i: factor for i in groups})  # type: ignore
+        factor: pd.Series = pd.concat({i: factor for i in groups})
         factor.index.names = ["group", *factor.index.names[1:]]
 
         return self._update(factor)
@@ -163,7 +163,7 @@ class ActivityResampling:
             "factor"
         ]
 
-        factor: pd.Series = pd.concat({factor_key: factor}, names=["group"])  # type: ignore
+        factor: pd.Series = pd.concat({factor_key: factor}, names=["group"])
         factor.name = "inequalities"
         return self._update(factor)
 
@@ -177,9 +177,7 @@ class ActivityResampling:
         if not params:
             return self
 
-        factor: pd.Series = pd.concat(  # type: ignore
-            {k: pd.Series(v, name="expat") for k, v in params.items()}
-        )
+        factor: pd.Series = pd.concat({k: pd.Series(v, name="expat") for k, v in params.items()})
         factor.index.names = ["group", "tretspef_grouped"]
         return self._update(factor)
 
@@ -197,7 +195,7 @@ class ActivityResampling:
         if not params:
             return self
 
-        factor: pd.Series = pd.concat(params)  # type: ignore
+        factor: pd.Series = pd.concat(params)
         factor.index.names = ["is_main_icb", "group", "tretspef_grouped"]
         return self._update(factor)
 
@@ -212,7 +210,7 @@ class ActivityResampling:
         if not (params := self.run_params["baseline_adjustment"][self._activity_type]):
             return self
 
-        factor: pd.Series = pd.concat(  # type: ignore
+        factor: pd.Series = pd.concat(
             {
                 k: pd.Series(v, name="baseline_adjustment", dtype="float64")
                 for k, v in params.items()
@@ -272,7 +270,7 @@ class ActivityResampling:
             self._model_iteration.model.baseline_counts * factors.prod(axis=1).to_numpy()
         )
 
-        row_samples: np.ndarray = rng.poisson(overall_factor)  # ty: ignore[invalid-assignment]
+        row_samples: np.ndarray = rng.poisson(overall_factor)
 
         step_counts = self._model_iteration.fix_step_counts(
             self.data, row_samples, factors, "model_interaction_term"
