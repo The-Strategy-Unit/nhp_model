@@ -1,0 +1,26 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: The New Hospital Programme Demand Model
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - name: The Strategy Unit
+    email: strategy.unit@nhs.net
+    website: 'https://www.strategyunitwm.nhs.uk/'
+identifiers:
+  - type: url
+    value: 'https://github.com/The-Strategy-Unit/nhp_model'
+    description: GitHub repository for the model code
+repository-code: 'https://github.com/The-Strategy-Unit/nhp_model'
+url: >-
+  https://connect.strategyunitwm.nhs.uk/nhp/project_information/
+abstract: >-
+  A nationally consistent demand model using Monte Carlo
+  simulation to forecast future demand for healthcare
+keywords:
+  - nhs
+license: MIT

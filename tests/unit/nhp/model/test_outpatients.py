@@ -288,7 +288,7 @@ def test_specific_aggregations(mocker, mock_model):
     mdl = mock_model
 
     # act
-    actual = mdl.specific_aggregations("results")  # type: ignore
+    actual = mdl.specific_aggregations("results")
 
     # assert
     assert actual == {

@@ -408,7 +408,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
 
     def get_next_n(*args):
         nonlocal n
-        n += 1  # type: ignore
+        n += 1
         return n
 
     rng = Mock()

@@ -69,7 +69,7 @@ class InpatientsModel(Model):
             valid_strats = self.params[strategy_type]["ip"].keys()
             # subset the strategies
             strats_subset = strats.loc[strats.iloc[:, 0].isin(valid_strats)]
-            return strats_subset.rename({strats.columns[0]: "strategy"}, axis="columns")  # ty: ignore[]
+            return strats_subset.rename({strats.columns[0]: "strategy"}, axis="columns")
 
         def append_general_los(i, j):
             j = f"general_los_reduction_{j}"
@@ -103,7 +103,7 @@ class InpatientsModel(Model):
             [self.strategies["efficiencies"]]
             + [
                 # see https://github.com/astral-sh/ty/issues/247
-                append_general_los(*x)  # ty: ignore [missing-argument]
+                append_general_los(*x)
                 for x in [("1", "elective"), ("2", "emergency")]
             ]
         )
@@ -201,8 +201,7 @@ class InpatientsModel(Model):
             "los_group",
             "maternity_delivery_in_spell",
         ]
-        data = cast(
-            pd.DataFrame,
+        data = (
             data.assign(
                 los_group=lambda x: x["speldur"].map(los_groups),
                 admissions=1,
@@ -212,8 +211,8 @@ class InpatientsModel(Model):
             .groupby(
                 agg_cols,
                 dropna=False,
-            )[["admissions", "beddays", "procedures"]]  # ty: ignore[no-matching-overload]
-            .sum(),
+            )[["admissions", "beddays", "procedures"]]
+            .sum()
         )
         # handle any outpatients/sdec rows
         data.loc[
@@ -239,7 +238,7 @@ class InpatientsModel(Model):
 
         # reduce any duplicated rows
         agg_cols = data.drop(columns="value").columns.tolist()
-        data = data.groupby(agg_cols, as_index=False, dropna=False).sum()  # ty: ignore[no-matching-overload]
+        data = data.groupby(agg_cols, as_index=False, dropna=False).sum()
 
         return data
 
@@ -308,7 +307,7 @@ class InpatientsModel(Model):
         ix = model_results["classpat"] == "-1"
         return (
             model_results[ix]
-            .groupby(["age", "age_group", "sex", "tretspef", "tretspef_grouped", "sitetret"])  # ty: ignore[no-matching-overload]
+            .groupby(["age", "age_group", "sex", "tretspef", "tretspef_grouped", "sitetret"])
             .size()
             .to_frame("attendances")
             .assign(tele_attendances=0)
@@ -319,7 +318,7 @@ class InpatientsModel(Model):
         ix = model_results["classpat"] == "-3"
         return (
             model_results[ix]
-            .groupby(["age", "age_group", "sex", "sitetret"])  # ty: ignore[no-matching-overload]
+            .groupby(["age", "age_group", "sex", "sitetret"])
             .size()
             .to_frame("arrivals")
             .assign(
@@ -476,7 +475,7 @@ class InpatientEfficiencies:
             right_index=True,
         )["losr_f"]
 
-        dont_change_classpat: np.ndarray = rng.binomial(1, factor).astype(bool)  # ty: ignore[possibly-missing-attribute]
+        dont_change_classpat: np.ndarray = rng.binomial(1, factor).astype(bool)
         data.loc[i, "speldur"] *= dont_change_classpat
 
         # change the classpat column
@@ -498,11 +497,14 @@ class InpatientEfficiencies:
             # handle the changes of activity type
             .assign(admissions=lambda x: np.where(x["classpat"].isin(["-1", "-2", "-3"]), -1, 0))
             .assign(
-                beddays=lambda x: x["speldur"]
-                - self.speldur_before
-                # any admissions that are converted to outpatients will reduce 1 bedday per
-                # admission this column is negative values, so we need to add in order to subtract
-                + x["admissions"]
+                beddays=lambda x: (
+                    x["speldur"]
+                    - self.speldur_before
+                    # any admissions that are converted to outpatients will reduce 1 bedday per
+                    # admission this column is negative values,
+                    # so we need to add in order to subtract
+                    + x["admissions"]
+                )
             )
             .loc[self.data.index.notna()]
             .reset_index()

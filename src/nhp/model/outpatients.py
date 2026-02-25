@@ -81,7 +81,7 @@ class OutpatientsModel(Model):
                 + data[data["is_gp_ref"] & data["is_first"]]["type"],
             ]
         )
-        efficiencies: pd.Series = pd.concat(  # type: ignore
+        efficiencies: pd.Series = pd.concat(
             ["convert_to_tele_" + data[~data["has_procedures"]]["type"]]
         )
 
@@ -133,7 +133,7 @@ class OutpatientsModel(Model):
                     "tele_attendances": tele_conversion,
                 }
             )
-            .groupby(["pod", "sitetret", "change_factor", "strategy"], as_index=False)  # ty: ignore[no-matching-overload]
+            .groupby(["pod", "sitetret", "change_factor", "strategy"], as_index=False)
             .sum()
             .query("attendances<0")
         )
@@ -223,7 +223,7 @@ class OutpatientsModel(Model):
                 agg_cols,
                 dropna=False,
                 as_index=False,
-            )  # ty: ignore[no-matching-overload]
+            )
             .agg({"value": "sum"})
             .fillna("unknown")
         )

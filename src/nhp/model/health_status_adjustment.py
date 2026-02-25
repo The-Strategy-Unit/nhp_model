@@ -152,7 +152,7 @@ class HealthStatusAdjustment:
         if cache_key in self._cache:
             return self._cache[cache_key]
 
-        lexc = self._life_expectancy.loc[(selected_variant, slice(None), slice(None))][  # type: ignore
+        lexc = self._life_expectancy.loc[(selected_variant, slice(None), slice(None))][
             str(run_params["year"])
         ]
         hsa_param = np.repeat(hsa_param, len(self._ages))
