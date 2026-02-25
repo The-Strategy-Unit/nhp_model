@@ -139,7 +139,7 @@ class ModelIteration:
         diff = future - (before + param_simple_effects.sum(axis=0))
         # convert the 3d numpy array back to a pandas dataframe aggregated by the columns we are
         # interested in
-        idx = pd.MultiIndex.from_frame(data[["pod", "sitetret"]])  # ty: ignore[invalid-argument-type]
+        idx = pd.MultiIndex.from_frame(data[["pod", "sitetret"]])
         return pd.concat(
             [
                 pd.DataFrame(v.transpose(), columns=self.model.measures, index=idx)
@@ -208,7 +208,7 @@ class ModelIteration:
                 self._step_counts_get_type_change_outpatients(step_counts),
                 self._step_counts_get_type_change_sdec(step_counts),
             ]
-        )  # type: ignore
+        )
 
     def _step_counts_get_type_change_daycase(self, step_counts):
         # get the daycase conversion values

@@ -100,7 +100,7 @@ def test_combine_model_results(mocker):
     cmr_mock = mocker.patch("nhp.model.results._complete_model_runs", return_value="cmr")
 
     # act
-    actual = _combine_model_results(results)  # type: ignore
+    actual = _combine_model_results(results)
 
     # assert
     assert actual == {"default": "cmr", "other": "cmr"}
@@ -146,7 +146,7 @@ def test_combine_step_counts(mocker):
     actual = _combine_step_counts(results)
 
     # assert
-    assert actual == "cmr"  # type: ignore
+    assert actual == "cmr"
     assert all(i.to_dict("list") == expected for i in cmr_mock.call_args[0][0])
     assert cmr_mock.call_args[0][1] == 1
     assert cmr_mock.call_args[1] == {"include_baseline": False}

@@ -133,7 +133,7 @@ class Model:
             pd.DataFrame(
                 self.baseline_counts.transpose(),
                 columns=self.measures,
-                index=pd.MultiIndex.from_frame(self.data[["pod", "sitetret"]]),  # ty: ignore[invalid-argument-type]
+                index=pd.MultiIndex.from_frame(self.data[["pod", "sitetret"]]),
             )
             .groupby(level=[0, 1])
             .sum()
@@ -342,7 +342,7 @@ class Model:
         strategies = self.strategies["activity_avoidance"]
         # decide whether to sample a strategy for each row this model run
         strategies = strategies.loc[
-            rng.binomial(1, strategies["sample_rate"]).astype("bool"), "strategy"  # type: ignore
+            rng.binomial(1, strategies["sample_rate"]).astype("bool"), "strategy"
         ]
         # join the parameters, then pivot wider
         strategies = (
@@ -430,7 +430,7 @@ class Model:
         Returns:
             Aggregated results.
         """
-        return results.groupby(["pod", "sitetret", *args, "measure"])["value"].sum()  # ty: ignore[no-matching-overload]
+        return results.groupby(["pod", "sitetret", *args, "measure"])["value"].sum()
 
     def save_results(self, model_iteration: ModelIteration, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model.

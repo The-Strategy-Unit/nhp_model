@@ -18,10 +18,10 @@ from nhp.model.run import (
 
 
 def test_tqdm():
-    tqdm.progress_callback = Mock()  # type: ignore
+    tqdm.progress_callback = Mock()
     t = tqdm()
     t.update(5)
-    tqdm.progress_callback.assert_called_once_with(5)  # type: ignore
+    tqdm.progress_callback.assert_called_once_with(5)
 
 
 def test_tqdm_no_callback():
