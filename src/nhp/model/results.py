@@ -9,7 +9,6 @@ import logging
 import os
 from typing import Dict, List
 
-import janitor
 import pandas as pd
 
 from nhp.model.model_iteration import ModelRunResult
@@ -36,11 +35,15 @@ def _complete_model_runs(
         [i for i in results.columns if i != "value"], as_index=False
     )["value"].sum()
 
-    return janitor.complete(
-        results,
-        [i for i in results.columns if i != "model_run" if i != "value"],
-        {"model_run": range(0 if include_baseline else 1, model_runs + 1)},
-        fill_value={"value": 0},
+    cols = [i for i in results.columns if i != "model_run" if i != "value"]
+    runs = pd.DataFrame({"model_run": range(0 if include_baseline else 1, model_runs + 1)})
+
+    return (
+        results[cols]
+        .drop_duplicates()
+        .merge(runs, how="cross")
+        .merge(results, on=[*cols, "model_run"], how="left")
+        .fillna({"value": 0})
     )
 
 
