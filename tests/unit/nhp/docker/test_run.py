@@ -312,8 +312,8 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
 
     metadata = {"id": "1", "dataset": "synthetic", "start_year": "2020"}
     params = metadata.copy()
-    params["list"] = [1, 2]
-    params["dict"] = {"a": 1}
+    params["list"] = [1, 2]  # ty: ignore
+    params["dict"] = {"a": 1}  # ty: ignore
 
     s.params = params
 
@@ -344,8 +344,8 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
 
     metadata = {"id": "1", "dataset": "synthetic", "start_year": "2020"}
     params = metadata.copy()
-    params["list"] = [1, 2]
-    params["dict"] = {"a": 1}
+    params["list"] = [1, 2]  # ty: ignore
+    params["dict"] = {"a": 1}  # ty: ignore
 
     s.params = params
 
