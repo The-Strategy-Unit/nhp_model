@@ -20,19 +20,7 @@ dependencies = [
     "tqdm>=4.65",
 ]
 
-
-# Explicitly specify which packages to include
-[tool.setuptools]
-package-dir = { "" = "src" }
-
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools.package-data]
-"nhp.model.data.reference" = ["*.csv", "*.json"]
-"nhp.model.params" = ["*.json"]
-
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "coverage>=7.2",
     "ipykernel>=6.21",
@@ -55,10 +43,6 @@ dev = [
     "snakeviz>=2.1",
     "widgetsnbextension>=4.0",
 ]
-databricks = [
-    "pyspark",
-    "databricks-connect"
-]
 docs = [
     "mkdocs",
     "mkdocs-material",
@@ -67,6 +51,17 @@ docs = [
     "mkdocs-literate-nav",
     "mkdocs-section-index"
 ]
+
+# Explicitly specify which packages to include
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"nhp.model.data.reference" = ["*.csv", "*.json"]
+"nhp.model.params" = ["*.json"]
 
 [build-system]
 requires = ["setuptools>=80", "setuptools-scm>=8", "wheel"]
