@@ -1,16 +1,16 @@
 name: Clean up untagged container images
 
 on:
-  workflow_dispatch:  # allows manual triggering via GitHub UI
+  workflow_dispatch: # allows manual triggering via GitHub UI
   schedule:
-    - cron: '0 1 * * *'  # runs at 01:00 UTC every day
+    - cron: "0 1 * * *" # runs at 01:00 UTC every day
 
 jobs:
   remove-untagged-images:
     runs-on: ubuntu-latest
 
     steps:
-      # you must create a classic PAT with `delete:packages` scope and add it as a secret named `PAT_DELETE_PACKAGES` 
+      # you must create a classic PAT with `delete:packages` scope and add it as a secret named `PAT_DELETE_PACKAGES`
       - name: Authenticate with PAT
         run: echo "${{ secrets.PAT_DELETE_PACKAGES }}" | gh auth login --with-token
       - name: "Remove untagged images"
