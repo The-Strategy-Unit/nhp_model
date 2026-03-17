@@ -15,21 +15,21 @@ jobs:
         shell: bash -l {0}
 
     steps:
-    - uses: actions/checkout@v5
-        
-    - name: Install the latest version of uv
-      uses: astral-sh/setup-uv@v6
-      with:
-        version: "latest"
-        activate-environment: true
+      - uses: actions/checkout@v5
 
-    - name: Install dependencies
-      run: uv pip install -e ".[dev]"
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+          activate-environment: true
 
-    - name: Generate Report
-      run: uv run pytest --cov=. tests/unit --ignore=tests --cov-branch --cov-report xml:coverage.xml
+      - name: Install dependencies
+        run: uv sync --dev
 
-    - name: Upload Coverage to Codecov
-      uses: codecov/codecov-action@v5
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Generate Report
+        run: uv run pytest --cov=. tests/unit --ignore=tests --cov-branch --cov-report xml:coverage.xml
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

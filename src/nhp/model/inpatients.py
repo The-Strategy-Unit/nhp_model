@@ -132,8 +132,7 @@ class InpatientsModel(Model):
         Returns:
             The updated data.
         """
-        res = data.loc[data.index.repeat(row_samples[0])].reset_index(drop=True)
-        return cast(pd.DataFrame, res)
+        return data.loc[data.index.repeat(row_samples[0])].reset_index(drop=True)
 
     def efficiencies(
         self, data: pd.DataFrame, model_iteration: ModelIteration
