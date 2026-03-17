@@ -1,4 +1,4 @@
-name: Deploy schema.json to GitHub Pages
+name: Build and push container image
 
 on:
   workflow_call:
