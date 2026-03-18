@@ -1,12 +1,11 @@
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
 
 name: Deploy Production
 
 jobs:
-
   set-tag:
     runs-on: ubuntu-latest
     outputs:
@@ -24,7 +23,7 @@ jobs:
     uses: ./.github/workflows/build_container.yaml
     with:
       docker-tag: ghcr.io/the-strategy-unit/nhp_model:${{ needs.set-tag.outputs.tag }},ghcr.io/the-strategy-unit/nhp_model:latest
-      app-version: ${{ github.ref_name }} 
+      app-version: ${{ github.ref_name }}
       data-version: ${{vars.data_version}}
     secrets: inherit
 
@@ -33,4 +32,4 @@ jobs:
 
     uses: ./.github/workflows/build_schema.yaml
     with:
-      schema-tag: ${{ needs.set-tag.outputs.tag }} 
+      schema-tag: ${{ needs.set-tag.outputs.tag }}

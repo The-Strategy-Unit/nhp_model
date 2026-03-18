@@ -8,7 +8,7 @@ jobs:
   remove-pr-image:
     runs-on: ubuntu-latest
     steps:
-      # you must create a classic PAT with `delete:packages` scope and add it as a secret named `PAT_DELETE_PACKAGES` 
+      # you must create a classic PAT with `delete:packages` scope and add it as a secret named `PAT_DELETE_PACKAGES`
       - name: Authenticate with PAT
         run: echo "${{ secrets.PAT_DELETE_PACKAGES }}" | gh auth login --with-token
       - name: "Remove PR image"

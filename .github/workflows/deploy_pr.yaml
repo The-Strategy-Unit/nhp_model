@@ -5,7 +5,6 @@ on:
 name: Deploy PR
 
 jobs:
-  
   deploy-ghcr-pr:
     uses: ./.github/workflows/build_container.yaml
     with:
@@ -19,16 +18,16 @@ jobs:
     needs: ["deploy-ghcr-pr"]
     steps:
       - name: Find Comment
-        uses: peter-evans/find-comment@v3
+        uses: peter-evans/find-comment@v4
         id: fc
         with:
           issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'github-actions[bot]'
+          comment-author: "github-actions[bot]"
           body-includes: "## ✅ A new build is available"
 
       - name: Comment with container image link
         if: github.event_name == 'pull_request'
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           comment-id: ${{ steps.fc.outputs.comment-id }}

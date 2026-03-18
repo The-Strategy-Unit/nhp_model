@@ -3,18 +3,17 @@ on:
     branches:
       - main
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
-  
   build-app:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout GitHub Action"
-        uses: actions/checkout@v5
-        
+        uses: actions/checkout@v6
+
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           version: "latest"
           enable-cache: true
@@ -31,7 +30,7 @@ jobs:
         run: uv build
 
       - name: Generate artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: dist-whl
           path: dist/*.whl
@@ -42,7 +41,7 @@ jobs:
 
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dist-whl
           path: .
@@ -57,7 +56,7 @@ jobs:
             --container-name app \
             --file $(ls *.whl) \
             --sas-token "${{ secrets.APP_CONTAINER_SAS }}" \
-            --overwrite  
+            --overwrite
 
   add-build-to-release:
     runs-on: ubuntu-latest
@@ -67,7 +66,7 @@ jobs:
 
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dist-whl
           path: .
