@@ -324,7 +324,7 @@ def mock_hsa_gam():
     hsa._gams = {(h, s): hsa_mock for h in ["a", "b"] for s in [1, 2]}
 
     hsa._all_ages = np.arange(0, 3)
-    hsa._ages = [1, 2]
+    hsa._ages = np.array([1, 2])
 
     return hsa
 
@@ -394,8 +394,8 @@ def mock_hsa_interpolated():
         }
     )
 
-    hsa._all_ages = [0, 1, 2, 3]
-    hsa._ages = [1, 2]
+    hsa._all_ages = np.array([0, 1, 2, 3])
+    hsa._ages = np.array([1, 2])
 
     return hsa
 
