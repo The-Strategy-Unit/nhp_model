@@ -12,6 +12,7 @@ dependencies = [
     "azure-storage-file-datalake>=12.24.0",
     "importlib-resources>=7.1.0",
     "jsonschema>=4.23.0",
+    "metalog-jax>=1.0.2",
     "numpy>=2.4.6",
     "pandas>=3.0.3",
     "pyarrow>=24.0.0",
