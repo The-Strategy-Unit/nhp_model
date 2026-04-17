@@ -268,8 +268,7 @@ class Model:
             "health_status_adjustment": HealthStatusAdjustment.generate_params(
                 params["start_year"],
                 params["end_year"],
-                variants,
-                rng,
+                params["seed"],
                 model_runs - 1,
             ),
             "non-demographic_adjustment": {
