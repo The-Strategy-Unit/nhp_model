@@ -29,10 +29,6 @@ def mock_hsa():
 
 def test_hsa_init(mocker):
     # arrange
-    mocker.patch("pickle.load", return_value="pkl_load")
-    lle_mock = mocker.patch(
-        "nhp.model.health_status_adjustment.HealthStatusAdjustment._load_life_expectancy_series",
-    )
     laa_mock = mocker.patch(
         "nhp.model.health_status_adjustment.HealthStatusAdjustment._load_activity_ages",
     )
@@ -43,77 +39,10 @@ def test_hsa_init(mocker):
     # assert
     assert hsa._all_ages.tolist() == list(range(0, 101))
     assert hsa._cache == {}
+    assert hsa.base_year == 2020
+    assert hsa._ages.tolist() == np.arange(55, 91).tolist()
 
-    lle_mock.assert_called_once_with(2020)
     laa_mock.assert_called_once_with("nhp_data")
-
-
-@pytest.mark.parametrize(
-    "year, expectation",
-    [
-        (
-            2020,
-            {
-                "2020": {("a", 1, 55): 0, ("b", 2, 55): 0},
-                "2021": {("a", 1, 55): 1, ("b", 2, 55): 5},
-                "2022": {("a", 1, 55): 3, ("b", 2, 55): 13},
-            },
-        ),
-        (
-            2021,
-            {
-                "2020": {("a", 1, 55): -1, ("b", 2, 55): -5},
-                "2021": {("a", 1, 55): 0, ("b", 2, 55): 0},
-                "2022": {("a", 1, 55): 2, ("b", 2, 55): 8},
-            },
-        ),
-    ],
-)
-def test_hsa_load_life_expectancy_series(mocker, mock_hsa, year, expectation):
-    # arrange
-    life_expectancy = pd.DataFrame(
-        {
-            "var": ["a", "b"],
-            "sex": [1, 2],
-            "age": [55, 55],
-            "2020": [2, 8],
-            "2021": [3, 13],
-            "2022": [5, 21],
-        }
-    )
-    ref_mock = mocker.patch("nhp.model.health_status_adjustment.reference")
-    ref_mock.life_expectancy.return_value = life_expectancy
-
-    # act
-    mock_hsa._load_life_expectancy_series(year)
-
-    # assert
-    assert mock_hsa._ages.tolist() == np.arange(55, 91).tolist()
-    assert mock_hsa._life_expectancy.to_dict() == expectation
-    ref_mock.life_expectancy.assert_called_once_with()
-
-
-def test_hsa_load_life_expectancy_series_filters_ages(mocker, mock_hsa):
-    # arrange
-    life_expectancy = pd.DataFrame(
-        {
-            "var": ["a"] * 100,
-            "sex": [1] * 100,
-            "age": list(range(100)),
-            "2020": list(range(100)),
-            "2022": [i * 2 for i in range(100)],
-        }
-    )
-    ref_mock = mocker.patch("nhp.model.health_status_adjustment.reference")
-    ref_mock.life_expectancy.return_value = life_expectancy
-
-    # act
-    mock_hsa._load_life_expectancy_series(2020)
-
-    # assert
-    assert list(mock_hsa._life_expectancy.to_dict()["2020"].keys()) == [
-        ("a", 1, i) for i in range(55, 91)
-    ]
 
 
 def test_load_activity_ages(mock_hsa):
@@ -144,94 +73,93 @@ def test_load_activity_ages(mock_hsa):
     }
 
 
-@pytest.mark.parametrize(
-    "year, expected_results, expected_call",
-    [
-        (2021, [2] + list(range(1, 11)), (2, 5, 8)),
-        (2022, [3] + list(range(1, 11)) + [2], (3, 6, 9)),
-    ],
-)
-def test_generate_params(mocker, year, expected_results, expected_call):
+def test_generate_params(mocker):
     # arrange
-    m = mocker.patch("nhp.model.health_status_adjustment.HealthStatusAdjustment.random_splitnorm")
-    m.return_value = list(range(1, 11))
-
-    split_normal_params = pd.DataFrame(
+    ex_dat = pd.Series(
         {
-            "var": ["ppp"] * 8,
-            "sex": ["m"] * 4 + ["f"] * 4,
-            "year": [2019, 2020, 2021, 2022] * 2,
-            "mode": [0, 1, 2, 3] * 2,
-            "sd1": [0, 4, 5, 6] * 2,
-            "sd2": [0, 7, 8, 9] * 2,
+            (2020, 1, 65): 20.0,
+            (2021, 1, 65): 21.0,
+            (2020, 2, 65): 22.0,
+            (2021, 2, 65): 23.5,
         }
     )
     ref_mock = mocker.patch("nhp.model.health_status_adjustment.reference")
-    ref_mock.split_normal_params.return_value = split_normal_params
-    ref_mock.variant_lookup.return_value = {"principal_proj": "ppp"}
+    ref_mock.life_expectancy.return_value = ex_dat
 
-    # act
-    actual = HealthStatusAdjustment.generate_params(
-        2020,
-        year,
-        ["principal_proj"] * 11,
-        "rng",  # type: ignore
-        10,
+    dist_mock_male = Mock()
+    dist_mock_female = Mock()
+    dist_mock_male.rvs.return_value = np.array([50.0, 60.0])
+    dist_mock_female.rvs.return_value = np.array([55.0, 65.0])
+    ref_mock.hsa_metalog_parameters.return_value = {1: dist_mock_male, 2: dist_mock_female}
+
+    rv_params_mock = Mock()
+    mlrvp_mock = mocker.patch(
+        "nhp.model.health_status_adjustment.MetalogRandomVariableParameters",
+        return_value=rv_params_mock,
     )
-
-    # assert
-    assert [i[0] for i in actual] == expected_results
-    assert [i[1] for i in actual] == expected_results
-    m.assert_called_with("rng", 10, *expected_call)
-    assert m.call_count == 2
-
-    ref_mock.split_normal_params.assert_called_once_with()
-    ref_mock.variant_lookup.assert_called_once_with()
-
-
-def test_random_splitnorm():
-    # arrange
-    rng = Mock()
-    rng.uniform.return_value = np.arange(0.1, 1.0, 0.1)
-    # checking against R:
-    # > fanplot::qsplitnorm(seq(0.1, 0.9, 0.1), 3, sd1 = 1, sd2 = 2)
-    expected = [
-        1.963567,
-        2.475599,
-        2.874339,
-        3.251323,
-        3.637279,
-        4.048801,
-        4.510830,
-        5.072867,
-        5.879063,
-    ]
+    jux_mock = mocker.patch("nhp.model.health_status_adjustment.JaxUniformDistributionParameters")
 
     # act
-    actual = HealthStatusAdjustment.random_splitnorm(rng, 9, 3, 1, 2)
+    result = HealthStatusAdjustment.generate_params(2020, 2021, 42, 2)
 
     # assert
-    rng.uniform.assert_called_once_with(size=9)
-    np.testing.assert_almost_equal(actual, expected, 6)
+    # sex=1 (male): DFLE=10.45, target_ex=21.0, base_ex=20.0, denominator=1.0
+    # numerator = [50/100*21 - 10.45, 60/100*21 - 10.45] = [0.05, 2.15]
+    # samples[1] = [1.0, 0.05, 2.15]
+    np.testing.assert_almost_equal(result[1], np.array([1.0, 0.05, 2.15]))
+    # sex=2 (female): DFLE=10.66, target_ex=23.5, base_ex=22.0, denominator=1.5
+    # numerator = [55/100*23.5 - 10.66, 65/100*23.5 - 10.66] = [2.265, 4.615]
+    # samples[2] = [1.0, 2.265/1.5, 4.615/1.5]
+    np.testing.assert_almost_equal(result[2], np.array([1.0, 2.265 / 1.5, 4.615 / 1.5]))
+
+    ref_mock.life_expectancy.assert_called_once_with(2020, 2021)
+    ref_mock.hsa_metalog_parameters.assert_called_once_with(2021)
+    jux_mock.assert_called_once_with(seed=42)
+    mlrvp_mock.assert_called_once_with(prng_params=jux_mock.return_value, size=2)
+    dist_mock_male.rvs.assert_called_once_with(rv_params_mock)
+    dist_mock_female.rvs.assert_called_once_with(rv_params_mock)
+
+
+def test_generate_hsa_adjusted_ages(mocker, mock_hsa):
+    # arrange
+    ages = np.arange(55, 91)
+    mock_hsa._ages = ages
+    mock_hsa.base_year = 2020
+
+    # ex_dat indexed by (year, sex, age)
+    ex_dat = pd.Series(
+        {
+            (yr, sx, ag): float(ag + (yr - 2020) + sx)
+            for yr in [2020, 2022]
+            for sx in [1, 2]
+            for ag in ages
+        }
+    )
+    ref_mock = mocker.patch("nhp.model.health_status_adjustment.reference")
+    ref_mock.life_expectancy.return_value = ex_dat
+
+    hsa_params = {1: 0.5, 2: 0.0}
+
+    # act
+    result = mock_hsa.generate_hsa_adjusted_ages(2022, hsa_params)
+
+    # assert
+    ref_mock.life_expectancy.assert_called_once_with(2020, 2022)
+
+    # For sex=1: ex_diff = ex(2022,1,age) - ex(2020,1,age) = 2 for all ages
+    # adjusted = ages - 0.5 * 2 = ages - 1
+    for ag in ages:
+        assert result.loc[(1, ag)] == pytest.approx(float(ag) - 1)
+    # For sex=2: hsa_params=0.0 so adjusted = ages - 0 = ages
+    for ag in ages:
+        assert result.loc[(2, ag)] == pytest.approx(float(ag))
 
 
 def test_hsa_run_not_cached(mocker, mock_hsa):
     # arrange
     mock_hsa._ages = [1, 2]
-    mock_hsa._life_expectancy = pd.DataFrame(
-        {
-            "2020": {
-                ("ppp", 1, 1): 0,
-                ("ppp", 1, 2): 1,
-                ("ppp", 2, 1): 2,
-                ("ppp", 2, 2): 3,
-                ("hle", 1, 1): 4,
-                ("hle", 1, 2): 5,
-                ("hle", 2, 1): 6,
-                ("hle", 2, 2): 7,
-            }
-        }
-    ).rename_axis(["var", "sex", "age"])
+    adjusted_ages = Mock()
+    mock_hsa.generate_hsa_adjusted_ages = Mock(return_value=adjusted_ages)
     activity = pd.Series(
         {
             ("a", 1, 1): 2,  # 2 / 2 = 1
@@ -266,13 +194,10 @@ def test_hsa_run_not_cached(mocker, mock_hsa):
     ).rename_axis(["hsagrp", "sex", "age"])
     mock_hsa._predict_activity = Mock(return_value=activity)
 
-    ref_mock = mocker.patch("nhp.model.health_status_adjustment.reference")
-    ref_mock.variant_lookup.return_value = {"principal_proj": "ppp"}
+    hsa_param = {1: 2, 2: 3}
 
     # act
-    actual = mock_hsa.run(
-        {"year": 2020, "health_status_adjustment": [2, 3], "variant": "principal_proj"}
-    )
+    actual = mock_hsa.run({"year": 2020, "health_status_adjustment": hsa_param, "model_run": 5})
 
     # assert
     assert actual.to_dict() == {
@@ -285,20 +210,17 @@ def test_hsa_run_not_cached(mocker, mock_hsa):
         ("b", 2, 1): 7.0,
         ("b", 2, 2): 8.0,
     }
-    assert mock_hsa._cache[(2, 3, "ppp")].equals(actual)
+    mock_hsa.generate_hsa_adjusted_ages.assert_called_once_with(2020, hsa_param)
+    mock_hsa._predict_activity.assert_called_once_with(adjusted_ages)
+    assert mock_hsa._cache[5].equals(actual)
 
 
 def test_hsa_run_cached(mocker, mock_hsa):
     # arrange
-    mock_hsa._cache[(1, 2, "ppp")] = "a"
-
-    ref_mock = mocker.patch("nhp.model.health_status_adjustment.reference")
-    ref_mock.variant_lookup.return_value = {"principal_proj": "ppp"}
+    mock_hsa._cache[3] = "a"
 
     # act
-    actual = mock_hsa.run(
-        {"year": 2020, "health_status_adjustment": [1, 2], "variant": "principal_proj"}
-    )
+    actual = mock_hsa.run({"year": 2020, "health_status_adjustment": {1: 1, 2: 2}, "model_run": 3})
 
     # assert
     assert actual == "a"

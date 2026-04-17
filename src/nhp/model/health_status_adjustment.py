@@ -1,10 +1,12 @@
 """Health Status Adjustment."""
 
-from math import pi, sqrt
 from typing import List
 
 import numpy as np
 import pandas as pd
+from metalog_jax.base import MetalogParameters, MetalogRandomVariableParameters
+from metalog_jax.metalog import Metalog
+from metalog_jax.utils import JaxUniformDistributionParameters
 
 from nhp.model.data import Data, reference
 
@@ -14,6 +16,11 @@ class HealthStatusAdjustment:
 
     Handles the logic for the health status adjustment in the model.
     """
+
+    # Disability-Free Life Expectancy (DFLE) by sex
+    DFLE_MALE = 10.45
+    DFLE_FEMALE = 10.66
+    HSA_REFERENCE_AGE: int = 65
 
     # load the static reference data files
 
@@ -29,113 +36,78 @@ class HealthStatusAdjustment:
         """
         self._all_ages = np.arange(0, 101)
 
-        self._load_life_expectancy_series(base_year)
         self._load_activity_ages(data_loader)
-        self._cache = {}
-
-    def _load_life_expectancy_series(self, base_year: str):
+        self.base_year = int(base_year)
         # the age range that health status adjustment runs for
         # hardcoded to max out at 90 as ages >90 are mapped to 90
         self._ages = np.arange(55, 91)
-        # load the life expectancy file, only select the rows for the ages we are interested in
-        lexc = reference.life_expectancy().set_index(["var", "sex", "age"])
-        lexc = lexc[lexc.index.isin(self._ages, level=2)]
-        # calculate the life expectancy (change) between the model year and base year
-        self._life_expectancy = lexc.apply(lambda x: x - lexc[str(base_year)])
+        self._cache = {}
 
     def _load_activity_ages(self, data_loader: Data):
         self._activity_ages = (
             data_loader.get_hsa_activity_table().set_index(["hsagrp", "sex", "age"]).sort_index()
         )["activity"]
 
+    def generate_hsa_adjusted_ages(self, end_year: int, hsa_params: dict) -> dict[int, pd.Series]:
+        """Generate HSA Adjusted Ages.
+
+        Args:
+            end_year: The year the model is running for.
+            hsa_params: The health status adjustment parameters.
+        """
+        ex_dat = reference.life_expectancy(self.base_year, end_year)
+
+        adjusted_age = {}
+        for sex in [1, 2]:
+            ex_diff = ex_dat.loc[(end_year, sex)] - ex_dat.loc[(self.base_year, sex)]
+            v = ex_dat.loc[(end_year, sex)].index.to_numpy() - hsa_params[sex] * ex_diff
+            v.name = "adjusted_age"
+            adjusted_age[sex] = v
+
+        return pd.concat(adjusted_age, names=["sex"])
+
     @staticmethod
     def generate_params(
         start_year: int,
         end_year: int,
-        variants: List[str],
-        rng: np.random.Generator,
+        seed: int,
         model_runs: int,
-    ) -> np.ndarray:
+    ) -> dict[int, np.ndarray]:
         """Generate Health Status Adjustment Parameters.
 
         Args:
             start_year: The baseline year for the model.
             end_year: The year the model is running for.
-            variants: List of population variants.
-            rng: Random Number Generator.
+            seed: Random seed for reproducibility.
             model_runs: Number of Model Runs.
 
         Returns:
             Parameters for the health status adjustment.
         """
-        hsa_snp = reference.split_normal_params().set_index(["var", "sex", "year"])
+        ex_dat = reference.life_expectancy(start_year, end_year)
 
-        def gen(variant, sex):
-            mode: float
-            sd1: float
-            sd2: float
-            mode, sd1, sd2 = hsa_snp.loc[(variant, sex, end_year)]  # type: ignore
+        dists = reference.hsa_metalog_parameters(end_year)
 
-            return np.concatenate(
-                [
-                    [mode],
-                    HealthStatusAdjustment.random_splitnorm(rng, model_runs, mode, sd1, sd2),
-                    hsa_snp.loc[(variant, sex, np.arange(start_year + 1, end_year)), "mode"],  # type: ignore
-                ]
-            )
-
-        values = {
-            v: np.transpose([gen(v, "m"), gen(v, "f")])
-            for v in hsa_snp.index.levels[0]  # type: ignore
-        }
-
-        variant_lookup = reference.variant_lookup()
-        return np.array(
-            [
-                values[variant_lookup[v]][i]
-                for i, v in enumerate(variants + variants[0:1] * (end_year - start_year - 1))
-            ]
+        rv_params = MetalogRandomVariableParameters(
+            prng_params=JaxUniformDistributionParameters(seed=seed),
+            size=model_runs,
         )
 
-    @staticmethod
-    def random_splitnorm(
-        rng: np.random.Generator,
-        n: int,
-        mode: float,
-        sd1: float,
-        sd2: float,
-    ) -> np.ndarray:
-        """Generate random splitnormal values.
+        samples = {}
+        for sex, dfle in [
+            (1, HealthStatusAdjustment.DFLE_MALE),
+            (2, HealthStatusAdjustment.DFLE_FEMALE),
+        ]:
+            qoi_samples = dists[sex].rvs(rv_params)
 
-        Args:
-            rng: Random Number Generator.
-            n: Number of random values to generate.
-            mode: The mode of the distribution.
-            sd1: The standard deviation of the left side of the distribution.
-            sd2: The standard deviation of the right side of the distribution.
+            target_ex = ex_dat[(end_year, sex, HealthStatusAdjustment.HSA_REFERENCE_AGE)]
+            base_ex = ex_dat[(start_year, sex, HealthStatusAdjustment.HSA_REFERENCE_AGE)]
+            numerator = qoi_samples / 100 * target_ex - dfle
+            denominator = target_ex - base_ex
+            # insert a 1 for the baseline model run, which is model run = 0
+            samples[sex] = np.insert(np.array(numerator / denominator), 0, 1)
 
-        Returns:
-            n random number values sampled from the split normal distribution.
-        """
-        # lazy import for performance
-        import scipy.stats as spt  # noqa: PLC0415
-
-        # get the probability of the mode
-        A = sqrt(2 / pi) / (sd1 + sd2)
-        a_sqrt_tau = A * sqrt(2 * pi)
-        p = (a_sqrt_tau * sd1) / 2
-
-        # generate n random uniform values
-        u = rng.uniform(size=n)
-
-        # whether u is less than the mode or not
-        a1 = u <= p
-
-        # make a single sd vector
-        sd = np.array([sd1 if i else sd2 for i in a1])
-        x = np.array([0 if i else a_sqrt_tau * sd2 - 1 for i in a1])
-
-        return mode + sd * spt.norm.ppf((u + x) / (a_sqrt_tau * sd))
+        return samples
 
     def run(self, run_params: dict) -> pd.Series:
         """Return factor for health status adjustment.
@@ -147,16 +119,11 @@ class HealthStatusAdjustment:
             The health status adjustment factor.
         """
         hsa_param = run_params["health_status_adjustment"]
-        selected_variant = reference.variant_lookup()[run_params["variant"]]
-        cache_key = (*hsa_param, selected_variant)
+        cache_key = run_params["model_run"]
         if cache_key in self._cache:
             return self._cache[cache_key]
 
-        lexc = self._life_expectancy.loc[(selected_variant, slice(None), slice(None))][
-            str(run_params["year"])
-        ]
-        hsa_param = np.repeat(hsa_param, len(self._ages))
-        adjusted_ages = np.tile(self._ages, 2) - lexc * hsa_param
+        adjusted_ages = self.generate_hsa_adjusted_ages(run_params["year"], hsa_param)
 
         factor = (
             self._predict_activity(adjusted_ages).rename_axis(["hsagrp", "sex", "age"])

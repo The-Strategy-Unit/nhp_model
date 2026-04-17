@@ -430,7 +430,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
     actual = mdl.generate_run_params(mdl.params)
 
     # assert
-    hsa_m.assert_called_once_with(2018, 2020, ["a", "a", "b", "a"], rng, 3)
+    hsa_m.assert_called_once_with(2018, 2020, 1, 3)
     assert actual == mock_run_params
 
 

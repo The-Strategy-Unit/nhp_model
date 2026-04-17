@@ -39,7 +39,7 @@ def test_init(mocker, run, rp_call):
     # assert
     assert actual.model == model
     assert actual.params == "params"
-    assert actual.run_params == {"seed": 1}
+    assert actual.run_params == {"seed": 1, "model_run": run}
     assert actual.rng == "rng"
     assert actual.data == "data"
     assert actual.step_counts is None
