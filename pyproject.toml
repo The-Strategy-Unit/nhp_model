@@ -3,7 +3,7 @@ name = "nhp-model"
 dynamic = ["version"]
 description = "New Hospital Programme demand model"
 
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.12,<3.14"
 
 dependencies = [
     "azure-identity>=1.12",
@@ -24,7 +24,7 @@ dependencies = [
 dev = [
     "coverage>=7.2",
     "ipykernel>=6.21",
-    "ipython>=8.11",
+    "ipython>=9.10",
     "ipywidgets>=8.0",
     "jupyter_client>=8.0",
     "jupyter_core>=5.2",
@@ -34,7 +34,6 @@ dev = [
     "nbconvert>=7.17.1",
     "nbformat>=5.7",
     "notebook>=6.5",
-    "pygam>=0.8",
     "pytest>=9.0.3",
     "pytest-cov>=4.0",
     "pytest-mock>=3.10",
@@ -70,7 +69,7 @@ build-backend = "setuptools.build_meta"
 # Ruff configuration
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 indent-width = 4
 exclude = ["docs"]
 
