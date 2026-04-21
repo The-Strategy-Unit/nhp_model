@@ -1,0 +1,26 @@
+aae:
+- default
+- sex+age_group
+- age
+- acuity
+- attendance_category
+- avoided_activity
+- step_counts
+ip:
+- default
+- sex+age_group
+- age
+- sex+tretspef_grouped
+- tretspef
+- tretspef+los_group
+- delivery_episode_in_spell
+- avoided_activity
+- step_counts
+op:
+- default
+- sex+age_group
+- age
+- sex+tretspef_grouped
+- tretspef
+- avoided_activity
+- step_counts

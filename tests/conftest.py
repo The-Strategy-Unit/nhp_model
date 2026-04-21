@@ -5,6 +5,6 @@ def pytest_addoption(parser):
     parser.addoption("--data-dir", help="Directory containing data", default="data/synth")
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def data_dir(request):
     return request.config.getoption("--data-dir")

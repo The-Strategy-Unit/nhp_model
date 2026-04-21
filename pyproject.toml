@@ -36,6 +36,7 @@ dev = [
     "notebook>=7.5.6",
     "pytest>=9.0.3",
     "pytest-cov>=4.0",
+    "pytest-regressions>=2.10.0",
     "pytest-mock>=3.10",
     "ruff>=0.15.12",
     "setuptools-scm>=8.3.1",
