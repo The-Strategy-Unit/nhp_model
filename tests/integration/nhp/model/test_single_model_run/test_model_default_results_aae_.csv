@@ -1,0 +1,9 @@
+pod,sitetret,measure,value
+aae_type-01,a,ambulance,31144
+aae_type-01,a,walk-in,64990
+aae_type-02,a,walk-in,2513
+aae_type-03,a,ambulance,155
+aae_type-03,a,walk-in,22568
+aae_type-04,a,walk-in,278
+aae_type-05,a,ambulance,34
+aae_type-05,a,walk-in,1868

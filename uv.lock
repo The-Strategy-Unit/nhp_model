@@ -747,6 +747,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-mock" },
+    { name = "pytest-regressions" },
     { name = "ruff" },
     { name = "setuptools-scm" },
 ]
@@ -782,6 +783,7 @@ dev = [
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-cov", specifier = ">=4.0" },
     { name = "pytest-mock", specifier = ">=3.10" },
+    { name = "pytest-regressions", specifier = ">=2.10.0" },
     { name = "ruff", specifier = ">=0.15.13" },
     { name = "setuptools-scm", specifier = ">=8.3.1" },
 ]
@@ -1097,6 +1099,18 @@ wheels = [
 ]
 
 [[package]]
+name = "pytest-datadir"
+version = "1.8.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b4/46/db060b291999ca048edd06d6fa9ee95945d088edc38b1172c59eeb46ec45/pytest_datadir-1.8.0.tar.gz", hash = "sha256:7a15faed76cebe87cc91941dd1920a9a38eba56a09c11e9ddf1434d28a0f78eb", size = 11848, upload-time = "2025-07-30T13:52:12.518Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8f/7a/33895863aec26ac3bb5068a73583f935680d6ab6af2a9567d409430c3ee1/pytest_datadir-1.8.0-py3-none-any.whl", hash = "sha256:5c677bc097d907ac71ca418109adc3abe34cf0bddfe6cf78aecfbabd96a15cf0", size = 6512, upload-time = "2025-07-30T13:52:11.525Z" },
+]
+
+[[package]]
 name = "pytest-mock"
 version = "3.15.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1106,6 +1120,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/68/14/eb014d26be205d38ad5ad20d9a80f7d201472e08167f0bb4361e251084a9/pytest_mock-3.15.1.tar.gz", hash = "sha256:1849a238f6f396da19762269de72cb1814ab44416fa73a8686deac10b0d87a0f", size = 34036, upload-time = "2025-09-16T16:37:27.081Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5a/cc/06253936f4a7fa2e0f48dfe6d851d9c56df896a9ab09ac019d70b760619c/pytest_mock-3.15.1-py3-none-any.whl", hash = "sha256:0a25e2eb88fe5168d535041d09a4529a188176ae608a6d249ee65abc0949630d", size = 10095, upload-time = "2025-09-16T16:37:25.734Z" },
+]
+
+[[package]]
+name = "pytest-regressions"
+version = "2.10.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+    { name = "pytest-datadir" },
+    { name = "pyyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/15/d7/6d7525320538d59c1763ebb9f9fdde957966fea607236b2c905ded6f8c98/pytest_regressions-2.10.0.tar.gz", hash = "sha256:5239d29ffe5760acb4a37d95d575383473a2e62c55ede2e89cff735d3bbd2ac9", size = 115513, upload-time = "2026-02-10T13:37:08.21Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/de/f0/32b0a304563e42693049e31be097427f05451aa42c04e3819b4a5c0afe78/pytest_regressions-2.10.0-py3-none-any.whl", hash = "sha256:e40b98fd1e26435bf694fbd497ac74f4580cbda3b794562faab3dcea2300c0eb", size = 25087, upload-time = "2026-02-10T13:37:06.661Z" },
 ]
 
 [[package]]
