@@ -88,11 +88,8 @@ def test_run_all(mocker):
     rm_m = mocker.patch("nhp.model.run._run_model", side_effect=["ip", "op", "aae"])
     cr_m = mocker.patch(
         "nhp.model.run.combine_results",
-        return_value=({"default": "combined_results"}, "combined_step_counts"),
+        return_value="combined_results",
     )
-    gr_m = mocker.patch("nhp.model.run.generate_results_json", return_value="results_json_path")
-    sr_m = mocker.patch("nhp.model.run.save_results_files", return_value="results_paths")
-
     pc_m = Mock()
     pc_m().return_value = "progress callback"
     pc_m.reset_mock()
@@ -112,7 +109,7 @@ def test_run_all(mocker):
     actual = run_all(params, data_mock, pc_m, False)
 
     # assert
-    assert actual == ("results_paths", "results_json_path")
+    assert actual == "combined_results"
 
     data_mock.assert_called_once_with(2020, "synthetic")
 
@@ -139,15 +136,6 @@ def test_run_all(mocker):
     ]
 
     cr_m.assert_called_once_with(["ip", "op", "aae"])
-    gr_m.assert_called_once_with(
-        {"default": "combined_results", "step_counts": "combined_step_counts"},
-        "combined_step_counts",
-        params,
-        {"variant": "variants"},
-    )
-    sr_m.assert_called_once_with(
-        {"default": "combined_results", "step_counts": "combined_step_counts"}, params
-    )
 
 
 def test_run_single_model_run(mocker, capsys):

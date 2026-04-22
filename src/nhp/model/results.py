@@ -293,7 +293,7 @@ def _patch_converted_sdec_activity(
 
 def combine_results(
     results: list[list[ModelRunResult]],
-) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
+) -> dict[str, pd.DataFrame]:
     """Combine the results into a single dictionary.
 
     When we run the models we have an array containing 3 items [inpatients, outpatient, a&e].
@@ -303,7 +303,7 @@ def combine_results(
         results: The results of running the models.
 
     Returns:
-        Tuple containing combined model results dictionary and combined step counts DataFrame.
+        A dictionary containing the combined model results and step counts.
     """
     logging.info(" * starting to combine results")
 
@@ -317,4 +317,4 @@ def combine_results(
     _patch_converted_sdec_activity(combined_results, "attendance_category", "1")
 
     logging.info(" * finished combining results")
-    return combined_results, combined_step_counts
+    return {**combined_results, "step_counts": combined_step_counts}

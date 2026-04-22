@@ -54,7 +54,7 @@ def main(config: Config = Config()):
 
     start_time = datetime.now()
 
-    saved_files, results_file = run_all(
+    results = run_all(
         runner.params,
         Local.create("data"),
         runner.progress_callback(),
@@ -70,7 +70,7 @@ def main(config: Config = Config()):
         "model_run_elapsed_time_seconds": elapsed_time.total_seconds(),
     }
 
-    runner.finish(results_file, saved_files, args.save_full_model_results, additional_metadata)
+    runner.finish(results, args.save_full_model_results, additional_metadata)
 
     logging.info("complete")
 

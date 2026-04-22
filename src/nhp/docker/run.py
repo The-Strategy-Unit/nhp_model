@@ -5,15 +5,19 @@ import json
 import logging
 import os
 import re
+import uuid
 from pathlib import Path
 from typing import Any, Callable
 
+import pandas as pd
+from azure.data.tables import TableServiceClient
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 from azure.storage.filedatalake import DataLakeServiceClient
 
 from nhp.docker.config import Config
 from nhp.model.params import load_params
+from nhp.model.results import save_results_files
 from nhp.model.run import noop_progress_callback
 
 
@@ -30,19 +34,18 @@ class RunWithLocalStorage:
 
     def finish(
         self,
-        results_file: str,
-        saved_files: list,
-        save_full_model_results: bool,
-        additional_metadata: dict,
+        results: dict[str, pd.DataFrame],
+        _save_full_model_results: bool,
+        _additional_metadata: dict[str, Any],
     ) -> None:
         """Post model run steps.
 
         Args:
-            results_file: The path to the results file.
-            saved_files: Filepaths of results, saved in parquet format and params in json format.
+            results: A dictionary containing the results dataframes.
             save_full_model_results: Whether to save the full model results or not.
             additional_metadata: Additional metadata to log.
         """
+        save_results_files(results, self.params)
 
     def progress_callback(self) -> Callable[[Any], Callable[[Any], None]]:
         """Progress callback method.
@@ -78,6 +81,9 @@ class RunWithAzureStorage:
         )
         self._adls_storage_account_url = (
             f"https://{self._config.STORAGE_ACCOUNT}.dfs.core.windows.net"
+        )
+        self._table_storage_account_url = (
+            f"https://{self._config.STORAGE_ACCOUNT}.table.core.windows.net"
         )
 
         self.params = self._get_params(filename)
@@ -159,30 +165,38 @@ class RunWithAzureStorage:
                 overwrite=True,
             )
 
-    def _upload_results_files(self, files: list, metadata: dict) -> None:
+    def _upload_results_files(
+        self,
+        file_path: str,
+        results: dict[str, pd.DataFrame],
+        params: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> None:
         """Upload the results.
 
         Once the model has run, upload the files (parquet for model results and json for
         model params) to blob storage.
 
         Args:
-            files: List of files to be uploaded.
+            file_path: The path to save the results to.
+            results: A dictionary containing the results dataframes.
+            params: The parameters used for the model run.
             metadata: The metadata to attach to the blob.
         """
         container = self._get_container("results")
-        for file in files:
-            filename = file[8:]
-            if file.endswith(".json"):
-                metadata_to_use = metadata
-            else:
-                metadata_to_use = None
-            with open(file, "rb") as f:
-                container.upload_blob(
-                    f"aggregated-model-results/{self._app_version}/{filename}",
-                    f.read(),
-                    overwrite=True,
-                    metadata=metadata_to_use,
-                )
+        for k, v in results.items():
+            container.upload_blob(
+                file_path + f"/{k}.parquet",
+                v.to_parquet(index=False),
+                overwrite=True,
+                metadata=metadata,
+            )
+        container.upload_blob(
+            f"{file_path}/params.json",
+            json.dumps(params).encode("utf-8"),
+            overwrite=True,
+            metadata=metadata,
+        )
 
     def _upload_full_model_results(self) -> None:
         container = self._get_container("results")
@@ -202,6 +216,22 @@ class RunWithAzureStorage:
                     overwrite=True,
                 )
 
+    def _append_to_model_runs_table(self, results_path: str, metadata: dict[str, Any]) -> None:
+        """Append a row to the model runs table."""
+        table_client = TableServiceClient(
+            endpoint=self._table_storage_account_url,
+            credential=DefaultAzureCredential(),
+        ).get_table_client("modelruns")
+
+        table_client.create_entity(
+            {
+                "PartitionKey": self.params["dataset"],
+                "RowKey": str(uuid.uuid4()),
+                "results_path": results_path,
+                **metadata,
+            }
+        )
+
     def _cleanup(self) -> None:
         """Cleanup.
 
@@ -213,28 +243,36 @@ class RunWithAzureStorage:
 
     def finish(
         self,
-        results_file: str,
-        saved_files: list,
+        results: dict[str, pd.DataFrame],
         save_full_model_results: bool,
-        additional_metadata: dict,
+        additional_metadata: dict[str, Any],
     ) -> None:
         """Post model run steps.
 
         Args:
-            results_file: The path to the results file.
-            saved_files: Filepaths of results, saved in parquet format and params in json format.
+            results: A dictionary containing the results dataframes.
             save_full_model_results: Whether to save the full model results or not.
             additional_metadata: Additional metadata to log.
         """
         metadata = {
-            k: str(v)
+            k: v
             for k, v in self.params.items()
             if not isinstance(v, dict) and not isinstance(v, list)
         }
-        metadata.update({k: str(v) for k, v in additional_metadata.items()})
+        metadata.update(additional_metadata)
 
-        self._upload_results_json(results_file, metadata)
-        self._upload_results_files(saved_files, metadata)
+        file_path = "/".join(
+            [
+                "aggregated-model-results",
+                self._app_version,
+                self.params["dataset"],
+                self.params["scenario"],
+                self.params["create_datetime"],
+            ]
+        )
+
+        self._upload_results_files(file_path, results, self.params, metadata)
+        self._append_to_model_runs_table(file_path, metadata)
         if save_full_model_results:
             self._upload_full_model_results()
         self._cleanup()

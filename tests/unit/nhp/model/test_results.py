@@ -276,7 +276,7 @@ def test_generate_results_json(mocker):
 
 def test_combine_results(mocker):
     # arrange
-    ma = mocker.patch("nhp.model.results._combine_model_results", return_value="combined_results")
+    ma = mocker.patch("nhp.model.results._combine_model_results", return_value={"a": "a", "b": "b"})
     mb = mocker.patch("nhp.model.results._combine_step_counts", return_value="combined_step_counts")
     ms = mocker.patch("nhp.model.results._patch_converted_sdec_activity")
 
@@ -284,14 +284,14 @@ def test_combine_results(mocker):
     actual = combine_results("results")  # type: ignore
 
     # assert
-    assert actual == ("combined_results", "combined_step_counts")
+    assert actual == {"a": "a", "b": "b", "step_counts": "combined_step_counts"}
     ma.assert_called_once_with("results")
     mb.assert_called_once_with("results")
 
     assert ms.call_count == 2
     assert list(ms.call_args_list) == [
-        call("combined_results", "acuity", "standard"),
-        call("combined_results", "attendance_category", "1"),
+        call({"a": "a", "b": "b"}, "acuity", "standard"),
+        call({"a": "a", "b": "b"}, "attendance_category", "1"),
     ]
 
 
