@@ -6,6 +6,7 @@ import os
 import time
 from typing import Any, Callable, Tuple, Type
 
+import pandas as pd
 from tqdm.auto import tqdm as base_tqdm
 
 from nhp.model.aae import AaEModel
@@ -15,7 +16,7 @@ from nhp.model.inpatients import InpatientsModel
 from nhp.model.model import Model
 from nhp.model.model_iteration import ModelIteration, ModelRunResult
 from nhp.model.outpatients import OutpatientsModel
-from nhp.model.results import combine_results, generate_results_json, save_results_files
+from nhp.model.results import combine_results, save_results_files
 
 
 class tqdm(base_tqdm):  # ty: ignore[unsupported-base]
@@ -114,7 +115,7 @@ def run_all(
     nhp_data: Callable[[int, str], Data],
     progress_callback: Callable[[Any], Callable[[Any], None]] = noop_progress_callback,
     save_full_model_results: bool = False,
-) -> Tuple[list, str]:
+) -> dict[str, pd.DataFrame]:
     """Run the model.
 
     Runs all 3 model types, aggregates and combines the results.
@@ -127,7 +128,7 @@ def run_all(
         save_full_model_results: Whether to save full model results. Defaults to False.
 
     Returns:
-        A tuple containing the list of saved files and the filename of the JSON results.
+        A dictionary containing the results dataframes
     """
     model_types = [InpatientsModel, OutpatientsModel, AaEModel]
     run_params = Model.generate_run_params(params)
@@ -137,7 +138,7 @@ def run_all(
         nhp_data(params["start_year"], params["dataset"]), params["start_year"]
     )
 
-    results, step_counts = combine_results(
+    return combine_results(
         [
             _run_model(
                 m,
@@ -151,15 +152,6 @@ def run_all(
             for m in model_types
         ]
     )
-
-    json_filename = generate_results_json(results, step_counts, params, run_params)
-
-    # TODO: once generate_results_json is deperecated this step should be moved into combine_results
-    results["step_counts"] = step_counts
-    # TODO: this should be what the model returns once generate_results_json is deprecated
-    saved_files = save_results_files(results, params)
-
-    return saved_files, json_filename
 
 
 def run_single_model_run(

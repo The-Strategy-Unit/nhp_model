@@ -72,25 +72,16 @@ def test_all_model_runs(data_dir):
     actual = run_all(params, nhp_data)
 
     # assert
-    assert actual == (
-        [
-            f"{res_path}/{i}.parquet"
-            for i in [
-                "acuity",
-                "age",
-                "attendance_category",
-                "avoided_activity",
-                "default",
-                "delivery_episode_in_spell",
-                "sex+age_group",
-                "sex+tretspef_grouped",
-                "tretspef",
-                "tretspef+los_group",
-                "step_counts",
-            ]
-        ]
-        + [
-            f"{res_path}/params.json",
-        ],
-        "synthetic/test-20220101_000000",
-    )
+    assert set(actual.keys()) == {
+        "acuity",
+        "age",
+        "attendance_category",
+        "avoided_activity",
+        "default",
+        "delivery_episode_in_spell",
+        "sex+age_group",
+        "sex+tretspef_grouped",
+        "tretspef",
+        "tretspef+los_group",
+        "step_counts",
+    }
