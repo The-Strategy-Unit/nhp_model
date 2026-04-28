@@ -12,7 +12,7 @@ from typing import Any, Callable
 import pandas as pd
 from azure.data.tables import TableServiceClient
 from azure.identity import DefaultAzureCredential
-from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import ContainerClient
 from azure.storage.filedatalake import DataLakeServiceClient
 
 from nhp.docker.config import Config
@@ -78,24 +78,15 @@ class RunWithAzureStorage:
 
         self._app_version = re.sub("(\\d+\\.\\d+)\\..*", "\\1", config.APP_VERSION)
 
-        self._blob_storage_account_url = (
-            f"https://{self._config.STORAGE_ACCOUNT}.blob.core.windows.net"
-        )
-        self._adls_storage_account_url = (
-            f"https://{self._config.STORAGE_ACCOUNT}.dfs.core.windows.net"
-        )
-        self._table_storage_account_url = (
-            f"https://{self._config.STORAGE_ACCOUNT}.table.core.windows.net"
-        )
-
         self.params = self._get_params(filename)
         self._get_data(self.params["start_year"], self.params["dataset"])
 
-    def _get_container(self, container_name: str):
-        return BlobServiceClient(
-            account_url=self._blob_storage_account_url,
+    def _get_container(self, account_name: str, container_name: str):
+        return ContainerClient(
+            account_url=f"https://{account_name}.blob.core.windows.net",
+            container_name=container_name,
             credential=DefaultAzureCredential(),
-        ).get_container_client(container_name)
+        )
 
     def _get_params(self, filename: str) -> dict:
         """Get the parameters for the model.
@@ -108,7 +99,9 @@ class RunWithAzureStorage:
         """
         logging.info("downloading params: %s", filename)
 
-        self._queue_blob = self._get_container("queue").get_blob_client(filename)
+        self._queue_blob = self._get_container(
+            self._config.QUEUE_STORAGE_ACCOUNT, "queue"
+        ).get_blob_client(filename)
 
         params_content = self._queue_blob.download_blob().readall()
 
@@ -125,7 +118,7 @@ class RunWithAzureStorage:
         """
         logging.info("downloading data (%s / %s)", year, dataset)
         fs_client = DataLakeServiceClient(
-            account_url=self._adls_storage_account_url,
+            account_url=f"https://{self._config.DATA_STORAGE_ACCOUNT}.dfs.core.windows.net",
             credential=DefaultAzureCredential(),
         ).get_file_system_client("data")
 
@@ -191,7 +184,7 @@ class RunWithAzureStorage:
             variants: A list of the variants that were run.
         """
         params = self.params
-        container = self._get_container("results")
+        container = self._get_container(self._config.RESULTS_STORAGE_ACCOUNT, "results")
         for k, v in results.items():
             container.upload_blob(
                 file_path + f"/{k}.parquet",
@@ -213,7 +206,7 @@ class RunWithAzureStorage:
         )
 
     def _upload_full_model_results(self) -> None:
-        container = self._get_container("results")
+        container = self._get_container(self._config.FULL_MODEL_RESULTS_STORAGE_ACCOUNT, "results")
 
         dataset = self.params["dataset"]
         scenario = self.params["scenario"]
@@ -233,7 +226,7 @@ class RunWithAzureStorage:
     def _append_to_model_runs_table(self, results_path: str, metadata: dict[str, Any]) -> None:
         """Append a row to the model runs table."""
         table_client = TableServiceClient(
-            endpoint=self._table_storage_account_url,
+            endpoint=f"https://{self._config.MODEL_RUNS_TABLE_STORAGE_ACCOUNT}.table.core.windows.net",
             credential=DefaultAzureCredential(),
         ).get_table_client("modelruns")
 
