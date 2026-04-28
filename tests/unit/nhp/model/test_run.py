@@ -109,7 +109,7 @@ def test_run_all(mocker):
     actual = run_all(params, data_mock, pc_m, False)
 
     # assert
-    assert actual == "combined_results"
+    assert actual == ("combined_results", "variants")
 
     data_mock.assert_called_once_with(2020, "synthetic")
 

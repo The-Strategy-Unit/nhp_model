@@ -69,10 +69,10 @@ def test_all_model_runs(data_dir):
     res_path = "results/synthetic/test/20220101_000000"
 
     # act
-    actual = run_all(params, nhp_data)
+    results, variants = run_all(params, nhp_data)
 
     # assert
-    assert set(actual.keys()) == {
+    assert set(results.keys()) == {
         "acuity",
         "age",
         "attendance_category",
@@ -85,3 +85,10 @@ def test_all_model_runs(data_dir):
         "tretspef+los_group",
         "step_counts",
     }
+    assert variants == [
+        "migration_category",
+        "migration_category",
+        "var_proj_10_year_migration",
+        "var_proj_high_intl_migration",
+        "var_proj_10_year_migration",
+    ]

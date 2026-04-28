@@ -68,13 +68,13 @@ def main() -> None:
                 datefmt="%Y-%m-%d %H:%M:%S",
             )
 
-            results = run_all(
+            results, variants = run_all(
                 params,
                 Local.create(args.data_path),
                 lambda _: lambda _: None,
                 args.save_full_model_results,
             )
-            save_results_files(results, params)
+            save_results_files(results, params, variants)
             return
         case "aae":
             model_type = AaEModel
