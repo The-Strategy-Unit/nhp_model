@@ -29,10 +29,10 @@ def test_RunWithLocalStorage_finish(mocker):
     s = RunWithLocalStorage("filename")
 
     # act
-    s.finish("results", False, {})  # ty: ignore[invalid-argument-type]
+    s.finish("results", "variants", False, {})  # ty: ignore[invalid-argument-type]
 
     # assert
-    save_results_files_mock.assert_called_once_with("results", "params")
+    save_results_files_mock.assert_called_once_with("results", "params", "variants")
 
 
 def test_RunWithLocalStorage_progress_callback(mocker):
@@ -237,10 +237,7 @@ def test_RunWithAzureStorage_upload_results_files(mock_run_with_azure_storage, m
 
     # act
     s._upload_results_files(
-        "file_path",
-        {"a": results_file_mock},
-        {"params": "params"},
-        metadata,
+        "file_path", {"a": results_file_mock}, {"params": "params"}, metadata, ["variants"]
     )
 
     # assert
@@ -256,6 +253,12 @@ def test_RunWithAzureStorage_upload_results_files(mock_run_with_azure_storage, m
             call(
                 "file_path/params.json",
                 b'{"params": "params"}',
+                overwrite=True,
+                metadata=metadata,
+            ),
+            call(
+                "file_path/variants.json",
+                b'["variants"]',
                 overwrite=True,
                 metadata=metadata,
             ),
@@ -375,10 +378,10 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
     )
 
     # act
-    s.finish("results", False, additional_metadata)
+    s.finish("results", "variants", False, additional_metadata)
 
     # assert
-    m1.assert_called_once_with(file_path, "results", params, metadata_expected)
+    m1.assert_called_once_with(file_path, "results", params, metadata_expected, "variants")
     m2.assert_called_once_with(file_path, metadata_expected)
     m3.assert_not_called()
     m4.assert_called_once_with()
@@ -421,10 +424,10 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
     )
 
     # act
-    s.finish("results", True, additional_metadata)
+    s.finish("results", "variants", True, additional_metadata)
 
     # assert
-    m1.assert_called_once_with(file_path, "results", params, metadata_expected)
+    m1.assert_called_once_with(file_path, "results", params, metadata_expected, "variants")
     m2.assert_called_once_with(file_path, metadata_expected)
     m3.assert_called_once()
     m4.assert_called_once_with()

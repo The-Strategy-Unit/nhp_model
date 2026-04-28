@@ -176,12 +176,13 @@ def generate_results_json(
     return filename
 
 
-def save_results_files(results: dict, params: dict) -> list:
+def save_results_files(results: dict, params: dict, variants: list[str]) -> list:
     """Save aggregated and combined results as parquet, and params as JSON.
 
     Args:
         results: The results of running the models, processed into one dictionary.
         params: The parameters used for the model run.
+        variants: The variants used in the model run.
 
     Returns:
         Filepaths to saved files.
@@ -192,6 +193,7 @@ def save_results_files(results: dict, params: dict) -> list:
     return [
         *[_save_parquet_file(path, k, v, params) for k, v in results.items()],
         _save_params_file(path, params),
+        _save_variants_file(path, variants),
     ]
 
 
@@ -242,7 +244,22 @@ def _save_params_file(path: str, params: dict) -> str:
         The filename of the saved file.
     """
     with open(filename := f"{path}/params.json", "w", encoding="utf-8") as file:
-        json.dump(params, file)
+        json.dump(params, file, indent=2)
+    return filename
+
+
+def _save_variants_file(path: str, variants: list[str]) -> str:
+    """Save the model runs variants as json.
+
+    Args:
+        path: The folder where we want to save the results to.
+        variants: The variants the model was run with.
+
+    Returns:
+        The filename of the saved file.
+    """
+    with open(filename := f"{path}/variants.json", "w", encoding="utf-8") as file:
+        json.dump(variants, file, indent=2)
     return filename
 
 

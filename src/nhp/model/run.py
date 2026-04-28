@@ -115,7 +115,7 @@ def run_all(
     nhp_data: Callable[[int, str], Data],
     progress_callback: Callable[[Any], Callable[[Any], None]] = noop_progress_callback,
     save_full_model_results: bool = False,
-) -> dict[str, pd.DataFrame]:
+) -> tuple[dict[str, pd.DataFrame], list[str]]:
     """Run the model.
 
     Runs all 3 model types, aggregates and combines the results.
@@ -128,7 +128,7 @@ def run_all(
         save_full_model_results: Whether to save full model results. Defaults to False.
 
     Returns:
-        A dictionary containing the results dataframes
+        A dictionary containing the results dataframes, and a list of the variants that were run.
     """
     model_types = [InpatientsModel, OutpatientsModel, AaEModel]
     run_params = Model.generate_run_params(params)
@@ -138,7 +138,7 @@ def run_all(
         nhp_data(params["start_year"], params["dataset"]), params["start_year"]
     )
 
-    return combine_results(
+    results = combine_results(
         [
             _run_model(
                 m,
@@ -152,6 +152,8 @@ def run_all(
             for m in model_types
         ]
     )
+
+    return results, run_params["variant"]
 
 
 def run_single_model_run(
