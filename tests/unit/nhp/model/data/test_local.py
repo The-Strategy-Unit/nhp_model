@@ -149,7 +149,7 @@ def test_get_hsa_gams(mocker):
 
     # assert
     assert actual == "data"
-    mock_file.assert_called_with("data/hsa_gams.pkl", "rb")
+    mock_file.assert_called_with("data/hsa_gams/fyear=2019/dataset=synthetic/hsa_gams.pkl", "rb")
     m.assert_called_once_with(mock_file())
 
 
