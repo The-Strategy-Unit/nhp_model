@@ -155,7 +155,7 @@ def test_combine_step_counts(mocker):
 
 def test_generate_results_json(mocker):
     # arrange
-    combined_results = {
+    results = {
         "default": pd.DataFrame(
             {
                 "a": [i for i in [0, 1] for _ in range(5)],
@@ -171,19 +171,18 @@ def test_generate_results_json(mocker):
                 "value": list(range(20)),
             }
         ),
+        "step_counts": pd.DataFrame(
+            {
+                "pod": ["a1"] * 4 * 5,
+                "change_factor": ["baseline", "a", "b", "c", "c"] * 4,
+                "strategy": ["-", "-", "-", "a", "b"] * 4,
+                "sitetret": ["s"] * 4 * 5,
+                "activity_type": ["a"] * 4 * 5,
+                "measure": ["x"] * 4 * 5,
+                "value": range(20),
+            }
+        ),
     }
-
-    combined_step_counts = pd.DataFrame(
-        {
-            "pod": ["a1"] * 4 * 5,
-            "change_factor": ["baseline", "a", "b", "c", "c"] * 4,
-            "strategy": ["-", "-", "-", "a", "b"] * 4,
-            "sitetret": ["s"] * 4 * 5,
-            "activity_type": ["a"] * 4 * 5,
-            "measure": ["x"] * 4 * 5,
-            "value": range(20),
-        }
-    )
 
     os_m = mocker.patch("os.makedirs")
     jd_m = mocker.patch("json.dump")
@@ -251,13 +250,11 @@ def test_generate_results_json(mocker):
         "create_datetime": "create_datetime",
     }
 
-    run_params = {"variant": [1, 2, 3]}
-
     expected = "synthetic/test-create_datetime"
 
     # act
     with patch("builtins.open", mock_open()) as mock_file:
-        actual = generate_results_json(combined_results, combined_step_counts, params, run_params)
+        actual = generate_results_json(results, params, [1, 2, 3])  # ty: ignore
 
     # assert
     assert actual == expected
