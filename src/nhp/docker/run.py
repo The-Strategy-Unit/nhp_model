@@ -5,15 +5,19 @@ import json
 import logging
 import os
 import re
+import uuid
 from pathlib import Path
 from typing import Any, Callable
 
+import pandas as pd
+from azure.data.tables import TableServiceClient
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 from azure.storage.filedatalake import DataLakeServiceClient
 
 from nhp.docker.config import Config
 from nhp.model.params import load_params
+from nhp.model.results import generate_results_json, save_results_files
 from nhp.model.run import noop_progress_callback
 
 
@@ -30,19 +34,20 @@ class RunWithLocalStorage:
 
     def finish(
         self,
-        results_file: str,
-        saved_files: list,
-        save_full_model_results: bool,
-        additional_metadata: dict,
+        results: dict[str, pd.DataFrame],
+        variants: list[str],
+        _save_full_model_results: bool,
+        _additional_metadata: dict[str, Any],
     ) -> None:
         """Post model run steps.
 
         Args:
-            results_file: The path to the results file.
-            saved_files: Filepaths of results, saved in parquet format and params in json format.
+            results: A dictionary containing the results dataframes.
+            variants: A list of the variants that were run.
             save_full_model_results: Whether to save the full model results or not.
             additional_metadata: Additional metadata to log.
         """
+        save_results_files(results, self.params, variants)
 
     def progress_callback(self) -> Callable[[Any], Callable[[Any], None]]:
         """Progress callback method.
@@ -78,6 +83,9 @@ class RunWithAzureStorage:
         )
         self._adls_storage_account_url = (
             f"https://{self._config.STORAGE_ACCOUNT}.dfs.core.windows.net"
+        )
+        self._table_storage_account_url = (
+            f"https://{self._config.STORAGE_ACCOUNT}.table.core.windows.net"
         )
 
         self.params = self._get_params(filename)
@@ -140,16 +148,21 @@ class RunWithAzureStorage:
                     file_client = fs_client.get_file_client(filename)
                     local_file.write(file_client.download_file().readall())
 
-    def _upload_results_json(self, results_file: str, metadata: dict) -> None:
+    def _upload_results_json(
+        self, results: dict[str, pd.DataFrame], metadata: dict, variants: list[str]
+    ) -> None:
         """Upload the results.
 
         Once the model has run, upload the results to blob storage.
 
         Args:
-            results_file: The saved results file.
+            results: Dictionary containing the results dataframes.
             metadata: The metadata to attach to the blob.
+            variants: A list of the variants that were run.
         """
         container = self._get_container("results")
+
+        results_file = generate_results_json(results, self.params, variants)
 
         with open(f"results/{results_file}.json", "rb") as file:
             container.upload_blob(
@@ -159,30 +172,45 @@ class RunWithAzureStorage:
                 overwrite=True,
             )
 
-    def _upload_results_files(self, files: list, metadata: dict) -> None:
+    def _upload_results_files(
+        self,
+        file_path: str,
+        results: dict[str, pd.DataFrame],
+        metadata: dict[str, Any],
+        variants: list[str],
+    ) -> None:
         """Upload the results.
 
         Once the model has run, upload the files (parquet for model results and json for
         model params) to blob storage.
 
         Args:
-            files: List of files to be uploaded.
+            file_path: The path to save the results to.
+            results: A dictionary containing the results dataframes.
             metadata: The metadata to attach to the blob.
+            variants: A list of the variants that were run.
         """
+        params = self.params
         container = self._get_container("results")
-        for file in files:
-            filename = file[8:]
-            if file.endswith(".json"):
-                metadata_to_use = metadata
-            else:
-                metadata_to_use = None
-            with open(file, "rb") as f:
-                container.upload_blob(
-                    f"aggregated-model-results/{self._app_version}/{filename}",
-                    f.read(),
-                    overwrite=True,
-                    metadata=metadata_to_use,
-                )
+        for k, v in results.items():
+            container.upload_blob(
+                file_path + f"/{k}.parquet",
+                v.to_parquet(index=False),
+                overwrite=True,
+                metadata=metadata,
+            )
+        container.upload_blob(
+            f"{file_path}/params.json",
+            json.dumps(params).encode("utf-8"),
+            overwrite=True,
+            metadata=metadata,
+        )
+        container.upload_blob(
+            f"{file_path}/variants.json",
+            json.dumps(variants).encode("utf-8"),
+            overwrite=True,
+            metadata=metadata,
+        )
 
     def _upload_full_model_results(self) -> None:
         container = self._get_container("results")
@@ -202,6 +230,22 @@ class RunWithAzureStorage:
                     overwrite=True,
                 )
 
+    def _append_to_model_runs_table(self, results_path: str, metadata: dict[str, Any]) -> None:
+        """Append a row to the model runs table."""
+        table_client = TableServiceClient(
+            endpoint=self._table_storage_account_url,
+            credential=DefaultAzureCredential(),
+        ).get_table_client("modelruns")
+
+        table_client.create_entity(
+            {
+                "PartitionKey": self.params["dataset"],
+                "RowKey": str(uuid.uuid4()),
+                "results_path": results_path,
+                **metadata,
+            }
+        )
+
     def _cleanup(self) -> None:
         """Cleanup.
 
@@ -213,28 +257,41 @@ class RunWithAzureStorage:
 
     def finish(
         self,
-        results_file: str,
-        saved_files: list,
+        results: dict[str, pd.DataFrame],
+        variants: list[str],
         save_full_model_results: bool,
-        additional_metadata: dict,
+        additional_metadata: dict[str, Any],
     ) -> None:
         """Post model run steps.
 
         Args:
-            results_file: The path to the results file.
-            saved_files: Filepaths of results, saved in parquet format and params in json format.
+            results: A dictionary containing the results dataframes.
+            variants: A list of the variants that were run.
             save_full_model_results: Whether to save the full model results or not.
             additional_metadata: Additional metadata to log.
         """
         metadata = {
-            k: str(v)
+            k: v
             for k, v in self.params.items()
             if not isinstance(v, dict) and not isinstance(v, list)
         }
-        metadata.update({k: str(v) for k, v in additional_metadata.items()})
+        metadata.update(additional_metadata)
 
-        self._upload_results_json(results_file, metadata)
-        self._upload_results_files(saved_files, metadata)
+        file_path = "/".join(
+            [
+                "aggregated-model-results",
+                self._app_version,
+                self.params["dataset"],
+                self.params["scenario"],
+                self.params["create_datetime"],
+            ]
+        )
+
+        # see issue #286, this should be removed once we no longer need the results json file
+        self._upload_results_json(results, metadata, variants)
+
+        self._upload_results_files(file_path, results, metadata, variants)
+        self._append_to_model_runs_table(file_path, metadata)
         if save_full_model_results:
             self._upload_full_model_results()
         self._cleanup()

@@ -111,12 +111,12 @@ def _combine_step_counts(results: list) -> pd.DataFrame:
 
 
 def generate_results_json(
-    combined_results: dict[str, pd.DataFrame],
-    combined_step_counts: pd.DataFrame,
+    results: dict[str, pd.DataFrame],
     params: dict,
-    run_params: dict,
+    variants: list[str],
 ) -> str:
     """Generate the results in the json format and save."""
+    step_counts = results.pop("step_counts")
 
     def agg_to_dict(res):
         results_df = res.set_index("model_run")
@@ -137,10 +137,10 @@ def generate_results_json(
             .to_dict(orient="records")
         )
 
-    dict_results = {k: agg_to_dict(v) for k, v in combined_results.items()}
+    dict_results = {k: agg_to_dict(v) for k, v in results.items()}
 
     dict_results["step_counts"] = (
-        combined_step_counts.groupby(
+        step_counts.groupby(
             [
                 "pod",
                 "change_factor",
@@ -168,7 +168,7 @@ def generate_results_json(
         json.dump(
             {
                 "params": params,
-                "population_variants": run_params["variant"],
+                "population_variants": variants,
                 "results": dict_results,
             },
             file,
@@ -176,12 +176,13 @@ def generate_results_json(
     return filename
 
 
-def save_results_files(results: dict, params: dict) -> list:
+def save_results_files(results: dict, params: dict, variants: list[str]) -> list:
     """Save aggregated and combined results as parquet, and params as JSON.
 
     Args:
         results: The results of running the models, processed into one dictionary.
         params: The parameters used for the model run.
+        variants: The variants used in the model run.
 
     Returns:
         Filepaths to saved files.
@@ -192,6 +193,7 @@ def save_results_files(results: dict, params: dict) -> list:
     return [
         *[_save_parquet_file(path, k, v, params) for k, v in results.items()],
         _save_params_file(path, params),
+        _save_variants_file(path, variants),
     ]
 
 
@@ -242,7 +244,22 @@ def _save_params_file(path: str, params: dict) -> str:
         The filename of the saved file.
     """
     with open(filename := f"{path}/params.json", "w", encoding="utf-8") as file:
-        json.dump(params, file)
+        json.dump(params, file, indent=2)
+    return filename
+
+
+def _save_variants_file(path: str, variants: list[str]) -> str:
+    """Save the model runs variants as json.
+
+    Args:
+        path: The folder where we want to save the results to.
+        variants: The variants the model was run with.
+
+    Returns:
+        The filename of the saved file.
+    """
+    with open(filename := f"{path}/variants.json", "w", encoding="utf-8") as file:
+        json.dump(variants, file, indent=2)
     return filename
 
 
@@ -293,7 +310,7 @@ def _patch_converted_sdec_activity(
 
 def combine_results(
     results: list[list[ModelRunResult]],
-) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
+) -> dict[str, pd.DataFrame]:
     """Combine the results into a single dictionary.
 
     When we run the models we have an array containing 3 items [inpatients, outpatient, a&e].
@@ -303,7 +320,7 @@ def combine_results(
         results: The results of running the models.
 
     Returns:
-        Tuple containing combined model results dictionary and combined step counts DataFrame.
+        A dictionary containing the combined model results and step counts.
     """
     logging.info(" * starting to combine results")
 
@@ -317,4 +334,4 @@ def combine_results(
     _patch_converted_sdec_activity(combined_results, "attendance_category", "1")
 
     logging.info(" * finished combining results")
-    return combined_results, combined_step_counts
+    return {**combined_results, "step_counts": combined_step_counts}

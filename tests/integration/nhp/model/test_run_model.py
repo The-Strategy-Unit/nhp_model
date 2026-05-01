@@ -69,28 +69,26 @@ def test_all_model_runs(data_dir):
     res_path = "results/synthetic/test/20220101_000000"
 
     # act
-    actual = run_all(params, nhp_data)
+    results, variants = run_all(params, nhp_data)
 
     # assert
-    assert actual == (
-        [
-            f"{res_path}/{i}.parquet"
-            for i in [
-                "acuity",
-                "age",
-                "attendance_category",
-                "avoided_activity",
-                "default",
-                "delivery_episode_in_spell",
-                "sex+age_group",
-                "sex+tretspef_grouped",
-                "tretspef",
-                "tretspef+los_group",
-                "step_counts",
-            ]
-        ]
-        + [
-            f"{res_path}/params.json",
-        ],
-        "synthetic/test-20220101_000000",
-    )
+    assert set(results.keys()) == {
+        "acuity",
+        "age",
+        "attendance_category",
+        "avoided_activity",
+        "default",
+        "delivery_episode_in_spell",
+        "sex+age_group",
+        "sex+tretspef_grouped",
+        "tretspef",
+        "tretspef+los_group",
+        "step_counts",
+    }
+    assert variants == [
+        "migration_category",
+        "migration_category",
+        "var_proj_10_year_migration",
+        "var_proj_high_intl_migration",
+        "var_proj_10_year_migration",
+    ]
