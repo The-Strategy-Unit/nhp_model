@@ -17,7 +17,7 @@ from azure.storage.filedatalake import DataLakeServiceClient
 
 from nhp.docker.config import Config
 from nhp.model.params import load_params
-from nhp.model.results import save_results_files
+from nhp.model.results import generate_results_json, save_results_files
 from nhp.model.run import noop_progress_callback
 
 
@@ -148,16 +148,21 @@ class RunWithAzureStorage:
                     file_client = fs_client.get_file_client(filename)
                     local_file.write(file_client.download_file().readall())
 
-    def _upload_results_json(self, results_file: str, metadata: dict) -> None:
+    def _upload_results_json(
+        self, results: dict[str, pd.DataFrame], metadata: dict, variants: list[str]
+    ) -> None:
         """Upload the results.
 
         Once the model has run, upload the results to blob storage.
 
         Args:
-            results_file: The saved results file.
+            results: Dictionary containing the results dataframes.
             metadata: The metadata to attach to the blob.
+            variants: A list of the variants that were run.
         """
         container = self._get_container("results")
+
+        results_file = generate_results_json(results, self.params, variants)
 
         with open(f"results/{results_file}.json", "rb") as file:
             container.upload_blob(
@@ -171,7 +176,6 @@ class RunWithAzureStorage:
         self,
         file_path: str,
         results: dict[str, pd.DataFrame],
-        params: dict[str, Any],
         metadata: dict[str, Any],
         variants: list[str],
     ) -> None:
@@ -183,10 +187,10 @@ class RunWithAzureStorage:
         Args:
             file_path: The path to save the results to.
             results: A dictionary containing the results dataframes.
-            params: The parameters used for the model run.
             metadata: The metadata to attach to the blob.
             variants: A list of the variants that were run.
         """
+        params = self.params
         container = self._get_container("results")
         for k, v in results.items():
             container.upload_blob(
@@ -283,7 +287,10 @@ class RunWithAzureStorage:
             ]
         )
 
-        self._upload_results_files(file_path, results, self.params, metadata, variants)
+        # see issue #286, this should be removed once we no longer need the results json file
+        self._upload_results_json(results, metadata, variants)
+
+        self._upload_results_files(file_path, results, metadata, variants)
         self._append_to_model_runs_table(file_path, metadata)
         if save_full_model_results:
             self._upload_full_model_results()

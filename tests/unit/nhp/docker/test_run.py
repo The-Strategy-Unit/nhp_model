@@ -210,19 +210,23 @@ def test_RunWithAzureStorage_upload_results_json(mock_run_with_azure_storage, mo
     # arrange
     s = mock_run_with_azure_storage
 
-    m = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_container")
+    m_get_container = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_container")
+    m_generate_results_json = mocker.patch(
+        "nhp.docker.run.generate_results_json", return_value="filename"
+    )
     mocker.patch("gzip.compress", return_value="gzdata")
 
     # act
     with patch("builtins.open", mock_open(read_data="data")) as mock_file:
-        s._upload_results_json("filename", "metadata")
+        s._upload_results_json("filename", "metadata", "variants")
 
     # assert
     mock_file.assert_called_once_with("results/filename.json", "rb")
-    m.assert_called_once_with("results")
-    m().upload_blob.assert_called_once_with(
+    m_get_container.assert_called_once_with("results")
+    m_get_container().upload_blob.assert_called_once_with(
         "prod/dev/filename.json.gz", "gzdata", metadata="metadata", overwrite=True
     )
+    m_generate_results_json.assert_called_once_with("filename", {"dataset": "test"}, "variants")
 
 
 def test_RunWithAzureStorage_upload_results_files(mock_run_with_azure_storage, mocker):
@@ -234,11 +238,10 @@ def test_RunWithAzureStorage_upload_results_files(mock_run_with_azure_storage, m
 
     results_file_mock = Mock()
     results_file_mock.to_parquet.side_effect = lambda index: "data"
+    s.params = {"params": "params"}
 
     # act
-    s._upload_results_files(
-        "file_path", {"a": results_file_mock}, {"params": "params"}, metadata, ["variants"]
-    )
+    s._upload_results_files("file_path", {"a": results_file_mock}, metadata, ["variants"])
 
     # assert
     get_container_mock.assert_called_once_with("results")
@@ -350,6 +353,8 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
     m3 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_full_model_results")
     m4 = mocker.patch("nhp.docker.run.RunWithAzureStorage._cleanup")
 
+    m5 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_results_json")
+
     metadata = {
         "id": "1",
         "dataset": "synthetic",
@@ -381,10 +386,12 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
     s.finish("results", "variants", False, additional_metadata)
 
     # assert
-    m1.assert_called_once_with(file_path, "results", params, metadata_expected, "variants")
+    m1.assert_called_once_with(file_path, "results", metadata_expected, "variants")
     m2.assert_called_once_with(file_path, metadata_expected)
     m3.assert_not_called()
     m4.assert_called_once_with()
+
+    m5.assert_called_once_with("results", metadata_expected, "variants")
 
 
 def test_RunWithAzureStorage_finish_save_full_model_results_true(
@@ -396,6 +403,8 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
     m2 = mocker.patch("nhp.docker.run.RunWithAzureStorage._append_to_model_runs_table")
     m3 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_full_model_results")
     m4 = mocker.patch("nhp.docker.run.RunWithAzureStorage._cleanup")
+
+    m5 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_results_json")
 
     metadata = {
         "id": "1",
@@ -427,10 +436,12 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
     s.finish("results", "variants", True, additional_metadata)
 
     # assert
-    m1.assert_called_once_with(file_path, "results", params, metadata_expected, "variants")
+    m1.assert_called_once_with(file_path, "results", metadata_expected, "variants")
     m2.assert_called_once_with(file_path, metadata_expected)
     m3.assert_called_once()
     m4.assert_called_once_with()
+
+    m5.assert_called_once_with("results", metadata_expected, "variants")
 
 
 def test_RunWithAzureStorage_progress_callback(mock_run_with_azure_storage):
