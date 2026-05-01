@@ -101,7 +101,8 @@ class Local(Data):
         Returns:
             The health status adjustment gams.
         """
-        with open(f"{self._data_path}/hsa_gams.pkl", "rb") as hsa_pkl:
+        file = f"{self._file_path('hsa_gams')}/hsa_gams.pkl"
+        with open(file, "rb") as hsa_pkl:
             return pickle.load(hsa_pkl)
 
     def get_inequalities(self) -> pd.DataFrame:
