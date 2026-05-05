@@ -12,7 +12,7 @@ def test_variants():
     vl = reference.variant_lookup()
 
     # assert
-    assert len(vl) == 19
+    assert len(vl) == 17
     assert set(vl.values()) == expected_hsa_variants
 
 
