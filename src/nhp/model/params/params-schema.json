@@ -28,7 +28,7 @@
         "end_year": {
             "type": "integer",
             "minimum": 2025,
-            "maximum": 2041
+            "maximum": 2047
         },
         "app_version": {
             "type": "string",
