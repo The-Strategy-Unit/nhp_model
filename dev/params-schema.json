@@ -28,7 +28,7 @@
         "end_year": {
             "type": "integer",
             "minimum": 2025,
-            "maximum": 2041
+            "maximum": 2047
         },
         "app_version": {
             "type": "string",
@@ -59,12 +59,6 @@
                             "$ref": "#/$defs/value_gt0-1"
                         },
                         "var_proj_zero_net_migration": {
-                            "$ref": "#/$defs/value_gt0-1"
-                        },
-                        "custom_projection_R0A66": {
-                            "$ref": "#/$defs/value_gt0-1"
-                        },
-                        "custom_projection_RD8": {
                             "$ref": "#/$defs/value_gt0-1"
                         }
                     },
