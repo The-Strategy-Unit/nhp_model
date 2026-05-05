@@ -277,6 +277,8 @@ class RunWithAzureStorage:
         }
         metadata.update(additional_metadata)
 
+        metadata_strs = {k: str(v) for k, v in metadata.items()}
+
         file_path = "/".join(
             [
                 "aggregated-model-results",
@@ -288,9 +290,9 @@ class RunWithAzureStorage:
         )
 
         # see issue #286, this should be removed once we no longer need the results json file
-        self._upload_results_json(results, metadata, variants)
+        self._upload_results_json(results, metadata_strs, variants)
 
-        self._upload_results_files(file_path, results, metadata, variants)
+        self._upload_results_files(file_path, results, metadata_strs, variants)
         self._append_to_model_runs_table(file_path, metadata)
         if save_full_model_results:
             self._upload_full_model_results()
