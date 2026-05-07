@@ -31,7 +31,7 @@ def _complete_model_runs(
         Combined and completed data frame.
     """
     results = pd.concat(res)
-    results: pd.DataFrame = results.groupby(  # type: ignore
+    results: pd.DataFrame = results.groupby(
         [i for i in results.columns if i != "value"], as_index=False
     )["value"].sum()
 

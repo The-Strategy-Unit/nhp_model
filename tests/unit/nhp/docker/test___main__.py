@@ -10,7 +10,15 @@ from nhp.docker.__main__ import main, parse_args
 
 
 @pytest.mark.parametrize(
-    "args, expected_file, expected_model_run_id, expected_local_storage, expected_save_full_model_results",
+    ", ".join(
+        [
+            "args",
+            "expected_file",
+            "expected_model_run_id",
+            "expected_local_storage",
+            "expected_save_full_model_results",
+        ]
+    ),
     [
         (["test.json"], "test.json", uuid.uuid4, False, False),
         (["test.json", "-l"], "test.json", uuid.uuid4, True, False),

@@ -74,13 +74,13 @@ class HealthStatusAdjustment:
             mode: float
             sd1: float
             sd2: float
-            mode, sd1, sd2 = hsa_snp.loc[(variant, sex, end_year)]  # type: ignore
+            mode, sd1, sd2 = hsa_snp.loc[(variant, sex, end_year)]
 
             return np.concatenate(
                 [
                     [mode],
                     HealthStatusAdjustment.random_splitnorm(rng, model_runs, mode, sd1, sd2),
-                    hsa_snp.loc[(variant, sex, np.arange(start_year + 1, end_year)), "mode"],  # type: ignore
+                    hsa_snp.loc[(variant, sex, np.arange(start_year + 1, end_year)), "mode"],
                 ]
             )
 
@@ -160,7 +160,7 @@ class HealthStatusAdjustment:
 
         factor = (
             self._predict_activity(adjusted_ages).rename_axis(["hsagrp", "sex", "age"])
-            / self._activity_ages.loc[slice(None), slice(None), self._ages]  # type: ignore
+            / self._activity_ages.loc[slice(None), slice(None), self._ages]
         ).rename("health_status_adjustment")
 
         # if any factor goes below 0, set it to 0
@@ -222,6 +222,6 @@ class HealthStatusAdjustmentInterpolated(HealthStatusAdjustment):
                     np.interp(adjusted_ages.loc[s], self._all_ages, v),
                     index=self._ages,
                 ).apply(lambda x: x if x > 0 else 0)
-                for (h, s), v in self._activity_ages_lists.items()  # type: ignore
+                for (h, s), v in self._activity_ages_lists.items()
             }
         )
