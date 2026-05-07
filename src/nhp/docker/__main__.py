@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import uuid
 from datetime import datetime
 
 from nhp.docker.config import Config
@@ -17,6 +18,13 @@ def parse_args():
         "params_file",
         help="Name of the parameters file stored in Azure",
     )
+    parser.add_argument(
+        "model_run_id",
+        help="Unique identifier for this model run.",
+        default=uuid.uuid4,
+        type=uuid.UUID,
+        nargs="?",
+    )
 
     parser.add_argument(
         "--local-storage",
@@ -30,63 +38,63 @@ def parse_args():
     return parser.parse_args()
 
 
-def main(config: Config = Config()):
+def main(config: Config):
     """The main method."""
-    args = parse_args()
+    # run the model in a try catch block - ensures any exceptions that occur in the
+    # multiprocessing pool are handled and logged correctly.
+    # this prevents the docker container from hanging indefinitely.
+    try:
+        args = parse_args()
 
-    logging.basicConfig(
-        format="%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s",
-        level=logging.INFO,
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+        logging.basicConfig(
+            format="%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s",
+            level=logging.INFO,
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
 
-    if args.local_storage:
-        runner = RunWithLocalStorage(args.params_file)
-    else:
-        runner = RunWithAzureStorage(args.params_file, config)
+        if args.local_storage:
+            runner = RunWithLocalStorage(args.params_file)
+        else:
+            runner = RunWithAzureStorage(args.model_run_id, args.params_file, config)
 
-    logging.info("running model for: %s", args.params_file)
-    logging.info("submitted by: %s", runner.params.get("user"))
-    logging.info("model_runs:   %s", runner.params["model_runs"])
-    logging.info("start_year:   %s", runner.params["start_year"])
-    logging.info("end_year:     %s", runner.params["end_year"])
-    logging.info("app_version:  %s", runner.params["app_version"])
+        logging.info("running model for: %s", args.params_file)
+        logging.info("submitted by: %s", runner.params.get("user"))
+        logging.info("model_runs:   %s", runner.params["model_runs"])
+        logging.info("start_year:   %s", runner.params["start_year"])
+        logging.info("end_year:     %s", runner.params["end_year"])
+        logging.info("app_version:  %s", runner.params["app_version"])
 
-    start_time = datetime.now()
+        start_time = datetime.now()
 
-    results, variants = run_all(
-        runner.params,
-        Local.create("data"),
-        runner.progress_callback(),
-        args.save_full_model_results,
-    )
+        results, variants = run_all(
+            runner.params,
+            Local.create("data"),
+            runner.progress_callback(),
+            args.save_full_model_results,
+        )
 
-    end_time = datetime.now()
-    elapsed_time = end_time - start_time
+        end_time = datetime.now()
+        elapsed_time = end_time - start_time
 
-    additional_metadata = {
-        "model_run_start_time": start_time.isoformat(),
-        "model_run_end_time": end_time.isoformat(),
-        "model_run_elapsed_time_seconds": elapsed_time.total_seconds(),
-    }
+        additional_metadata = {
+            "model_run_start_time": start_time.isoformat(),
+            "model_run_end_time": end_time.isoformat(),
+            "model_run_elapsed_time_seconds": elapsed_time.total_seconds(),
+        }
 
-    runner.finish(results, variants, args.save_full_model_results, additional_metadata)
+        runner.finish(results, variants, args.save_full_model_results, additional_metadata)
 
-    logging.info("complete")
+        logging.info("complete")
+    except Exception as e:
+        logging.error("An error occurred: %s", str(e))
+        runner.error(str(e))
 
 
 def init():
     """Method for calling main."""
     if __name__ == "__main__":
-        # run the model in a try catch block - ensures any exceptions that occur in the
-        # multiprocessing pool are handled and logged correctly.
-        # this prevents the docker container from hanging indefinitely.
-        try:
-            config = Config()
-            main(config)
-        except Exception as e:
-            logging.error("An error occurred: %s", str(e))
-            raise e
+        config = Config()
+        main(config)
 
 
 init()

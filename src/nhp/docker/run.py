@@ -5,9 +5,9 @@ import json
 import logging
 import os
 import re
-import uuid
 from pathlib import Path
 from typing import Any, Callable
+from uuid import UUID
 
 import pandas as pd
 from azure.data.tables import TableServiceClient
@@ -49,6 +49,16 @@ class RunWithLocalStorage:
         """
         save_results_files(results, self.params, variants)
 
+    def error(self, error_message: str) -> None:
+        """Error handling.
+
+        If there is an error during the model run, log the error message.
+
+        Args:
+            error_message: The error message to log.
+        """
+        pass
+
     def progress_callback(self) -> Callable[[Any], Callable[[Any], None]]:
         """Progress callback method.
 
@@ -63,10 +73,11 @@ class RunWithLocalStorage:
 class RunWithAzureStorage:
     """Methods for running with azure storage."""
 
-    def __init__(self, filename: str, config: Config = Config()):
+    def __init__(self, model_run_id: UUID, filename: str, config: Config | None = None):
         """Initialise RunWithAzureStorage.
 
         Args:
+            model_run_id: Unique identifier for this model run.
             filename: Name of the parameter file to load.
             config: The configuration for the run. Defaults to Config().
         """
@@ -74,9 +85,10 @@ class RunWithAzureStorage:
         logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
             logging.WARNING
         )
-        self._config = config
+        self._model_run_id = model_run_id
+        self._config = config or Config()
 
-        self._app_version = re.sub("(\\d+\\.\\d+)\\..*", "\\1", config.APP_VERSION)
+        self._app_version = re.sub("(\\d+\\.\\d+)\\..*", "\\1", self._config.APP_VERSION)
 
         self._blob_storage_account_url = (
             f"https://{self._config.STORAGE_ACCOUNT}.blob.core.windows.net"
@@ -90,6 +102,8 @@ class RunWithAzureStorage:
 
         self.params = self._get_params(filename)
         self._get_data(self.params["start_year"], self.params["dataset"])
+
+        self._update_table_storage(status="running")
 
     def _get_container(self, container_name: str):
         return BlobServiceClient(
@@ -149,7 +163,7 @@ class RunWithAzureStorage:
                     local_file.write(file_client.download_file().readall())
 
     def _upload_results_json(
-        self, results: dict[str, pd.DataFrame], metadata: dict, variants: list[str]
+        self, results: dict[str, pd.DataFrame], metadata: dict[str, Any], variants: list[str]
     ) -> None:
         """Upload the results.
 
@@ -168,7 +182,7 @@ class RunWithAzureStorage:
             container.upload_blob(
                 f"prod/{self._app_version}/{results_file}.json.gz",
                 gzip.compress(file.read()),
-                metadata=metadata,
+                metadata={k: str(v) for k, v in metadata.items()},
                 overwrite=True,
             )
 
@@ -176,7 +190,7 @@ class RunWithAzureStorage:
         self,
         file_path: str,
         results: dict[str, pd.DataFrame],
-        metadata: dict[str, Any],
+        metadata: dict[str, str],
         variants: list[str],
     ) -> None:
         """Upload the results.
@@ -230,21 +244,20 @@ class RunWithAzureStorage:
                     overwrite=True,
                 )
 
-    def _append_to_model_runs_table(self, results_path: str, metadata: dict[str, Any]) -> None:
-        """Append a row to the model runs table."""
+    def _update_table_storage(self, **kwargs) -> None:
+        """Update the table storage with the given data."""
         table_client = TableServiceClient(
             endpoint=self._table_storage_account_url,
             credential=DefaultAzureCredential(),
         ).get_table_client("modelruns")
 
-        table_client.create_entity(
-            {
-                "PartitionKey": self.params["dataset"],
-                "RowKey": str(uuid.uuid4()),
-                "results_path": results_path,
-                **metadata,
-            }
-        )
+        entity = {
+            "PartitionKey": self.params["dataset"],
+            "RowKey": self._model_run_id,
+            **kwargs,
+        }
+
+        table_client.update_entity(entity)
 
     def _cleanup(self) -> None:
         """Cleanup.
@@ -277,8 +290,6 @@ class RunWithAzureStorage:
         }
         metadata.update(additional_metadata)
 
-        metadata_strs = {k: str(v) for k, v in metadata.items()}
-
         file_path = "/".join(
             [
                 "aggregated-model-results",
@@ -288,15 +299,32 @@ class RunWithAzureStorage:
                 self.params["create_datetime"],
             ]
         )
+        self._update_table_storage(
+            status="complete",
+            file_path=file_path,
+            outputs_app_path=f"{self._app_version}/{self._model_run_id}",
+        )
 
+        self._upload_results_files(
+            file_path, results, {"model_run_id": str(self._model_run_id)}, variants
+        )
         # see issue #286, this should be removed once we no longer need the results json file
-        self._upload_results_json(results, metadata_strs, variants)
-
-        self._upload_results_files(file_path, results, metadata_strs, variants)
-        self._append_to_model_runs_table(file_path, metadata)
+        self._upload_results_json(results, metadata, variants)
         if save_full_model_results:
             self._upload_full_model_results()
+
         self._cleanup()
+
+    def error(self, error_message: str) -> None:
+        """Error handling.
+
+        If there is an error during the model run, update the table storage with the error
+        message and clean up the queue.
+
+        Args:
+            error_message: The error message to log.
+        """
+        self._update_table_storage(status="error", error_message=error_message)
 
     def progress_callback(self) -> Callable[[Any], Callable[[Any], None]]:
         """Progress callback method.
