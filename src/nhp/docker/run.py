@@ -10,7 +10,7 @@ from typing import Any, Callable
 from uuid import UUID
 
 import pandas as pd
-from azure.data.tables import TableServiceClient
+from azure.data.tables import TableServiceClient, UpdateMode
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 from azure.storage.filedatalake import DataLakeServiceClient
@@ -102,6 +102,11 @@ class RunWithAzureStorage:
 
         self.params = self._get_params(filename)
         self._get_data(self.params["start_year"], self.params["dataset"])
+
+        self._table_client = TableServiceClient(
+            endpoint=self._table_storage_account_url,
+            credential=DefaultAzureCredential(),
+        ).get_table_client("modelruns")
 
         self._update_table_storage(status="running")
 
@@ -246,18 +251,13 @@ class RunWithAzureStorage:
 
     def _update_table_storage(self, **kwargs) -> None:
         """Update the table storage with the given data."""
-        table_client = TableServiceClient(
-            endpoint=self._table_storage_account_url,
-            credential=DefaultAzureCredential(),
-        ).get_table_client("modelruns")
-
         entity = {
             "PartitionKey": self.params["dataset"],
             "RowKey": self._model_run_id,
             **kwargs,
         }
 
-        table_client.update_entity(entity)
+        self._table_client.update_entity(entity, mode=UpdateMode.MERGE)
 
     def _cleanup(self) -> None:
         """Cleanup.

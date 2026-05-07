@@ -4,6 +4,7 @@ import uuid
 from unittest.mock import Mock, call, mock_open, patch
 
 import pytest
+from azure.data.tables import UpdateMode
 
 from nhp.docker.run import RunWithAzureStorage, RunWithLocalStorage
 
@@ -81,6 +82,7 @@ def mock_run_with_azure_storage():
     rwas._blob_storage_account_url = "https://sa.blob.core.windows.net"
     rwas._adls_storage_account_url = "https://sa.dfs.core.windows.net"
     rwas._table_storage_account_url = "https://sa.table.core.windows.net"
+    rwas._table_client = Mock()
 
     rwas.params = {"dataset": "test"}
 
@@ -100,6 +102,12 @@ def test_RunWithAzureStorage_init(mocker, actual_version, expected_version):
         return_value=expected_params,
     )
     gdm = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_data")
+    table_service_client_mock = mocker.patch("nhp.docker.run.TableServiceClient")
+    table_service_client_instance = table_service_client_mock.return_value
+    table_client = table_service_client_instance.get_table_client.return_value
+    default_azure_credential_mock = mocker.patch(
+        "nhp.docker.run.DefaultAzureCredential", return_value="cred"
+    )
     utm = mocker.patch("nhp.docker.run.RunWithAzureStorage._update_table_storage")
 
     # act
@@ -112,10 +120,16 @@ def test_RunWithAzureStorage_init(mocker, actual_version, expected_version):
     assert s.params == expected_params
     assert s._blob_storage_account_url == "https://sa.blob.core.windows.net"
     assert s._adls_storage_account_url == "https://sa.dfs.core.windows.net"
+    assert s._table_client is table_client
 
     gpm.assert_called_once_with("filename")
 
     gdm.assert_called_once_with(2020, "synthetic")
+    table_service_client_mock.assert_called_once_with(
+        endpoint="https://sa.table.core.windows.net", credential="cred"
+    )
+    default_azure_credential_mock.assert_called_once_with()
+    table_service_client_instance.get_table_client.assert_called_once_with("modelruns")
     utm.assert_called_once_with(status="running")
 
 
@@ -327,28 +341,20 @@ def test_RunWithAzureStorage_upload_full_model_results(mock_run_with_azure_stora
 def test_RunWithAzureStorage_update_table_storage(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage
-
-    table_client_mock = mocker.patch("nhp.docker.run.TableServiceClient")
-    mocker.patch("nhp.docker.run.DefaultAzureCredential", return_value="dac")
+    table_client_mock = s._table_client = Mock()
 
     # act
     s._update_table_storage(status="complete", file_path="results_path")
 
     # assert
-    table_client_mock.assert_called_once_with(
-        endpoint="https://sa.table.core.windows.net", credential="dac"
-    )
-    tc = table_client_mock().get_table_client
-
-    tc.assert_called_once_with("modelruns")
-
-    tc().update_entity.assert_called_once_with(
+    table_client_mock.update_entity.assert_called_once_with(
         {
             "PartitionKey": "test",
             "RowKey": uuid.UUID("00000000-0000-0000-0000-000000000001"),
             "status": "complete",
             "file_path": "results_path",
-        }
+        },
+        mode=UpdateMode.MERGE,
     )
 
 
