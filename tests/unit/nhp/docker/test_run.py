@@ -422,7 +422,7 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
     m2.assert_called_once_with(
         status="complete",
         file_path=file_path,
-        outputs_app_path="dev/00000000-0000-0000-0000-000000000001",
+        outputs_app_uri="synthetic/00000000-0000-0000-0000-000000000001",
     )
     m3.assert_not_called()
     m4.assert_called_once_with()
@@ -481,7 +481,7 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
     m2.assert_called_once_with(
         status="complete",
         file_path=file_path,
-        outputs_app_path="dev/00000000-0000-0000-0000-000000000001",
+        outputs_app_uri="synthetic/00000000-0000-0000-0000-000000000001",
     )
     m3.assert_called_once()
     m4.assert_called_once_with()

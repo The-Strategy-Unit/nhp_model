@@ -302,7 +302,7 @@ class RunWithAzureStorage:
         self._update_table_storage(
             status="complete",
             file_path=file_path,
-            outputs_app_path=f"{self._app_version}/{self._model_run_id}",
+            outputs_app_uri=f"{self.params['dataset']}/{self._model_run_id}",
         )
 
         self._upload_results_files(
