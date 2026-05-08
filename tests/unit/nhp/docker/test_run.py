@@ -506,36 +506,18 @@ def test_RunWithAzureStorage_error(mock_run_with_azure_storage, mocker):
 def test_RunWithAzureStorage_progress_callback(mock_run_with_azure_storage):
     # arrange
     s = mock_run_with_azure_storage
-    m = s._queue_blob = Mock()
-    m.get_blob_properties.return_value = {"metadata": {"id": 1}}
+    m = s._update_table_storage = Mock()
 
     # (1) the initial set up
     # act (1)
     p = s.progress_callback()
 
     # assert (1)
-    m.get_blob_properties.assert_called_once_with()
-    sbm = m.set_blob_metadata
-
-    sbm.assert_called_once_with(
-        {
-            "id": "1",
-            "Inpatients": "0",
-            "Outpatients": "0",
-            "AaE": "0",
-        }
-    )
+    m.assert_called_once_with(progress='{"Inpatients": 0, "Outpatients": 0, "AaE": 0}')
 
     # (2) calling the callback
     # act (2)
     p("Inpatients")(5)
 
     # assert (2)
-    sbm.assert_called_with(
-        {
-            "id": "1",
-            "Inpatients": "5",
-            "Outpatients": "0",
-            "AaE": "0",
-        }
-    )
+    m.assert_called_with(progress='{"Inpatients": 5, "Outpatients": 0, "AaE": 0}')

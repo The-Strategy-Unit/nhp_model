@@ -334,21 +334,18 @@ class RunWithAzureStorage:
         Returns:
             A callback function that updates progress for each model type.
         """
-        blob = self._queue_blob
-
         current_progress = {
-            **blob.get_blob_properties()["metadata"],
             "Inpatients": 0,
             "Outpatients": 0,
             "AaE": 0,
         }
 
-        blob.set_blob_metadata({k: str(v) for k, v in current_progress.items()})
+        self._update_table_storage(progress=json.dumps(current_progress))
 
         def callback(model_type: Any) -> Callable[[Any], None]:
             def update(n_completed: Any) -> None:
                 current_progress[model_type] = n_completed
-                blob.set_blob_metadata({k: str(v) for k, v in current_progress.items()})
+                self._update_table_storage(progress=json.dumps(current_progress))
 
             return update
 
