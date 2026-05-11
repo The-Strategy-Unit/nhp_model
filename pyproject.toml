@@ -21,7 +21,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "coverage>=7.2",
+    "coverage>=7.14.0",
     "pytest>=9.0.3",
     "pytest-cov>=4.0",
     "pytest-mock>=3.10",
