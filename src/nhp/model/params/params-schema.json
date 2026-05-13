@@ -875,9 +875,6 @@
                 "waiting_list_adjustment"
             ]
         },
-        "viewable": {
-            "type": "boolean"
-        },
         "reasons": {
             "type": "object"
         }
