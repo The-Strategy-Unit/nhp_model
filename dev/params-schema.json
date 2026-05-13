@@ -22,8 +22,7 @@
         "start_year": {
             "type": "integer",
             "enum": [
-                2023,
-                2024
+                2023
             ]
         },
         "end_year": {
