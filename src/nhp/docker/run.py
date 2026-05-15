@@ -7,13 +7,17 @@ import os
 import re
 from pathlib import Path
 from typing import Any, Callable
+from uuid import UUID
 
+import pandas as pd
+from azure.data.tables import TableServiceClient, UpdateMode
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 from azure.storage.filedatalake import DataLakeServiceClient
 
 from nhp.docker.config import Config
 from nhp.model.params import load_params
+from nhp.model.results import generate_results_json, save_results_files
 from nhp.model.run import noop_progress_callback
 
 
@@ -30,19 +34,30 @@ class RunWithLocalStorage:
 
     def finish(
         self,
-        results_file: str,
-        saved_files: list,
-        save_full_model_results: bool,
-        additional_metadata: dict,
+        results: dict[str, pd.DataFrame],
+        variants: list[str],
+        _save_full_model_results: bool,
+        _additional_metadata: dict[str, Any],
     ) -> None:
         """Post model run steps.
 
         Args:
-            results_file: The path to the results file.
-            saved_files: Filepaths of results, saved in parquet format and params in json format.
+            results: A dictionary containing the results dataframes.
+            variants: A list of the variants that were run.
             save_full_model_results: Whether to save the full model results or not.
             additional_metadata: Additional metadata to log.
         """
+        save_results_files(results, self.params, variants)
+
+    def error(self, error_message: str) -> None:
+        """Error handling.
+
+        If there is an error during the model run, log the error message.
+
+        Args:
+            error_message: The error message to log.
+        """
+        pass
 
     def progress_callback(self) -> Callable[[Any], Callable[[Any], None]]:
         """Progress callback method.
@@ -58,10 +73,11 @@ class RunWithLocalStorage:
 class RunWithAzureStorage:
     """Methods for running with azure storage."""
 
-    def __init__(self, filename: str, config: Config = Config()):
+    def __init__(self, model_run_id: UUID, filename: str, config: Config | None = None):
         """Initialise RunWithAzureStorage.
 
         Args:
+            model_run_id: Unique identifier for this model run.
             filename: Name of the parameter file to load.
             config: The configuration for the run. Defaults to Config().
         """
@@ -69,9 +85,10 @@ class RunWithAzureStorage:
         logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
             logging.WARNING
         )
-        self._config = config
+        self._model_run_id = model_run_id
+        self._config = config or Config()
 
-        self._app_version = re.sub("(\\d+\\.\\d+)\\..*", "\\1", config.APP_VERSION)
+        self._app_version = re.sub("(\\d+\\.\\d+)\\..*", "\\1", self._config.APP_VERSION)
 
         self._blob_storage_account_url = (
             f"https://{self._config.STORAGE_ACCOUNT}.blob.core.windows.net"
@@ -79,9 +96,19 @@ class RunWithAzureStorage:
         self._adls_storage_account_url = (
             f"https://{self._config.STORAGE_ACCOUNT}.dfs.core.windows.net"
         )
+        self._table_storage_account_url = (
+            f"https://{self._config.STORAGE_ACCOUNT}.table.core.windows.net"
+        )
 
         self.params = self._get_params(filename)
         self._get_data(self.params["start_year"], self.params["dataset"])
+
+        self._table_client = TableServiceClient(
+            endpoint=self._table_storage_account_url,
+            credential=DefaultAzureCredential(),
+        ).get_table_client("modelruns")
+
+        self._update_table_storage(status="running")
 
     def _get_container(self, container_name: str):
         return BlobServiceClient(
@@ -140,49 +167,69 @@ class RunWithAzureStorage:
                     file_client = fs_client.get_file_client(filename)
                     local_file.write(file_client.download_file().readall())
 
-    def _upload_results_json(self, results_file: str, metadata: dict) -> None:
+    def _upload_results_json(
+        self, results: dict[str, pd.DataFrame], metadata: dict[str, Any], variants: list[str]
+    ) -> None:
         """Upload the results.
 
         Once the model has run, upload the results to blob storage.
 
         Args:
-            results_file: The saved results file.
+            results: Dictionary containing the results dataframes.
             metadata: The metadata to attach to the blob.
+            variants: A list of the variants that were run.
         """
         container = self._get_container("results")
+
+        results_file = generate_results_json(results, self.params, variants)
 
         with open(f"results/{results_file}.json", "rb") as file:
             container.upload_blob(
                 f"prod/{self._app_version}/{results_file}.json.gz",
                 gzip.compress(file.read()),
-                metadata=metadata,
+                metadata={k: str(v) for k, v in metadata.items()},
                 overwrite=True,
             )
 
-    def _upload_results_files(self, files: list, metadata: dict) -> None:
+    def _upload_results_files(
+        self,
+        file_path: str,
+        results: dict[str, pd.DataFrame],
+        metadata: dict[str, str],
+        variants: list[str],
+    ) -> None:
         """Upload the results.
 
         Once the model has run, upload the files (parquet for model results and json for
         model params) to blob storage.
 
         Args:
-            files: List of files to be uploaded.
+            file_path: The path to save the results to.
+            results: A dictionary containing the results dataframes.
             metadata: The metadata to attach to the blob.
+            variants: A list of the variants that were run.
         """
+        params = self.params
         container = self._get_container("results")
-        for file in files:
-            filename = file[8:]
-            if file.endswith(".json"):
-                metadata_to_use = metadata
-            else:
-                metadata_to_use = None
-            with open(file, "rb") as f:
-                container.upload_blob(
-                    f"aggregated-model-results/{self._app_version}/{filename}",
-                    f.read(),
-                    overwrite=True,
-                    metadata=metadata_to_use,
-                )
+        for k, v in results.items():
+            container.upload_blob(
+                file_path + f"/{k}.parquet",
+                v.to_parquet(index=False),
+                overwrite=True,
+                metadata=metadata,
+            )
+        container.upload_blob(
+            f"{file_path}/params.json",
+            json.dumps(params).encode("utf-8"),
+            overwrite=True,
+            metadata=metadata,
+        )
+        container.upload_blob(
+            f"{file_path}/variants.json",
+            json.dumps(variants).encode("utf-8"),
+            overwrite=True,
+            metadata=metadata,
+        )
 
     def _upload_full_model_results(self) -> None:
         container = self._get_container("results")
@@ -202,6 +249,16 @@ class RunWithAzureStorage:
                     overwrite=True,
                 )
 
+    def _update_table_storage(self, **kwargs) -> None:
+        """Update the table storage with the given data."""
+        entity = {
+            "PartitionKey": self.params["dataset"],
+            "RowKey": self._model_run_id,
+            **kwargs,
+        }
+
+        self._table_client.update_entity(entity, mode=UpdateMode.MERGE)
+
     def _cleanup(self) -> None:
         """Cleanup.
 
@@ -213,31 +270,61 @@ class RunWithAzureStorage:
 
     def finish(
         self,
-        results_file: str,
-        saved_files: list,
+        results: dict[str, pd.DataFrame],
+        variants: list[str],
         save_full_model_results: bool,
-        additional_metadata: dict,
+        additional_metadata: dict[str, Any],
     ) -> None:
         """Post model run steps.
 
         Args:
-            results_file: The path to the results file.
-            saved_files: Filepaths of results, saved in parquet format and params in json format.
+            results: A dictionary containing the results dataframes.
+            variants: A list of the variants that were run.
             save_full_model_results: Whether to save the full model results or not.
             additional_metadata: Additional metadata to log.
         """
         metadata = {
-            k: str(v)
+            k: v
             for k, v in self.params.items()
             if not isinstance(v, dict) and not isinstance(v, list)
         }
-        metadata.update({k: str(v) for k, v in additional_metadata.items()})
+        metadata.update(additional_metadata)
 
-        self._upload_results_json(results_file, metadata)
-        self._upload_results_files(saved_files, metadata)
+        file_path = "/".join(
+            [
+                "aggregated-model-results",
+                self._app_version,
+                self.params["dataset"],
+                self.params["scenario"],
+                self.params["create_datetime"],
+            ]
+        )
+        self._update_table_storage(
+            status="complete",
+            file_path=file_path,
+            outputs_app_uri=f"{self.params['dataset']}/{self._model_run_id}",
+        )
+
+        self._upload_results_files(
+            file_path, results, {"model_run_id": str(self._model_run_id)}, variants
+        )
+        # see issue #286, this should be removed once we no longer need the results json file
+        self._upload_results_json(results, metadata, variants)
         if save_full_model_results:
             self._upload_full_model_results()
+
         self._cleanup()
+
+    def error(self, error_message: str) -> None:
+        """Error handling.
+
+        If there is an error during the model run, update the table storage with the error
+        message and clean up the queue.
+
+        Args:
+            error_message: The error message to log.
+        """
+        self._update_table_storage(status="error", error_message=error_message)
 
     def progress_callback(self) -> Callable[[Any], Callable[[Any], None]]:
         """Progress callback method.
@@ -247,21 +334,18 @@ class RunWithAzureStorage:
         Returns:
             A callback function that updates progress for each model type.
         """
-        blob = self._queue_blob
-
         current_progress = {
-            **blob.get_blob_properties()["metadata"],
             "Inpatients": 0,
             "Outpatients": 0,
             "AaE": 0,
         }
 
-        blob.set_blob_metadata({k: str(v) for k, v in current_progress.items()})
+        self._update_table_storage(progress=json.dumps(current_progress))
 
         def callback(model_type: Any) -> Callable[[Any], None]:
             def update(n_completed: Any) -> None:
                 current_progress[model_type] = n_completed
-                blob.set_blob_metadata({k: str(v) for k, v in current_progress.items()})
+                self._update_table_storage(progress=json.dumps(current_progress))
 
             return update
 

@@ -20,6 +20,7 @@ from nhp.model.data import Local
 from nhp.model.inpatients import InpatientsModel
 from nhp.model.outpatients import OutpatientsModel
 from nhp.model.params import load_params, load_sample_params
+from nhp.model.results import save_results_files
 from nhp.model.run import run_all, run_single_model_run
 
 
@@ -67,12 +68,13 @@ def main() -> None:
                 datefmt="%Y-%m-%d %H:%M:%S",
             )
 
-            run_all(
+            results, variants = run_all(
                 params,
                 Local.create(args.data_path),
                 lambda _: lambda _: None,
                 args.save_full_model_results,
             )
+            save_results_files(results, params, variants)
             return
         case "aae":
             model_type = AaEModel

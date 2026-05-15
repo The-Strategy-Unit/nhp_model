@@ -1,5 +1,6 @@
 """test docker run."""
 
+import uuid
 from datetime import datetime
 from unittest.mock import Mock, patch
 
@@ -9,19 +10,40 @@ from nhp.docker.__main__ import main, parse_args
 
 
 @pytest.mark.parametrize(
-    "args, expected_file, expected_local_storage, expected_save_full_model_results",
+    ", ".join(
+        [
+            "args",
+            "expected_file",
+            "expected_model_run_id",
+            "expected_local_storage",
+            "expected_save_full_model_results",
+        ]
+    ),
     [
-        (["test.json"], "test.json", False, False),
-        (["test.json", "-l"], "test.json", True, False),
-        (["test.json"], "test.json", False, False),
-        (["test.json", "-l"], "test.json", True, False),
-        (["test.json", "--save-full-model-results"], "test.json", False, True),
+        (["test.json"], "test.json", uuid.uuid4, False, False),
+        (["test.json", "-l"], "test.json", uuid.uuid4, True, False),
+        (
+            ["test.json", "00000000-0000-0000-0000-000000000001"],
+            "test.json",
+            uuid.UUID("00000000-0000-0000-0000-000000000001"),
+            False,
+            False,
+        ),
+        (
+            ["test.json", "00000000-0000-0000-0000-000000000001", "-l"],
+            "test.json",
+            uuid.UUID("00000000-0000-0000-0000-000000000001"),
+            True,
+            False,
+        ),
+        (["test.json", "--save-full-model-results"], "test.json", uuid.uuid4, False, True),
     ],
 )
 def test_parse_args(
     mocker,
     args,
     expected_file,
+    expected_model_run_id,
     expected_local_storage,
     expected_save_full_model_results,
 ):
@@ -33,6 +55,7 @@ def test_parse_args(
 
     # assert
     assert actual.params_file == expected_file
+    assert actual.model_run_id == expected_model_run_id
     assert actual.local_storage == expected_local_storage
     assert actual.save_full_model_results == expected_save_full_model_results
 
@@ -41,6 +64,7 @@ def test_main_local(mocker):
     # arrange
     m = mocker.patch("nhp.docker.__main__.parse_args")
     m().params_file = "params.json"
+    m().model_run_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
     m().local_storage = True
     m().save_full_model_results = False
 
@@ -65,9 +89,7 @@ def test_main_local(mocker):
     rwls().params = params
     rwls.reset_mock()
 
-    ru_m = mocker.patch(
-        "nhp.docker.__main__.run_all", return_value=("list_of_results", "results.json")
-    )
+    ru_m = mocker.patch("nhp.docker.__main__.run_all", return_value=("results", "variants"))
 
     expected_additional_metadata = {
         "model_run_start_time": m_start_time.isoformat(),
@@ -76,7 +98,7 @@ def test_main_local(mocker):
     }
 
     # act
-    main()
+    main(Mock())
 
     # assert
     rwls.assert_called_once_with("params.json")
@@ -84,9 +106,7 @@ def test_main_local(mocker):
 
     s = rwls()
     ru_m.assert_called_once_with(params, "data", s.progress_callback(), False)
-    s.finish.assert_called_once_with(
-        "results.json", "list_of_results", False, expected_additional_metadata
-    )
+    s.finish.assert_called_once_with("results", "variants", False, expected_additional_metadata)
 
     local_data_mock.create.assert_called_once_with("data")
 
@@ -95,6 +115,7 @@ def test_main_azure(mocker):
     # arrange
     m = mocker.patch("nhp.docker.__main__.parse_args")
     m().params_file = "params.json"
+    m().model_run_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
     m().local_storage = False
     m().save_full_model_results = False
 
@@ -124,9 +145,7 @@ def test_main_azure(mocker):
     rwas().params = params
     rwas.reset_mock()
 
-    ru_m = mocker.patch(
-        "nhp.docker.__main__.run_all", return_value=("list_of_results", "results.json")
-    )
+    ru_m = mocker.patch("nhp.docker.__main__.run_all", return_value=("results", "variants"))
 
     expected_additional_metadata = {
         "model_run_start_time": m_start_time.isoformat(),
@@ -139,13 +158,13 @@ def test_main_azure(mocker):
 
     # assert
     rwls.assert_not_called()
-    rwas.assert_called_once_with("params.json", config)
+    rwas.assert_called_once_with(
+        uuid.UUID("00000000-0000-0000-0000-000000000001"), "params.json", config
+    )
 
     s = rwas()
     ru_m.assert_called_once_with(params, "data", s.progress_callback(), False)
-    s.finish.assert_called_once_with(
-        "results.json", "list_of_results", False, expected_additional_metadata
-    )
+    s.finish.assert_called_once_with("results", "variants", False, expected_additional_metadata)
 
     local_data_mock.create.assert_called_once_with("data")
 
@@ -166,17 +185,49 @@ def test_init(mocker):
         main_mock.assert_called_once_with(config())
 
 
-def test_init_catches_exception(mocker):
+@pytest.mark.parametrize(
+    "local_storage",
+    [
+        True,
+        False,
+    ],
+)
+def test_main_calls_runner_error_on_exception(mocker, local_storage):
     # arrange
-    mocker.patch("nhp.docker.__main__.main", side_effect=Exception("Test error"))
-    import nhp.docker.__main__ as r
+    parse_args_mock = mocker.patch("nhp.docker.__main__.parse_args")
+    parse_args_mock().params_file = "params.json"
+    parse_args_mock().model_run_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    parse_args_mock().local_storage = local_storage
+    parse_args_mock().save_full_model_results = False
 
-    m = mocker.patch("logging.error")
+    local_runner = mocker.patch("nhp.docker.__main__.RunWithLocalStorage")
+    azure_runner = mocker.patch("nhp.docker.__main__.RunWithAzureStorage")
+    runner = local_runner if local_storage else azure_runner
+    runner().params = {
+        "model_runs": 256,
+        "start_year": 2019,
+        "end_year": 2035,
+        "app_version": "dev",
+    }
+
+    mocker.patch("nhp.docker.__main__.Local")
+    mocker.patch("nhp.docker.__main__.run_all", side_effect=Exception("Test error"))
+    log_error = mocker.patch("logging.error")
+    config = Mock()
 
     # act
-    with patch.object(r, "__name__", "__main__"):
-        with pytest.raises(Exception, match="Test error"):
-            r.init()
+    main(config)
 
     # assert
-    m.assert_called_once_with("An error occurred: %s", "Test error")
+    if local_storage:
+        runner.assert_any_call("params.json")
+    else:
+        runner.assert_any_call(
+            uuid.UUID("00000000-0000-0000-0000-000000000001"), "params.json", config
+        )
+    log_error.assert_called_once_with("An error occurred: %s", "Test error")
+    runner().error.assert_called_once_with("Test error")
+    if local_storage:
+        azure_runner.assert_not_called()
+    else:
+        local_runner.assert_not_called()

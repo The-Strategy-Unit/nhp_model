@@ -1,8 +1,10 @@
 """test docker run."""
 
+import uuid
 from unittest.mock import Mock, call, mock_open, patch
 
 import pytest
+from azure.data.tables import UpdateMode
 
 from nhp.docker.run import RunWithAzureStorage, RunWithLocalStorage
 
@@ -25,12 +27,26 @@ def test_RunWithLocalStorage(mocker):
 def test_RunWithLocalStorage_finish(mocker):
     # arrange
     mocker.patch("nhp.docker.run.load_params", return_value="params")
+    save_results_files_mock = mocker.patch("nhp.docker.run.save_results_files")
     s = RunWithLocalStorage("filename")
 
     # act
-    s.finish("results", ["saved_files"], False, {})
+    s.finish("results", "variants", False, {})  # ty: ignore[invalid-argument-type]
 
-    # assert (nothing to assert)
+    # assert
+    save_results_files_mock.assert_called_once_with("results", "params", "variants")
+
+
+def test_RunWithLocalStorage_error(mocker):
+    # arrange
+    mocker.patch("nhp.docker.run.load_params", return_value="params")
+    s = RunWithLocalStorage("filename")
+
+    # act
+    actual = s.error("Test error")
+
+    # assert
+    assert actual is None
 
 
 def test_RunWithLocalStorage_progress_callback(mocker):
@@ -56,6 +72,7 @@ def mock_run_with_azure_storage():
 
     rwas.params = {}
     rwas._app_version = "dev"
+    rwas._model_run_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
     rwas._config = Mock()
     rwas._config.APP_VERSION = "dev"
@@ -64,6 +81,10 @@ def mock_run_with_azure_storage():
 
     rwas._blob_storage_account_url = "https://sa.blob.core.windows.net"
     rwas._adls_storage_account_url = "https://sa.dfs.core.windows.net"
+    rwas._table_storage_account_url = "https://sa.table.core.windows.net"
+    rwas._table_client = Mock()
+
+    rwas.params = {"dataset": "test"}
 
     return rwas
 
@@ -81,19 +102,35 @@ def test_RunWithAzureStorage_init(mocker, actual_version, expected_version):
         return_value=expected_params,
     )
     gdm = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_data")
+    table_service_client_mock = mocker.patch("nhp.docker.run.TableServiceClient")
+    table_service_client_instance = table_service_client_mock.return_value
+    table_client = table_service_client_instance.get_table_client.return_value
+    default_azure_credential_mock = mocker.patch(
+        "nhp.docker.run.DefaultAzureCredential", return_value="cred"
+    )
+    utm = mocker.patch("nhp.docker.run.RunWithAzureStorage._update_table_storage")
 
     # act
-    s = RunWithAzureStorage("filename", config())
+    model_run_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    s = RunWithAzureStorage(model_run_id, "filename", config())
 
     # assert
+    assert s._model_run_id == model_run_id
     assert s._app_version == expected_version
     assert s.params == expected_params
     assert s._blob_storage_account_url == "https://sa.blob.core.windows.net"
     assert s._adls_storage_account_url == "https://sa.dfs.core.windows.net"
+    assert s._table_client is table_client
 
     gpm.assert_called_once_with("filename")
 
     gdm.assert_called_once_with(2020, "synthetic")
+    table_service_client_mock.assert_called_once_with(
+        endpoint="https://sa.table.core.windows.net", credential="cred"
+    )
+    default_azure_credential_mock.assert_called_once_with()
+    table_service_client_instance.get_table_client.assert_called_once_with("modelruns")
+    utm.assert_called_once_with(status="running")
 
 
 def test_RunWithAzureStorage_get_container(mock_run_with_azure_storage, mocker):
@@ -205,49 +242,62 @@ def test_RunWithAzureStorage_upload_results_json(mock_run_with_azure_storage, mo
     # arrange
     s = mock_run_with_azure_storage
 
-    m = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_container")
+    m_get_container = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_container")
+    m_generate_results_json = mocker.patch(
+        "nhp.docker.run.generate_results_json", return_value="filename"
+    )
     mocker.patch("gzip.compress", return_value="gzdata")
+    metadata = {"k": "v", "count": 1}
 
     # act
     with patch("builtins.open", mock_open(read_data="data")) as mock_file:
-        s._upload_results_json("filename", "metadata")
+        s._upload_results_json("filename", metadata, "variants")
 
     # assert
     mock_file.assert_called_once_with("results/filename.json", "rb")
-    m.assert_called_once_with("results")
-    m().upload_blob.assert_called_once_with(
-        "prod/dev/filename.json.gz", "gzdata", metadata="metadata", overwrite=True
+    m_get_container.assert_called_once_with("results")
+    m_get_container().upload_blob.assert_called_once_with(
+        "prod/dev/filename.json.gz",
+        "gzdata",
+        metadata={"k": "v", "count": "1"},
+        overwrite=True,
     )
+    m_generate_results_json.assert_called_once_with("filename", {"dataset": "test"}, "variants")
 
 
 def test_RunWithAzureStorage_upload_results_files(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage
 
-    m = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_container")
+    get_container_mock = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_container")
     metadata = {"k": "v"}
 
+    results_file_mock = Mock()
+    results_file_mock.to_parquet.side_effect = lambda index: "data"
+    s.params = {"params": "params"}
+
     # act
-    with patch("builtins.open", mock_open(read_data="data")) as mock_file:
-        s._upload_results_files(["results/filename", "results/filename.json"], metadata)
+    s._upload_results_files("file_path", {"a": results_file_mock}, metadata, ["variants"])
 
     # assert
-    assert mock_file.call_args_list == [
-        call("results/filename", "rb"),
-        call("results/filename.json", "rb"),
-    ]
-    m.assert_called_once_with("results")
-    m().upload_blob.assert_has_calls(
+    get_container_mock.assert_called_once_with("results")
+    get_container_mock().upload_blob.assert_has_calls(
         [
             call(
-                "aggregated-model-results/dev/filename",
+                "file_path/a.parquet",
                 "data",
                 overwrite=True,
-                metadata=None,
+                metadata=metadata,
             ),
             call(
-                "aggregated-model-results/dev/filename.json",
-                "data",
+                "file_path/params.json",
+                b'{"params": "params"}',
+                overwrite=True,
+                metadata=metadata,
+            ),
+            call(
+                "file_path/variants.json",
+                b'["variants"]',
                 overwrite=True,
                 metadata=metadata,
             ),
@@ -288,6 +338,26 @@ def test_RunWithAzureStorage_upload_full_model_results(mock_run_with_azure_stora
     ]
 
 
+def test_RunWithAzureStorage_update_table_storage(mock_run_with_azure_storage, mocker):
+    # arrange
+    s = mock_run_with_azure_storage
+    table_client_mock = s._table_client = Mock()
+
+    # act
+    s._update_table_storage(status="complete", file_path="results_path")
+
+    # assert
+    table_client_mock.update_entity.assert_called_once_with(
+        {
+            "PartitionKey": "test",
+            "RowKey": uuid.UUID("00000000-0000-0000-0000-000000000001"),
+            "status": "complete",
+            "file_path": "results_path",
+        },
+        mode=UpdateMode.MERGE,
+    )
+
+
 def test_RunWithAzureStorage_cleanup(mock_run_with_azure_storage):
     # arrange
     s = mock_run_with_azure_storage
@@ -305,12 +375,19 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
 ):
     # arrange
     s = mock_run_with_azure_storage
-    m1 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_results_json")
-    m2 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_results_files")
+    m1 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_results_files")
+    m2 = mocker.patch("nhp.docker.run.RunWithAzureStorage._update_table_storage")
     m3 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_full_model_results")
     m4 = mocker.patch("nhp.docker.run.RunWithAzureStorage._cleanup")
 
-    metadata = {"id": "1", "dataset": "synthetic", "start_year": "2020"}
+    m5 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_results_json")
+
+    metadata = {
+        "id": "1",
+        "dataset": "synthetic",
+        "scenario": "test",
+        "create_datetime": "20240101_012345",
+    }
     params = metadata.copy()
     params["list"] = [1, 2]  # ty: ignore
     params["dict"] = {"a": 1}  # ty: ignore
@@ -322,14 +399,35 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
     metadata_expected = metadata.copy()
     metadata_expected.update(additional_metadata)
 
+    file_path = "/".join(
+        [
+            "aggregated-model-results",
+            "dev",
+            "synthetic",
+            "test",
+            "20240101_012345",
+        ]
+    )
+
     # act
-    s.finish("results_file", ["saved_files"], False, additional_metadata)
+    s.finish("results", "variants", False, additional_metadata)
 
     # assert
-    m1.assert_called_once_with("results_file", metadata_expected)
-    m2.assert_called_once_with(["saved_files"], metadata_expected)
+    m1.assert_called_once_with(
+        file_path,
+        "results",
+        {"model_run_id": "00000000-0000-0000-0000-000000000001"},
+        "variants",
+    )
+    m2.assert_called_once_with(
+        status="complete",
+        file_path=file_path,
+        outputs_app_uri="synthetic/00000000-0000-0000-0000-000000000001",
+    )
     m3.assert_not_called()
-    m4.assert_called_once()
+    m4.assert_called_once_with()
+
+    m5.assert_called_once_with("results", metadata_expected, "variants")
 
 
 def test_RunWithAzureStorage_finish_save_full_model_results_true(
@@ -337,16 +435,22 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
 ):
     # arrange
     s = mock_run_with_azure_storage
-    m1 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_results_json")
-    m2 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_results_files")
+    m1 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_results_files")
+    m2 = mocker.patch("nhp.docker.run.RunWithAzureStorage._update_table_storage")
     m3 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_full_model_results")
     m4 = mocker.patch("nhp.docker.run.RunWithAzureStorage._cleanup")
 
-    metadata = {"id": "1", "dataset": "synthetic", "start_year": "2020"}
+    m5 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_results_json")
+
+    metadata = {
+        "id": "1",
+        "dataset": "synthetic",
+        "scenario": "test",
+        "create_datetime": "20240101_012345",
+    }
     params = metadata.copy()
     params["list"] = [1, 2]  # ty: ignore
     params["dict"] = {"a": 1}  # ty: ignore
-
     s.params = params
 
     additional_metadata = {"elapsed_time_seconds": "3600"}
@@ -354,49 +458,66 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
     metadata_expected = metadata.copy()
     metadata_expected.update(additional_metadata)
 
+    file_path = "/".join(
+        [
+            "aggregated-model-results",
+            "dev",
+            "synthetic",
+            "test",
+            "20240101_012345",
+        ]
+    )
+
     # act
-    s.finish("results_file", ["saved_files"], True, additional_metadata)
+    s.finish("results", "variants", True, additional_metadata)
 
     # assert
-    m1.assert_called_once_with("results_file", metadata_expected)
-    m2.assert_called_once_with(["saved_files"], metadata_expected)
+    m1.assert_called_once_with(
+        file_path,
+        "results",
+        {"model_run_id": "00000000-0000-0000-0000-000000000001"},
+        "variants",
+    )
+    m2.assert_called_once_with(
+        status="complete",
+        file_path=file_path,
+        outputs_app_uri="synthetic/00000000-0000-0000-0000-000000000001",
+    )
     m3.assert_called_once()
-    m4.assert_called_once()
+    m4.assert_called_once_with()
+
+    m5.assert_called_once_with("results", metadata_expected, "variants")
+
+
+def test_RunWithAzureStorage_error(mock_run_with_azure_storage, mocker):
+    # arrange
+    s = mock_run_with_azure_storage
+    update_table_storage_mock = mocker.patch(
+        "nhp.docker.run.RunWithAzureStorage._update_table_storage"
+    )
+
+    # act
+    s.error("Test error")
+
+    # assert
+    update_table_storage_mock.assert_called_once_with(status="error", error_message="Test error")
 
 
 def test_RunWithAzureStorage_progress_callback(mock_run_with_azure_storage):
     # arrange
     s = mock_run_with_azure_storage
-    m = s._queue_blob = Mock()
-    m.get_blob_properties.return_value = {"metadata": {"id": 1}}
+    m = s._update_table_storage = Mock()
 
     # (1) the initial set up
     # act (1)
     p = s.progress_callback()
 
     # assert (1)
-    m.get_blob_properties.assert_called_once_with()
-    sbm = m.set_blob_metadata
-
-    sbm.assert_called_once_with(
-        {
-            "id": "1",
-            "Inpatients": "0",
-            "Outpatients": "0",
-            "AaE": "0",
-        }
-    )
+    m.assert_called_once_with(progress='{"Inpatients": 0, "Outpatients": 0, "AaE": 0}')
 
     # (2) calling the callback
     # act (2)
     p("Inpatients")(5)
 
     # assert (2)
-    sbm.assert_called_with(
-        {
-            "id": "1",
-            "Inpatients": "5",
-            "Outpatients": "0",
-            "AaE": "0",
-        }
-    )
+    m.assert_called_with(progress='{"Inpatients": 5, "Outpatients": 0, "AaE": 0}')
