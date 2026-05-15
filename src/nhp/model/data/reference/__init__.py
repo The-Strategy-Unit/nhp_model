@@ -57,7 +57,6 @@ def hsa_metalog_parameters(target_year: int) -> dict[int, Metalog]:
     Returns:
         A dictionary containing the health status adjustment metalog parameters.
     """
-
     with _ref_path("hsa_metalog_parameters.json").open("r", encoding="UTF-8") as f:
         sex_to_int = {"m": 1, "f": 2}
         return {
