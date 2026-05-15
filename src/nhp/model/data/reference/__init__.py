@@ -58,18 +58,10 @@ def hsa_metalog_parameters(target_year: int) -> dict[int, Metalog]:
         A dictionary containing the health status adjustment metalog parameters.
     """
 
-    def sex_to_int(sex: str) -> int:
-        match sex:
-            case "m":
-                return 1
-            case "f":
-                return 2
-            case _:
-                raise ValueError(f"Invalid sex: {sex}")
-
     with _ref_path("hsa_metalog_parameters.json").open("r", encoding="UTF-8") as f:
+        sex_to_int = {"m": 1, "f": 2}
         return {
-            sex_to_int(k): Metalog(
+            sex_to_int[k]: Metalog(
                 MetalogParameters(**v["metalog_params"]),
                 v["a"],
             )
