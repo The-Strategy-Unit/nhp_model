@@ -13,7 +13,8 @@ USER nhp
 COPY --chown=nhp:nhp pyproject.toml uv.lock ./
 
 # Install dependencies only (skip local package)
-RUN uv sync --frozen --no-dev --no-install-project
+RUN --mount=type=cache,target=/app/.cache/uv,uid=1000,gid=1000 \
+  uv sync --frozen --no-dev --no-install-project
 
 # Ensure Python can find installed packages and local model
 ENV PATH="/app/.venv/bin:$PATH"
