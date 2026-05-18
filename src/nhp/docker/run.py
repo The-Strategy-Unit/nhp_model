@@ -183,13 +183,18 @@ class RunWithAzureStorage:
 
         results_file = generate_results_json(results, self.params, variants)
 
+        results_json_gz_path = f"prod/{self._app_version}/{results_file}.json.gz"
         with open(f"results/{results_file}.json", "rb") as file:
             container.upload_blob(
-                f"prod/{self._app_version}/{results_file}.json.gz",
+                results_json_gz_path,
                 gzip.compress(file.read()),
                 metadata={k: str(v) for k, v in metadata.items()},
                 overwrite=True,
             )
+
+        self._update_table_storage(
+            results_json_gz_path=results_json_gz_path,
+        )
 
     def _upload_results_files(
         self,
