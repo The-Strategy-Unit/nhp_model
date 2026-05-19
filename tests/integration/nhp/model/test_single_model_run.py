@@ -10,7 +10,6 @@ from nhp.model import (
     load_sample_params,
 )
 from nhp.model.data import Local
-from nhp.model.run import run_all
 
 
 @pytest.fixture(scope="session")
