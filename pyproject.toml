@@ -109,6 +109,6 @@ fallback_version = "0.0.0"
 exclude = ["docs"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests/unit", "tests/integration"]
+testpaths = ["tests/unit", "tests/integration", "tests/e2e"]
 python_files = ["test_*.py"]
 norecursedirs = ["docs", "*.egg-info", ".git", "appdir", ".tox", "__pycache__"]
