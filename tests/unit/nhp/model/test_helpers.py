@@ -7,12 +7,14 @@ import pytest
 from nhp.model.helpers import inrange, rnorm
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("value, expected", [(-1.1, 0), (1.1, 1), (0, 0), (1, 1), (0.5, 0.5)])
 def test_inrange(value, expected):
     """Test that the inrange function returns expected values."""
     assert inrange(value) == expected
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "value, low, high, expected", [(0, 0.25, 0.75, 0.25), (1, 0.25, 0.75, 0.75)]
 )
@@ -21,6 +23,7 @@ def test_inrange_lo_hi(value, low, high, expected):
     assert inrange(value, low, high) == expected
 
 
+@pytest.mark.unit
 def test_rnorm():
     """Test that the rnorm function returns random values."""
     rng = Mock()

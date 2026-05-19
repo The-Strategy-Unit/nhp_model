@@ -19,6 +19,7 @@ def mock_model_iteration():
     return mr
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("run, rp_call", [(-1, 0), (0, 0), (1, 1)])
 def test_init(mocker, run, rp_call):
     # arrange
@@ -51,6 +52,7 @@ def test_init(mocker, run, rp_call):
     actual._run.assert_called_once()  # type: ignore
 
 
+@pytest.mark.unit
 def test_patch_run_params(mock_model_iteration):
     # arrange
     mr = mock_model_iteration
@@ -103,6 +105,7 @@ def test_patch_run_params(mock_model_iteration):
 # run()
 
 
+@pytest.mark.unit
 def test_run(mocker, mock_model_iteration):
     """Test run calls the _run method correctly."""
     # arrange
@@ -161,6 +164,7 @@ def test_run(mocker, mock_model_iteration):
     assert mr_mock.step_counts == "pd.concat"
 
 
+@pytest.mark.unit
 def test_run_baseline(mocker, mock_model_iteration):
     """Test run calls the _run method correctly."""
     # arrange
@@ -180,6 +184,7 @@ def test_run_baseline(mocker, mock_model_iteration):
 # test_fix_step_counts
 
 
+@pytest.mark.unit
 def test_fix_step_counts(mock_model_iteration):
     # arrange
     baseline = np.array([[1, 1, 1], [1, 2, 3]])
@@ -212,6 +217,7 @@ def test_fix_step_counts(mock_model_iteration):
 # aggregate()
 
 
+@pytest.mark.unit
 def test_get_aggregate_results(mock_model_iteration):
     """Test the get_aggregate_results method."""
     # arrange
@@ -241,6 +247,7 @@ def test_get_aggregate_results(mock_model_iteration):
     mr_mock.model.get_agg.assert_called_once_with("avoided_activity_agg", "sex", "age_group")
 
 
+@pytest.mark.unit
 def test_get_aggregate_results_avoided_activity_empty_dataframe(mock_model_iteration):
     """Test the get_aggregate_results method when avoided activity is None."""
     # arrange
@@ -259,6 +266,7 @@ def test_get_aggregate_results_avoided_activity_empty_dataframe(mock_model_itera
     mr_mock.model.process_results.assert_not_called()
 
 
+@pytest.mark.unit
 def test_get_step_counts_empty(mock_model_iteration):
     """Test the get_step_counts method when step counts is empty."""
     # arrange
@@ -272,6 +280,7 @@ def test_get_step_counts_empty(mock_model_iteration):
     assert actual is None
 
 
+@pytest.mark.unit
 def test_get_step_counts(mock_model_iteration):
     """Test the get_step_counts method when step counts is not empty."""
     # arrange
@@ -323,6 +332,7 @@ def test_get_step_counts(mock_model_iteration):
     assert actual.to_dict() == expected
 
 
+@pytest.mark.unit
 def test_step_counts_get_type_changes(mock_model_iteration):
     # arrange
     mr = mock_model_iteration
@@ -342,6 +352,7 @@ def test_step_counts_get_type_changes(mock_model_iteration):
     mr._step_counts_get_type_change_sdec.assert_called_once_with(sc)
 
 
+@pytest.mark.unit
 def test_step_counts_get_type_change_daycase(mock_model_iteration):
     # arrange
     mr = mock_model_iteration
@@ -393,6 +404,7 @@ def test_step_counts_get_type_change_daycase(mock_model_iteration):
     assert actual.equals(expected)
 
 
+@pytest.mark.unit
 def test_step_counts_get_type_change_outpatients(mock_model_iteration):
     # arrange
     mr = mock_model_iteration
@@ -444,6 +456,7 @@ def test_step_counts_get_type_change_outpatients(mock_model_iteration):
     assert actual.equals(expected)
 
 
+@pytest.mark.unit
 def test_step_counts_get_type_change_sdec(mock_model_iteration):
     # arrange
     mr = mock_model_iteration
@@ -496,6 +509,7 @@ def test_step_counts_get_type_change_sdec(mock_model_iteration):
     assert actual.equals(expected.sort_index())
 
 
+@pytest.mark.unit
 def test_get_model_results(mock_model_iteration):
     # arrange
     mr = mock_model_iteration

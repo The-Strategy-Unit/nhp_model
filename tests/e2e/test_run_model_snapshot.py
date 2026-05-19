@@ -50,10 +50,12 @@ def model_results(data_dir):
     )
 
 
+@pytest.mark.e2e
 def test_model_results_returns_expected_keys(model_results, data_regression):
     data_regression.check(set(model_results.keys()))
 
 
+@pytest.mark.e2e
 @pytest.mark.parametrize("result_key", ["default", "step_counts"])
 def test_all_model_runs(model_results, result_key, dataframe_regression):
     actual = model_results[result_key]

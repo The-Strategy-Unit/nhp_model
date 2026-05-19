@@ -71,6 +71,7 @@ def mock_model():
 # methods
 
 
+@pytest.mark.unit
 def test_init_calls_super_init(mocker):
     """Test that the model calls the super method and loads the strategies."""
     # arrange
@@ -81,6 +82,7 @@ def test_init_calls_super_init(mocker):
     super_mock.assert_called_once()
 
 
+@pytest.mark.unit
 def test_get_data(mock_model):
     # arrange
     mdl = mock_model
@@ -95,6 +97,7 @@ def test_get_data(mock_model):
     data_loader.get_ip.assert_called_once_with()
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "gen_los_type, expected",
     [
@@ -134,6 +137,7 @@ def test_load_strategies(mock_model, gen_los_type, expected):
     assert {k: v.to_dict() for k, v in mdl.strategies.items()} == expected
 
 
+@pytest.mark.unit
 def test_get_data_counts(mock_model):
     # arrange
     mdl = mock_model
@@ -146,6 +150,7 @@ def test_get_data_counts(mock_model):
     assert actual.tolist() == [[1.0, 1.0, 1.0], [1.0, 2.0, 3.0]]
 
 
+@pytest.mark.unit
 def test_apply_resampling(mock_model):
     # arrange
     row_samples = np.array([[0, 1, 2, 3], [4, 5, 6, 7]])
@@ -156,6 +161,7 @@ def test_apply_resampling(mock_model):
     assert data["rn"].to_list() == [1, 2, 2, 3, 3, 3]
 
 
+@pytest.mark.unit
 def test_efficiencies(mocker, mock_model):
     """Test that it runs the model steps."""
     mdl = mock_model
@@ -194,6 +200,7 @@ def test_efficiencies(mocker, mock_model):
     mock.get_step_counts.assert_called_once()
 
 
+@pytest.mark.unit
 def test_efficiencies_no_params(mocker, mock_model):
     """Test that it runs the model steps."""
     mdl = mock_model
@@ -213,6 +220,7 @@ def test_efficiencies_no_params(mocker, mock_model):
     mock.assert_not_called()
 
 
+@pytest.mark.unit
 def test_calculate_avoided_activity(mock_model):
     # arrange
     data = pd.DataFrame({"rn": [0, 0, 1, 2], "a": [0, 0, 1, 1]})
@@ -223,6 +231,7 @@ def test_calculate_avoided_activity(mock_model):
     assert actual.to_dict(orient="list") == {"rn": [0, 2], "a": [0, 1]}
 
 
+@pytest.mark.unit
 def test_process_results(mock_model):
     # arrange
     xs = list(range(6)) * 2
@@ -507,6 +516,7 @@ def test_process_results(mock_model):
     pd.testing.assert_frame_equal(actual, expected)
 
 
+@pytest.mark.unit
 def test_specific_aggregations(mocker, mock_model):
     """Test that it aggregates the results correctly."""
     # arrange
@@ -535,6 +545,7 @@ def test_specific_aggregations(mocker, mock_model):
     ]
 
 
+@pytest.mark.unit
 def test_save_results(mocker, mock_model):
     """Test that it correctly saves the results."""
 
@@ -578,6 +589,7 @@ def test_save_results(mocker, mock_model):
     to_parquet_mock.assert_called_once_with("ip_avoided/0.parquet")
 
 
+@pytest.mark.unit
 def test_save_results_get_op_converted(mock_model):
     """Test that _save_results_get_op_converted processes and returns the correct data."""
     # arrange
@@ -615,6 +627,7 @@ def test_save_results_get_op_converted(mock_model):
     pd.testing.assert_frame_equal(actual, expected)
 
 
+@pytest.mark.unit
 def test_save_results_get_sdec_converted(mock_model):
     """Test that _save_results_get_op_converted processes and returns the correct data."""
     # arrange
@@ -653,6 +666,7 @@ def test_save_results_get_sdec_converted(mock_model):
     pd.testing.assert_frame_equal(actual, expected)
 
 
+@pytest.mark.unit
 def test_save_results_get_ip_rows(mock_model):
     """Test that _save_results_get_op_converted processes and returns the correct data."""
     # arrange

@@ -3,6 +3,7 @@
 from unittest.mock import Mock, call, mock_open, patch
 
 import pandas as pd
+import pytest
 
 from nhp.model.results import (
     _add_metadata_to_dataframe,
@@ -19,6 +20,7 @@ from nhp.model.results import (
 )
 
 
+@pytest.mark.unit
 def test_complete_model_runs_include_baseline():
     # arrange
     df = pd.DataFrame(
@@ -47,6 +49,7 @@ def test_complete_model_runs_include_baseline():
     assert all(actual.value_counts(["a", "b"]) == 4)
 
 
+@pytest.mark.unit
 def test_complete_model_runs_exclude_baseline():
     # arrange
     df = pd.DataFrame(
@@ -72,6 +75,7 @@ def test_complete_model_runs_exclude_baseline():
     assert all(actual.value_counts(["a", "b"]) == 3)
 
 
+@pytest.mark.unit
 def test_combine_model_results(mocker):
     # arrange
     def r(*args):
@@ -112,6 +116,7 @@ def test_combine_model_results(mocker):
     assert cmr_mock.call_args_list[0][0][1] == 1
 
 
+@pytest.mark.unit
 def test_combine_step_counts(mocker):
     # arrange
     df = pd.DataFrame(
@@ -153,6 +158,7 @@ def test_combine_step_counts(mocker):
     assert cmr_mock.call_args[1] == {"include_baseline": False}
 
 
+@pytest.mark.unit
 def test_generate_results_json(mocker):
     # arrange
     results = {
@@ -272,6 +278,7 @@ def test_generate_results_json(mocker):
     )
 
 
+@pytest.mark.unit
 def test_combine_results(mocker):
     # arrange
     ma = mocker.patch("nhp.model.results._combine_model_results", return_value={"a": "a", "b": "b"})
@@ -293,6 +300,7 @@ def test_combine_results(mocker):
     ]
 
 
+@pytest.mark.unit
 def test_save_results_files(mocker):
     # arrange
     results = {"default": "default_df", "step_counts": "step_counts_df"}
@@ -341,6 +349,7 @@ def test_save_results_files(mocker):
     save_variants_mock.assert_called_once_with(path, ["variants"])
 
 
+@pytest.mark.unit
 def test_save_parquet_file(mocker):
     # arrange
     df = Mock()
@@ -358,6 +367,7 @@ def test_save_parquet_file(mocker):
     df.to_parquet.assert_called_once_with(actual)
 
 
+@pytest.mark.unit
 def test_add_metadata_to_dataframe(mocker):
     # arrange
     df = pd.DataFrame({"one": [1], "two": [2]})
@@ -383,6 +393,7 @@ def test_add_metadata_to_dataframe(mocker):
     assert actual.to_dict("list") == expected
 
 
+@pytest.mark.unit
 def test_save_params_file(mocker):
     # arrange
     j_mock = mocker.patch("json.dump")
@@ -397,6 +408,7 @@ def test_save_params_file(mocker):
     j_mock.assert_called_once_with("params", mock_file(), indent=2)
 
 
+@pytest.mark.unit
 def test_save_variants_file(mocker):
     # arrange
     j_mock = mocker.patch("json.dump")
@@ -411,6 +423,7 @@ def test_save_variants_file(mocker):
     j_mock.assert_called_once_with(["variants"], mock_file(), indent=2)
 
 
+@pytest.mark.unit
 def test_patch_converted_sdec_activity():
     # arrange
     results = {

@@ -22,6 +22,7 @@ def mock_activity_resampling():
     return mdl
 
 
+@pytest.mark.unit
 def test_init():
     # arrange
     model_iteration = Mock()
@@ -50,6 +51,7 @@ def test_init():
     assert actual._baseline_counts.tolist() == [[1, 2, 3], [4, 5, 6]]
 
 
+@pytest.mark.unit
 def test_update(mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
@@ -69,6 +71,7 @@ def test_update(mock_activity_resampling):
     assert actual == aa_mock
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "groups, expected",
     [
@@ -102,6 +105,7 @@ def test_demographic_adjustment(mocker, mock_activity_resampling, groups, expect
     assert u_mock.call_args[0][0].to_dict() == {(i, j): j + 1 for i in expected for j in range(2)}
 
 
+@pytest.mark.unit
 def test_birth_adjustment(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
@@ -138,6 +142,7 @@ def test_birth_adjustment(mocker, mock_activity_resampling):
 # _health_status_adjustment()
 
 
+@pytest.mark.unit
 def test_health_status_adjustment_when_enabled(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
@@ -160,6 +165,7 @@ def test_health_status_adjustment_when_enabled(mocker, mock_activity_resampling)
     u_mock.assert_called_once_with("hsa")
 
 
+@pytest.mark.unit
 def test_health_status_adjustmen_when_disabled(mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
@@ -176,6 +182,7 @@ def test_health_status_adjustmen_when_disabled(mock_activity_resampling):
     aa_mock.hsa.run.assert_not_called()
 
 
+@pytest.mark.unit
 def test_expat_adjustment_no_params(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
@@ -195,6 +202,7 @@ def test_expat_adjustment_no_params(mocker, mock_activity_resampling):
     u_mock.assert_not_called()
 
 
+@pytest.mark.unit
 def test_expat_adjustment(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
@@ -226,6 +234,7 @@ def test_expat_adjustment(mocker, mock_activity_resampling):
     }
 
 
+@pytest.mark.unit
 def test_repat_adjustment_no_params(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
@@ -248,6 +257,7 @@ def test_repat_adjustment_no_params(mocker, mock_activity_resampling):
     u_mock.assert_not_called()
 
 
+@pytest.mark.unit
 def test_repat_adjustment(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
@@ -289,6 +299,7 @@ def test_repat_adjustment(mocker, mock_activity_resampling):
     }
 
 
+@pytest.mark.unit
 def test_baseline_adjustment_no_params(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
@@ -308,6 +319,7 @@ def test_baseline_adjustment_no_params(mocker, mock_activity_resampling):
     u_mock.assert_not_called()
 
 
+@pytest.mark.unit
 def test_baseline_adjustment(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
@@ -339,6 +351,7 @@ def test_baseline_adjustment(mocker, mock_activity_resampling):
     }
 
 
+@pytest.mark.unit
 def test_waiting_list_adjustment_aae(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
@@ -368,6 +381,7 @@ def test_waiting_list_adjustment_aae(mocker, mock_activity_resampling):
     u_mock.assert_not_called()
 
 
+@pytest.mark.unit
 def test_waiting_list_adjustment_no_params(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
@@ -390,6 +404,7 @@ def test_waiting_list_adjustment_no_params(mocker, mock_activity_resampling):
     u_mock.assert_not_called()
 
 
+@pytest.mark.unit
 def test_waiting_list_adjustment(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
@@ -419,6 +434,7 @@ def test_waiting_list_adjustment(mocker, mock_activity_resampling):
     assert u_mock.call_args[0][0].to_dict() == {(True, "100"): 1, (True, "200"): 4}
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "model_type, group", [("ip", "elective"), ("op", "procedure"), ("aae", None)]
 )
@@ -451,6 +467,7 @@ def test_inequalities_adjustment_no_params(mocker, mock_activity_resampling, mod
     u_mock.assert_not_called()
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "model_type, group, expected",
     [
@@ -528,6 +545,7 @@ def test_inequalities_adjustment(
         assert u_mock.call_args[0][0].to_dict() == expected
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("model_type", ["ip", "op", "aae"])
 def test_non_demographic_adjustment_no_params(mocker, mock_activity_resampling, model_type):
     # arrange
@@ -553,6 +571,7 @@ def test_non_demographic_adjustment_no_params(mocker, mock_activity_resampling, 
     u_mock.assert_not_called()
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "model_type, expected, year",
     [
@@ -600,6 +619,7 @@ def test_non_demographic_adjustment(mocker, mock_activity_resampling, model_type
     assert u_mock.call_args[0][0].to_dict() == expected
 
 
+@pytest.mark.unit
 def test_non_demographic_adjustment_invalid_value_type(mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
@@ -623,6 +643,7 @@ def test_non_demographic_adjustment_invalid_value_type(mock_activity_resampling)
         aa_mock.non_demographic_adjustment()
 
 
+@pytest.mark.unit
 def test_apply_resampling(mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling

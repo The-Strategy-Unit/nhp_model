@@ -112,3 +112,8 @@ exclude = ["docs"]
 testpaths = ["tests/unit", "tests/integration", "tests/e2e"]
 python_files = ["test_*.py"]
 norecursedirs = ["docs", "*.egg-info", ".git", "appdir", ".tox", "__pycache__"]
+markers = [
+    "unit: marks tests as unit tests",
+    "integration: marks tests as integration tests",
+    "e2e: marks tests as end-to-end tests",
+]

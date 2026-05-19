@@ -5,11 +5,13 @@ import pytest
 from nhp.model.params import load_sample_params
 
 
+@pytest.mark.integration
 def test_sample_params_are_valid():
     load_sample_params(dataset="dev", scenario="unit-test")
     # assert: no exception raised
 
 
+@pytest.mark.integration
 def test_load_sample_params_validation_fails():
     from jsonschema.exceptions import ValidationError
 

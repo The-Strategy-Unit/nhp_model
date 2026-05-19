@@ -122,6 +122,7 @@ def mock_model_results():
 # __init__()
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("model_type", ["aae", "ip", "op"])
 def test_model_init_sets_values(mocker, model_type):
     """Test model constructor works as expected."""
@@ -160,6 +161,7 @@ def test_model_init_sets_values(mocker, model_type):
     hsa_m.assert_not_called()
 
 
+@pytest.mark.unit
 def test_model_init_calls_generate_run_params(mocker):
     """Test model constructor works as expected."""
     # arrange
@@ -183,12 +185,14 @@ def test_model_init_calls_generate_run_params(mocker):
     assert mdl.run_params == "generated"
 
 
+@pytest.mark.unit
 def test_model_init_validates_model_type():
     """It raises an exception if an invalid model_type is passed."""
     with pytest.raises(AssertionError):
         Model("", None, None, None)  # type: ignore
 
 
+@pytest.mark.unit
 def test_model_init_sets_create_datetime(mocker):
     """It sets the create_datetime item in params if not already set."""
     # arrange
@@ -207,6 +211,7 @@ def test_model_init_sets_create_datetime(mocker):
     assert re.match("^\\d{8}_\\d{6}$", mdl.params["create_datetime"])
 
 
+@pytest.mark.unit
 def test_model_init_loads_params_if_string(mocker):
     # arrange
     params = {"dataset": "synthetic", "start_year": "2020"}
@@ -227,6 +232,7 @@ def test_model_init_loads_params_if_string(mocker):
     assert mdl.params == params
 
 
+@pytest.mark.unit
 def test_model_init_initialises_hsa_if_none(mocker):
     # arrange
     params = {"dataset": "synthetic", "start_year": "2020"}
@@ -250,6 +256,7 @@ def test_model_init_initialises_hsa_if_none(mocker):
 # add_ndggrp_to_data
 
 
+@pytest.mark.unit
 def test_add_ndggrp_to_data(mock_model):
     # arrange
     mdl = mock_model
@@ -265,6 +272,7 @@ def test_add_ndggrp_to_data(mock_model):
 # measures
 
 
+@pytest.mark.unit
 def test_measures(mock_model):
     # arrange
     mdl = mock_model
@@ -280,6 +288,7 @@ def test_measures(mock_model):
 # _get_data
 
 
+@pytest.mark.unit
 def test_get_data(mock_model):
     mdl = mock_model
     with pytest.raises(NotImplementedError):
@@ -289,6 +298,7 @@ def test_get_data(mock_model):
 # _load_data
 
 
+@pytest.mark.unit
 def test_load_data(mocker, mock_model):
     # arrange
     mdl = mock_model
@@ -320,6 +330,7 @@ def test_load_data(mocker, mock_model):
     mdl._get_data.assert_called_once_with(data_loader)
 
 
+@pytest.mark.unit
 def test_baseline_step_counts(mock_model):
     # arrange
     mock_model._baseline_step_counts = "test_baseline_step_counts"
@@ -334,6 +345,7 @@ def test_baseline_step_counts(mock_model):
 # _load_strategies()
 
 
+@pytest.mark.unit
 def test_load_strategies(mock_model):
     # arrange
     # act
@@ -345,6 +357,7 @@ def test_load_strategies(mock_model):
 # _load_demog_factors()
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "year, expected_demog, expected_birth",
     [
@@ -401,6 +414,7 @@ def test_demog_factors_loads_correctly(mock_model, year, expected_demog, expecte
 # _generate_run_params()
 
 
+@pytest.mark.unit
 def test_generate_run_params(mocker, mock_model, mock_run_params):
     """Test that _generate_run_params returns the run parameters."""
     # arrange
@@ -437,6 +451,7 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
 # _get_run_params()
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "model_run, expected_run_params",
     [
@@ -522,6 +537,7 @@ def test_get_run_params(
 # get_data_counts
 
 
+@pytest.mark.unit
 def test_get_data_counts(mock_model):
     with pytest.raises(NotImplementedError):
         mock_model.get_data_counts(None)
@@ -530,6 +546,7 @@ def test_get_data_counts(mock_model):
 # activity_avoidance
 
 
+@pytest.mark.unit
 def test_activity_avoidance_no_params(mock_model):
     # arrange
     mdl = mock_model
@@ -547,6 +564,7 @@ def test_activity_avoidance_no_params(mock_model):
     assert actual == ("data", None)
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "binomial_rv, expected_binomial_args, expected_factors",
     [
@@ -627,6 +645,7 @@ def test_activity_avoidance(mock_model, binomial_rv, expected_binomial_args, exp
 # calculate_avoided_activity
 
 
+@pytest.mark.unit
 def test_calculate_avoided_activity(mock_model):
     # arrange
     # act & assert
@@ -637,6 +656,7 @@ def test_calculate_avoided_activity(mock_model):
 # go
 
 
+@pytest.mark.unit
 def test_go_save_full_model_results_false(mocker, mock_model):
     """Test the go method."""
     # arrange
@@ -656,6 +676,7 @@ def test_go_save_full_model_results_false(mocker, mock_model):
     mdl.save_results.assert_not_called()
 
 
+@pytest.mark.unit
 def test_go_save_full_model_results_true(mocker, mock_model):
     """Test the go method."""
     # arrange
@@ -686,6 +707,7 @@ def test_go_save_full_model_results_true(mocker, mock_model):
     makedirs_mock.assert_called_once_with(expected_path, exist_ok=True)
 
 
+@pytest.mark.unit
 def test_go_save_full_model_results_true_baseline(mocker, mock_model):
     """Test the go method."""
     # arrange
@@ -714,6 +736,7 @@ def test_go_save_full_model_results_true_baseline(mocker, mock_model):
 # get_agg
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "results, cols, expected",
     [
@@ -771,6 +794,7 @@ def test_get_agg(mock_model, results, cols, expected):
     assert actual.to_dict() == expected
 
 
+@pytest.mark.unit
 def test_apply_resampling(mock_model):
     # arrange
     # act & assert
@@ -778,6 +802,7 @@ def test_apply_resampling(mock_model):
         mock_model.apply_resampling(None, None)
 
 
+@pytest.mark.unit
 def test_efficiencies(mock_model):
     # arrange
     # act & assert
@@ -785,6 +810,7 @@ def test_efficiencies(mock_model):
         mock_model.efficiencies(None, None)
 
 
+@pytest.mark.unit
 def test_aggregate(mock_model):
     # arrange
     mdl = mock_model
@@ -817,6 +843,7 @@ def test_aggregate(mock_model):
     }
 
 
+@pytest.mark.unit
 def test_load_inequalities_factors(mock_model):
     # arrange
     mdl = mock_model
@@ -847,6 +874,7 @@ def test_load_inequalities_factors(mock_model):
     pd.testing.assert_frame_equal(mdl.inequalities_factors, expected)
 
 
+@pytest.mark.unit
 def test_load_inequalities_factors_when_empty(mock_model):
     # arrange
     mdl = mock_model
@@ -871,6 +899,7 @@ def test_load_inequalities_factors_when_empty(mock_model):
     assert len(mdl.inequalities_factors) == 0
 
 
+@pytest.mark.unit
 def test_process_results(mock_model):
     # arrange
     # act & assert
@@ -878,6 +907,7 @@ def test_process_results(mock_model):
         mock_model.process_results(None)
 
 
+@pytest.mark.unit
 def test_specific_aggregations(mock_model):
     # arrange
     # act & assert

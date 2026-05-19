@@ -27,6 +27,7 @@ def mock_hsa():
     return hsa
 
 
+@pytest.mark.unit
 def test_hsa_init(mocker):
     # arrange
     mocker.patch("pickle.load", return_value="pkl_load")
@@ -48,6 +49,7 @@ def test_hsa_init(mocker):
     laa_mock.assert_called_once_with("nhp_data")
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "year, expectation",
     [
@@ -93,6 +95,7 @@ def test_hsa_load_life_expectancy_series(mocker, mock_hsa, year, expectation):
     ref_mock.life_expectancy.assert_called_once_with()
 
 
+@pytest.mark.unit
 def test_hsa_load_life_expectancy_series_filters_ages(mocker, mock_hsa):
     # arrange
     life_expectancy = pd.DataFrame(
@@ -116,6 +119,7 @@ def test_hsa_load_life_expectancy_series_filters_ages(mocker, mock_hsa):
     ]
 
 
+@pytest.mark.unit
 def test_load_activity_ages(mock_hsa):
     # arrange
     data_loader = Mock()
@@ -144,6 +148,7 @@ def test_load_activity_ages(mock_hsa):
     }
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "year, expected_results, expected_call",
     [
@@ -189,6 +194,7 @@ def test_generate_params(mocker, year, expected_results, expected_call):
     ref_mock.variant_lookup.assert_called_once_with()
 
 
+@pytest.mark.unit
 def test_random_splitnorm():
     # arrange
     rng = Mock()
@@ -215,6 +221,7 @@ def test_random_splitnorm():
     np.testing.assert_almost_equal(actual, expected, 6)
 
 
+@pytest.mark.unit
 def test_hsa_run_not_cached(mocker, mock_hsa):
     # arrange
     mock_hsa._ages = [1, 2]
@@ -288,6 +295,7 @@ def test_hsa_run_not_cached(mocker, mock_hsa):
     assert mock_hsa._cache[(2, 3, "ppp")].equals(actual)
 
 
+@pytest.mark.unit
 def test_hsa_run_cached(mocker, mock_hsa):
     # arrange
     mock_hsa._cache[(1, 2, "ppp")] = "a"
@@ -304,6 +312,7 @@ def test_hsa_run_cached(mocker, mock_hsa):
     assert actual == "a"
 
 
+@pytest.mark.unit
 def test_hsa_predict_activity(mock_hsa):
     # arrange
     # act & assert
@@ -329,6 +338,7 @@ def mock_hsa_gam():
     return hsa
 
 
+@pytest.mark.unit
 def test_hsa_gam_init(mocker):
     # arrange
     super_mock = mocker.patch("nhp.model.health_status_adjustment.HealthStatusAdjustment.__init__")
@@ -344,6 +354,7 @@ def test_hsa_gam_init(mocker):
     super_mock.assert_called_once_with(nhp_data_mock, 2020)
 
 
+@pytest.mark.unit
 def test_hsa_gam_predict_activity(mock_hsa_gam):
     # arrange
     adjusted_ages = pd.Series({1: [0.5, 1.5], 2: [1.5, 2.5]})
@@ -400,6 +411,7 @@ def mock_hsa_interpolated():
     return hsa
 
 
+@pytest.mark.unit
 def test_hsa_interpolated_init(mocker):
     # arrange
     super_mock = mocker.patch("nhp.model.health_status_adjustment.HealthStatusAdjustment.__init__")
@@ -415,6 +427,7 @@ def test_hsa_interpolated_init(mocker):
     lal_mock.assert_called_once_with()
 
 
+@pytest.mark.unit
 def test_hsa_interpolated_load_activity_ages_lists(mock_hsa_interpolated):
     # arrange
 
@@ -430,6 +443,7 @@ def test_hsa_interpolated_load_activity_ages_lists(mock_hsa_interpolated):
     }
 
 
+@pytest.mark.unit
 def test_hsa_interpolated_predict_activity(mock_hsa_interpolated):
     # arrange
     adjusted_ages = pd.Series({1: [0.5, 1.5], 2: [1.5, 2.5]})

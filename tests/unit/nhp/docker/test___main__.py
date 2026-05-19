@@ -9,6 +9,7 @@ import pytest
 from nhp.docker.__main__ import main, parse_args
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     ", ".join(
         [
@@ -60,6 +61,7 @@ def test_parse_args(
     assert actual.save_full_model_results == expected_save_full_model_results
 
 
+@pytest.mark.unit
 def test_main_local(mocker):
     # arrange
     m = mocker.patch("nhp.docker.__main__.parse_args")
@@ -111,6 +113,7 @@ def test_main_local(mocker):
     local_data_mock.create.assert_called_once_with("data")
 
 
+@pytest.mark.unit
 def test_main_azure(mocker):
     # arrange
     m = mocker.patch("nhp.docker.__main__.parse_args")
@@ -169,6 +172,7 @@ def test_main_azure(mocker):
     local_data_mock.create.assert_called_once_with("data")
 
 
+@pytest.mark.unit
 def test_init(mocker):
     """It should run the main method if __name__ is __main__."""
     config = mocker.patch("nhp.docker.__main__.Config")
@@ -185,6 +189,7 @@ def test_init(mocker):
         main_mock.assert_called_once_with(config())
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "local_storage",
     [

@@ -71,6 +71,7 @@ def mock_model():
 # methods
 
 
+@pytest.mark.unit
 def test_init_calls_super_init(mocker):
     """Test that the model calls the super method."""
     # arrange
@@ -81,6 +82,7 @@ def test_init_calls_super_init(mocker):
     super_mock.assert_called_once()
 
 
+@pytest.mark.unit
 def test_get_data(mock_model):
     # arrange
     mdl = mock_model
@@ -95,6 +97,7 @@ def test_get_data(mock_model):
     data_loader.get_aae.assert_called_once_with()
 
 
+@pytest.mark.unit
 def test_get_data_counts(mock_model):
     # arrange
     mdl = mock_model
@@ -106,6 +109,7 @@ def test_get_data_counts(mock_model):
     assert actual.tolist() == [[float(i) for i in range(1, 21)]]
 
 
+@pytest.mark.unit
 def test_load_strategies(mock_model):
     # arrange
     mdl = mock_model
@@ -137,6 +141,7 @@ def test_load_strategies(mock_model):
     assert mdl.strategies["activity_avoidance"]["sample_rate"].to_list() == [1] * 16
 
 
+@pytest.mark.unit
 def test_apply_resampling(mocker, mock_model):
     # arrange
     row_samples = np.array([[1, 2, 3, 4]])
@@ -146,6 +151,7 @@ def test_apply_resampling(mocker, mock_model):
     assert data["arrivals"].to_list() == [1, 2, 3, 4]
 
 
+@pytest.mark.unit
 def test_efficiencies(mock_model):
     """Test the efficiencies method (pass)."""
     # arrange
@@ -157,6 +163,7 @@ def test_efficiencies(mock_model):
     assert actual == ("data", None)
 
 
+@pytest.mark.unit
 def test_specific_aggregations(mocker, mock_model):
     """Test that it aggregates the results correctly."""
     # arrange
@@ -179,6 +186,7 @@ def test_specific_aggregations(mocker, mock_model):
     ]
 
 
+@pytest.mark.unit
 def test_process_results(mock_model):
     # arrange
     data = pd.DataFrame(
@@ -213,6 +221,7 @@ def test_process_results(mock_model):
     assert actual.to_dict("list") == expected
 
 
+@pytest.mark.unit
 def test_save_results(mocker, mock_model):
     """Test that it correctly saves the results."""
 
@@ -229,6 +238,7 @@ def test_save_results(mocker, mock_model):
     assert to_parquet_mock.call_args_list[1] == call("aae_avoided/0.parquet")
 
 
+@pytest.mark.unit
 def test_calculate_avoided_activity(mock_model):
     # arrange
     data = pd.DataFrame({"rn": [0, 1], "arrivals": [4, 3]})

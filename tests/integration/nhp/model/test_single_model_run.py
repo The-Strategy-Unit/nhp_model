@@ -27,17 +27,20 @@ def model_single_run_results(data_dir):
     return results
 
 
+@pytest.mark.integration
 def test_model_returns_expected_aggregations(model_single_run_results, data_regression):
     actual_aggregations = {k: list(v.keys()) for k, v in model_single_run_results.items()}
     data_regression.check(actual_aggregations)
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("activity_type", ["ip", "op", "aae"])
 def test_model_default_results(activity_type, model_single_run_results, dataframe_regression):
     df = model_single_run_results[activity_type]["default"]
     dataframe_regression.check(df.to_frame())
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("activity_type", ["ip", "op", "aae"])
 def test_model_step_counts(activity_type, model_single_run_results, dataframe_regression):
     df = model_single_run_results[activity_type]["step_counts"]

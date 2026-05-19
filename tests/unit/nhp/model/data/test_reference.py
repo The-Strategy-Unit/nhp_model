@@ -1,10 +1,13 @@
 """test nhp data (reference)."""
 
+import pytest
+
 from nhp.model.data import reference
 
 expected_hsa_variants = {"lle", "hle", "ppp"}
 
 
+@pytest.mark.unit
 def test_variants():
     # arrange
 
@@ -16,6 +19,7 @@ def test_variants():
     assert set(vl.values()) == expected_hsa_variants
 
 
+@pytest.mark.unit
 def test_life_expectancy():
     # arrange
 
@@ -31,6 +35,7 @@ def test_life_expectancy():
     assert le[[str(i) for i in range(2018, 2043)]].sum().sum() == 89323.6
 
 
+@pytest.mark.unit
 def test_split_normal_params():
     # arrange
 
