@@ -15,13 +15,21 @@ class Config:
         self._app_version = os.environ.get("APP_VERSION", "dev")
         self._data_version = os.environ.get("DATA_VERSION", "dev")
 
-        self._queue_storage_account = os.environ.get("QUEUE_STORAGE_ACCOUNT")
-        self._data_storage_account = os.environ.get("DATA_STORAGE_ACCOUNT")
-        self._results_storage_account = os.environ.get("RESULTS_STORAGE_ACCOUNT")
-        self._full_model_results_storage_account = os.environ.get(
-            "FULL_MODEL_RESULTS_STORAGE_ACCOUNT"
+        default_storage_account = os.environ.get("STORAGE_ACCOUNT")
+
+        self._queue_storage_account = os.environ.get(
+            "QUEUE_STORAGE_ACCOUNT", default_storage_account
         )
-        self._model_runs_table_storage_account = os.environ.get("MODEL_RUNS_TABLE_STORAGE_ACCOUNT")
+        self._data_storage_account = os.environ.get("DATA_STORAGE_ACCOUNT", default_storage_account)
+        self._results_storage_account = os.environ.get(
+            "RESULTS_STORAGE_ACCOUNT", default_storage_account
+        )
+        self._full_model_results_storage_account = os.environ.get(
+            "FULL_MODEL_RESULTS_STORAGE_ACCOUNT", default_storage_account
+        )
+        self._model_runs_table_storage_account = os.environ.get(
+            "MODEL_RUNS_TABLE_STORAGE_ACCOUNT", default_storage_account
+        )
 
     @property
     def APP_VERSION(self) -> str:

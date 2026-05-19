@@ -35,6 +35,27 @@ def test_config_sets_values_from_envvars(mocker):
     assert config.MODEL_RUNS_TABLE_STORAGE_ACCOUNT == "model runs table account"
 
 
+def test_config_uses_default_storage_account(mocker):
+    # arrange
+    mocker.patch("dotenv.load_dotenv")
+
+    # act
+    with patch.dict(
+        os.environ,
+        {
+            "STORAGE_ACCOUNT": "default storage account",
+        },
+    ):
+        config = Config()
+
+    # assert
+    assert config.QUEUE_STORAGE_ACCOUNT == "default storage account"
+    assert config.DATA_STORAGE_ACCOUNT == "default storage account"
+    assert config.RESULTS_STORAGE_ACCOUNT == "default storage account"
+    assert config.FULL_MODEL_RESULTS_STORAGE_ACCOUNT == "default storage account"
+    assert config.MODEL_RUNS_TABLE_STORAGE_ACCOUNT == "default storage account"
+
+
 def test_config_uses_default_values(mocker):
     # arrange
     mocker.patch("dotenv.load_dotenv")
