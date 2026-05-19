@@ -94,7 +94,7 @@ class RunWithAzureStorage:
         self._get_data(self.params["start_year"], self.params["dataset"])
 
         self._table_client = TableServiceClient(
-            endpoint=self._config.MODEL_RUNS_TABLE_STORAGE_ACCOUNT,
+            endpoint=f"https://{self._config.MODEL_RUNS_TABLE_STORAGE_ACCOUNT}.table.core.windows.net",
             credential=DefaultAzureCredential(),
         ).get_table_client("modelruns")
 

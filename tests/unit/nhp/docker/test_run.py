@@ -95,7 +95,7 @@ def test_RunWithAzureStorage_init(mocker, actual_version, expected_version):
     config = mocker.patch("nhp.docker.run.Config")
     config().APP_VERSION = actual_version
     config().STORAGE_ACCOUNT = "sa"
-    config().MODEL_RUNS_TABLE_STORAGE_ACCOUNT = "https://sa.table.core.windows.net"
+    config().MODEL_RUNS_TABLE_STORAGE_ACCOUNT = "sa"
 
     expected_params = {"start_year": 2020, "dataset": "synthetic"}
     gpm = mocker.patch(
