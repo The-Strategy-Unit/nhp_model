@@ -426,7 +426,7 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
     )
     m2.assert_called_once_with(
         status="complete",
-        file_path=file_path,
+        aggregated_results_path=file_path,
         outputs_app_uri="synthetic/00000000-0000-0000-0000-000000000001",
     )
 
@@ -486,7 +486,7 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
     )
     m2.assert_called_once_with(
         status="complete",
-        file_path=file_path,
+        aggregated_results_path=file_path,
         outputs_app_uri="synthetic/00000000-0000-0000-0000-000000000001",
     )
     m3.assert_called_once()
