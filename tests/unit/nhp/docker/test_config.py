@@ -45,6 +45,7 @@ def test_config_uses_default_storage_account(mocker):
         {
             "STORAGE_ACCOUNT": "default storage account",
         },
+        clear=True,
     ):
         config = Config()
 
