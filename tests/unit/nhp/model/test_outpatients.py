@@ -69,6 +69,7 @@ def mock_model():
 # methods
 
 
+@pytest.mark.unit
 def test_init_calls_super_init(mocker):
     """Test that the model calls the super method."""
     # arrange
@@ -79,6 +80,7 @@ def test_init_calls_super_init(mocker):
     super_mock.assert_called_once()
 
 
+@pytest.mark.unit
 def test_get_data(mock_model):
     # arrange
     mdl = mock_model
@@ -93,6 +95,7 @@ def test_get_data(mock_model):
     data_loader.get_op.assert_called_once_with()
 
 
+@pytest.mark.unit
 def test_get_data_counts(mock_model):
     # arrange
     mdl = mock_model
@@ -108,6 +111,7 @@ def test_get_data_counts(mock_model):
     ]
 
 
+@pytest.mark.unit
 def test_load_strategies(mock_model):
     # arrange
     mdl = mock_model
@@ -129,6 +133,7 @@ def test_load_strategies(mock_model):
     assert mdl.strategies["activity_avoidance"]["sample_rate"].to_list() == [1] * 20
 
 
+@pytest.mark.unit
 def test_convert_to_tele(mock_model):
     """Test that it mutates the data."""
     # arrange
@@ -216,6 +221,7 @@ def test_convert_to_tele(mock_model):
     }
 
 
+@pytest.mark.unit
 def test_apply_resampling(mocker, mock_model):
     # arrange
     row_samples = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
@@ -226,6 +232,7 @@ def test_apply_resampling(mocker, mock_model):
     assert data["tele_attendances"].to_list() == [5, 6, 7, 8]
 
 
+@pytest.mark.unit
 def test_efficiencies(mock_model):
     """Test that it runs the model steps."""
     # arrange
@@ -245,6 +252,7 @@ def test_efficiencies(mock_model):
     assert mdl._convert_to_tele.call_args[0][1] == "model_run"
 
 
+@pytest.mark.unit
 def test_process_results(mock_model):
     # arrange
     df = pd.DataFrame(
@@ -280,6 +288,7 @@ def test_process_results(mock_model):
     assert actual.to_dict("list") == expected
 
 
+@pytest.mark.unit
 def test_specific_aggregations(mocker, mock_model):
     """Test that it aggregates the results correctly."""
     # arrange
@@ -302,6 +311,7 @@ def test_specific_aggregations(mocker, mock_model):
     ]
 
 
+@pytest.mark.unit
 def test_save_results(mocker, mock_model):
     """Test that it correctly saves the results."""
 
@@ -324,6 +334,7 @@ def test_save_results(mocker, mock_model):
     ]
 
 
+@pytest.mark.unit
 def test_calculate_avoided_activity(mock_model):
     # arrange
     data = pd.DataFrame({"rn": [0], "attendances": [4], "tele_attendances": [3]})

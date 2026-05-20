@@ -11,6 +11,7 @@ from nhp.docker.run import RunWithAzureStorage, RunWithLocalStorage
 # RunWithLocalStorage
 
 
+@pytest.mark.unit
 def test_RunWithLocalStorage(mocker):
     # arrange
     m = mocker.patch("nhp.docker.run.load_params", return_value="params")
@@ -24,6 +25,7 @@ def test_RunWithLocalStorage(mocker):
     m.assert_called_once_with("queue/filename")
 
 
+@pytest.mark.unit
 def test_RunWithLocalStorage_finish(mocker):
     # arrange
     mocker.patch("nhp.docker.run.load_params", return_value="params")
@@ -37,6 +39,7 @@ def test_RunWithLocalStorage_finish(mocker):
     save_results_files_mock.assert_called_once_with("results", "params", "variants")
 
 
+@pytest.mark.unit
 def test_RunWithLocalStorage_error(mocker):
     # arrange
     mocker.patch("nhp.docker.run.load_params", return_value="params")
@@ -49,6 +52,7 @@ def test_RunWithLocalStorage_error(mocker):
     assert actual is None
 
 
+@pytest.mark.unit
 def test_RunWithLocalStorage_progress_callback(mocker):
     # arrange
     mocker.patch("nhp.docker.run.load_params", return_value="params")
@@ -89,6 +93,7 @@ def mock_run_with_azure_storage():
     return rwas
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("actual_version, expected_version", [("dev", "dev"), ("v0.3.5", "v0.3")])
 def test_RunWithAzureStorage_init(mocker, actual_version, expected_version):
     # arrange
@@ -133,6 +138,7 @@ def test_RunWithAzureStorage_init(mocker, actual_version, expected_version):
     utm.assert_called_once_with(status="running")
 
 
+@pytest.mark.unit
 def test_RunWithAzureStorage_get_container(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage
@@ -153,6 +159,7 @@ def test_RunWithAzureStorage_get_container(mock_run_with_azure_storage, mocker):
     dac_m.assert_called_once_with()
 
 
+@pytest.mark.unit
 def test_RunWithAzureStorage_get_params(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage
@@ -182,6 +189,7 @@ def test_RunWithAzureStorage_get_params(mock_run_with_azure_storage, mocker):
     m2.download_blob().readall.assert_called_once()
 
 
+@pytest.mark.unit
 def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage
@@ -238,6 +246,7 @@ def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
     assert mock_file.call_args_list == [call(f"data/{i}/0.parquet", "wb") for i in files]
 
 
+@pytest.mark.unit
 def test_RunWithAzureStorage_upload_results_json(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage
@@ -270,6 +279,7 @@ def test_RunWithAzureStorage_upload_results_json(mock_run_with_azure_storage, mo
     m_update_table_storage.assert_called_once_with(results_json_gz_path="prod/dev/filename.json.gz")
 
 
+@pytest.mark.unit
 def test_RunWithAzureStorage_upload_results_files(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage
@@ -310,6 +320,7 @@ def test_RunWithAzureStorage_upload_results_files(mock_run_with_azure_storage, m
     )
 
 
+@pytest.mark.unit
 def test_RunWithAzureStorage_upload_full_model_results(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage
@@ -343,6 +354,7 @@ def test_RunWithAzureStorage_upload_full_model_results(mock_run_with_azure_stora
     ]
 
 
+@pytest.mark.unit
 def test_RunWithAzureStorage_update_table_storage(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage
@@ -363,6 +375,7 @@ def test_RunWithAzureStorage_update_table_storage(mock_run_with_azure_storage, m
     )
 
 
+@pytest.mark.unit
 def test_RunWithAzureStorage_cleanup(mock_run_with_azure_storage):
     # arrange
     s = mock_run_with_azure_storage
@@ -375,6 +388,7 @@ def test_RunWithAzureStorage_cleanup(mock_run_with_azure_storage):
     m.delete_blob.assert_called_once_with()
 
 
+@pytest.mark.unit
 def test_RunWithAzureStorage_finish_save_full_model_results_false(
     mock_run_with_azure_storage, mocker
 ):
@@ -436,6 +450,7 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
     m5.assert_called_once_with("results", metadata_expected, "variants")
 
 
+@pytest.mark.unit
 def test_RunWithAzureStorage_finish_save_full_model_results_true(
     mock_run_with_azure_storage, mocker
 ):
@@ -495,6 +510,7 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
     m5.assert_called_once_with("results", metadata_expected, "variants")
 
 
+@pytest.mark.unit
 def test_RunWithAzureStorage_error(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage
@@ -509,6 +525,7 @@ def test_RunWithAzureStorage_error(mock_run_with_azure_storage, mocker):
     update_table_storage_mock.assert_called_once_with(status="error", error_message="Test error")
 
 
+@pytest.mark.unit
 def test_RunWithAzureStorage_progress_callback(mock_run_with_azure_storage):
     # arrange
     s = mock_run_with_azure_storage

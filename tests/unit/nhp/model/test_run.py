@@ -3,6 +3,7 @@
 from unittest.mock import Mock, call
 
 import pandas as pd
+import pytest
 
 from nhp.model.aae import AaEModel
 from nhp.model.inpatients import InpatientsModel
@@ -17,6 +18,7 @@ from nhp.model.run import (
 )
 
 
+@pytest.mark.unit
 def test_tqdm():
     tqdm.progress_callback = Mock()
     t = tqdm()
@@ -24,12 +26,14 @@ def test_tqdm():
     tqdm.progress_callback.assert_called_once_with(5)
 
 
+@pytest.mark.unit
 def test_tqdm_no_callback():
     tqdm.progress_callback = None
     t = tqdm()
     t.update(5)
 
 
+@pytest.mark.unit
 def test_timeit(mocker, capsys):
     """It should evaluate a function and print how long it took to run it."""
     # arrange
@@ -42,6 +46,7 @@ def test_timeit(mocker, capsys):
     assert capsys.readouterr().out == "elapsed: 0.000s\n"
 
 
+@pytest.mark.unit
 def test_run_model(mocker):
     # arrange
     model_m = Mock()
@@ -72,11 +77,13 @@ def test_run_model(mocker):
     pool_mock.assert_called_once_with(2)
 
 
+@pytest.mark.unit
 def test_noop_progress_callback():
     # arrange, act & assert
     assert not noop_progress_callback("a")("b")
 
 
+@pytest.mark.unit
 def test_run_all(mocker):
     # arrange
     grp_m = mocker.patch(
@@ -138,6 +145,7 @@ def test_run_all(mocker):
     cr_m.assert_called_once_with(["ip", "op", "aae"])
 
 
+@pytest.mark.unit
 def test_run_single_model_run(mocker, capsys):
     """It should run the model and display outputs."""
     # arrange

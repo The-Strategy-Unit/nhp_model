@@ -6,6 +6,7 @@ import pytest
 from nhp.docker.config import Config
 
 
+@pytest.mark.unit
 def test_config_sets_values_from_envvars(mocker):
     # arrange
     mocker.patch("dotenv.load_dotenv")
@@ -27,6 +28,7 @@ def test_config_sets_values_from_envvars(mocker):
     assert config.STORAGE_ACCOUNT == "storage account"
 
 
+@pytest.mark.unit
 def test_config_uses_default_values(mocker):
     # arrange
     mocker.patch("dotenv.load_dotenv")
@@ -42,6 +44,7 @@ def test_config_uses_default_values(mocker):
         config.STORAGE_ACCOUNT
 
 
+@pytest.mark.unit
 def test_config_calls_dotenv_load(mocker):
     # arrange
     m = mocker.patch("dotenv.load_dotenv")

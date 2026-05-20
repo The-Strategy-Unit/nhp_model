@@ -3,10 +3,12 @@
 from unittest.mock import call, mock_open, patch
 
 import pandas as pd
+import pytest
 
 from nhp.model.data import Local
 
 
+@pytest.mark.unit
 def test_init_sets_values():
     # arrange
 
@@ -17,6 +19,7 @@ def test_init_sets_values():
     assert d._data_path == "data"
 
 
+@pytest.mark.unit
 def test_file_path():
     # arrange
 
@@ -27,6 +30,7 @@ def test_file_path():
     assert d._file_path("ip") == "data/ip/fyear=2019/dataset=synthetic"
 
 
+@pytest.mark.unit
 def test_create_returns_lambda():
     # arrange
 
@@ -37,6 +41,7 @@ def test_create_returns_lambda():
     assert d._data_path == "data"
 
 
+@pytest.mark.unit
 def test_get_ip(mocker):
     # arrange
     m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
@@ -50,6 +55,7 @@ def test_get_ip(mocker):
     m.assert_called_once_with("ip")
 
 
+@pytest.mark.unit
 def test_get_ip_strategies(mocker):
     # arrange
     m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
@@ -67,6 +73,7 @@ def test_get_ip_strategies(mocker):
     ]
 
 
+@pytest.mark.unit
 def test_get_op(mocker):
     # arrange
     op_data = pd.DataFrame({"col_1": [1, 2], "col_2": [3, 4], "index": [5, 6]}, index=[2, 1])
@@ -83,6 +90,7 @@ def test_get_op(mocker):
     m.assert_called_once_with("op")
 
 
+@pytest.mark.unit
 def test_get_aae(mocker):
     # arrange
     ae_data = pd.DataFrame({"col_1": [1, 2], "col_2": [3, 4], "index": [5, 6]}, index=[2, 1])
@@ -99,6 +107,7 @@ def test_get_aae(mocker):
     m.assert_called_once_with("aae")
 
 
+@pytest.mark.unit
 def test_get_birth_factors(mocker):
     # arrange
     m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
@@ -112,6 +121,7 @@ def test_get_birth_factors(mocker):
     m.assert_called_once_with("birth_factors")
 
 
+@pytest.mark.unit
 def test_get_demographic_factors(mocker):
     # arrange
     m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
@@ -125,6 +135,7 @@ def test_get_demographic_factors(mocker):
     m.assert_called_once_with("demographic_factors")
 
 
+@pytest.mark.unit
 def test_get_hsa_activity_table(mocker):
     # arrange
     m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
@@ -138,6 +149,7 @@ def test_get_hsa_activity_table(mocker):
     m.assert_called_once_with("hsa_activity_tables")
 
 
+@pytest.mark.unit
 def test_get_hsa_gams(mocker):
     # arrange
     m = mocker.patch("pickle.load", return_value="data")
@@ -153,6 +165,7 @@ def test_get_hsa_gams(mocker):
     m.assert_called_once_with(mock_file())
 
 
+@pytest.mark.unit
 def test_get_inequalities(mocker):
     # arrange
     m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
@@ -166,6 +179,7 @@ def test_get_inequalities(mocker):
     m.assert_called_once_with("inequalities")
 
 
+@pytest.mark.unit
 def test_get_parquet(mocker):
     # arrange
     fp = mocker.patch("nhp.model.data.Local._file_path", return_value="file_path")

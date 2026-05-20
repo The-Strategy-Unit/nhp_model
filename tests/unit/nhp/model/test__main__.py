@@ -10,6 +10,7 @@ from nhp.model.inpatients import InpatientsModel
 from nhp.model.outpatients import OutpatientsModel
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "activity_type, model_class",
     [("aae", AaEModel), ("ip", InpatientsModel), ("op", OutpatientsModel)],
@@ -36,6 +37,7 @@ def test_main_debug_runs_model(mocker, activity_type, model_class):
     ldp_mock.assert_called_once_with("params.json")
 
 
+@pytest.mark.unit
 def test_main_can_use_sample_params(mocker):
     # arrange
     args = Mock()
@@ -60,6 +62,7 @@ def test_main_can_use_sample_params(mocker):
     ldsp_mock.assert_called_once()
 
 
+@pytest.mark.unit
 def test_main_debug_runs_model_invalid_type(mocker):
     # arrange
     args = Mock()
@@ -82,6 +85,7 @@ def test_main_debug_runs_model_invalid_type(mocker):
     run_single_mock.assert_not_called()
 
 
+@pytest.mark.unit
 def test_main_all_runs(mocker):
     # arrange
     args = Mock()
@@ -115,6 +119,7 @@ def test_main_all_runs(mocker):
     local_data_mock.create.assert_called_once_with("data")
 
 
+@pytest.mark.unit
 def test_init(mocker):
     """It should run the main method if __name__ is __main__."""
     import nhp.model.__main__ as r

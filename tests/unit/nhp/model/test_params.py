@@ -2,9 +2,12 @@
 
 from unittest.mock import mock_open, patch
 
+import pytest
+
 from nhp.model.params import load_params, load_sample_params, validate_params
 
 
+@pytest.mark.unit
 def test_validate_params(mocker):
     # arrange
     m_validate = mocker.patch("jsonschema.validate")
@@ -18,6 +21,7 @@ def test_validate_params(mocker):
     assert m_json_load.call_args[0][0].name.endswith("params-schema.json")
 
 
+@pytest.mark.unit
 def test_load_params(mocker):
     """Test that load_params opens the params file."""
     # arrange
@@ -32,6 +36,7 @@ def test_load_params(mocker):
         m_vp.assert_called_once_with({"params": 0})
 
 
+@pytest.mark.unit
 def test_load_sample_params(mocker):
     # arrange
     m_validate = mocker.patch("nhp.model.params.validate_params")

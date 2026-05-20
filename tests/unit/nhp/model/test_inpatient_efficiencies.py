@@ -27,6 +27,7 @@ def mock_ipe():
     return ipe
 
 
+@pytest.mark.unit
 def test_init(mocker):
     # arrange
     mocker.patch("nhp.model.inpatients.InpatientEfficiencies._select_single_strategy")
@@ -51,6 +52,7 @@ def test_init(mocker):
     actual._generate_losr_df.assert_called_once()  # type: ignore
 
 
+@pytest.mark.unit
 def test_select_single_strategy(mock_ipe):
     # arrange
     m = mock_ipe
@@ -74,6 +76,7 @@ def test_select_single_strategy(mock_ipe):
     ]
 
 
+@pytest.mark.unit
 def test_generate_losr_df(mock_ipe):
     # arrange
     m = mock_ipe
@@ -105,6 +108,7 @@ def test_generate_losr_df(mock_ipe):
     assert actual == expected
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("losr_type", ["all", "sdec", "pre-op"])
 def test_losr_empty(mock_ipe, losr_type):
     """Test that if no preop strategy provided losr functions return self."""
@@ -123,6 +127,7 @@ def test_losr_empty(mock_ipe, losr_type):
             assert m.losr_preop() == m
 
 
+@pytest.mark.unit
 def test_losr_all(mock_ipe):
     """Test that it reduces the speldur column for 'all' types."""
     # arrange
@@ -143,6 +148,7 @@ def test_losr_all(mock_ipe):
     assert binomial_call_args[1].to_list() == [0, 0, 0, 0.5, 0.5, 0.5]
 
 
+@pytest.mark.unit
 def test_losr_sdec(mock_ipe):
     """Test that it reduces the speldur column for 'aec' types."""
     # arrange
@@ -180,6 +186,7 @@ def test_losr_sdec(mock_ipe):
     assert binomial_call_args[1].equals(m.losr.loc[["c"] * 3 + ["d"] * 3, "losr_f"])
 
 
+@pytest.mark.unit
 def test_losr_preop(mock_ipe):
     """Test that is reduces the speldur column for 'pre-op' types."""
     # arrange
@@ -200,6 +207,7 @@ def test_losr_preop(mock_ipe):
     assert binomial_call_args[1].equals(1 - m.losr.loc[["e"] * 3 + ["f"] * 3, "losr_f"])
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "day_procedures_type, expected_speldur, expected_classpat",
     [
@@ -250,6 +258,7 @@ def test_losr_day_procedures(mock_ipe, day_procedures_type, expected_speldur, ex
     assert m.data["classpat"].to_list() == expected_classpat
 
 
+@pytest.mark.unit
 def test_get_step_counts(mock_ipe):
     # arrange
     mock_ipe.data = pd.DataFrame(
