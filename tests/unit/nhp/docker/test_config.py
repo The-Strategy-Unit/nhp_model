@@ -36,6 +36,7 @@ def test_config_sets_values_from_envvars(mocker):
     assert config.MODEL_RUNS_TABLE_STORAGE_ACCOUNT == "model runs table account"
 
 
+@pytest.mark.unit
 def test_config_uses_default_storage_account(mocker):
     # arrange
     mocker.patch("dotenv.load_dotenv")
