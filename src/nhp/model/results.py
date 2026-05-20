@@ -116,7 +116,6 @@ def generate_results_json(
     variants: list[str],
 ) -> str:
     """Generate the results in the json format and save."""
-    step_counts = results.pop("step_counts")
 
     def agg_to_dict(res):
         results_df = res.set_index("model_run")
@@ -137,10 +136,11 @@ def generate_results_json(
             .to_dict(orient="records")
         )
 
-    dict_results = {k: agg_to_dict(v) for k, v in results.items()}
+    dict_results = {k: agg_to_dict(v) for k, v in results.items() if k != "step_counts"}
 
     dict_results["step_counts"] = (
-        step_counts.groupby(
+        results["step_counts"]
+        .groupby(
             [
                 "pod",
                 "change_factor",

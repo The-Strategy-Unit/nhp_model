@@ -81,11 +81,11 @@ def mock_run_with_azure_storage():
     rwas._config = Mock()
     rwas._config.APP_VERSION = "dev"
     rwas._config.DATA_VERSION = "dev"
-    rwas._config.STORAGE_ACCOUNT = "sa"
-
-    rwas._blob_storage_account_url = "https://sa.blob.core.windows.net"
-    rwas._adls_storage_account_url = "https://sa.dfs.core.windows.net"
-    rwas._table_storage_account_url = "https://sa.table.core.windows.net"
+    rwas._config.QUEUE_STORAGE_ACCOUNT = "queue-sa"
+    rwas._config.DATA_STORAGE_ACCOUNT = "data-sa"
+    rwas._config.RESULTS_STORAGE_ACCOUNT = "results-sa"
+    rwas._config.FULL_MODEL_RESULTS_STORAGE_ACCOUNT = "full-model-results-sa"
+    rwas._config.MODEL_RUNS_TABLE_STORAGE_ACCOUNT = "model-runs-table-sa"
     rwas._table_client = Mock()
 
     rwas.params = {"dataset": "test"}
@@ -100,6 +100,7 @@ def test_RunWithAzureStorage_init(mocker, actual_version, expected_version):
     config = mocker.patch("nhp.docker.run.Config")
     config().APP_VERSION = actual_version
     config().STORAGE_ACCOUNT = "sa"
+    config().MODEL_RUNS_TABLE_STORAGE_ACCOUNT = "sa"
 
     expected_params = {"start_year": 2020, "dataset": "synthetic"}
     gpm = mocker.patch(
@@ -123,8 +124,6 @@ def test_RunWithAzureStorage_init(mocker, actual_version, expected_version):
     assert s._model_run_id == model_run_id
     assert s._app_version == expected_version
     assert s.params == expected_params
-    assert s._blob_storage_account_url == "https://sa.blob.core.windows.net"
-    assert s._adls_storage_account_url == "https://sa.dfs.core.windows.net"
     assert s._table_client is table_client
 
     gpm.assert_called_once_with("filename")
@@ -143,19 +142,20 @@ def test_RunWithAzureStorage_get_container(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage
 
-    mock = Mock()
-    mock.get_container_client.return_value = "container_client"
-
-    bsc_m = mocker.patch("nhp.docker.run.BlobServiceClient", return_value=mock)
+    cc_m = mocker.patch("nhp.docker.run.ContainerClient", return_value="container_client")
 
     dac_m = mocker.patch("nhp.docker.run.DefaultAzureCredential", return_value="cred")
 
     # act
-    actual = s._get_container("container")
+    actual = s._get_container("sa", "container")
 
     # assert
     assert actual == "container_client"
-    bsc_m.assert_called_once_with(account_url="https://sa.blob.core.windows.net", credential="cred")
+    cc_m.assert_called_once_with(
+        account_url="https://sa.blob.core.windows.net",
+        container_name="container",
+        credential="cred",
+    )
     dac_m.assert_called_once_with()
 
 
@@ -182,7 +182,7 @@ def test_RunWithAzureStorage_get_params(mock_run_with_azure_storage, mocker):
     # assert
     assert actual == expected
 
-    m1.assert_called_once_with("queue")
+    m1.assert_called_once_with("queue-sa", "queue")
     assert s._queue_blob == m2
 
     m2.download_blob.assert_called_once_with()
@@ -222,7 +222,9 @@ def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
         s._get_data(2020, "synthetic")
 
     # assert
-    dlsc_m.assert_called_once_with(account_url="https://sa.dfs.core.windows.net", credential="cred")
+    dlsc_m.assert_called_once_with(
+        account_url="https://data-sa.dfs.core.windows.net", credential="cred"
+    )
     dac_m.assert_called_once_with()
 
     mock.get_file_system_client.assert_called_once_with("data")
@@ -267,7 +269,7 @@ def test_RunWithAzureStorage_upload_results_json(mock_run_with_azure_storage, mo
 
     # assert
     mock_file.assert_called_once_with("results/filename.json", "rb")
-    m_get_container.assert_called_once_with("results")
+    m_get_container.assert_called_once_with("results-sa", "results")
     m_get_container().upload_blob.assert_called_once_with(
         "prod/dev/filename.json.gz",
         "gzdata",
@@ -295,7 +297,7 @@ def test_RunWithAzureStorage_upload_results_files(mock_run_with_azure_storage, m
     s._upload_results_files("file_path", {"a": results_file_mock}, metadata, ["variants"])
 
     # assert
-    get_container_mock.assert_called_once_with("results")
+    get_container_mock.assert_called_once_with("results-sa", "results")
     get_container_mock().upload_blob.assert_has_calls(
         [
             call(
@@ -346,7 +348,7 @@ def test_RunWithAzureStorage_upload_full_model_results(mock_run_with_azure_stora
     # assert
     assert mock_file.call_count == 3
     assert mock_file.call_args_list == [call(i, "rb") for i in file_mocks]
-    m.assert_called_once_with("results")
+    m.assert_called_once_with("full-model-results-sa", "results")
 
     assert m().upload_blob.call_count == 3
     assert m().upload_blob.call_args_list == [
