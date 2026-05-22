@@ -4,9 +4,17 @@ on:
   workflow_call:
     inputs:
       schema-tag:
-        required: true
         default: dev
         type: string
+  workflow_dispatch:
+    inputs:
+      schema-tag:
+        default: dev
+        type: string
+
+concurrency:
+  group: schema-deploy
+  cancel-in-progress: false
 
 permissions:
   pages: write
