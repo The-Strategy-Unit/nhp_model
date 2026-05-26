@@ -9,9 +9,8 @@ import json
 import pathlib
 
 import pandas as pd
-from metalog_jax.base import MetalogParameters, MetalogRandomVariableParameters
+from metalog_jax.base import MetalogParameters
 from metalog_jax.metalog import Metalog
-from metalog_jax.utils import JaxUniformDistributionParameters
 
 
 def _ref_path(filename):

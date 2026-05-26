@@ -1,11 +1,8 @@
 """Health Status Adjustment."""
 
-from typing import List
-
 import numpy as np
 import pandas as pd
-from metalog_jax.base import MetalogParameters, MetalogRandomVariableParameters
-from metalog_jax.metalog import Metalog
+from metalog_jax.base import MetalogRandomVariableParameters
 from metalog_jax.utils import JaxUniformDistributionParameters
 
 from nhp.model.data import Data, reference
@@ -72,12 +69,15 @@ class HealthStatusAdjustment:
             data_loader.get_hsa_activity_table().set_index(["hsagrp", "sex", "age"]).sort_index()
         )["activity"]
 
-    def _generate_hsa_adjusted_ages(self, start_year: int, end_year) -> dict[int, pd.Series]:
+    def _generate_hsa_adjusted_ages(self, start_year: int, end_year) -> dict[int, np.ndarray]:
         """Generate HSA Adjusted Ages.
 
         Args:
             start_year: The baseline year for adjustment.
             end_year: The end year for adjustment.
+
+        Returns:
+            A dictionary containing the adjusted ages for each model run for each sex.
         """
         hsa_params = self._generate_params(start_year, end_year)
 
