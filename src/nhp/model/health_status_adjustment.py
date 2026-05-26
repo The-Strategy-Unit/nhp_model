@@ -87,8 +87,7 @@ class HealthStatusAdjustment:
         for sex in [1, 2]:
             h = hsa_params[sex].reshape(-1, 1)
             ex_diff = ex_dat.loc[(end_year, sex)] - ex_dat.loc[(start_year, sex)]
-            v = ex_dat.loc[(end_year, sex)].index.to_numpy() - h * ex_diff.to_numpy()
-            adjusted_age[sex] = v
+            adjusted_age[sex] = self._ages - h * ex_diff.to_numpy()
 
         return adjusted_age
 
