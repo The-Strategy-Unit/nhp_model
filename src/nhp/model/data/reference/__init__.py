@@ -36,7 +36,7 @@ def life_expectancy(base_year: int, target_year: int) -> pd.Series:
         target_year: The year the model is running for.
 
     Returns:
-        A pandas DataFrame containing life expectancy data.
+        A pandas Series containing life expectancy data.
     """
     return (
         pd.read_csv(_ref_path("life_expectancy.csv"))
