@@ -132,6 +132,8 @@ class HealthStatusAdjustment:
         Returns:
             The health status adjustment factor.
         """
+        # model runs start from to params["model_run"], but the parameters for HSA are 0 based, so
+        # we need to subtract 1.
         cache_key = run_params["model_run"] - 1
         if cache_key in self._cache:
             return self._cache[cache_key]
