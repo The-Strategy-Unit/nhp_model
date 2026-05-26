@@ -266,7 +266,7 @@ def test_hsa_gam_init(mocker):
     nhp_data_mock.get_hsa_gams.return_value = "hsa_gams"
 
     # act
-    hsa = HealthStatusAdjustmentGAM(nhp_data_mock, 2020, 2022, 42, 3)  # type: ignore
+    hsa = HealthStatusAdjustmentGAM(nhp_data_mock, 2020, 2022, 42, 3)
 
     # assert
     assert hsa._gams == "hsa_gams"
