@@ -5,12 +5,13 @@ on:
     inputs:
       schema-tag:
         required: true
-        default: dev
         type: string
 
+concurrency:
+  group: schema-deploy
+  cancel-in-progress: false
+
 permissions:
-  pages: write
-  id-token: write
   contents: write
 
 jobs:
@@ -40,18 +41,3 @@ jobs:
           git push origin schemas
           popd
 
-      - name: Upload to GitHub Pages
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: schemas
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
