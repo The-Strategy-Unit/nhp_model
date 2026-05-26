@@ -104,10 +104,6 @@ class Model:
         self.run_params = run_params or self.generate_run_params(params)
         self.save_full_model_results = save_full_model_results
 
-    def _add_pod_to_data(self) -> None:
-        """Adds the POD column to data."""
-        # to be implemented in ip/op/aae
-
     def _add_ndggrp_to_data(self) -> None:
         self.data["ndggrp"] = self.data["group"]
 
