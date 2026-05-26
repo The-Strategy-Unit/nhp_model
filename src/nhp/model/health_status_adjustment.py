@@ -17,6 +17,7 @@ class HealthStatusAdjustment:
     Handles the logic for the health status adjustment in the model.
     """
 
+    HSA_BASE_YEAR: int = 2021
     # Disability-Free Life Expectancy (DFLE) by sex
     DFLE_MALE = 10.45
     DFLE_FEMALE = 10.66
@@ -24,7 +25,9 @@ class HealthStatusAdjustment:
 
     # load the static reference data files
 
-    def __init__(self, data_loader: Data, base_year: str):
+    def __init__(
+        self, data_loader: Data, start_year: int, end_year: int, seed: int, model_runs: int
+    ):
         """Initialise HealthStatusAdjustment.
 
         Base class that should not be used directly, instead see HealthStatusAdjustmentGAM
@@ -32,15 +35,36 @@ class HealthStatusAdjustment:
 
         Args:
             data_loader: The data loader.
-            base_year: The baseline year for the model run.
+            start_year: The baseline year for the model run.
+            end_year: The end year for the model run.
+            seed: Random seed for reproducibility.
+            model_runs: Number of model runs.
         """
-        self._all_ages = np.arange(0, 101)
+        self._start_year = start_year
+        self._end_year = end_year
+        self._model_runs = model_runs
 
-        self._load_activity_ages(data_loader)
-        self.base_year = int(base_year)
         # the age range that health status adjustment runs for
         # hardcoded to max out at 90 as ages >90 are mapped to 90
         self._ages = np.arange(55, 91)
+        self._all_ages = np.arange(0, 101)
+
+        self._rv_params = MetalogRandomVariableParameters(
+            prng_params=JaxUniformDistributionParameters(seed=seed),
+            size=max(model_runs, 10_000),
+        )
+
+        self._load_activity_ages(data_loader)
+
+        hsa_rebase = {
+            k: v.mean(axis=0) - self._ages
+            for k, v in self._generate_hsa_adjusted_ages(self.HSA_BASE_YEAR, start_year).items()
+        }
+
+        self.hsa_params = {
+            k: v[0:model_runs] - hsa_rebase[k]
+            for k, v in self._generate_hsa_adjusted_ages(start_year, end_year).items()
+        }
         self._cache = {}
 
     def _load_activity_ages(self, data_loader: Data):
@@ -48,31 +72,27 @@ class HealthStatusAdjustment:
             data_loader.get_hsa_activity_table().set_index(["hsagrp", "sex", "age"]).sort_index()
         )["activity"]
 
-    def generate_hsa_adjusted_ages(self, end_year: int, hsa_params: dict) -> dict[int, pd.Series]:
+    def _generate_hsa_adjusted_ages(self, start_year: int, end_year) -> dict[int, pd.Series]:
         """Generate HSA Adjusted Ages.
 
         Args:
-            end_year: The year the model is running for.
-            hsa_params: The health status adjustment parameters.
+            start_year: The baseline year for adjustment.
+            end_year: The end year for adjustment.
         """
-        ex_dat = reference.life_expectancy(self.base_year, end_year)
+        hsa_params = self._generate_params(start_year, end_year)
+
+        ex_dat = reference.life_expectancy(start_year, end_year)
 
         adjusted_age = {}
         for sex in [1, 2]:
-            ex_diff = ex_dat.loc[(end_year, sex)] - ex_dat.loc[(self.base_year, sex)]
-            v = ex_dat.loc[(end_year, sex)].index.to_numpy() - hsa_params[sex] * ex_diff
-            v.name = "adjusted_age"
+            h = hsa_params[sex].reshape(-1, 1)
+            ex_diff = ex_dat.loc[(end_year, sex)] - ex_dat.loc[(start_year, sex)]
+            v = ex_dat.loc[(end_year, sex)].index.to_numpy() - h * ex_diff.to_numpy()
             adjusted_age[sex] = v
 
-        return pd.concat(adjusted_age, names=["sex"])
+        return adjusted_age
 
-    @staticmethod
-    def generate_params(
-        start_year: int,
-        end_year: int,
-        seed: int,
-        model_runs: int,
-    ) -> dict[int, np.ndarray]:
+    def _generate_params(self, start_year: int, end_year: int) -> dict[int, np.ndarray]:
         """Generate Health Status Adjustment Parameters.
 
         Args:
@@ -88,24 +108,19 @@ class HealthStatusAdjustment:
 
         dists = reference.hsa_metalog_parameters(end_year)
 
-        rv_params = MetalogRandomVariableParameters(
-            prng_params=JaxUniformDistributionParameters(seed=seed),
-            size=model_runs,
-        )
-
         samples = {}
         for sex, dfle in [
             (1, HealthStatusAdjustment.DFLE_MALE),
             (2, HealthStatusAdjustment.DFLE_FEMALE),
         ]:
-            qoi_samples = dists[sex].rvs(rv_params)
+            qoi_samples = dists[sex].rvs(self._rv_params)
 
             target_ex = ex_dat[(end_year, sex, HealthStatusAdjustment.HSA_REFERENCE_AGE)]
             base_ex = ex_dat[(start_year, sex, HealthStatusAdjustment.HSA_REFERENCE_AGE)]
             numerator = qoi_samples / 100 * target_ex - dfle
             denominator = target_ex - base_ex
             # insert a 1 for the baseline model run, which is model run = 0
-            samples[sex] = np.insert(np.array(numerator / denominator), 0, 1)
+            samples[sex] = np.array(numerator / denominator)
 
         return samples
 
@@ -118,12 +133,14 @@ class HealthStatusAdjustment:
         Returns:
             The health status adjustment factor.
         """
-        hsa_param = run_params["health_status_adjustment"]
-        cache_key = run_params["model_run"]
+        cache_key = run_params["model_run"] - 1
         if cache_key in self._cache:
             return self._cache[cache_key]
 
-        adjusted_ages = self.generate_hsa_adjusted_ages(run_params["year"], hsa_param)
+        adjusted_ages = pd.concat(
+            {k: pd.Series(v[cache_key], index=self._ages) for k, v in self.hsa_params.items()}
+        )
+        adjusted_ages.index.names = ["sex", "age"]
 
         factor = (
             self._predict_activity(adjusted_ages).rename_axis(["hsagrp", "sex", "age"])
@@ -143,16 +160,21 @@ class HealthStatusAdjustment:
 class HealthStatusAdjustmentGAM(HealthStatusAdjustment):
     """Health Status Adjustment (GAMs)."""
 
-    def __init__(self, data: Data, base_year: str):
+    def __init__(
+        self, data_loader: Data, start_year: int, end_year: int, seed: int, model_runs: int
+    ):
         """Initialise HealthStatusAdjustmentGAM.
 
         Args:
-            data: The data loader.
-            base_year: The baseline year for the model run.
+            data_loader: The data loader.
+            start_year: The baseline year for the model run.
+            end_year: The end year for the model run.
+            seed: Random seed for reproducibility.
+            model_runs: Number of model runs.
         """
-        self._gams = data.get_hsa_gams()
+        self._gams = data_loader.get_hsa_gams()
 
-        super().__init__(data, base_year)
+        super().__init__(data_loader, start_year, end_year, seed, model_runs)
 
     def _predict_activity(self, adjusted_ages):
         return pd.concat(
@@ -169,14 +191,19 @@ class HealthStatusAdjustmentGAM(HealthStatusAdjustment):
 class HealthStatusAdjustmentInterpolated(HealthStatusAdjustment):
     """Health Status Adjustment (Interpolated)."""
 
-    def __init__(self, data: Data, base_year: str):
+    def __init__(
+        self, data_loader: Data, start_year: int, end_year: int, seed: int, model_runs: int
+    ):
         """Initialise HealthStatusAdjustmentInterpolated.
 
         Args:
-            data: The data loader.
-            base_year: The baseline year for the model run.
+            data_loader: The data loader.
+            start_year: The baseline year for the model run.
+            end_year: The end year for the model run.
+            seed: Random seed for reproducibility.
+            model_runs: Number of model runs.
         """
-        super().__init__(data, base_year)
+        super().__init__(data_loader, start_year, end_year, seed, model_runs)
         self._load_activity_ages_lists()
 
     def _load_activity_ages_lists(self):

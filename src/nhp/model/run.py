@@ -135,7 +135,11 @@ def run_all(
 
     # set the data path in the HealthStatusAdjustment class
     hsa = HealthStatusAdjustmentInterpolated(
-        nhp_data(params["start_year"], params["dataset"]), params["start_year"]
+        nhp_data(params["start_year"], params["dataset"]),
+        params["start_year"],
+        params["end_year"],
+        params["seed"],
+        params["model_runs"],
     )
 
     results = combine_results(

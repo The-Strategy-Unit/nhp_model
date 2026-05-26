@@ -79,7 +79,6 @@ def mock_run_params():
     return {
         "variant": ["a", "a", "b", "a"],
         "seeds": [1, 2, 3, 4],
-        "health_status_adjustment": [1, 2, 3, 4, 5],
         "non-demographic_adjustment": {
             "a": {"a_a": [1, 1, 2, 3], "a_b": [1, 4, 5, 6]},
             "b": {"b_a": [1, 7, 8, 9], "b_b": [1, 10, 11, 12]},
@@ -130,6 +129,9 @@ def test_model_init_sets_values(mocker, model_type):
     params = {
         "dataset": "synthetic",
         "start_year": "2020",
+        "end_year": "2021",
+        "seed": 1,
+        "model_runs": 3,
         "create_datetime": "20220101_012345",
     }
 
@@ -168,6 +170,9 @@ def test_model_init_calls_generate_run_params(mocker):
     params = {
         "dataset": "synthetic",
         "start_year": "2020",
+        "end_year": "2021",
+        "seed": 1,
+        "model_runs": 3,
         "create_datetime": "20220101_012345",
     }
 
@@ -196,7 +201,13 @@ def test_model_init_validates_model_type():
 def test_model_init_sets_create_datetime(mocker):
     """It sets the create_datetime item in params if not already set."""
     # arrange
-    params = {"dataset": "synthetic", "start_year": "2020"}
+    params = {
+        "dataset": "synthetic",
+        "start_year": "2020",
+        "end_year": "2021",
+        "seed": 1,
+        "model_runs": 3,
+    }
 
     mocker.patch("nhp.model.model.Model._load_data")
     mocker.patch("nhp.model.model.Model._load_strategies")
@@ -214,7 +225,13 @@ def test_model_init_sets_create_datetime(mocker):
 @pytest.mark.unit
 def test_model_init_loads_params_if_string(mocker):
     # arrange
-    params = {"dataset": "synthetic", "start_year": "2020"}
+    params = {
+        "dataset": "synthetic",
+        "start_year": "2020",
+        "end_year": "2021",
+        "seed": 1,
+        "model_runs": 3,
+    }
 
     mocker.patch("nhp.model.model.Model._load_data")
     mocker.patch("nhp.model.model.Model._load_strategies")
@@ -235,7 +252,13 @@ def test_model_init_loads_params_if_string(mocker):
 @pytest.mark.unit
 def test_model_init_initialises_hsa_if_none(mocker):
     # arrange
-    params = {"dataset": "synthetic", "start_year": "2020"}
+    params = {
+        "dataset": "synthetic",
+        "start_year": "2020",
+        "end_year": "2021",
+        "seed": 1,
+        "model_runs": 3,
+    }
 
     mocker.patch("nhp.model.model.Model._load_data")
     mocker.patch("nhp.model.model.Model._load_strategies")
@@ -249,7 +272,7 @@ def test_model_init_initialises_hsa_if_none(mocker):
     mdl = Model("aae", "arrivals", params, Mock(return_value="data"))  # type: ignore
 
     # assert
-    hsa_m.assert_called_once_with("data", "2020")
+    hsa_m.assert_called_once_with("data", "2020", "2021", 1, 3)
     assert mdl.hsa == "hsa"
 
 
@@ -431,9 +454,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
     rng.normal = Mock(wraps=get_next_n)
     mocker.patch("numpy.random.default_rng", return_value=rng)
 
-    hsa_m = mocker.patch("nhp.model.model.HealthStatusAdjustment.generate_params")
-    hsa_m.return_value = [1, 2, 3, 4, 5]
-
     mocker.patch("nhp.model.model.inrange", wraps=lambda x, low, high: x)
 
     mdl = mock_model
@@ -444,7 +464,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
     actual = mdl.generate_run_params(mdl.params)
 
     # assert
-    hsa_m.assert_called_once_with(2018, 2020, 1, 3)
     assert actual == mock_run_params
 
 
@@ -459,7 +478,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
             0,
             {
                 "variant": "a",
-                "health_status_adjustment": 1,
                 "seed": 1,
                 "non-demographic_adjustment": {
                     "a": {"a_a": 1, "a_b": 1},
@@ -490,7 +508,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
             {
                 "variant": "b",
                 "seed": 3,
-                "health_status_adjustment": 3,
                 "non-demographic_adjustment": {
                     "a": {"a_a": 2, "a_b": 5},
                     "b": {"b_a": 8, "b_b": 11},
