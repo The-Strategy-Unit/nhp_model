@@ -107,9 +107,12 @@ class OutpatientsModel(Model):
         Returns:
             A tuple containing the updated data and the updated step counts.
         """
-        # TODO: we need to make sure efficiences contains convert to tele keys
         rng = model_iteration.rng
-        params = model_iteration.run_params["efficiencies"]["op"]
+        params = {
+            k: v
+            for k, v in model_iteration.run_params["efficiencies"]["op"].items()
+            if k.startswith("convert_to_tele_")
+        }
         strategies = model_iteration.model.strategies["efficiencies"]
         # make sure to take the complement of the parameter
         factor = 1 - data["rn"].map(strategies["strategy"].map(params)).fillna(1)

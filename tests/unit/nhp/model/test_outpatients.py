@@ -140,7 +140,7 @@ def test_convert_to_tele(mock_model):
     mdl = mock_model
 
     mr_mock = Mock()
-    mr_mock.rng.binomial.return_value = np.array([10, 15, 0, 20, 25, 0, 30, 35, 0, 40, 45, 0])
+    mr_mock.rng.binomial.return_value = np.array([10, 15, 0, 20, 25, 0, 30, 35, 0, 40, 0, 0])
     data = pd.DataFrame(
         {
             "rn": range(12),
@@ -153,15 +153,16 @@ def test_convert_to_tele(mock_model):
         }
     )
     mr_mock.run_params = {
-        "efficiencies": {"op": {"convert_to_tele_a": 0.25, "convert_to_tele_b": 0.5}}
+        "efficiencies": {"op": {"convert_to_tele_a": 0.25, "convert_to_tele_b": 0.5, "other": 1}}
     }
     mr_mock.model.strategies = {
         "efficiencies": pd.DataFrame(
-            [
-                {"rn": k, "strategy": "convert_to_tele_a" if k % 2 else "convert_to_tele_b"}
-                for k in data["rn"]
-            ]
-        ).set_index("rn")
+            {
+                "strategy": ["convert_to_tele_b", "convert_to_tele_a"] * 5
+                + ["convert_to_tele_c", "other"]
+            },
+            index=data["rn"],
+        )
     }
 
     # act
@@ -179,7 +180,7 @@ def test_convert_to_tele(mock_model):
         -10,
         30,
         -20,
-        -20,
+        25,
         30,
     ]
     assert actual_data["tele_attendances"].to_list() == [
@@ -193,12 +194,12 @@ def test_convert_to_tele(mock_model):
         45,
         0,
         45,
-        55,
+        10,
         0,
     ]
 
     assert mr_mock.rng.binomial.call_args == call(
-        data["attendances"].to_list(), [i for _ in range(6) for i in [0.5, 0.75]]
+        data["attendances"].to_list(), [i for _ in range(5) for i in [0.5, 0.75]] + [0, 0]
     )
 
     assert actual_step_counts.to_dict("list") == {
@@ -216,8 +217,8 @@ def test_convert_to_tele(mock_model):
             "convert_to_tele",
             "convert_to_tele",
         ],
-        "attendances": [-25, -65, -45, -85],
-        "tele_attendances": [25, 65, 45, 85],
+        "attendances": [-25, -65, -45, -40],
+        "tele_attendances": [25, 65, 45, 40],
     }
 
 
