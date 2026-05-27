@@ -281,7 +281,6 @@ class RunWithAzureStorage:
             save_full_model_results: Whether to save the full model results or not.
             additional_metadata: Additional metadata to log.
         """
-
         file_path = "/".join(
             [
                 "aggregated-model-results",
