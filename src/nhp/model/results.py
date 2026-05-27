@@ -68,10 +68,10 @@ def _combine_model_results(
     return {
         k: _complete_model_runs(
             [
-                v[k].reset_index().assign(model_run=i)
+                aggregated_results[k].reset_index().assign(model_run=i)
                 for r in results
-                for (i, (v, _)) in enumerate(r)
-                if k in v
+                for (i, (aggregated_results, _step_counts)) in enumerate(r)
+                if k in aggregated_results
             ],
             model_runs,
         )
@@ -94,15 +94,15 @@ def _combine_step_counts(results: list) -> pd.DataFrame:
     model_runs = len(results[0]) - 1
     return _complete_model_runs(
         [
-            v
+            step_counts
             # TODO: handle the case of daycase conversion, it's duplicating values
             # need to figure out exactly why, but this masks the issue for now
-            .groupby(v.index.names)
+            .groupby(step_counts.index.names)
             .sum()
             .reset_index()
             .assign(model_run=i)
             for r in results
-            for i, (_, v) in enumerate(r)
+            for i, (_aggregated_results, step_counts) in enumerate(r)
             if i > 0
         ],
         model_runs,

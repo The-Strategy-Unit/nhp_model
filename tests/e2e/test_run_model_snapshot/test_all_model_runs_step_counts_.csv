@@ -1839,7 +1839,7 @@
 1837,op,a,op_procedure,health_status_adjustment,-,tele_attendances,0.0
 1838,op,a,op_procedure,inequalities,-,attendances,0.0
 1839,op,a,op_procedure,inequalities,-,tele_attendances,0.0
-1840,op,a,op_procedure,model_interaction_term,-,attendances,3607.4
+1840,op,a,op_procedure,model_interaction_term,-,attendances,3607.5
 1841,op,a,op_procedure,model_interaction_term,-,tele_attendances,0.0
 1842,op,a,op_procedure,non-demographic_adjustment,-,attendances,28952.1
 1843,op,a,op_procedure,non-demographic_adjustment,-,tele_attendances,0.0
