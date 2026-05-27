@@ -269,9 +269,7 @@ The model is containerized using:
 ## Common Issues and Workarounds
 
 **Known Issues:**
-1. **Dockerfile Version**: Uses `ENV SETUPTOOLS_SCM_PRETEND_VERSION=v0.0.0` because
-   setuptools-scm needs git metadata
-2. **Data Structure**: Model expects parquet files at
+1. **Data Structure**: Model expects parquet files at
    `{data_path}/{file}/fyear={year}/dataset={dataset}/`. Missing files cause runtime errors.
 
 **Environment Variables (Docker):**

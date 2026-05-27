@@ -27,7 +27,7 @@ jobs:
         run: uv sync --dev
 
       - name: Generate Report
-        run: uv run pytest --cov=. tests/unit --ignore=tests --cov-branch --cov-report xml:coverage.xml
+        run: uv run pytest --cov=. -m "unit" --ignore=tests --cov-branch --cov-report xml:coverage.xml
 
       - name: Upload Coverage to Codecov
         uses: codecov/codecov-action@v5
