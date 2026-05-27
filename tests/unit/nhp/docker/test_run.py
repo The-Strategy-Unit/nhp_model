@@ -415,10 +415,10 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
 
     s.params = params
 
-    additional_metadata = {"elapsed_time_seconds": "3600"}
+    additional_metadata = {"start": 100, "end": 200, "elapsed_time_seconds": 3600}
 
     metadata_expected = metadata.copy()
-    metadata_expected.update(additional_metadata)
+    metadata_expected.update(additional_metadata)  # ty: ignore
 
     file_path = "/".join(
         [
@@ -444,6 +444,9 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
         status="complete",
         aggregated_results_path=file_path,
         outputs_app_uri="synthetic/00000000-0000-0000-0000-000000000001",
+        start=100,
+        end=200,
+        elapsed_time_seconds=3600,
     )
 
     m3.assert_not_called()
@@ -476,10 +479,10 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
     params["dict"] = {"a": 1}  # ty: ignore
     s.params = params
 
-    additional_metadata = {"elapsed_time_seconds": "3600"}
+    additional_metadata = {"start": 100, "end": 200, "elapsed_time_seconds": 3600}
 
     metadata_expected = metadata.copy()
-    metadata_expected.update(additional_metadata)
+    metadata_expected.update(additional_metadata)  # ty: ignore
 
     file_path = "/".join(
         [
@@ -505,6 +508,9 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
         status="complete",
         aggregated_results_path=file_path,
         outputs_app_uri="synthetic/00000000-0000-0000-0000-000000000001",
+        start=100,
+        end=200,
+        elapsed_time_seconds=3600,
     )
     m3.assert_called_once()
     m4.assert_called_once_with()
