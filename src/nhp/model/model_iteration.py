@@ -34,6 +34,7 @@ class ModelIteration:
         self.model_run = model_run
         # if model_run == -1, then use model_run = 0 for run params
         self.run_params = model._get_run_params(max(0, model_run))
+        self.run_params["model_run"] = model_run
         self.rng = np.random.default_rng(self.run_params["seed"])
 
         self._patch_run_params()

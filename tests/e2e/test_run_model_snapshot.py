@@ -31,7 +31,11 @@ def model_results(data_dir):
 
     # set the data path in the HealthStatusAdjustment class
     hsa = HealthStatusAdjustmentInterpolated(
-        nhp_data(params["start_year"], params["dataset"]), params["start_year"]
+        nhp_data(params["start_year"], params["dataset"]),
+        params["start_year"],
+        params["end_year"],
+        params["seed"],
+        params["model_runs"],
     )
 
     return combine_results(
@@ -68,6 +72,8 @@ def test_all_model_runs(model_results, result_key, dataframe_regression):
         .reset_index()
     )
 
-    actual_summarised["value"] = actual_summarised["value"].round(1)
+    # Store stable decimal text in snapshots to avoid float serialization artefacts
+    # such as 3607.4000000000001 from dataframe_regression's %.17g formatting.
+    actual_summarised["value"] = actual_summarised["value"].map(lambda value: f"{value:.1f}")
 
     dataframe_regression.check(actual_summarised)

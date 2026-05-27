@@ -14,7 +14,10 @@
         "-d=${config:nhp.data_path}",
         "--type=${input:type}"
       ],
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "env": {
+        "XLA_PYTHON_CLIENT_PREALLOCATE": "false"
+      }
     }
   ],
   "inputs": [

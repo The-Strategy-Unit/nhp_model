@@ -107,6 +107,7 @@ def test_run_all(mocker):
         "scenario": "test",
         "start_year": 2020,
         "end_year": 2025,
+        "seed": 42,
         "model_runs": 10,
         "create_datetime": "20230123_012345",
     }
@@ -127,7 +128,7 @@ def test_run_all(mocker):
     ]
 
     grp_m.assert_called_once_with(params)
-    hsa_m.assert_called_once_with("nhp_data", 2020)
+    hsa_m.assert_called_once_with("nhp_data", 2020, 2025, 42, 10)
 
     assert rm_m.call_args_list == [
         call(

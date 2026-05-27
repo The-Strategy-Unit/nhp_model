@@ -37,12 +37,17 @@ def test_model_returns_expected_aggregations(model_single_run_results, data_regr
 @pytest.mark.integration
 @pytest.mark.parametrize("activity_type", ["ip", "op", "aae"])
 def test_model_default_results(activity_type, model_single_run_results, dataframe_regression):
-    df = model_single_run_results[activity_type]["default"]
-    dataframe_regression.check(df.to_frame())
+    res = model_single_run_results[activity_type]["default"]
+    dataframe_regression.check(res.to_frame())
 
 
 @pytest.mark.integration
 @pytest.mark.parametrize("activity_type", ["ip", "op", "aae"])
 def test_model_step_counts(activity_type, model_single_run_results, dataframe_regression):
-    df = model_single_run_results[activity_type]["step_counts"]
-    dataframe_regression.check(df.to_frame())
+    res = (
+        model_single_run_results[activity_type]["step_counts"]
+        # Store stable decimal text in snapshots to avoid float serialization artefacts
+        # such as 3607.4000000000001 from dataframe_regression's %.17g formatting.
+        .map(lambda value: f"{value:.1f}")
+    )
+    dataframe_regression.check(res.to_frame())

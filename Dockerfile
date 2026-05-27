@@ -1,18 +1,20 @@
-FROM ghcr.io/astral-sh/uv:python3.13-alpine
+FROM ghcr.io/astral-sh/uv:python3.13-trixie-slim
 
 # Create user
-RUN addgroup -g 1000 nhp && adduser -u 1000 -G nhp -s /bin/sh -h /app -D nhp
+RUN groupadd --gid 1000 nhp && useradd --uid 1000 --gid nhp --shell /bin/sh --home-dir /app --create-home nhp
 WORKDIR /app
-USER nhp
 
 # Create directories with proper permissions (as root)
-RUN for DIR in data queue results; do mkdir -p $DIR; done
+RUN mkdir -p data queue results && chown -R nhp:nhp /app
+
+USER nhp
 
 # Copy dependency files first (optimal caching)
 COPY --chown=nhp:nhp pyproject.toml uv.lock ./
 
 # Install dependencies only (skip local package)
-RUN uv sync --frozen --no-dev --no-install-project
+RUN --mount=type=cache,target=/app/.cache/uv,uid=1000,gid=1000 \
+  uv sync --frozen --no-dev --no-install-project
 
 # Ensure Python can find installed packages and local model
 ENV PATH="/app/.venv/bin:$PATH"
