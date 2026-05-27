@@ -2,11 +2,15 @@
 
 ## Repository Overview
 
-This is the **New Hospital Programme (NHP) Demand Model**, a Python package for healthcare activity prediction. The model provides modeling capabilities for inpatients, outpatients, and A&E (Accident & Emergency) services. It is built as a Python library using modern packaging tools and is deployed as both a Python package and a Docker container to Azure.
+This is the **New Hospital Programme (NHP) Demand Model**, a Python package for healthcare
+activity prediction. The model provides modeling capabilities for inpatients, outpatients,
+and A&E (Accident & Emergency) services. It is built as a Python library using modern
+packaging tools and is deployed as both a Python package and a Docker container to Azure.
 
 **Key Facts:**
 - **Project Type:** Python package/library with Docker containerization
-- **Python Version:** Requires Python 3.11 or higher (specified in pyproject.toml)
+- **Python Version:** Requires Python >=3.12,<3.14 (from pyproject.toml). Docker
+   intentionally pins 3.13 for container builds within this range.
 - **Package Manager:** `uv` (modern Python package manager from Astral)
 - **Build System:** setuptools with setuptools-scm for versioning
 - **Primary Language:** Python
@@ -23,22 +27,17 @@ This is the **New Hospital Programme (NHP) Demand Model**, a Python package for 
 # Install uv using the recommended approach from Astral
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install project dependencies (production only)
+# Install with dev dependencies for development/testing (RECOMMENDED for development)
 uv sync
 
-# Install with dev dependencies for development/testing (RECOMMENDED for development)
-uv sync --extra dev
-
 # Install with docs dependencies for documentation
-uv sync --extra docs
-
-# Install multiple extras at once
-uv sync --extra dev --extra docs
+uv sync --group docs
 ```
 
-**Important:** The `uv sync` command only installs production dependencies. For development work (linting, testing), use `uv sync --extra dev` to install the dev dependencies.
+For production-only or Docker setup, use `uv sync --no-dev` instead of `uv sync`.
 
-**Python Version:** The project requires Python 3.11+. The CI uses Python 3.11 specifically via `uv python install` in workflows.
+**Python Version:** CI uses `astral-sh/setup-uv` and installs dependencies with `uv sync`.
+
 
 ### Build Commands
 
@@ -56,57 +55,91 @@ The build creates:
 - `dist/nhp_model-<version>-py3-none-any.whl`
 - `dist/nhp_model-<version>.tar.gz`
 
-**Note:** The Dockerfile includes a TODO comment about forcing version numbers during Docker builds. Currently it uses `ENV SETUPTOOLS_SCM_PRETEND_VERSION=v0.0.0` as a workaround.
+**Note:** Docker installs dependencies with `uv sync --frozen --no-dev --no-install-project`,
+then installs the local package with `uv pip install .`.
 
 ### Testing
 
+The commands in this section are authoritative.
+
 **Unit Tests (ALWAYS run these before committing):**
+Run these exact unit test and coverage commands:
 
 ```bash
-# Run all unit tests
-uv run pytest tests/unit --verbose
-
-# Run unit tests with coverage report
-uv run pytest --cov=. tests/unit --ignore=tests --cov-branch --cov-report xml:coverage.xml
+uv run pytest -m "unit" --verbose
+uv run pytest --cov=src -m "unit" --cov-branch --cov-report xml:coverage.xml
 ```
 
 **Integration Tests:**
 
+These do not run in CI due to data requirements, but can be run locally with suitable test data.
+If test data is not available locally, skip integration and E2E tests entirely. A `pytest.skip`
+or missing-data error from these tests is not a code defect and should not be treated as a
+blocking failure.
+
 ```bash
-# Integration tests require test data in a specific format
-# These are located in tests/integration/ but may require data setup
-uv run pytest tests/integration --verbose
+uv run pytest -m "integration" --verbose
 ```
 
-**All unit tests must pass. Test failures are NOT acceptable.**
+**E2E Tests:**
+
+These do not run in CI due to data requirements, but can be run locally with suitable test data.
+
+```bash
+uv run pytest -m "e2e" --verbose
+```
+
+
+**All unit tests must pass. Test failures are not acceptable. We require 100% branch
+coverage from unit tests; integration and E2E tests are excluded from this coverage
+requirement.**
+
+**Unit Test Failure Decision Flow:**
+1. Run unit tests.
+2. If all unit tests pass, proceed.
+3. If a unit test fails due to a code bug, fix the code and re-run until tests pass.
+4. If a unit test fails due to a stale fixture or outdated assertion, update the fixture/assertion
+   only. Never delete tests or weaken assertions to bypass failures.
+5. If the test validity is unclear, halt work on the branch, report the uncertainty to the user with
+   the exact test name and failure message, add a TODO comment in the code, and await human
+   instruction before proceeding.
+
+This applies exclusively to unit tests (marker: unit). Integration and E2E failures caused by
+missing local data are not code defects and are not blocking failures.
+
+If a branch is genuinely untestable (for example, an OS error handler), mark it with
+`# pragma: no cover` and add a comment explaining why. Overuse of pragma is a code smell;
+flag any new pragma usage in the PR description for human review.
+
+When uncertain whether a failure is a code bug or stale fixture, default to treating it as a code
+bug and fix the implementation first. Only update fixtures if the code change was intentional and
+the fixture reflects the old, now-invalid behavior. Document the rationale in the commit message.
 
 ### Linting and Formatting
 
+The commands in this section are authoritative.
+
 **ALWAYS run linting before committing. All linting checks MUST pass:**
+Run these exact linting, formatting, and type-check commands:
 
 ```bash
-# Run ruff linting check
 uvx ruff check .
-
-# Run ruff format check (no auto-formatting)
 uvx ruff format --check .
-
-# Auto-format code (if needed)
-uvx ruff format .
-
-# Run type checking with ty
 uvx ty check .
 ```
+
+If a type error originates from a third-party library stub and cannot be resolved in project code,
+add a `# ty: ignore[<code>]` comment with an inline explanation. Do not use bare `# ty: ignore`
+without a code. Document the suppression in the PR description.
 
 **Linting Configuration:**
 - Ruff config is in `pyproject.toml` under `[tool.ruff]`
 - Line length: 100 characters
-- Target Python version: 3.11
-- Excludes: `notebooks/` directory
-- Key rules: pydocstyle (D), pycodestyle (E/W), isort (I), pylint (PL), pandas-vet (PD), numpy (NPY), ruff-specific (RUF)
+- Target Python version: 3.12
+- Excludes: `docs/` directory
+- Key rules: pydocstyle (D), pycodestyle (E/W), isort (I), pylint (PL), pandas-vet (PD),
+  numpy (NPY), ruff-specific (RUF)
 - Docstring convention: Google style
-
-**The notebooks directory is excluded from linting and should not be linted.**
 
 ### Documentation
 
@@ -126,19 +159,20 @@ Documentation is deployed automatically to Connect via CI on main branch pushes.
 
 ```bash
 # Run with sample parameters (requires data in specified path)
-uv run python -m nhp.model queue/params-sample.json -d data/synth --type all
+uv run python -m nhp.model -d data/synth --type all
 
 # Run single model type
-uv run python -m nhp.model queue/params-sample.json -d data --type ip   # inpatients
-uv run python -m nhp.model queue/params-sample.json -d data --type op   # outpatients
-uv run python -m nhp.model queue/params-sample.json -d data --type aae  # A&E
+uv run python -m nhp.model -d data/synth --type ip   # inpatients
+uv run python -m nhp.model -d data/synth --type op   # outpatients
+uv run python -m nhp.model -d data/synth --type aae  # A&E
 
 # Run specific model iteration for debugging
-uv run python -m nhp.model queue/params-sample.json -d data --model-run 1 --type ip
+uv run python -m nhp.model -d data/synth --model-run 1 --type ip
 ```
 
 **Command-line arguments:**
-- `params_file`: Path to JSON parameters file (default: `queue/params-sample.json`)
+- `params_file`: Path to JSON parameters file (if left empty, uses the default params file
+   in src/nhp/model/params/params-sample.json)
 - `-d, --data-path`: Path to data directory (default: `data`)
 - `-r, --model-run`: Which model iteration to run (default: 1)
 - `-t, --type`: Model type - `all`, `ip`, `op`, or `aae` (default: `all`)
@@ -147,7 +181,9 @@ uv run python -m nhp.model queue/params-sample.json -d data --model-run 1 --type
 **Data Requirements:**
 The model expects data in parquet format organized by fiscal year and dataset:
 - Format: `{data_path}/{file}/fyear={year}/dataset={dataset}/`
-- Required files: `ip`, `op`, `aae`, `demographic_factors`, `birth_factors`, `hsa_activity_tables`, `hsa_gams` (pickle)
+- Required files: `ip`, `op`, `aae`, `demographic_factors`, `birth_factors`,
+  `hsa_activity_tables`, `inequalities`, `ip_activity_avoidance_strategies`,
+  `ip_efficiencies_strategies`, and `hsa_gams` (pickle)
 - Sample data location: `data/synth/` (synthetic dataset for testing - see GitHub issue #347)
 
 ## Project Structure
@@ -156,13 +192,13 @@ The model expects data in parquet format organized by fiscal year and dataset:
 
 **Core Directories:**
 - `.github/workflows/` - CI/CD pipelines (linting, codecov, build, deploy)
-- `src/nhp/model/` - Core model: `__main__.py`, `model.py`, `inpatients.py`, `outpatients.py`, `aae.py`, `run.py`, `results.py`, `data/`
+- `src/nhp/model/` - Core model: `__main__.py`, `model.py`, `inpatients.py`,
+  `outpatients.py`, `aae.py`, `run.py`, `results.py`, `data/`
 - `src/nhp/docker/` - Docker runtime with Azure Storage integration
 - `tests/unit/` - Unit tests
 - `tests/integration/` - Integration tests (require data)
+- `tests/e2e/` - End-to-end tests (require data)
 - `docs/` - MkDocs documentation
-- `notebooks/` - Databricks notebooks (excluded from linting)
-- `queue/` - Parameter files (params-sample.json)
 
 **Key Configuration Files:**
 - `pyproject.toml` - Project metadata, dependencies, ruff/pytest/setuptools config
@@ -204,31 +240,39 @@ The model expects data in parquet format organized by fiscal year and dataset:
    - Uploads to Codecov
    - Requires passing tests
 
-**IMPORTANT:** All linting and test checks must pass before merge. DO NOT skip or disable these checks.
+**IMPORTANT:** All linting and test checks must pass before merge. DO NOT skip or disable
+these checks.
 
 ### Main Branch / Release Workflows
 
-On push to main or tags:
+On push to main or tags, reusable and deployment workflows are composed as follows:
 
-1. **build_app.yaml**: Builds Python wheel, uploads to Azure Storage and GitHub releases
-2. **build_schema.yaml**: Deploys params-schema.json to GitHub Pages
-3. **build_container.yaml**: Builds and pushes Docker image to GitHub Container Registry
-4. **deploy_docs.yaml**: Builds and deploys MkDocs documentation to RStudio Connect
+1. **deploy_dev.yaml** (main): Builds and pushes `:dev` container image and deploys `dev` schema
+2. **deploy_release.yaml** (tags): Builds and pushes release and `latest` container images
+   and deploys versioned schema
+3. **build_app.yaml** (main and tags): Builds wheel artifacts, uploads to Azure Storage,
+   and attaches release artifacts on tags
+4. **deploy_docs.yaml** (main): Builds MkDocs and deploys documentation to RStudio Connect
+5. **deploy_pr.yaml** (pull requests): Builds and pushes PR-scoped container images for
+   review/testing
+6. **build_container.yaml** and **build_schema.yaml**: Reusable workflows called by deploy workflows
 
 ### Docker Deployment
 
 The model is containerized using:
-- Base image: `ghcr.io/astral-sh/uv:python3.11-alpine`
+- Base image: `ghcr.io/astral-sh/uv:python3.13-trixie-slim`
 - Build args: `app_version`, `data_version`, `storage_account`
 - Entry point: `python -m nhp.docker`
-- Tags: `dev` (PRs), `v*.*.*` (releases), `latest` (latest release)
+- Tags: `dev` (main), `pr-<number>` (pull requests), `v*.*.*` and `latest` (releases)
+- Python policy: Docker pins 3.13 intentionally; source compatibility remains `>=3.12,<3.14`.
 
 ## Common Issues and Workarounds
 
 **Known Issues:**
-1. **Dockerfile Version**: Uses `ENV SETUPTOOLS_SCM_PRETEND_VERSION=v0.0.0` because setuptools-scm needs git metadata (TODO: build wheel and copy instead)
-2. **Data Structure**: Model expects parquet files at `{data_path}/{file}/fyear={year}/dataset={dataset}/`. Missing files cause runtime errors.
-3. **Notebooks**: `notebooks/` directory excluded from linting - don't lint these Databricks notebooks.
+1. **Dockerfile Version**: Uses `ENV SETUPTOOLS_SCM_PRETEND_VERSION=v0.0.0` because
+   setuptools-scm needs git metadata
+2. **Data Structure**: Model expects parquet files at
+   `{data_path}/{file}/fyear={year}/dataset={dataset}/`. Missing files cause runtime errors.
 
 **Environment Variables (Docker):**
 - `APP_VERSION`, `DATA_VERSION` (default: "dev")
@@ -237,56 +281,59 @@ The model is containerized using:
 
 ## Testing Strategy
 
-- **Unit Tests**: `tests/unit/` - Mock-based, parameterized. **ALWAYS run before committing.**
-- **Integration Tests**: `tests/integration/` - Require properly formatted test data, test end-to-end runs
+- **Unit Tests**: Marker-based (`-m "unit"`) and mock-based, parameterized. **ALWAYS run
+   before committing.**
+- **Integration Tests**: Marker-based (`-m "integration"`) tests requiring formatted test
+   data; cover single model runs
+- **E2E Tests**: Marker-based (`-m "e2e"`) tests requiring formatted test data; cover full
+   model execution
 - **Test Organization**: pytest-mock for mocking, fixtures in `tests/conftest.py`
-- **Coverage**: High coverage maintained via Codecov integration
+- **Coverage**: 100% branch coverage from unit tests is required and enforced via Codecov
+   integration
 
 ## Best Practices for Coding Agents
 
-1. **ALWAYS install dependencies first**: Run `uv sync --extra dev` before any development work.
+1. **ALWAYS install dependencies first**: Run `uv sync` before any development work.
 
-2. **ALWAYS run linting before committing**: Run `uvx ruff check .` and `uvx ruff format --check .` - these MUST pass.
+2. **ALWAYS run pre-commit checks using the inline commands**: Use the exact commands in the
+Testing and Linting sections in this file.
 
-3. **ALWAYS run unit tests**: Run `uv run pytest tests/unit` before committing - all tests MUST pass.
+3. **ALWAYS run unit tests**: All unit tests must pass.
 
-4. **Follow Google docstring convention**: All public functions/classes must have Google-style docstrings (enforced by ruff).
+4. **Follow Google docstring convention**: All public functions/classes must have
+   Google-style docstrings (enforced by ruff).
 
 5. **Respect line length**: Maximum 100 characters per line (ruff will enforce this).
 
-6. **Don't modify notebooks**: The `notebooks/` directory is excluded from linting for a reason. These are Databricks notebooks with special formatting.
+6. **Don't lint docs as source code**: The `docs/` directory is excluded from Ruff/ty
+   checks by configuration.
 
-7. **Use uv for all Python commands**: Prefix commands with `uv run` to ensure correct virtual environment usage.
+7. **Use uv for all Python commands**: Prefix commands with `uv run` to ensure correct virtual
+   environment usage.
 
-8. **Don't modify uv.lock manually**: Use `uv sync` to update dependencies.
+8. **Don't modify uv.lock manually**: Use `uv sync` to update dependencies. If `uv sync` fails
+   due to dependency resolution conflicts after `uv add`, run `uv lock --upgrade-package <package>`
+   to attempt re-resolution, and report unresolvable conflicts rather than modifying `uv.lock`
+   manually. When reporting an unresolvable dependency conflict, open a comment in the relevant PR
+   or issue with the full output of `uv lock --upgrade-package <package>` and the conflicting
+   version constraints identified. If `uv lock --upgrade-package <package>` also fails, revert the
+   `uv add` change with `uv remove <package>`, restore `uv.lock` from version control, and open an
+   issue documenting the conflicting constraints before retrying.
 
-9. **Test locally before pushing**: The CI checks are strict and will fail if linting/tests don't pass.
+9. **Add dependencies using uv commands**: Run `uv add <package>` for production dependencies and
+   `uv add --dev <package>` for development dependencies. When adding a dependency, verify its
+   Python version constraints are compatible with >=3.12,<3.14. If a candidate package requires a
+   narrower range (e.g. >=3.13), do not add it; instead report the constraint conflict to the user
+   and propose an alternative package.
 
-10. **Understand the data structure**: The model requires specific data formats. If testing model execution, ensure proper test data is available or use existing test fixtures.
+10. **Use consistent branch and commit naming**: Use descriptive kebab-case branch names (for
+    example, `fix-hsa-scaling`) and concise imperative commit messages.
 
-## Quick Reference
+11. **Test locally before pushing**: CI checks are strict and will fail if linting/tests do not
+    pass.
 
-```bash
-# Setup (production + dev dependencies)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv sync --extra dev
+12. **Understand the data structure**: The model requires specific data formats. If testing model
+    execution, ensure proper test data is available or use existing test fixtures.
 
-# Lint (MUST pass)
-uvx ruff check .
-uvx ruff format --check .
-
-# Test (MUST pass)  
-uv run pytest tests/unit --verbose
-
-# Build
-uv build
-
-# Run model (requires data)
-uv run python -m nhp.model queue/params-sample.json -d data --type all
-
-# Build docs (requires docs extras)
-uv sync --extra docs
-uv run mkdocs build --clean
-```
-
-**When in doubt, check the CI workflows in `.github/workflows/` - they define the exact validation steps used in the pipeline.**
+**When in doubt, check the CI workflows in `.github/workflows/` - they define the exact
+validation steps used in the pipeline.**
