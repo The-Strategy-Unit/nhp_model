@@ -281,13 +281,6 @@ class RunWithAzureStorage:
             save_full_model_results: Whether to save the full model results or not.
             additional_metadata: Additional metadata to log.
         """
-        metadata = {
-            k: v
-            for k, v in self.params.items()
-            if not isinstance(v, dict) and not isinstance(v, list)
-        }
-        metadata.update(additional_metadata)
-
         file_path = "/".join(
             [
                 "aggregated-model-results",
@@ -301,13 +294,22 @@ class RunWithAzureStorage:
             status="complete",
             aggregated_results_path=file_path,
             outputs_app_uri=f"{self.params['dataset']}/{self._model_run_id}",
+            **additional_metadata,
         )
 
         self._upload_results_files(
             file_path, results, {"model_run_id": str(self._model_run_id)}, variants
         )
+        # ---
         # see issue #286, this should be removed once we no longer need the results json file
+        metadata = {
+            k: v
+            for k, v in self.params.items()
+            if not isinstance(v, dict) and not isinstance(v, list)
+        }
+        metadata.update(additional_metadata)
         self._upload_results_json(results, metadata, variants)
+        ## ---
         if save_full_model_results:
             self._upload_full_model_results()
 
