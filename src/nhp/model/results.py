@@ -87,7 +87,7 @@ def _combine_model_results(
         k: _complete_model_runs(
             [
                 # there was an issue historically (#288) where some of the aggregations had
-                # dupllicated rows. this doesn't appear to be an issue now, but to be safe we check
+                # duplicated rows. this doesn't appear to be an issue now, but to be safe we check
                 # and raise an error if there are duplicates.
                 _check_for_duplicates(aggregated_results[k]).reset_index().assign(model_run=i)
                 for r in results
