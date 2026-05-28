@@ -26,11 +26,9 @@ RUN uv pip install .
 # define build arguments, these will set the environment variables in the container
 ARG app_version
 ARG data_version
-ARG storage_account
 
 ENV APP_VERSION=$app_version
 ENV DATA_VERSION=$data_version
-ENV STORAGE_ACCOUNT=$storage_account
 
 # Define static environment variables
 ENV BATCH_SIZE=16
