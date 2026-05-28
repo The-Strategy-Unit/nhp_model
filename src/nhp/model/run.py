@@ -171,11 +171,12 @@ def run_single_model_run(
     print("running model...       ", end="")
     m_run = timeit(ModelIteration, model, model_run)
     print("aggregating results... ", end="")
-    model_results, step_counts = timeit(m_run.get_aggregate_results)
+    model_results = timeit(m_run.get_aggregate_results)
     print()
     print("change factors:")
     step_counts = (
-        step_counts.reset_index()
+        model_results["step_counts"]
+        .reset_index()
         .groupby(["change_factor", "measure"], as_index=False)["value"]
         .sum()
         .pivot_table(index="change_factor", columns="measure")

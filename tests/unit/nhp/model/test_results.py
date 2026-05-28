@@ -7,8 +7,8 @@ import pytest
 
 from nhp.model.results import (
     _add_metadata_to_dataframe,
+    _check_for_duplicates,
     _combine_model_results,
-    _combine_step_counts,
     _complete_model_runs,
     _patch_converted_sdec_activity,
     _save_params_file,
@@ -76,86 +76,72 @@ def test_complete_model_runs_exclude_baseline():
 
 
 @pytest.mark.unit
+def test_check_for_duplicates_no_duplicates():
+    # arrange
+    df = pd.Series([1, 2, 3, 4, 5], index=[1, 2, 3, 4, 5])
+
+    # act
+    actual = _check_for_duplicates(df)
+
+    # assert
+    assert actual.equals(df)
+
+
+@pytest.mark.unit
+def test_check_for_duplicates_with_duplicates():
+    # arrange
+    df = pd.Series([1, 2, 3, 4, 5], index=[1, 2, 2, 4, 5], name="value")
+
+    # act & assert
+    with pytest.raises(AssertionError, match=r"Duplicate rows found in value aggregation:"):
+        _check_for_duplicates(df)
+
+
+@pytest.mark.unit
 def test_combine_model_results(mocker):
     # arrange
-    def r(*args):
-        return pd.Series(args, name="value")
-
     results = [
         [
-            ({"default": r(1, 2, 3), "other": r(4, 5, 6)}, None),
-            ({"default": r(4, 5, 6), "other": r(1, 2, 3)}, None),
+            {
+                "default": pd.Series([1, 2, 3], name="value"),
+                "other": pd.Series([4, 5, 6], name="value"),
+                "step_counts": pd.Series([10, 20], name="value"),
+            },
+            {
+                "default": pd.Series([4, 5, 6], name="value"),
+                "other": pd.Series([1, 2, 3], name="value"),
+                "step_counts": pd.Series([30, 40], name="value"),
+            },
         ],
         [
-            (
-                {
-                    "default": r(7),
-                },
-                None,
-            ),
-            (
-                {
-                    "default": r(8),
-                },
-                None,
-            ),
+            {
+                "default": pd.Series([7], name="value"),
+                "step_counts": pd.Series([50], name="value"),
+            },
+            {
+                "default": pd.Series([8], name="value"),
+                "step_counts": pd.Series([60], name="value"),
+            },
         ],
     ]
 
     cmr_mock = mocker.patch("nhp.model.results._complete_model_runs", return_value="cmr")
+    cfd_mock = mocker.patch("nhp.model.results._check_for_duplicates", side_effect=lambda df: df)
 
     # act
     actual = _combine_model_results(results)
 
     # assert
-    assert actual == {"default": "cmr", "other": "cmr"}
+    assert actual == {"default": "cmr", "other": "cmr", "step_counts": "cmr"}
 
     assert [i["value"].sum() for i in cmr_mock.call_args_list[0][0][0]] == [6, 15, 7, 8]
     assert cmr_mock.call_args_list[0][0][1] == 1
     assert [i["value"].sum() for i in cmr_mock.call_args_list[1][0][0]] == [15, 6]
-    assert cmr_mock.call_args_list[0][0][1] == 1
+    assert [i["value"].sum() for i in cmr_mock.call_args_list[2][0][0]] == [30, 70, 50, 60]
+    assert cmr_mock.call_args_list[1][0][1] == 1
+    assert cmr_mock.call_args_list[2][0][1] == 1
 
-
-@pytest.mark.unit
-def test_combine_step_counts(mocker):
-    # arrange
-    df = pd.DataFrame(
-        [
-            {"a": 1, "b": 1, "value": 1},
-            {"a": 1, "b": 2, "value": 2},
-            {"a": 2, "b": 1, "value": 3},
-            {"a": 2, "b": 2, "value": 4},
-        ]
-    ).set_index(["a", "b"])
-
-    results = [
-        [
-            (None, df),
-            (None, df),
-        ],
-        [
-            (None, df),
-            (None, df),
-        ],
-    ]
-
-    expected = {
-        "a": [1, 1, 2, 2],
-        "b": [1, 2, 1, 2],
-        "value": [1, 2, 3, 4],
-        "model_run": [1, 1, 1, 1],
-    }
-
-    cmr_mock = mocker.patch("nhp.model.results._complete_model_runs", return_value="cmr")
-
-    # act
-    actual = _combine_step_counts(results)
-
-    # assert
-    assert actual == "cmr"
-    assert all(i.to_dict("list") == expected for i in cmr_mock.call_args[0][0])
-    assert cmr_mock.call_args[0][1] == 1
-    assert cmr_mock.call_args[1] == {"include_baseline": False}
+    assert cfd_mock.call_count == 10
 
 
 @pytest.mark.unit
@@ -281,22 +267,21 @@ def test_generate_results_json(mocker):
 @pytest.mark.unit
 def test_combine_results(mocker):
     # arrange
-    ma = mocker.patch("nhp.model.results._combine_model_results", return_value={"a": "a", "b": "b"})
-    mb = mocker.patch("nhp.model.results._combine_step_counts", return_value="combined_step_counts")
+    combined = {"a": "a", "b": "b", "step_counts": "combined_step_counts"}
+    ma = mocker.patch("nhp.model.results._combine_model_results", return_value=combined)
     ms = mocker.patch("nhp.model.results._patch_converted_sdec_activity")
 
     # act
     actual = combine_results("results")  # type: ignore
 
     # assert
-    assert actual == {"a": "a", "b": "b", "step_counts": "combined_step_counts"}
+    assert actual == combined
     ma.assert_called_once_with("results")
-    mb.assert_called_once_with("results")
 
     assert ms.call_count == 2
     assert list(ms.call_args_list) == [
-        call({"a": "a", "b": "b"}, "acuity", "standard"),
-        call({"a": "a", "b": "b"}, "attendance_category", "1"),
+        call(combined, "acuity", "standard"),
+        call(combined, "attendance_category", "1"),
     ]
 
 
