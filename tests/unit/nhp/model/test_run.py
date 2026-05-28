@@ -139,6 +139,7 @@ def test_run_all(mocker):
             {"variant": "variants"},
             pc_m(),
             False,
+            [],
         )
         for m in [InpatientsModel, OutpatientsModel, AaEModel]
     ]
@@ -184,7 +185,9 @@ def test_run_single_model_run(mocker, capsys):
     ndl_mock.create.assert_called_once_with("data")
 
     assert timeit_mock.call_count == 3
-    assert timeit_mock.call_args_list[0] == call("model_type", params, "nhp_data")
+    assert timeit_mock.call_args_list[0] == call(
+        "model_type", params, "nhp_data", aggregation_columns=[]
+    )
     assert timeit_mock.call_args_list[2] == call(mr_mock.get_aggregate_results)
 
     assert capsys.readouterr().out == "\n".join(

@@ -43,6 +43,7 @@ class Model:
         run_params: The parameters to use for each model run. Generated automatically if left as
             None. Defaults to None.
         save_full_model_results: Whether to save the full model results or not. Defaults to False.
+        aggregation_columns: The columns to use for aggregation. Defaults to [].
 
     Attributes:
         model_type: A string describing the type of model, must be one of "aae", "ip", or "op".
@@ -67,6 +68,7 @@ class Model:
         hsa: Any | None = None,
         run_params: dict | None = None,
         save_full_model_results: bool = False,
+        aggregation_columns: List[str] = [],
     ) -> None:
         """Initialise the Model.
 
@@ -78,6 +80,7 @@ class Model:
             hsa: Health Status Adjustment object. Defaults to None.
             run_params: The run parameters to use. Defaults to None.
             save_full_model_results: Whether to save full model results. Defaults to False.
+            aggregation_columns: The columns to use for aggregation. Defaults to [].
         """
         valid_model_types = ["aae", "ip", "op"]
         assert model_type in valid_model_types, "Model type must be one of 'aae', 'ip', or 'op'"
@@ -106,6 +109,8 @@ class Model:
         # generate the run parameters if they haven't been passed in
         self.run_params = run_params or self.generate_run_params(params)
         self.save_full_model_results = save_full_model_results
+
+        self._aggregation_columns = aggregation_columns or ["pod", "sitetret"]
 
     def _add_pod_to_data(self) -> None:
         """Adds the POD column to data."""
@@ -415,8 +420,7 @@ class Model:
 
         return mr.get_aggregate_results()
 
-    @staticmethod
-    def get_agg(results: pd.DataFrame, *args: str) -> pd.Series:
+    def get_agg(self, results: pd.DataFrame, *args: str) -> pd.Series:
         """Get aggregation from model results.
 
         Args:
@@ -426,7 +430,7 @@ class Model:
         Returns:
             Aggregated results.
         """
-        return results.groupby(["pod", "sitetret", *args, "measure"])["value"].sum()
+        return results.groupby([*self._aggregation_columns, *args, "measure"])["value"].sum()
 
     def save_results(self, model_iteration: ModelIteration, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model.
