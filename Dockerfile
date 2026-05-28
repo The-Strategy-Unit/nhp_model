@@ -33,10 +33,4 @@ ENV DATA_VERSION=$data_version
 # Define static environment variables
 ENV BATCH_SIZE=16
 
-# temporary patch until we update the api
-USER root
-RUN printf '#!/bin/sh\n/app/.venv/bin/python -m nhp.docker "$@"\n' > /opt/docker_run.py && \
-  chmod +x /opt/docker_run.py
-USER nhp
-
 ENTRYPOINT ["python", "-m", "nhp.docker"]
