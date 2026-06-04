@@ -161,19 +161,19 @@ def test_run_single_model_run(mocker, capsys):
                 "measure": [i for i in ["x", "y"] for _ in [1, 2]] * 2 + ["x"],
                 "value": range(9),
             }
-        )
+        ),
+        "step_counts": pd.DataFrame(
+            {
+                "change_factor": ["a", "b"] * 4 + ["c"],
+                "measure": [i for i in ["x", "y"] for _ in [1, 2]] * 2 + ["x"],
+                "value": range(9),
+            }
+        ),
     }
-    step_counts_m = pd.DataFrame(
-        {
-            "change_factor": ["a", "b"] * 4 + ["c"],
-            "measure": [i for i in ["x", "y"] for _ in [1, 2]] * 2 + ["x"],
-            "value": range(9),
-        }
-    )
 
     timeit_mock = mocker.patch(
         "nhp.model.run.timeit",
-        side_effect=[None, mr_mock, (results_m, step_counts_m)],
+        side_effect=[None, mr_mock, results_m],
     )
     params = {"dataset": "synthetic", "start_year": 2020, "end_year": 2025}
 

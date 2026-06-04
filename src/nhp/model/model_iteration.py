@@ -10,7 +10,7 @@ import pandas as pd
 
 from nhp.model.activity_resampling import ActivityResampling
 
-ModelRunResult = tuple[dict[str, pd.Series], pd.Series | None]
+ModelRunResult = dict[str, pd.Series]
 
 if TYPE_CHECKING:
     from nhp.model.model import Model
@@ -161,7 +161,7 @@ class ModelIteration:
         Can also be used to aggregate the baseline data by passing in the raw data.
 
         Returns:
-            A tuple containing a dictionary of results, and the step counts.
+            A dictionary containing the aggregated results.
         """
         aggregations = self.model.aggregate(self)
 
@@ -171,7 +171,11 @@ class ModelIteration:
                 avoided_activity_agg, "sex", "age_group"
             )
 
-        return aggregations, self.get_step_counts()
+        step_counts = self.get_step_counts()
+        if step_counts is not None:
+            aggregations["step_counts"] = step_counts
+
+        return aggregations
 
     def get_step_counts(self) -> pd.Series | None:
         """Get the step counts of a model run."""

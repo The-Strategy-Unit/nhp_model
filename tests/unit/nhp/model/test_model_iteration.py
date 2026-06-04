@@ -233,13 +233,11 @@ def test_get_aggregate_results(mock_model_iteration):
     actual = mr_mock.get_aggregate_results()
 
     # assert
-    assert actual == (
-        {
-            "default": "aggregated_results",
-            "avoided_activity": "agg",
-        },
-        "step_counts",
-    )
+    assert actual == {
+        "default": "aggregated_results",
+        "avoided_activity": "agg",
+        "step_counts": "step_counts",
+    }
     mr_mock.model.aggregate.assert_called_once_with(mr_mock)
     mr_mock.get_step_counts.assert_called_once_with()
     mr_mock.model.process_results.assert_called_once_with(mr_mock.avoided_activity)
@@ -264,6 +262,28 @@ def test_get_aggregate_results_avoided_activity_empty_dataframe(mock_model_itera
 
     # assert
     mr_mock.model.process_results.assert_not_called()
+
+
+@pytest.mark.unit
+def test_get_aggregate_results_step_counts_empty(mock_model_iteration):
+    """Test the get_aggregate_results method when step counts is None."""
+    # arrange
+    mr_mock = mock_model_iteration
+
+    mr_mock.model.aggregate.return_value = {"default": "aggregated_results"}
+    mr_mock.get_step_counts = Mock(return_value=None)
+    mr_mock.model.get_agg.return_value = "agg"
+    mr_mock.avoided_activity = pd.DataFrame({"x": ["avoided_activity"]})
+    mr_mock.model.process_results = Mock(return_value="avoided_activity_agg")
+
+    # act
+    actual = mr_mock.get_aggregate_results()
+
+    # assert
+    assert actual == {
+        "default": "aggregated_results",
+        "avoided_activity": "agg",
+    }
 
 
 @pytest.mark.unit

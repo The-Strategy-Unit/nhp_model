@@ -21,10 +21,8 @@ def model_single_run_results(data_dir):
     for k, model_class in [("ip", InpatientsModel), ("op", OutpatientsModel), ("aae", AaEModel)]:
         model = model_class(params, data)
         m_run = ModelIteration(model, 1)
-        model_results, step_counts = m_run.get_aggregate_results()
-        assert step_counts is not None
+        model_results = m_run.get_aggregate_results()
         results[k] = model_results
-        results[k]["step_counts"] = step_counts
     return results
 
 

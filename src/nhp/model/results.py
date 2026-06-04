@@ -47,6 +47,24 @@ def _complete_model_runs(
     )
 
 
+def _check_for_duplicates(res: pd.Series) -> pd.Series:
+    """Check for duplicates in a pandas Series.
+
+    If there are duplicate index rows, this raises an AssertionError.
+
+    Args:
+        res (pd.Series): The pandas Series to check for duplicates.
+
+    Returns:
+        pd.Series: The original pandas Series if no duplicates are found.
+    """
+    if res.index.has_duplicates:
+        duplicates = res[res.index.duplicated(keep=False)]
+        raise AssertionError(f"Duplicate rows found in {res.name} aggregation: {duplicates}")
+
+    return res
+
+
 def _combine_model_results(
     results: list[list[ModelRunResult]],
 ) -> dict[str, pd.DataFrame]:
@@ -61,53 +79,25 @@ def _combine_model_results(
     Returns:
         Dictionary containing the combined model results.
     """
-    aggregations = sorted(list({k for r in results for v, _ in r for k in v.keys()}))
+    aggregations = sorted(list({k for r in results for v in r for k in v.keys()}))
 
     model_runs = len(results[0]) - 1
 
     return {
         k: _complete_model_runs(
             [
-                aggregated_results[k].reset_index().assign(model_run=i)
+                # there was an issue historically (#288) where some of the aggregations had
+                # duplicated rows. this doesn't appear to be an issue now, but to be safe we check
+                # and raise an error if there are duplicates.
+                _check_for_duplicates(aggregated_results[k]).reset_index().assign(model_run=i)
                 for r in results
-                for (i, (aggregated_results, _step_counts)) in enumerate(r)
+                for (i, aggregated_results) in enumerate(r)
                 if k in aggregated_results
             ],
             model_runs,
         )
         for k in aggregations
     }
-
-
-def _combine_step_counts(results: list) -> pd.DataFrame:
-    """Combine the step counts of the monte carlo runs.
-
-    Takes as input a list of lists, where the outer list contains an item for inpatients,
-    outpatients and a&e runs, and the inner list contains the results of the monte carlo runs.
-
-    Args:
-        results: A list containing the model results.
-
-    Returns:
-        DataFrame containing the model step counts.
-    """
-    model_runs = len(results[0]) - 1
-    return _complete_model_runs(
-        [
-            step_counts
-            # TODO: handle the case of daycase conversion, it's duplicating values
-            # need to figure out exactly why, but this masks the issue for now
-            .groupby(step_counts.index.names)
-            .sum()
-            .reset_index()
-            .assign(model_run=i)
-            for r in results
-            for i, (_aggregated_results, step_counts) in enumerate(r)
-            if i > 0
-        ],
-        model_runs,
-        include_baseline=False,
-    )
 
 
 def generate_results_json(
@@ -325,7 +315,6 @@ def combine_results(
     logging.info(" * starting to combine results")
 
     combined_results = _combine_model_results(results)
-    combined_step_counts = _combine_step_counts(results)
 
     # TODO: this is a bit of a hack, but we need to patch the converted SDEC activity
     # because inpatients activity is aggregated differently to a&e, the a&e aggregations will be
@@ -334,4 +323,4 @@ def combine_results(
     _patch_converted_sdec_activity(combined_results, "attendance_category", "1")
 
     logging.info(" * finished combining results")
-    return {**combined_results, "step_counts": combined_step_counts}
+    return combined_results
