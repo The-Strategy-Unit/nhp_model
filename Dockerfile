@@ -14,7 +14,7 @@ COPY --chown=nhp:nhp pyproject.toml uv.lock ./
 
 # Install dependencies only (skip local package)
 RUN --mount=type=cache,target=/app/.cache/uv,uid=1000,gid=1000 \
-  uv sync --frozen --no-dev --no-install-project
+  UV_LINK_MODE=copy uv sync --frozen --no-dev --no-install-project
 
 # Ensure Python can find installed packages and local model
 ENV PATH="/app/.venv/bin:$PATH"
@@ -26,19 +26,11 @@ RUN uv pip install .
 # define build arguments, these will set the environment variables in the container
 ARG app_version
 ARG data_version
-ARG storage_account
 
 ENV APP_VERSION=$app_version
 ENV DATA_VERSION=$data_version
-ENV STORAGE_ACCOUNT=$storage_account
 
 # Define static environment variables
 ENV BATCH_SIZE=16
-
-# temporary patch until we update the api
-USER root
-RUN printf '#!/bin/sh\n/app/.venv/bin/python -m nhp.docker "$@"\n' > /opt/docker_run.py && \
-  chmod +x /opt/docker_run.py
-USER nhp
 
 ENTRYPOINT ["python", "-m", "nhp.docker"]
