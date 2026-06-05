@@ -1038,10 +1038,6 @@
                 "interval",
                 "pre-op_days"
             ]
-        },
-        "timeprofileMappings": {
-            "type": "string",
-            "pattern": "^(none|linear|front_loaded|back_loaded|step\\d{4})$"
         }
     },
     "required": [
