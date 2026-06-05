@@ -1058,7 +1058,6 @@
         "waiting_list_adjustment",
         "non-demographic_adjustment",
         "activity_avoidance",
-        "efficiencies",
-        "time_profile_mappings"
+        "efficiencies"
     ]
 }
