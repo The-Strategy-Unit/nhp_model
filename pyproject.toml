@@ -8,8 +8,8 @@ requires-python = ">=3.12,<3.14"
 dependencies = [
     "azure-data-tables>=12.7.0",
     "azure-identity>=1.12",
-    "azure-storage-blob>=12.29.0",
-    "azure-storage-file-datalake>=12.24.0",
+    "azure-storage-blob>=12.30.0",
+    "azure-storage-file-datalake>=12.25.0",
     "importlib-resources>=7.1.0",
     "jsonschema>=4.23.0",
     "metalog-jax>=1.0.2",
@@ -18,18 +18,18 @@ dependencies = [
     "pyarrow>=24.0.0",
     "python-dotenv>=1.0",
     "scipy>=1.17.1",
-    "tqdm>=4.68.1",
+    "tqdm>=4.68.2",
 ]
 
 [dependency-groups]
 dev = [
     "coverage>=7.14.1",
     "isort>=8.0.1",
-    "pytest>=9.0.3",
+    "pytest>=9.1.0",
     "pytest-cov>=4.0",
     "pytest-regressions>=2.11.0",
     "pytest-mock>=3.10",
-    "ruff>=0.15.16",
+    "ruff>=0.15.17",
     "setuptools-scm>=8.3.1",
 ]
 docs = [
