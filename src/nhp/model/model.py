@@ -107,9 +107,6 @@ class Model:
         self.run_params = run_params or self.generate_run_params(params)
         self.save_full_model_results = save_full_model_results
 
-    def _add_ndggrp_to_data(self) -> None:
-        self.data["ndggrp"] = self.data["group"]
-
     @property
     def measures(self) -> List[str]:
         """The names of the measure columns.

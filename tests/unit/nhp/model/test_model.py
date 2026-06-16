@@ -276,22 +276,6 @@ def test_model_init_initialises_hsa_if_none(mocker):
     assert mdl.hsa == "hsa"
 
 
-# add_ndggrp_to_data
-
-
-@pytest.mark.unit
-def test_add_ndggrp_to_data(mock_model):
-    # arrange
-    mdl = mock_model
-    mdl.data = pd.DataFrame({"group": ["a", "b", "c"]})
-
-    # act
-    mock_model._add_ndggrp_to_data()
-
-    # assert
-    assert mdl.data["ndggrp"].to_list() == ["a", "b", "c"]
-
-
 # measures
 
 
