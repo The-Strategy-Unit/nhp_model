@@ -72,8 +72,10 @@ def _run_model(
     model_class = model_type.__name__[:-5]
     logging.info("%s", model_class)
     logging.info(" * instantiating")
-    # ignore type issues here: Model has different arguments to Inpatients/Outpatients/A&E
-    model = model_type(params, data, hsa, run_params, save_full_model_results, aggregation_columns)
+    # ignore type issues here: model_type is Type[Model] so ty checks against Model.__init__,
+    # which has extra leading positional args (model_type, measures) that the concrete subclasses
+    # don't expose — the positional mapping is correct at runtime.
+    model = model_type(params, data, hsa, run_params, save_full_model_results, aggregation_columns)  # ty: ignore[invalid-argument-type]
     logging.info(" * running")
 
     # set the progress callback for this run
