@@ -73,13 +73,13 @@ def test_update(mock_activity_resampling):
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    "groups, expected",
+    "groups",
     [
-        (["elective", "non-elective", "maternity"], ["elective", "non-elective"]),
-        (["first", "follow-up"], ["first", "follow-up"]),
+        ["elective", "non-elective", "maternity"],
+        ["first", "follow-up"],
     ],
 )
-def test_demographic_adjustment(mocker, mock_activity_resampling, groups, expected):
+def test_demographic_adjustment(mocker, mock_activity_resampling, groups):
     # arrange
     aa_mock = mock_activity_resampling
     aa_mock._model_iteration.run_params = {"year": 2020, "variant": "a"}
@@ -102,7 +102,10 @@ def test_demographic_adjustment(mocker, mock_activity_resampling, groups, expect
     assert actual == "update"
     u_mock.assert_called_once()
 
-    assert u_mock.call_args[0][0].to_dict() == {(i, j): j + 1 for i in expected for j in range(2)}
+    assert u_mock.call_args[0][0].to_dict() == {
+        ("demographics", 0): 1,
+        ("demographics", 1): 2,
+    }
 
 
 @pytest.mark.unit
@@ -132,10 +135,10 @@ def test_birth_adjustment(mocker, mock_activity_resampling):
     u_mock.assert_called_once()
 
     assert u_mock.call_args[0][0].to_dict() == {
-        ("maternity", 2, 1): 9,
-        ("maternity", 2, 2): 10,
-        ("maternity", 2, 3): 11,
-        ("maternity", 2, 4): 12,
+        ("births", "a", 2, 1): 9,
+        ("births", "a", 2, 2): 10,
+        ("births", "a", 2, 3): 11,
+        ("births", "a", 2, 4): 12,
     }
 
 
