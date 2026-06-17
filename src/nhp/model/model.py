@@ -43,7 +43,7 @@ class Model:
         run_params: The parameters to use for each model run. Generated automatically if left as
             None. Defaults to None.
         save_full_model_results: Whether to save the full model results or not. Defaults to False.
-        aggregation_columns: The columns to use for aggregation. Defaults to [].
+        aggregation_columns: The columns to use for aggregation. Defaults to None.
 
     Attributes:
         model_type: A string describing the type of model, must be one of "aae", "ip", or "op".
@@ -68,7 +68,7 @@ class Model:
         hsa: Any | None = None,
         run_params: dict | None = None,
         save_full_model_results: bool = False,
-        aggregation_columns: List[str] = [],
+        aggregation_columns: List[str] | None = None,
     ) -> None:
         """Initialise the Model.
 
@@ -80,7 +80,8 @@ class Model:
             hsa: Health Status Adjustment object. Defaults to None.
             run_params: The run parameters to use. Defaults to None.
             save_full_model_results: Whether to save full model results. Defaults to False.
-            aggregation_columns: The columns to use for aggregation. Defaults to [].
+            aggregation_columns: The columns to use for aggregation. If left None (Default), then
+              ["pod", "sitetret"] is used.
         """
         valid_model_types = ["aae", "ip", "op"]
         assert model_type in valid_model_types, "Model type must be one of 'aae', 'ip', or 'op'"

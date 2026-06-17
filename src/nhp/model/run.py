@@ -50,7 +50,7 @@ def _run_model(
     run_params: dict,
     progress_callback: Callable[[Any], None],
     save_full_model_results: bool,
-    aggregation_columns: list[str] = [],
+    aggregation_columns: list[str] | None = None,
 ) -> list[ModelRunResult]:
     """Run the model iterations.
 
@@ -64,7 +64,7 @@ def _run_model(
         run_params: The generated run parameters for the model run.
         progress_callback: A callback function for progress updates.
         save_full_model_results: Whether to save full model results.
-        aggregation_columns: The columns to use for aggregation. Defaults to [].
+        aggregation_columns: The columns to use for aggregation. Defaults to None.
 
     Returns:
         A list containing the aggregated results for all model runs.
@@ -73,7 +73,7 @@ def _run_model(
     logging.info("%s", model_class)
     logging.info(" * instantiating")
     # ignore type issues here: Model has different arguments to Inpatients/Outpatients/A&E
-    model = model_type(params, data, hsa, run_params, save_full_model_results, aggregation_columns)  # ty: ignore
+    model = model_type(params, data, hsa, run_params, save_full_model_results, aggregation_columns)
     logging.info(" * running")
 
     # set the progress callback for this run
@@ -117,7 +117,7 @@ def run_all(
     nhp_data: Callable[[int, str], Data],
     progress_callback: Callable[[Any], Callable[[Any], None]] = noop_progress_callback,
     save_full_model_results: bool = False,
-    aggregation_columns: list[str] = [],
+    aggregation_columns: list[str] | None = None,
 ) -> tuple[dict[str, pd.DataFrame], list[str]]:
     """Run the model.
 
@@ -129,7 +129,7 @@ def run_all(
         progress_callback: A callback function for updating progress.
             Defaults to noop_progress_callback.
         save_full_model_results: Whether to save full model results. Defaults to False.
-        aggregation_columns: The columns to use for aggregation. Defaults to [].
+        aggregation_columns: The columns to use for aggregation. Defaults to None.
 
     Returns:
         A dictionary containing the results dataframes, and a list of the variants that were run.
@@ -170,7 +170,7 @@ def run_single_model_run(
     data_path: str,
     model_type: Type[Model],
     model_run: int,
-    aggregation_columns: list[str] = [],
+    aggregation_columns: list[str] | None = None,
 ) -> None:
     """Runs a single model iteration for easier debugging in vscode."""
     data = Local.create(data_path)

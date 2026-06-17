@@ -139,7 +139,7 @@ def test_run_all(mocker):
             {"variant": "variants"},
             pc_m(),
             False,
-            [],
+            None,
         )
         for m in [InpatientsModel, OutpatientsModel, AaEModel]
     ]
@@ -186,7 +186,7 @@ def test_run_single_model_run(mocker, capsys):
 
     assert timeit_mock.call_count == 3
     assert timeit_mock.call_args_list[0] == call(
-        "model_type", params, "nhp_data", aggregation_columns=[]
+        "model_type", params, "nhp_data", aggregation_columns=None
     )
     assert timeit_mock.call_args_list[2] == call(mr_mock.get_aggregate_results)
 
