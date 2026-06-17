@@ -38,6 +38,11 @@ jobs:
   upload-build-to-storage-account:
     runs-on: ubuntu-latest
     needs: ["build-app"]
+    environment: build-app
+
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Download build artifact
@@ -46,16 +51,20 @@ jobs:
           name: dist-whl
           path: .
 
-      - name: Install Azure CLI
-        uses: Azure/setup-azd@v2
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Upload to blob storage
         run: |
           az storage blob upload \
+            --auth-mode login \
             --account-name ${{ secrets.NHP_STORAGE_ACCOUNT }} \
             --container-name app \
             --file $(ls *.whl) \
-            --sas-token "${{ secrets.APP_CONTAINER_SAS }}" \
             --overwrite
 
   add-build-to-release:
