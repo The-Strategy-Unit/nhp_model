@@ -72,14 +72,7 @@ def test_update(mock_activity_resampling):
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize(
-    "groups",
-    [
-        ["elective", "non-elective", "maternity"],
-        ["first", "follow-up"],
-    ],
-)
-def test_demographic_adjustment(mocker, mock_activity_resampling, groups):
+def test_demographic_adjustment(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
     aa_mock._model_iteration.run_params = {"year": 2020, "variant": "a"}
@@ -92,8 +85,6 @@ def test_demographic_adjustment(mocker, mock_activity_resampling, groups):
         "nhp.model.activity_resampling.ActivityResampling._update",
         return_value="update",
     )
-
-    aa_mock._model_iteration.data = pd.DataFrame({"group": groups})
 
     # act
     actual = aa_mock.demographic_adjustment()
@@ -113,13 +104,9 @@ def test_birth_adjustment(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
     aa_mock._model_iteration.run_params = {"year": 2020, "variant": "a"}
-    # set up demog_factors/birth_factors: we end up dividing birth factors by the demog factors, so
-    # we set these up here so (roughly) birth_factors == 1 / demog_factors.
-    # the result of this should be x ** 2 for the values in birth_factors
-
     aa_mock._model_iteration.model.birth_factors = pd.DataFrame(
-        {"2020": [(x + 9) for x in range(8)]},
-        index=pd.MultiIndex.from_tuples([(v, 2, a) for v in ["a", "b"] for a in [1, 2, 3, 4]]),
+        {"2020": [1, 2, 3]},
+        index=pd.MultiIndex.from_tuples([("a", 0), ("a", 1), ("b", 0)]),
     )
 
     u_mock = mocker.patch(
@@ -134,12 +121,7 @@ def test_birth_adjustment(mocker, mock_activity_resampling):
     assert actual == "update"
     u_mock.assert_called_once()
 
-    assert u_mock.call_args[0][0].to_dict() == {
-        ("births", "a", 2, 1): 9,
-        ("births", "a", 2, 2): 10,
-        ("births", "a", 2, 3): 11,
-        ("births", "a", 2, 4): 12,
-    }
+    assert u_mock.call_args[0][0].to_dict() == {("births", 0): 1, ("births", 1): 2}
 
 
 # _health_status_adjustment()
