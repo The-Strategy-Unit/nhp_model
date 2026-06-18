@@ -125,9 +125,9 @@ class ActivityResampling:
 
         factor = pd.concat(
             {
-                "births": self.birth_factors.loc[([variant], slice(None), slice(None))][
-                    year
-                ].rename("birth_adjustment")
+                "births": self.birth_factors.loc[(variant, slice(None), slice(None))][year].rename(
+                    "birth_adjustment"
+                )
             }
         )
 
