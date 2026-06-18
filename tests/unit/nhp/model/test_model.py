@@ -14,9 +14,10 @@ from nhp.model.model import Model
 @pytest.fixture
 def mock_model():
     """Create a mock Model instance."""
-    with patch.object(Model, "__init__", lambda s, m, p, d, c: None):
+    with patch.object(Model, "__init__", lambda *args, **kwargs: None):
         mdl = Model(None, None, None, None)  # type: ignore
     mdl.model_type = "aae"
+    mdl._aggregation_columns = ["pod", "sitetret"]
     mdl.params = {
         "input_data": "synthetic",
         "model_runs": 3,

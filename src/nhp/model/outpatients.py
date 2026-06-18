@@ -26,6 +26,7 @@ class OutpatientsModel(Model):
         run_params: The parameters to use for each model run. Generated automatically if left as
             None. Defaults to None.
         save_full_model_results: Whether to save the full model results or not. Defaults to False.
+        aggregation_columns: The columns to use for aggregation. Defaults to None.
     """
 
     def __init__(
@@ -35,6 +36,7 @@ class OutpatientsModel(Model):
         hsa: Any = None,
         run_params: dict | None = None,
         save_full_model_results: bool = False,
+        aggregation_columns: list[str] | None = None,
     ) -> None:
         """Initialise the Outpatients Model.
 
@@ -44,6 +46,7 @@ class OutpatientsModel(Model):
             hsa: Health Status Adjustment object. Defaults to None.
             run_params: The run parameters to use. Defaults to None.
             save_full_model_results: Whether to save full model results. Defaults to False.
+            aggregation_columns: The columns to use for aggregation. Defaults to None.
         """
         # call the parent init function
         super().__init__(
@@ -54,6 +57,7 @@ class OutpatientsModel(Model):
             hsa,
             run_params,
             save_full_model_results,
+            aggregation_columns,
         )
 
     def _get_data(self, data_loader: Data) -> pd.DataFrame:

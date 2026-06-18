@@ -94,7 +94,7 @@ combine-as-imports = true
 convention = "google"
 
 [tool.ruff.lint.pylint]
-max-args = 7
+max-args = 8
 
 [tool.ruff.format]
 quote-style = "double"
