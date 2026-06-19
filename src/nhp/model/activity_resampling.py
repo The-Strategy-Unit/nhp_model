@@ -106,13 +106,15 @@ class ActivityResampling:
         year = str(self.run_params["year"])
         variant = self.run_params["variant"]
 
-        factor = self.demog_factors.loc[(variant, slice(None), slice(None))][year].rename(
-            "demographic_adjustment"
+        factor = pd.concat(
+            {
+                "demographics": self.demog_factors.loc[(variant, slice(None), slice(None))][
+                    year
+                ].rename("demographic_adjustment")
+            }
         )
 
-        groups = set(self.data["group"]) - {"maternity"}
-        factor: pd.Series = pd.concat({i: factor for i in groups})
-        factor.index.names = ["group", *factor.index.names[1:]]
+        factor.index.names = ["demog_type", *factor.index.names[1:]]
 
         return self._update(factor)
 
@@ -121,16 +123,15 @@ class ActivityResampling:
         year = str(self.run_params["year"])
         variant = self.run_params["variant"]
 
-        factor = self.birth_factors.loc[([variant], slice(None), slice(None))][year]
-
-        factor = pd.Series(
-            factor.values,
-            name="birth_adjustment",
-            index=pd.MultiIndex.from_tuples(
-                [("maternity", a, s) for _, a, s in factor.index.to_numpy()],
-                names=["group", "age", "sex"],
-            ),
+        factor = pd.concat(
+            {
+                "births": self.birth_factors.loc[(variant, slice(None), slice(None))][year].rename(
+                    "birth_adjustment"
+                )
+            }
         )
+
+        factor.index.names = ["demog_type", *factor.index.names[1:]]
 
         return self._update(factor)
 

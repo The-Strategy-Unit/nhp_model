@@ -60,11 +60,11 @@
 58,ip_regular_night_attender,b,admissions,2.8
 59,ip_regular_night_attender,b,beddays,6.5
 60,ip_regular_night_attender,b,procedures,2.8
-61,op_first,a,attendances,289972.7
-62,op_first,a,tele_attendances,77353.1
-63,op_follow-up,a,attendances,549970.4
-64,op_follow-up,a,tele_attendances,216871.6
-65,op_procedure,a,attendances,299385.7
+61,op_first,a,attendances,289666.0
+62,op_first,a,tele_attendances,77352.6
+63,op_follow-up,a,attendances,549343.7
+64,op_follow-up,a,tele_attendances,216973.4
+65,op_procedure,a,attendances,299277.7
 66,op_procedure,a,tele_attendances,0.0
 67,op_procedure,b,attendances,195.0
 68,op_procedure,c,attendances,193.2
