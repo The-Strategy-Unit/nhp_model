@@ -67,6 +67,14 @@ uv run pytest -m "e2e or integration" --force-regen
 
 You should see the snapshots as csv files updated in your git working tree. This can be a useful way to test the impact of changes to the model by reviewing the git diffs.
 
+All tests must be marked with one of the markers:
+
+* `@pytest.mark.unit`
+* `@pytest.mark.integration`
+* `@pytest.mark.e2e`
+
+If you create a new test and do not mark it, or add more than one of these markers, then pytest discovery will fail and indicate the test which is violating this rule.
+
 ## JSON Schema
 
 Parameters for the model are set in JSON format; an example can be seen in `src/nhp/model/params/params-sample.json`. As the model develops, requirements for this JSON file change over time. We use [JSON schema](https://json-schema.org/understanding-json-schema/about) to manage changes to the parameters file. From model v3.5 onwards, these are deployed to GitHub pages, following this pattern:
