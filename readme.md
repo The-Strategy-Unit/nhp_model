@@ -55,9 +55,9 @@ The model is deployed to Azure Container Registry and GitHub Container Registry 
 
 ## Testing
 
-The model has unit, integration, and e2e tests defined. The unit tests run on GitHub actions, any time we create PRs. We also derive our code coverage from unit tests alone.
+The model has unit, integration, and e2e tests defined. The unit tests run on GitHub Actions whenever we create PRs. We also derive our code coverage from unit tests alone.
 
-Integration and e2e tests require the synthetic dataset to be downloaded, which is currently not release publicly. If you have access to this data, you can run the vscode task `"Download synth data"`. These tests use [pytest-regressions](https://pytest-regressions.readthedocs.io/en/latest/overview.html) to capture the results of running the model against the current synthetic data.
+Integration and e2e tests require the synthetic dataset to be downloaded, which is currently not released publicly. If you have access to this data, you can run the VS Code task "Download synth data". These tests use [pytest-regressions](https://pytest-regressions.readthedocs.io/en/latest/overview.html) to capture the results of running the model against the current synthetic data.
 
 Any time the model changes, or the synthetic data changes, these tests will need to regenerate snapshots. You can do this with:
 
@@ -65,7 +65,7 @@ Any time the model changes, or the synthetic data changes, these tests will need
 uv run pytest -m "e2e or integration" --force-regen
 ```
 
-You should see the snapshots as csv files updated in your git working tree. This can be a useful way to test the impact of changes to the model by reviewing the git diffs.
+You should see the snapshot files (e.g. .csv and .yml) updated in your git working tree. This can be a useful way to test the impact of changes to the model by reviewing the git diffs.
 
 All tests must be marked with one of the markers:
 
