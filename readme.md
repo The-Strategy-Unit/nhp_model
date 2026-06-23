@@ -53,6 +53,28 @@ This package is built using [`uv`](https://docs.astral.sh/uv/). If you have `uv`
 
 The model is deployed to Azure Container Registry and GitHub Container Registry on pull requests, tagging the container as `nhp_model:dev`, and on releases its deployed to `nhp_model:v*.*.*` and `nhp_model:latest`.
 
+## Testing
+
+The model has unit, integration, and e2e tests defined. The unit tests run on GitHub Actions whenever we create PRs. We also derive our code coverage from unit tests alone.
+
+Integration and e2e tests require the synthetic dataset to be downloaded, which is currently not released publicly. If you have access to this data, you can run the VS Code task "Download synth data". These tests use [pytest-regressions](https://pytest-regressions.readthedocs.io/en/latest/overview.html) to capture the results of running the model against the current synthetic data.
+
+Any time the model changes, or the synthetic data changes, these tests will need to regenerate snapshots. You can do this with:
+
+``` sh
+uv run pytest -m "e2e or integration" --force-regen
+```
+
+You should see the snapshot files (e.g. .csv and .yml) updated in your git working tree. This can be a useful way to test the impact of changes to the model by reviewing the git diffs.
+
+All tests must be marked with one of the markers:
+
+* `@pytest.mark.unit`
+* `@pytest.mark.integration`
+* `@pytest.mark.e2e`
+
+If you create a new test and do not mark it, or add more than one of these markers, then pytest discovery will fail and indicate the test which is violating this rule.
+
 ## JSON Schema
 
 Parameters for the model are set in JSON format; an example can be seen in `src/nhp/model/params/params-sample.json`. As the model develops, requirements for this JSON file change over time. We use [JSON schema](https://json-schema.org/understanding-json-schema/about) to manage changes to the parameters file. From model v3.5 onwards, these are deployed to GitHub pages, following this pattern:
