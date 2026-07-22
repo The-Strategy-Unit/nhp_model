@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Clone existing schemas branch content
         run: |
@@ -40,4 +40,3 @@ jobs:
           git commit -m "adding schema for ${{ inputs.schema-tag }}" || echo "No changes to commit"
           git push origin schemas
           popd
-
