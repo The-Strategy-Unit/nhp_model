@@ -257,6 +257,9 @@ def _patch_converted_sdec_activity(
     results: Dict[str, pd.DataFrame], column: str, col_value: str
 ) -> None:
     """Patch the converted SDEC activity in the dataframe."""
+    if column not in results:
+        return
+
     results_df = results[column]
     agg_cols = ["pod", "sitetret", "measure", "model_run"]
 
