@@ -69,10 +69,10 @@ class Data:
         raise NotImplementedError()
 
     def get_hsa_activity_table(self) -> pd.DataFrame:
-        """Get the demographic factors dataframe.
+        """Get the health status adjustment activity table dataframe.
 
         Returns:
-            The demographic factors dataframe.
+            The health status adjustment activity table dataframe.
         """
         raise NotImplementedError()
 
@@ -89,5 +89,16 @@ class Data:
 
         Returns:
             The inequalities dataframe.
+        """
+        raise NotImplementedError()
+
+    def data_exists_for_model_type(self, model_type: Any) -> bool:
+        """Check if data exists for a given model type.
+
+        Args:
+            model_type: The model type to check.
+
+        Returns:
+            True if data exists for the given model type, False otherwise.
         """
         raise NotImplementedError()
