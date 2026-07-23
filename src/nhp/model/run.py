@@ -164,6 +164,7 @@ def run_all(
                 aggregation_columns,
             )
             for m in model_types
+            if nhp_data.data_exists_for_model_type(m)
         ]
     )
 
