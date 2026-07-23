@@ -45,7 +45,7 @@ def timeit(func: Callable, *args, **kwargs) -> Any:
 def _run_model(
     model_type: Type[Model],
     params: dict,
-    data: Callable[[int, str], Data],
+    data: Data,
     hsa: Any,
     run_params: dict,
     progress_callback: Callable[[Any], None],
@@ -59,7 +59,7 @@ def _run_model(
     Args:
         model_type: The type of model that we want to run.
         params: The parameters to run the model with.
-        data: A callable that creates a Data instance.
+        data: A Data instance.
         hsa: An instance of the HealthStatusAdjustment class.
         run_params: The generated run parameters for the model run.
         progress_callback: A callback function for progress updates.
@@ -116,7 +116,7 @@ def noop_progress_callback(_: Any) -> Callable[[Any], None]:
 
 def run_all(
     params: dict,
-    nhp_data: Callable[[int, str], Data],
+    nhp_data: Data | Callable[[int, str], Data],
     progress_callback: Callable[[Any], Callable[[Any], None]] = noop_progress_callback,
     save_full_model_results: bool = False,
     aggregation_columns: list[str] | None = None,
@@ -139,9 +139,12 @@ def run_all(
     model_types = [InpatientsModel, OutpatientsModel, AaEModel]
     run_params = Model.generate_run_params(params)
 
+    if not isinstance(nhp_data, Data):
+        nhp_data = nhp_data(params["start_year"], params["dataset"])
+
     # set the data path in the HealthStatusAdjustment class
     hsa = HealthStatusAdjustmentInterpolated(
-        nhp_data(params["start_year"], params["dataset"]),
+        nhp_data,
         params["start_year"],
         params["end_year"],
         params["seed"],
@@ -175,7 +178,7 @@ def run_single_model_run(
     aggregation_columns: list[str] | None = None,
 ) -> None:
     """Runs a single model iteration for easier debugging in vscode."""
-    data = Local.create(data_path)
+    data = Local(data_path, params["start_year"], params["dataset"])
 
     print("initialising model...  ", end="")
     model = timeit(model_type, params, data, aggregation_columns=aggregation_columns)

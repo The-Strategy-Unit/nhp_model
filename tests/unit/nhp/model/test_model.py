@@ -144,7 +144,6 @@ def test_model_init_sets_values(mocker, model_type):
     lp_m = mocker.patch("nhp.model.model.load_params")
     hsa_m = mocker.patch("nhp.model.model.HealthStatusAdjustmentInterpolated")
     data_mock = Mock()
-    data_mock.return_value = "data_loader"
 
     # act
     mdl = Model(model_type, ["measures"], params, data_mock, "hsa", "run_params")  # type: ignore
@@ -152,11 +151,11 @@ def test_model_init_sets_values(mocker, model_type):
     # assert
     assert mdl.model_type == model_type
     assert mdl.params == params
-    data_mock.assert_called_once_with("2020", "synthetic")
-    mdl._load_data.assert_called_once_with("data_loader")  # type: ignore
-    mdl._load_strategies.assert_called_once_with("data_loader")  # type: ignore
-    mdl._load_demog_factors.assert_called_once_with("data_loader")  # type: ignore
-    mdl._load_inequalities_factors.assert_called_once_with("data_loader")  # type: ignore
+    data_mock.assert_not_called()
+    mdl._load_data.assert_called_once_with(data_mock)  # type: ignore
+    mdl._load_strategies.assert_called_once_with(data_mock)  # type: ignore
+    mdl._load_demog_factors.assert_called_once_with(data_mock)  # type: ignore
+    mdl._load_inequalities_factors.assert_called_once_with(data_mock)  # type: ignore
     assert mdl.hsa == "hsa"
     mdl.generate_run_params.assert_not_called()  # type: ignore
     assert mdl.run_params == "run_params"
@@ -270,10 +269,11 @@ def test_model_init_initialises_hsa_if_none(mocker):
     hsa_m.return_value = "hsa"
 
     # act
-    mdl = Model("aae", "arrivals", params, Mock(return_value="data"))  # type: ignore
+    data_loader = Mock()
+    mdl = Model("aae", "arrivals", params, data_loader)  # type: ignore
 
     # assert
-    hsa_m.assert_called_once_with("data", "2020", "2021", 1, 3)
+    hsa_m.assert_called_once_with(data_loader, "2020", "2021", 1, 3)
     assert mdl.hsa == "hsa"
 
 

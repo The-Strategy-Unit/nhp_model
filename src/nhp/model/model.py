@@ -37,7 +37,7 @@ class Model:
         model_type: The type of model, either "aae", "ip", or "op".
         measures: The names of the measures in the model.
         params: The parameters to run the model with, or the path to a params file to load.
-        data: A callable that creates a Data instance.
+        data_loader: A Data instance.
         hsa: An instance of the HealthStatusAdjustment class. If left as None an instance is
             created. Defaults to None.
         run_params: The parameters to use for each model run. Generated automatically if left as
@@ -64,7 +64,7 @@ class Model:
         model_type: str,
         measures: List[str],
         params: dict | str,
-        data: Callable[[int, str], Data],
+        data_loader: Data,
         hsa: Any | None = None,
         run_params: dict | None = None,
         save_full_model_results: bool = False,
@@ -76,7 +76,7 @@ class Model:
             model_type: A string saying what type of model this is.
             measures: The names of the measures in this model type.
             params: The parameters to use.
-            data: A method to create a Data instance.
+            data_loader: A Data instance.
             hsa: Health Status Adjustment object. Defaults to None.
             run_params: The run parameters to use. Defaults to None.
             save_full_model_results: Whether to save full model results. Defaults to False.
@@ -92,8 +92,6 @@ class Model:
         # add model runtime if it doesn't exist
         if "create_datetime" not in self.params:
             self.params["create_datetime"] = f"{datetime.now():%Y%m%d_%H%M%S}"
-
-        data_loader = data(params["start_year"], params["dataset"])
 
         self._measures = measures
         # load the data. we only need some of the columns for the model, so just load what we need
