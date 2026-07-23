@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from nhp.model.aae import AaEModel
+from nhp.model.data import Data
 from nhp.model.inpatients import InpatientsModel
 from nhp.model.outpatients import OutpatientsModel
 from nhp.model.run import (
@@ -111,15 +112,17 @@ def test_run_all(mocker):
         "model_runs": 10,
         "create_datetime": "20230123_012345",
     }
-    data_mock = Mock(return_value="nhp_data")
+    nhp_data = Mock(spec=Data)
+    nhp_data.data_exists_for_model_type.side_effect = [True, True, True]
+    data_factory = Mock(return_value=nhp_data)
 
     # act
-    actual = run_all(params, data_mock, pc_m, False)
+    actual = run_all(params, data_factory, pc_m, False)
 
     # assert
     assert actual == ("combined_results", "variants")
 
-    data_mock.assert_called_once_with(2020, "synthetic")
+    data_factory.assert_called_once_with(2020, "synthetic")
 
     assert pc_m.call_args_list == [
         call("Inpatients"),
@@ -128,13 +131,13 @@ def test_run_all(mocker):
     ]
 
     grp_m.assert_called_once_with(params)
-    hsa_m.assert_called_once_with("nhp_data", 2020, 2025, 42, 10)
+    hsa_m.assert_called_once_with(nhp_data, 2020, 2025, 42, 10)
 
     assert rm_m.call_args_list == [
         call(
             m,
             params,
-            data_mock,
+            nhp_data,
             "hsa",
             {"variant": "variants"},
             pc_m(),
@@ -148,12 +151,75 @@ def test_run_all(mocker):
 
 
 @pytest.mark.unit
+def test_run_all_filters_model_types_by_available_data(mocker):
+    # arrange
+    grp_m = mocker.patch(
+        "nhp.model.run.Model.generate_run_params",
+        return_value={"variant": "variants"},
+    )
+    hsa_m = mocker.patch("nhp.model.run.HealthStatusAdjustmentInterpolated", return_value="hsa")
+    rm_m = mocker.patch("nhp.model.run._run_model", side_effect=["ip", "aae"])
+    cr_m = mocker.patch("nhp.model.run.combine_results", return_value="combined_results")
+
+    pc_m = Mock()
+    pc_m().return_value = "progress callback"
+    pc_m.reset_mock()
+
+    params = {
+        "id": "1",
+        "dataset": "synthetic",
+        "scenario": "test",
+        "start_year": 2020,
+        "end_year": 2025,
+        "seed": 42,
+        "model_runs": 10,
+        "create_datetime": "20230123_012345",
+    }
+
+    nhp_data = Mock(spec=Data)
+    nhp_data.data_exists_for_model_type.side_effect = [True, False, True]
+
+    # act
+    actual = run_all(params, nhp_data, pc_m, False)
+
+    # assert
+    assert actual == ("combined_results", "variants")
+    grp_m.assert_called_once_with(params)
+    hsa_m.assert_called_once_with(nhp_data, 2020, 2025, 42, 10)
+    cr_m.assert_called_once_with(["ip", "aae"])
+
+    assert pc_m.call_args_list == [call("Inpatients"), call("AaE")]
+    assert rm_m.call_args_list == [
+        call(
+            InpatientsModel,
+            params,
+            nhp_data,
+            "hsa",
+            {"variant": "variants"},
+            pc_m(),
+            False,
+            None,
+        ),
+        call(
+            AaEModel,
+            params,
+            nhp_data,
+            "hsa",
+            {"variant": "variants"},
+            pc_m(),
+            False,
+            None,
+        ),
+    ]
+
+
+@pytest.mark.unit
 def test_run_single_model_run(mocker, capsys):
     """It should run the model and display outputs."""
     # arrange
     mr_mock = Mock()
     ndl_mock = mocker.patch("nhp.model.run.Local")
-    ndl_mock.create.return_value = "nhp_data"
+    ndl_mock.return_value = "nhp_data"
 
     results_m = {
         "default": pd.DataFrame(
@@ -182,7 +248,7 @@ def test_run_single_model_run(mocker, capsys):
     run_single_model_run(params, "data", "model_type", 0)  # type: ignore
 
     # assert
-    ndl_mock.create.assert_called_once_with("data")
+    ndl_mock.assert_called_once_with("data", 2020, "synthetic")
 
     assert timeit_mock.call_count == 3
     assert timeit_mock.call_args_list[0] == call(
@@ -213,3 +279,53 @@ def test_run_single_model_run(mocker, capsys):
             "",
         ]
     )
+
+
+@pytest.mark.unit
+def test_run_all_uses_data_instance(mocker):
+    # arrange
+    grp_m = mocker.patch(
+        "nhp.model.run.Model.generate_run_params",
+        return_value={"variant": "variants"},
+    )
+    hsa_m = mocker.patch("nhp.model.run.HealthStatusAdjustmentInterpolated", return_value="hsa")
+    rm_m = mocker.patch("nhp.model.run._run_model", side_effect=["ip", "op", "aae"])
+    cr_m = mocker.patch("nhp.model.run.combine_results", return_value="combined_results")
+    pc_m = Mock()
+    pc_m().return_value = "progress callback"
+    pc_m.reset_mock()
+
+    params = {
+        "id": "1",
+        "dataset": "synthetic",
+        "scenario": "test",
+        "start_year": 2020,
+        "end_year": 2025,
+        "seed": 42,
+        "model_runs": 10,
+        "create_datetime": "20230123_012345",
+    }
+    nhp_data = Mock(spec=Data)
+
+    # act
+    actual = run_all(params, nhp_data, pc_m, False)
+
+    # assert
+    assert actual == ("combined_results", "variants")
+    grp_m.assert_called_once_with(params)
+    hsa_m.assert_called_once_with(nhp_data, 2020, 2025, 42, 10)
+    cr_m.assert_called_once_with(["ip", "op", "aae"])
+
+    assert rm_m.call_args_list == [
+        call(
+            m,
+            params,
+            nhp_data,
+            "hsa",
+            {"variant": "variants"},
+            pc_m(),
+            False,
+            None,
+        )
+        for m in [InpatientsModel, OutpatientsModel, AaEModel]
+    ]

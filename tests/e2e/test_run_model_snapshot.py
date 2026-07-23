@@ -24,14 +24,14 @@ def model_results(data_dir):
     # test them, but
     # TODO: refactor run_all to separate the logic of running the model and saving results
     params = load_sample_params(model_runs=32)
-    nhp_data = Local.create(data_dir)
+    nhp_data = Local(data_dir, params["start_year"], params["dataset"])
 
     model_types = [InpatientsModel, OutpatientsModel, AaEModel]
     run_params = Model.generate_run_params(params)
 
     # set the data path in the HealthStatusAdjustment class
     hsa = HealthStatusAdjustmentInterpolated(
-        nhp_data(params["start_year"], params["dataset"]),
+        nhp_data,
         params["start_year"],
         params["end_year"],
         params["seed"],

@@ -147,6 +147,11 @@ class RunWithAzureStorage:
 
         for p in paths:
             subpath = f"{p}/fyear={year}/dataset={dataset}"
+
+            if not fs_client.get_directory_client(subpath).exists():
+                logging.info("No data found for %s", subpath)
+                continue
+
             os.makedirs(f"data{subpath.removeprefix(version)}", exist_ok=True)
 
             for i in fs_client.get_paths(subpath):

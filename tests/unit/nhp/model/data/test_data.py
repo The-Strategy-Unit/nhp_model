@@ -66,3 +66,10 @@ def test_get_inequalities():
     d = Data()
     with pytest.raises(NotImplementedError):
         d.get_inequalities()
+
+
+@pytest.mark.unit
+def test_data_exists_for_model_type():
+    d = Data()
+    with pytest.raises(NotImplementedError):
+        d.data_exists_for_model_type("model_type")

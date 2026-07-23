@@ -4,6 +4,7 @@ Classes for loading data for the NHP model. Each class supports loading data fro
 such as from local storage or directly from DataBricks.
 """
 
+import os
 import pickle
 from typing import Any, Callable
 
@@ -124,3 +125,24 @@ class Local(Data):
         """
         inequalities_df = pd.read_parquet(self._file_path(file))
         return inequalities_df
+
+    def data_exists_for_model_type(self, model_type: Any) -> bool:
+        """Check if data exists for a specific model type.
+
+        Args:
+            model_type: The model type to check for.
+
+        Returns:
+            True if data exists for the model type, False otherwise.
+        """
+        match model_type.__name__:
+            case "InpatientsModel":
+                path = self._file_path("ip")
+            case "OutpatientsModel":
+                path = self._file_path("op")
+            case "AaEModel":
+                path = self._file_path("aae")
+            case _:
+                raise ValueError(f"Unknown model type: {model_type.__name__}")
+
+        return os.path.exists(path)
