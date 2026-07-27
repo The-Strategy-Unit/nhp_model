@@ -49,7 +49,7 @@ def test_init(mocker, run, rp_call):
     rng_mock.assert_called_once_with(1)
     prp_mock.assert_called_once_with()
     model._get_run_params.assert_called_once_with(rp_call)
-    actual._run.assert_called_once()  # type: ignore
+    actual._run.assert_called_once()
 
 
 @pytest.mark.unit
