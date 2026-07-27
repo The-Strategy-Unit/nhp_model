@@ -3,6 +3,7 @@ name: Deploy Documentation
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -50,8 +51,9 @@ jobs:
       - name: Install uv (for rsconnect)
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
 
-      - name: Configure Connect
-        run: uvx rsconnect add -s ${{ secrets.RSCONNECT_URL }} -n connect -k ${{ secrets.RSCONNECT_API_KEY }}
-
       - name: Deploy to Connect
-        run: uvx rsconnect deploy html site -a ${{ vars.CONNECT_DOCS_APP_ID }}
+        env:
+          CONNECT_SERVER: ${{ vars.RSCONNECT_URL }}
+          CONNECT_API_KEY: ${{ secrets.RSCONNECT_API_KEY }}
+        run: |
+          uvx rsconnect deploy html site -a ${{ vars.CONNECT_DOCS_APP_ID }}
