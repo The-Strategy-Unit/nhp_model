@@ -221,7 +221,8 @@ def test_main_calls_runner_error_on_exception(mocker, local_storage):
     config = Mock()
 
     # act
-    main(config)
+    with pytest.raises(Exception, match="Test error"):
+        main(config)
 
     # assert
     if local_storage:

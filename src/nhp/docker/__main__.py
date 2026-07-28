@@ -88,6 +88,7 @@ def main(config: Config):
     except Exception as e:
         logging.error("An error occurred: %s", str(e))
         runner.error(str(e))
+        raise e
 
 
 def init():
