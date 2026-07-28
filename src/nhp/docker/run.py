@@ -220,21 +220,21 @@ class RunWithAzureStorage:
         container = self._get_container(self._config.RESULTS_STORAGE_ACCOUNT, "results")
         logging.info("Uploading results files to blob storage: %s", file_path)
         for k, v in results.items():
-            logging.info(" * %s.parquet", k)
+            logging.debug(" * %s.parquet", k)
             container.upload_blob(
                 f"{file_path}/{k}.parquet",
                 v.to_parquet(index=False),
                 overwrite=True,
                 metadata=metadata,
             )
-        logging.info(" * params.json")
+        logging.debug(" * params.json")
         container.upload_blob(
             f"{file_path}/params.json",
             json.dumps(params).encode("utf-8"),
             overwrite=True,
             metadata=metadata,
         )
-        logging.info(" * variants.json")
+        logging.debug(" * variants.json")
         container.upload_blob(
             f"{file_path}/variants.json",
             json.dumps(variants).encode("utf-8"),
@@ -255,7 +255,7 @@ class RunWithAzureStorage:
         logging.info("Uploading full model results to blob storage: %s", path)
         for file in path.glob("**/*.parquet"):
             filename = file.as_posix()[8:]
-            logging.info(" * %s", filename)
+            logging.debug(" * %s", filename)
             with open(file, "rb") as f:
                 container.upload_blob(
                     f"full-model-results/{self._app_version}/{filename}",
