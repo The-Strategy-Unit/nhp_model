@@ -126,7 +126,9 @@ def generate_results_json(
             .to_dict(orient="records")
         )
 
-    dict_results = {k: agg_to_dict(v) for k, v in results.items() if k != "step_counts"}
+    dict_results = {
+        k: agg_to_dict(v) for k, v in results.items() if k != "step_counts" if len(v) > 0
+    }
 
     dict_results["step_counts"] = (
         results["step_counts"]
