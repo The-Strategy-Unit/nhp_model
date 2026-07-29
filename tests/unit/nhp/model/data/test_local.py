@@ -193,3 +193,37 @@ def test_get_parquet(mocker):
     assert actual == "data"
     fp.assert_called_once_with("file")
     m.assert_called_once_with("file_path")
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("model_name", "expected_path"),
+    [
+        ("InpatientsModel", "data/ip/fyear=2019/dataset=synthetic"),
+        ("OutpatientsModel", "data/op/fyear=2019/dataset=synthetic"),
+        ("AaEModel", "data/aae/fyear=2019/dataset=synthetic"),
+    ],
+)
+def test_data_exists_for_model_type(mocker, model_name, expected_path):
+    # arrange
+    exists_mock = mocker.patch("os.path.exists", return_value=True)
+    d = Local("data", 2019, "synthetic")
+    model_type = type(model_name, (), {})
+
+    # act
+    actual = d.data_exists_for_model_type(model_type)
+
+    # assert
+    assert actual is True
+    exists_mock.assert_called_once_with(expected_path)
+
+
+@pytest.mark.unit
+def test_data_exists_for_model_type_raises_for_unknown_model_type():
+    # arrange
+    d = Local("data", 2019, "synthetic")
+    model_type = type("UnknownModel", (), {})
+
+    # act/assert
+    with pytest.raises(ValueError, match="Unknown model type: UnknownModel"):
+        d.data_exists_for_model_type(model_type)

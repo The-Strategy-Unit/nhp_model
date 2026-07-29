@@ -126,7 +126,9 @@ def generate_results_json(
             .to_dict(orient="records")
         )
 
-    dict_results = {k: agg_to_dict(v) for k, v in results.items() if k != "step_counts"}
+    dict_results = {
+        k: agg_to_dict(v) for k, v in results.items() if k != "step_counts" if len(v) > 0
+    }
 
     dict_results["step_counts"] = (
         results["step_counts"]
@@ -257,6 +259,9 @@ def _patch_converted_sdec_activity(
     results: Dict[str, pd.DataFrame], column: str, col_value: str
 ) -> None:
     """Patch the converted SDEC activity in the dataframe."""
+    if column not in results:
+        return
+
     results_df = results[column]
     agg_cols = ["pod", "sitetret", "measure", "model_run"]
 

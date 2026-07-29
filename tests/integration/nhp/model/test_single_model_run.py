@@ -15,7 +15,7 @@ from nhp.model.data import Local
 @pytest.fixture(scope="session")
 def model_single_run_results(data_dir):
     params = load_sample_params()
-    data = Local.create(data_dir)
+    data = Local(data_dir, params["start_year"], params["dataset"])
 
     results = {}
     for k, model_class in [("ip", InpatientsModel), ("op", OutpatientsModel), ("aae", AaEModel)]:

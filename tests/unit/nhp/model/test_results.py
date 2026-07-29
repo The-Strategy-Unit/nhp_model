@@ -448,3 +448,25 @@ def test_patch_converted_sdec_activity():
     actual = results["acuity"].sort_values(["pod", "sitetret", "measure", "acuity", "model_run"])
     # assert
     pd.testing.assert_frame_equal(actual, expected)
+
+
+@pytest.mark.unit
+def test_patch_converted_sdec_activity_noop_when_column_missing():
+    # arrange
+    default_df = pd.DataFrame(
+        {
+            "pod": ["aae_type-05"],
+            "sitetret": ["a"],
+            "measure": ["arrivals"],
+            "model_run": [1],
+            "value": [1],
+        }
+    )
+    results = {"default": default_df.copy()}
+
+    # act
+    _patch_converted_sdec_activity(results, "acuity", "standard")
+
+    # assert
+    assert set(results.keys()) == {"default"}
+    pd.testing.assert_frame_equal(results["default"], default_df)

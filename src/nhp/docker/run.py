@@ -147,6 +147,11 @@ class RunWithAzureStorage:
 
         for p in paths:
             subpath = f"{p}/fyear={year}/dataset={dataset}"
+
+            if not fs_client.get_directory_client(subpath).exists():
+                logging.info("No data found for %s", subpath)
+                continue
+
             os.makedirs(f"data{subpath.removeprefix(version)}", exist_ok=True)
 
             for i in fs_client.get_paths(subpath):
@@ -174,9 +179,11 @@ class RunWithAzureStorage:
         """
         container = self._get_container(self._config.RESULTS_STORAGE_ACCOUNT, "results")
 
+        logging.info("Generating results json file")
         results_file = generate_results_json(results, self.params, variants)
 
         results_json_gz_path = f"prod/{self._app_version}/{results_file}.json.gz"
+        logging.info("Uploading results json file to blob storage: %s", results_json_gz_path)
         with open(f"results/{results_file}.json", "rb") as file:
             container.upload_blob(
                 results_json_gz_path,
@@ -185,9 +192,11 @@ class RunWithAzureStorage:
                 overwrite=True,
             )
 
+        logging.info("Updating table storage with results json path: %s", results_json_gz_path)
         self._update_table_storage(
             results_json_gz_path=results_json_gz_path,
         )
+        logging.info("Results json file uploaded and table storage updated successfully.")
 
     def _upload_results_files(
         self,
@@ -209,25 +218,30 @@ class RunWithAzureStorage:
         """
         params = self.params
         container = self._get_container(self._config.RESULTS_STORAGE_ACCOUNT, "results")
+        logging.info("Uploading results files to blob storage: %s", file_path)
         for k, v in results.items():
+            logging.debug(" * %s.parquet", k)
             container.upload_blob(
-                file_path + f"/{k}.parquet",
+                f"{file_path}/{k}.parquet",
                 v.to_parquet(index=False),
                 overwrite=True,
                 metadata=metadata,
             )
+        logging.debug(" * params.json")
         container.upload_blob(
             f"{file_path}/params.json",
             json.dumps(params).encode("utf-8"),
             overwrite=True,
             metadata=metadata,
         )
+        logging.debug(" * variants.json")
         container.upload_blob(
             f"{file_path}/variants.json",
             json.dumps(variants).encode("utf-8"),
             overwrite=True,
             metadata=metadata,
         )
+        logging.info("Results files uploaded successfully to blob storage: %s", file_path)
 
     def _upload_full_model_results(self) -> None:
         container = self._get_container(self._config.FULL_MODEL_RESULTS_STORAGE_ACCOUNT, "results")
@@ -238,14 +252,17 @@ class RunWithAzureStorage:
 
         path = Path(f"results/{dataset}/{scenario}/{create_datetime}")
 
+        logging.info("Uploading full model results to blob storage: %s", path)
         for file in path.glob("**/*.parquet"):
             filename = file.as_posix()[8:]
+            logging.debug(" * %s", filename)
             with open(file, "rb") as f:
                 container.upload_blob(
                     f"full-model-results/{self._app_version}/{filename}",
                     f.read(),
                     overwrite=True,
                 )
+        logging.info("Full model results uploaded successfully to blob storage: %s", path)
 
     def _update_table_storage(self, **kwargs) -> None:
         """Update the table storage with the given data."""

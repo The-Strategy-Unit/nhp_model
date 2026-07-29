@@ -249,6 +249,40 @@ def test_RunWithAzureStorage_get_data(mock_run_with_azure_storage, mocker):
 
 
 @pytest.mark.unit
+def test_RunWithAzureStorage_get_data_skips_missing_directory(mock_run_with_azure_storage, mocker):
+    # arrange
+    s = mock_run_with_azure_storage
+
+    path = Mock()
+    path.name = "dev/ip"
+
+    fs_client = Mock()
+    fs_client.get_file_system_client.return_value = fs_client
+    fs_client.get_paths.side_effect = [[path]]
+    fs_client.get_directory_client.return_value.exists.return_value = False
+
+    dlsc_m = mocker.patch("nhp.docker.run.DataLakeServiceClient", return_value=fs_client)
+    dac_m = mocker.patch("nhp.docker.run.DefaultAzureCredential", return_value="cred")
+    mkdir_m = mocker.patch("os.makedirs")
+
+    # act
+    with patch("builtins.open", mock_open()) as mock_file:
+        s._get_data(2020, "synthetic")
+
+    # assert
+    dlsc_m.assert_called_once_with(
+        account_url="https://data-sa.dfs.core.windows.net", credential="cred"
+    )
+    dac_m.assert_called_once_with()
+    fs_client.get_file_system_client.assert_called_once_with("data")
+    fs_client.get_paths.assert_called_once_with("dev", recursive=False)
+    fs_client.get_directory_client.assert_called_once_with("dev/ip/fyear=2020/dataset=synthetic")
+    mkdir_m.assert_not_called()
+    fs_client.get_file_client.assert_not_called()
+    mock_file.assert_not_called()
+
+
+@pytest.mark.unit
 def test_RunWithAzureStorage_upload_results_json(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage

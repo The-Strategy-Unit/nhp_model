@@ -20,7 +20,7 @@ class OutpatientsModel(Model):
 
     Args:
         params: The parameters to run the model with, or the path to a params file to load.
-        data: A callable that creates a Data instance.
+        data_loader: A Data instance.
         hsa: An instance of the HealthStatusAdjustment class. If left as None an instance is
             created. Defaults to None.
         run_params: The parameters to use for each model run. Generated automatically if left as
@@ -32,7 +32,7 @@ class OutpatientsModel(Model):
     def __init__(
         self,
         params: dict | str,
-        data: Callable[[int, str], Data],
+        data_loader: Data,
         hsa: Any = None,
         run_params: dict | None = None,
         save_full_model_results: bool = False,
@@ -42,7 +42,7 @@ class OutpatientsModel(Model):
 
         Args:
             params: The parameters to use.
-            data: A method to create a Data instance.
+            data_loader: A Data instance.
             hsa: Health Status Adjustment object. Defaults to None.
             run_params: The run parameters to use. Defaults to None.
             save_full_model_results: Whether to save full model results. Defaults to False.
@@ -53,7 +53,7 @@ class OutpatientsModel(Model):
             "op",
             ["attendances", "tele_attendances"],
             params,
-            data,
+            data_loader,
             hsa,
             run_params,
             save_full_model_results,
