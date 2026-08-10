@@ -17,7 +17,7 @@ from azure.storage.filedatalake import DataLakeServiceClient
 
 from nhp.docker.config import Config
 from nhp.model.params import load_params
-from nhp.model.results import generate_results_json, save_results_files
+from nhp.model.results import save_results_files
 from nhp.model.run import noop_progress_callback
 
 
@@ -165,39 +165,6 @@ class RunWithAzureStorage:
                     file_client = fs_client.get_file_client(filename)
                     local_file.write(file_client.download_file().readall())
 
-    def _upload_results_json(
-        self, results: dict[str, pd.DataFrame], metadata: dict[str, Any], variants: list[str]
-    ) -> None:
-        """Upload the results.
-
-        Once the model has run, upload the results to blob storage.
-
-        Args:
-            results: Dictionary containing the results dataframes.
-            metadata: The metadata to attach to the blob.
-            variants: A list of the variants that were run.
-        """
-        container = self._get_container(self._config.RESULTS_STORAGE_ACCOUNT, "results")
-
-        logging.info("Generating results json file")
-        results_file = generate_results_json(results, self.params, variants)
-
-        results_json_gz_path = f"prod/{self._app_version}/{results_file}.json.gz"
-        logging.info("Uploading results json file to blob storage: %s", results_json_gz_path)
-        with open(f"results/{results_file}.json", "rb") as file:
-            container.upload_blob(
-                results_json_gz_path,
-                gzip.compress(file.read()),
-                metadata={k: str(v) for k, v in metadata.items()},
-                overwrite=True,
-            )
-
-        logging.info("Updating table storage with results json path: %s", results_json_gz_path)
-        self._update_table_storage(
-            results_json_gz_path=results_json_gz_path,
-        )
-        logging.info("Results json file uploaded and table storage updated successfully.")
-
     def _upload_results_files(
         self,
         file_path: str,
@@ -317,15 +284,6 @@ class RunWithAzureStorage:
         self._upload_results_files(
             file_path, results, {"model_run_id": str(self._model_run_id)}, variants
         )
-        # ---
-        # see issue #286, this should be removed once we no longer need the results json file
-        metadata = {
-            k: v
-            for k, v in self.params.items()
-            if not isinstance(v, dict) and not isinstance(v, list)
-        }
-        metadata.update(additional_metadata)
-        self._upload_results_json(results, metadata, variants)
         ## ---
         if save_full_model_results:
             self._upload_full_model_results()

@@ -283,39 +283,6 @@ def test_RunWithAzureStorage_get_data_skips_missing_directory(mock_run_with_azur
 
 
 @pytest.mark.unit
-def test_RunWithAzureStorage_upload_results_json(mock_run_with_azure_storage, mocker):
-    # arrange
-    s = mock_run_with_azure_storage
-
-    m_get_container = mocker.patch("nhp.docker.run.RunWithAzureStorage._get_container")
-    m_update_table_storage = mocker.patch(
-        "nhp.docker.run.RunWithAzureStorage._update_table_storage"
-    )
-    m_generate_results_json = mocker.patch(
-        "nhp.docker.run.generate_results_json", return_value="filename"
-    )
-    mocker.patch("gzip.compress", return_value="gzdata")
-    metadata = {"k": "v", "count": 1}
-
-    # act
-    with patch("builtins.open", mock_open(read_data="data")) as mock_file:
-        s._upload_results_json("filename", metadata, "variants")
-
-    # assert
-    mock_file.assert_called_once_with("results/filename.json", "rb")
-    m_get_container.assert_called_once_with("results-sa", "results")
-    m_get_container().upload_blob.assert_called_once_with(
-        "prod/dev/filename.json.gz",
-        "gzdata",
-        metadata={"k": "v", "count": "1"},
-        overwrite=True,
-    )
-    m_generate_results_json.assert_called_once_with("filename", {"dataset": "test"}, "variants")
-
-    m_update_table_storage.assert_called_once_with(results_json_gz_path="prod/dev/filename.json.gz")
-
-
-@pytest.mark.unit
 def test_RunWithAzureStorage_upload_results_files(mock_run_with_azure_storage, mocker):
     # arrange
     s = mock_run_with_azure_storage
@@ -435,8 +402,6 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
     m3 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_full_model_results")
     m4 = mocker.patch("nhp.docker.run.RunWithAzureStorage._cleanup")
 
-    m5 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_results_json")
-
     metadata = {
         "id": "1",
         "dataset": "synthetic",
@@ -486,8 +451,6 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
     m3.assert_not_called()
     m4.assert_called_once_with()
 
-    m5.assert_called_once_with("results", metadata_expected, "variants")
-
 
 @pytest.mark.unit
 def test_RunWithAzureStorage_finish_save_full_model_results_true(
@@ -499,8 +462,6 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
     m2 = mocker.patch("nhp.docker.run.RunWithAzureStorage._update_table_storage")
     m3 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_full_model_results")
     m4 = mocker.patch("nhp.docker.run.RunWithAzureStorage._cleanup")
-
-    m5 = mocker.patch("nhp.docker.run.RunWithAzureStorage._upload_results_json")
 
     metadata = {
         "id": "1",
@@ -548,8 +509,6 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
     )
     m3.assert_called_once()
     m4.assert_called_once_with()
-
-    m5.assert_called_once_with("results", metadata_expected, "variants")
 
 
 @pytest.mark.unit

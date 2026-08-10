@@ -15,7 +15,6 @@ from nhp.model.results import (
     _save_parquet_file,
     _save_variants_file,
     combine_results,
-    generate_results_json,
     save_results_files,
 )
 
@@ -142,126 +141,6 @@ def test_combine_model_results(mocker):
     assert cmr_mock.call_args_list[2][0][1] == 1
 
     assert cfd_mock.call_count == 10
-
-
-@pytest.mark.unit
-def test_generate_results_json(mocker):
-    # arrange
-    results = {
-        "default": pd.DataFrame(
-            {
-                "a": [i for i in [0, 1] for _ in range(5)],
-                "model_run": list(range(5)) * 2,
-                "value": range(10),
-            }
-        ),
-        "a": pd.DataFrame(
-            {
-                "a": [i for i in [0, 1] for _ in list(range(5)) * 2],
-                "b": [i for i in [0, 1] for _ in list(range(5))] * 2,
-                "model_run": list(range(5)) * 4,
-                "value": list(range(20)),
-            }
-        ),
-        "step_counts": pd.DataFrame(
-            {
-                "pod": ["a1"] * 4 * 5,
-                "change_factor": ["baseline", "a", "b", "c", "c"] * 4,
-                "strategy": ["-", "-", "-", "a", "b"] * 4,
-                "sitetret": ["s"] * 4 * 5,
-                "activity_type": ["a"] * 4 * 5,
-                "measure": ["x"] * 4 * 5,
-                "value": range(20),
-            }
-        ),
-    }
-
-    os_m = mocker.patch("os.makedirs")
-    jd_m = mocker.patch("json.dump")
-
-    json_content = {
-        "default": [
-            {"a": 0, "baseline": 0, "model_runs": [1, 2, 3, 4]},
-            {"a": 1, "baseline": 5, "model_runs": [6, 7, 8, 9]},
-        ],
-        "a": [
-            {"a": 0, "b": 0, "baseline": 0, "model_runs": [1, 2, 3, 4]},
-            {"a": 0, "b": 1, "baseline": 5, "model_runs": [6, 7, 8, 9]},
-            {"a": 1, "b": 0, "baseline": 10, "model_runs": [11, 12, 13, 14]},
-            {"a": 1, "b": 1, "baseline": 15, "model_runs": [16, 17, 18, 19]},
-        ],
-        "step_counts": [
-            {
-                "pod": "a1",
-                "change_factor": "a",
-                "sitetret": "s",
-                "activity_type": "a",
-                "measure": "x",
-                "model_runs": [1, 6, 11, 16],
-            },
-            {
-                "pod": "a1",
-                "change_factor": "b",
-                "sitetret": "s",
-                "activity_type": "a",
-                "measure": "x",
-                "model_runs": [2, 7, 12, 17],
-            },
-            {
-                "pod": "a1",
-                "change_factor": "baseline",
-                "sitetret": "s",
-                "activity_type": "a",
-                "measure": "x",
-                "model_runs": [0],
-            },
-            {
-                "pod": "a1",
-                "change_factor": "c",
-                "strategy": "a",
-                "sitetret": "s",
-                "activity_type": "a",
-                "measure": "x",
-                "model_runs": [3, 8, 13, 18],
-            },
-            {
-                "pod": "a1",
-                "change_factor": "c",
-                "strategy": "b",
-                "sitetret": "s",
-                "activity_type": "a",
-                "measure": "x",
-                "model_runs": [4, 9, 14, 19],
-            },
-        ],
-    }
-
-    params = {
-        "dataset": "synthetic",
-        "scenario": "test",
-        "create_datetime": "create_datetime",
-    }
-
-    expected = "synthetic/test-create_datetime"
-
-    # act
-    with patch("builtins.open", mock_open()) as mock_file:
-        actual = generate_results_json(results, params, [1, 2, 3])  # ty: ignore
-
-    # assert
-    assert actual == expected
-    mock_file.assert_called_once_with(
-        "results/synthetic/test-create_datetime.json", "w", encoding="utf-8"
-    )
-    os_m.assert_called_once_with("results/synthetic", exist_ok=True)
-    jd_m.assert_called_once_with(
-        {
-            "params": params,
-            "population_variants": [1, 2, 3],
-            "results": json_content,
-        },
-        mock_file(),
-    )
 
 
 @pytest.mark.unit
