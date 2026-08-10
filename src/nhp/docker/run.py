@@ -1,6 +1,5 @@
 """Run the model inside of the docker container."""
 
-import gzip
 import json
 import logging
 import os
