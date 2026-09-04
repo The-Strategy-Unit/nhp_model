@@ -98,6 +98,29 @@ def test_get_data(mock_model):
 
 
 @pytest.mark.unit
+def test_load_functional_areas(mock_model):
+    # arrange
+    mdl = mock_model
+    data_loader = Mock()
+    data_loader.get_ip_functional_areas_wards.return_value = pd.DataFrame(
+        {
+            "rn": [1, 2],
+            "sitetret": ["trust", "trust"],
+            "grouping": ["adult_medical", "adult_surgical"],
+            "group_pcnt": [0.5, 0.3],
+        }
+    )
+
+    # act
+    mdl._load_functional_areas(data_loader)
+
+    # assert
+    assert "wards" in mdl._functional_areas
+    assert mdl._functional_areas["wards"].index.tolist() == [1, 2]
+    data_loader.get_ip_functional_areas_wards.assert_called_once_with()
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "gen_los_type, expected",
     [
@@ -543,6 +566,142 @@ def test_specific_aggregations(mocker, mock_model):
         (2, "tretspef", "los_group"),
         (1,),
     ]
+
+
+@pytest.mark.unit
+def test_functional_area_aggregations(mocker, mock_model):
+    # arrange
+    mdl = mock_model
+    wards = pd.Series([1], index=pd.MultiIndex.from_tuples([("w", "a", "count")]))
+    op = pd.Series([2], index=pd.MultiIndex.from_tuples([("o", "b", "count")]))
+    sdec = pd.Series([3], index=pd.MultiIndex.from_tuples([("s", "c", "count")]))
+
+    wards_mock = mocker.patch.object(mdl, "_functional_area_wards", return_value=wards)
+    op_mock = mocker.patch.object(mdl, "_functional_area_op_conversion", return_value=op)
+    sdec_mock = mocker.patch.object(mdl, "_functional_area_sdec_conversion", return_value=sdec)
+
+    model_results = pd.DataFrame({"rn": [1]})
+
+    # act
+    actual = mdl.functional_area_aggregations(model_results)
+
+    # assert
+    wards_mock.assert_called_once_with(model_results)
+    op_mock.assert_called_once_with(model_results)
+    sdec_mock.assert_called_once_with(model_results)
+    assert actual.tolist() == [1, 2, 3]
+
+
+@pytest.mark.unit
+def test_functional_area_wards(mock_model):
+    # arrange
+    mdl = mock_model
+    mdl._functional_areas = {
+        "wards": pd.DataFrame(
+            {
+                "rn": [1, 2, 3],
+                "sitetret": ["trust", "trust", "trust"],
+                "functional_area": [
+                    "adult_medical_general_acute",
+                    "adult_medical_general_acute",
+                    "adult_medical_general_acute",
+                ],
+                "group_pcnt": [1.0, 0.5, 1.0],
+                "episodes": [1, 2, 1],
+                "zero_length_episodes": [0, 1, 0],
+            }
+        ).set_index("rn")
+    }
+
+    model_results = pd.DataFrame(
+        {
+            "rn": [1, 2, 3],
+            "speldur": [3, 4, 2],
+            "pod": ["ip_elective", "ip_elective_daycase", "op_procedure"],
+        },
+    )
+
+    # act
+    actual = mdl._functional_area_wards(model_results)
+
+    # assert
+    expected = pd.Series(
+        [2.0, 3.0, 2.0, 1.0, 1.0, 0.0],
+        index=pd.MultiIndex.from_tuples(
+            [
+                ("adult_daycase_general", "trust", "duration_days"),
+                ("adult_medical_general_acute", "trust", "duration_days"),
+                ("adult_daycase_general", "trust", "count"),
+                ("adult_medical_general_acute", "trust", "count"),
+                ("adult_daycase_general", "trust", "zero_length_episodes"),
+                ("adult_medical_general_acute", "trust", "zero_length_episodes"),
+            ],
+            names=["functional_area", "sitetret", "measure"],
+        ),
+        name="value",
+    )
+
+    pd.testing.assert_series_equal(actual.sort_index(), expected.sort_index())
+
+
+@pytest.mark.unit
+def test_functional_area_op_conversion(mock_model):
+    # arrange
+    mdl = mock_model
+    model_results = pd.DataFrame(
+        {
+            "sitetret": ["trust_a", "trust_a", "trust_b"],
+            "pod": ["op_procedure", "ip_elective", "op_procedure"],
+        }
+    )
+
+    # act
+    actual = mdl._functional_area_op_conversion(model_results)
+
+    # assert
+    expected = pd.Series(
+        [1, 1],
+        index=pd.MultiIndex.from_tuples(
+            [
+                ("op_procedures", "trust_a", "count"),
+                ("op_procedures", "trust_b", "count"),
+            ],
+            names=["functional_area", "sitetret", "measure"],
+        ),
+        name="value",
+    )
+
+    pd.testing.assert_series_equal(actual.sort_index(), expected.sort_index())
+
+
+@pytest.mark.unit
+def test_functional_area_sdec_conversion(mock_model):
+    # arrange
+    mdl = mock_model
+    model_results = pd.DataFrame(
+        {
+            "sitetret": ["trust_a", "trust_b", "trust_b"],
+            "pod": ["aae_type-05", "ip_elective", "aae_type-05"],
+        }
+    )
+
+    # act
+    actual = mdl._functional_area_sdec_conversion(model_results)
+
+    # assert
+    expected = pd.Series(
+        [1, 1],
+        index=pd.MultiIndex.from_tuples(
+            [
+                ("sdec_procedures", "trust_a", "count"),
+                ("sdec_procedures", "trust_b", "count"),
+            ],
+            names=["functional_area", "sitetret", "measure"],
+        ),
+        name="value",
+    )
+
+    pd.testing.assert_series_equal(actual.sort_index(), expected.sort_index())
 
 
 @pytest.mark.unit

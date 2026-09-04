@@ -97,6 +97,7 @@ class Model:
         # load the data. we only need some of the columns for the model, so just load what we need
         self._load_data(data_loader)
         self._load_strategies(data_loader)
+        self._load_functional_areas(data_loader)
         self._load_demog_factors(data_loader)
         self._load_inequalities_factors(data_loader)
         # create HSA object if it hasn't been passed in
@@ -154,6 +155,11 @@ class Model:
         """Load a set of strategies."""
         # to be implemented by the concrete classes
         self.strategies: dict[str, pd.DataFrame] = dict()
+
+    def _load_functional_areas(self, data_loader: Data) -> None:
+        """Load the functional areas."""
+        # to be implemented by the concrete classes
+        self._functional_areas: dict[str, pd.DataFrame] = dict()
 
     def _load_demog_factors(self, data_loader: Data) -> None:
         """Load the demographic factors.
@@ -478,15 +484,20 @@ class Model:
         Returns:
             A dictionary containing the aggregated results.
         """
-        model_results = self.process_results(model_iteration.get_model_results())
+        model_results = model_iteration.get_model_results()
+        processed_model_results = self.process_results(model_results)
 
         base_aggregations = {
-            "default": self.get_agg(model_results),
-            "sex+age_group": self.get_agg(model_results, "sex", "age_group"),
-            "age": self.get_agg(model_results, "age"),
+            "default": self.get_agg(processed_model_results),
+            "sex+age_group": self.get_agg(processed_model_results, "sex", "age_group"),
+            "age": self.get_agg(processed_model_results, "age"),
         }
 
-        return {**base_aggregations, **self.specific_aggregations(model_results)}
+        return {
+            **base_aggregations,
+            "functional_areas": self.functional_area_aggregations(model_results),
+            **self.specific_aggregations(processed_model_results),
+        }
 
     @staticmethod
     def process_results(data: pd.DataFrame) -> pd.DataFrame:
@@ -508,5 +519,16 @@ class Model:
 
         Returns:
             Dictionary containing the specific aggregations.
+        """
+        raise NotImplementedError()
+
+    def functional_area_aggregations(self, model_results: pd.DataFrame) -> pd.Series:
+        """Create aggregations based on functional areas.
+
+        Args:
+            model_results: The results of a model run.
+
+        Returns:
+            The functional area aggregations as a single pd.Series.
         """
         raise NotImplementedError()
