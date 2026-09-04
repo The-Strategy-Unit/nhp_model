@@ -66,7 +66,7 @@ def test_all_model_runs(model_results, result_key, dataframe_regression):
 
     actual_summarised = (
         actual.query("model_run > 0")
-        .groupby([i for i in actual if i not in ["model_run", "value"]])
+        .groupby([i for i in actual if i not in ["model_run", "value"]], dropna=False)
         .agg({"value": "mean"})
         .sort_index()
         .reset_index()

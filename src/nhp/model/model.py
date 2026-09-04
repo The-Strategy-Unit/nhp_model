@@ -136,9 +136,8 @@ class Model:
                 columns=self.measures,
                 index=pd.MultiIndex.from_frame(self.data[["pod", "sitetret"]]),
             )
-            .groupby(level=[0, 1])
+            .groupby(level=[0, 1], dropna=False, as_index=False)
             .sum()
-            .reset_index()
             .assign(change_factor="baseline", strategy="-")
         )
 
@@ -428,7 +427,8 @@ class Model:
         Returns:
             Aggregated results.
         """
-        return results.groupby([*self._aggregation_columns, *args, "measure"])["value"].sum()
+        agg_cols = [*self._aggregation_columns, *args, "measure"]
+        return results.groupby(agg_cols, dropna=False)["value"].sum()
 
     def save_results(self, model_iteration: ModelIteration, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model.

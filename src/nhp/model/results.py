@@ -32,7 +32,7 @@ def _complete_model_runs(
     """
     results = pd.concat(res)
     results: pd.DataFrame = results.groupby(
-        [i for i in results.columns if i != "value"], as_index=False
+        [i for i in results.columns if i != "value"], dropna=False, as_index=False
     )["value"].sum()
 
     cols = [i for i in results.columns if i != "model_run" if i != "value"]
@@ -207,7 +207,7 @@ def _patch_converted_sdec_activity(
                 default_sdec,
                 (
                     results_df.query("pod == 'aae_type-05'")
-                    .groupby(agg_cols)["value"]
+                    .groupby(agg_cols, dropna=False)["value"]
                     .sum()
                     .rename("a")
                 ),
@@ -225,6 +225,7 @@ def _patch_converted_sdec_activity(
         pd.concat([results_df, missing_sdec_activity], axis=0)
         .groupby(
             ["pod", "sitetret", "measure", column, "model_run"],
+            dropna=False,
             as_index=False,
         )
         .sum()

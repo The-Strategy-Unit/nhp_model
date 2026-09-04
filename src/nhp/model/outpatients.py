@@ -140,7 +140,11 @@ class OutpatientsModel(Model):
                     "tele_attendances": tele_conversion,
                 }
             )
-            .groupby(["pod", "sitetret", "change_factor", "strategy"], as_index=False)
+            .groupby(
+                ["pod", "sitetret", "change_factor", "strategy"],
+                dropna=False,
+                as_index=False,
+            )
             .sum()
             .query("attendances<0")
         )

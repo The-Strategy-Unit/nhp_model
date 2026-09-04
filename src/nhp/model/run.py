@@ -192,7 +192,7 @@ def run_single_model_run(
     step_counts = (
         model_results["step_counts"]
         .reset_index()
-        .groupby(["change_factor", "measure"], as_index=False)["value"]
+        .groupby(["change_factor", "measure"], dropna=False, as_index=False)["value"]
         .sum()
         .pivot_table(index="change_factor", columns="measure")
     )
@@ -204,7 +204,7 @@ def run_single_model_run(
     default_results = (
         model_results["default"]
         .reset_index()
-        .groupby(["pod", "measure"], as_index=False)
+        .groupby(["pod", "measure"], dropna=False, as_index=False)
         .agg({"value": "sum"})
         .pivot_table(index=["pod"], columns="measure")
         .fillna(0)

@@ -144,10 +144,9 @@ class ModelIteration:
         return pd.concat(
             [
                 pd.DataFrame(v.transpose(), columns=self.model.measures, index=idx)
-                .groupby(level=idx.names)
+                .groupby(level=idx.names, dropna=False, as_index=False)
                 .sum()
                 .assign(change_factor=k)
-                .reset_index()
                 for k, v in {
                     **dict(zip(factors.columns, param_simple_effects)),
                     term_name: diff,
@@ -231,7 +230,7 @@ class ModelIteration:
         sc_tc_df.loc[sc_tc_df["measure"] == "beddays", "value"] = sc_tc_df.loc[
             sc_tc_df["measure"] == "admissions", "value"
         ].tolist()
-        return sc_tc_df.groupby(step_counts.index.names)["value"].sum() * -1
+        return sc_tc_df.groupby(step_counts.index.names, dropna=False)["value"].sum() * -1
 
     def _step_counts_get_type_change_outpatients(self, step_counts):
         # get the outpatient conversion values
@@ -251,7 +250,7 @@ class ModelIteration:
         sc_tc_df["pod"] = "op_procedure"
         sc_tc_df["measure"] = "attendances"
 
-        return sc_tc_df.groupby(step_counts.index.names)["value"].sum() * -1
+        return sc_tc_df.groupby(step_counts.index.names, dropna=False)["value"].sum() * -1
 
     def _step_counts_get_type_change_sdec(self, step_counts):
         # get the sdec conversion values
@@ -274,7 +273,7 @@ class ModelIteration:
         sc_tc_df["pod"] = "aae_type-05"
         sc_tc_df["measure"] = "arrivals"
 
-        return sc_tc_df.groupby(step_counts.index.names)["value"].sum() * -1
+        return sc_tc_df.groupby(step_counts.index.names, dropna=False)["value"].sum() * -1
 
     def get_model_results(self):
         """Get the model results of a model run."""
