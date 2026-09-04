@@ -138,6 +138,7 @@ def test_model_init_sets_values(mocker, model_type):
 
     mocker.patch("nhp.model.model.Model._load_data")
     mocker.patch("nhp.model.model.Model._load_strategies")
+    mocker.patch("nhp.model.model.Model._load_functional_areas")
     mocker.patch("nhp.model.model.Model._load_demog_factors")
     mocker.patch("nhp.model.model.Model._load_inequalities_factors")
     mocker.patch("nhp.model.model.Model.generate_run_params")
@@ -154,6 +155,7 @@ def test_model_init_sets_values(mocker, model_type):
     data_mock.assert_not_called()
     mdl._load_data.assert_called_once_with(data_mock)  # type: ignore
     mdl._load_strategies.assert_called_once_with(data_mock)  # type: ignore
+    mdl._load_functional_areas.assert_called_once_with(data_mock)  # type: ignore
     mdl._load_demog_factors.assert_called_once_with(data_mock)  # type: ignore
     mdl._load_inequalities_factors.assert_called_once_with(data_mock)  # type: ignore
     assert mdl.hsa == "hsa"
@@ -178,6 +180,7 @@ def test_model_init_calls_generate_run_params(mocker):
 
     mocker.patch("nhp.model.model.Model._load_data")
     mocker.patch("nhp.model.model.Model._load_strategies")
+    mocker.patch("nhp.model.model.Model._load_functional_areas")
     mocker.patch("nhp.model.model.Model._load_demog_factors")
     mocker.patch("nhp.model.model.Model._load_inequalities_factors")
     mocker.patch("nhp.model.model.Model.generate_run_params", return_value="generated")
@@ -211,6 +214,7 @@ def test_model_init_sets_create_datetime(mocker):
 
     mocker.patch("nhp.model.model.Model._load_data")
     mocker.patch("nhp.model.model.Model._load_strategies")
+    mocker.patch("nhp.model.model.Model._load_functional_areas")
     mocker.patch("nhp.model.model.Model._load_demog_factors")
     mocker.patch("nhp.model.model.Model._load_inequalities_factors")
     mocker.patch("nhp.model.model.Model.generate_run_params")
@@ -235,6 +239,7 @@ def test_model_init_loads_params_if_string(mocker):
 
     mocker.patch("nhp.model.model.Model._load_data")
     mocker.patch("nhp.model.model.Model._load_strategies")
+    mocker.patch("nhp.model.model.Model._load_functional_areas")
     mocker.patch("nhp.model.model.Model._load_demog_factors")
     mocker.patch("nhp.model.model.Model._load_inequalities_factors")
     mocker.patch("nhp.model.model.Model.generate_run_params")
@@ -262,6 +267,7 @@ def test_model_init_initialises_hsa_if_none(mocker):
 
     mocker.patch("nhp.model.model.Model._load_data")
     mocker.patch("nhp.model.model.Model._load_strategies")
+    mocker.patch("nhp.model.model.Model._load_functional_areas")
     mocker.patch("nhp.model.model.Model._load_demog_factors")
     mocker.patch("nhp.model.model.Model._load_inequalities_factors")
     mocker.patch("nhp.model.model.Model.generate_run_params")
@@ -360,6 +366,17 @@ def test_load_strategies(mock_model):
     mock_model._load_strategies(None)
     # assert
     assert not mock_model.strategies
+
+
+@pytest.mark.unit
+def test_load_functional_areas(mock_model):
+    # arrange
+
+    # act
+    mock_model._load_functional_areas(None)
+
+    # assert
+    assert not mock_model._functional_areas
 
 
 # _load_demog_factors()
@@ -818,6 +835,7 @@ def test_aggregate(mock_model):
     mdl = mock_model
     mdl.process_results = Mock(return_value="processed_results")
     mdl.get_agg = Mock(return_value="agg")
+    mdl.functional_area_aggregations = Mock(return_value="functional_areas")
     mdl.specific_aggregations = Mock(return_value={"1": "agg", "2": "agg"})
 
     mi_mock = Mock()
@@ -834,12 +852,14 @@ def test_aggregate(mock_model):
         call("processed_results", "sex", "age_group"),
         call("processed_results", "age"),
     ]
+    mdl.functional_area_aggregations.assert_called_once_with("results")
     mdl.specific_aggregations.assert_called_once_with("processed_results")
 
     assert actual == {
         "default": "agg",
         "sex+age_group": "agg",
         "age": "agg",
+        "functional_areas": "functional_areas",
         "1": "agg",
         "2": "agg",
     }
@@ -915,3 +935,11 @@ def test_specific_aggregations(mock_model):
     # act & assert
     with pytest.raises(NotImplementedError):
         mock_model.specific_aggregations(None)
+
+
+@pytest.mark.unit
+def test_functional_area_aggregations(mock_model):
+    # arrange
+    # act & assert
+    with pytest.raises(NotImplementedError):
+        mock_model.functional_area_aggregations(None)

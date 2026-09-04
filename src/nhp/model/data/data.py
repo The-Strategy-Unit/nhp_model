@@ -36,6 +36,14 @@ class Data:
         """
         raise NotImplementedError()
 
+    def get_ip_functional_areas_wards(self) -> pd.DataFrame:
+        """Get the inpatients functional areas wards dataframe.
+
+        Returns:
+            The inpatients functional areas wards dataframe.
+        """
+        raise NotImplementedError()
+
     def get_op(self) -> pd.DataFrame:
         """Get the outpatients dataframe.
 

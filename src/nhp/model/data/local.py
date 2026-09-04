@@ -56,6 +56,14 @@ class Local(Data):
             for i in ["activity_avoidance", "efficiencies"]
         }
 
+    def get_ip_functional_areas_wards(self) -> pd.DataFrame:
+        """Get the inpatients functional areas wards dataframe.
+
+        Returns:
+            The inpatients functional areas wards dataframe.
+        """
+        return self._get_parquet("ip_functional_areas_wards")
+
     def get_op(self) -> pd.DataFrame:
         """Get the outpatients dataframe.
 
