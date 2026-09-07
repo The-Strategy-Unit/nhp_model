@@ -312,6 +312,7 @@ class InpatientsModel(Model):
                     "functional_area",
                     "sitetret",
                 ],
+                dropna=False,
                 as_index=False,
             )
             .agg(
@@ -394,27 +395,33 @@ class InpatientsModel(Model):
         ix = model_results["classpat"] == "-1"
         return (
             model_results[ix]
-            .groupby(["age", "age_group", "sex", "tretspef", "tretspef_grouped", "sitetret"])
+            .groupby(
+                ["age", "age_group", "sex", "tretspef", "tretspef_grouped", "sitetret"],
+                dropna=False,
+                as_index=False,
+            )
             .size()
-            .to_frame("attendances")
+            .rename(columns={"size": "attendances"})
             .assign(tele_attendances=0)
-            .reset_index()
         )
 
     def _save_results_get_sdec_converted(self, model_results: pd.DataFrame) -> pd.DataFrame:
         ix = model_results["classpat"] == "-3"
         return (
             model_results[ix]
-            .groupby(["age", "age_group", "sex", "sitetret"])
+            .groupby(
+                ["age", "age_group", "sex", "sitetret"],
+                dropna=False,
+                as_index=False,
+            )
             .size()
-            .to_frame("arrivals")
+            .rename(columns={"size": "arrivals"})
             .assign(
                 aedepttype="05",
                 attendance_category="1",
                 acuity="standard",
                 group="walk-in",
             )
-            .reset_index()
         )
 
     def _save_results_get_ip_rows(self, model_results: pd.DataFrame) -> pd.DataFrame:
@@ -453,7 +460,7 @@ class InpatientEfficiencies:
             .map(
                 self.strategies["strategy"]
                 .sample(frac=1, random_state=rng.bit_generator)
-                .groupby(level=0)
+                .groupby(level=0, dropna=False)
                 .head(1),
                 na_action="ignore",
             )
@@ -596,7 +603,11 @@ class InpatientEfficiencies:
             .loc[self.data.index.notna()]
             .reset_index()
             .rename(columns={"index": "strategy"})
-            .groupby(["pod", "sitetret", "strategy"], as_index=False)[["admissions", "beddays"]]
+            .groupby(
+                ["pod", "sitetret", "strategy"],
+                dropna=False,
+                as_index=False,
+            )[["admissions", "beddays"]]
             .sum()
             .assign(change_factor="efficiencies")
         )

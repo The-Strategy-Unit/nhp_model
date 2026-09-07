@@ -208,7 +208,9 @@ class HealthStatusAdjustmentInterpolated(HealthStatusAdjustment):
         self._load_activity_ages_lists()
 
     def _load_activity_ages_lists(self):
-        self._activity_ages_lists = self._activity_ages.groupby(level=[0, 1]).agg(list)
+        self._activity_ages_lists = self._activity_ages.groupby(level=[0, 1], dropna=False).agg(
+            list
+        )
 
     def _predict_activity(self, adjusted_ages):
         return pd.concat(
