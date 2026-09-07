@@ -176,6 +176,24 @@ class AaEModel(Model):
             "attendance_category": self.get_agg(model_results, "attendance_category"),
         }
 
+    def functional_area_aggregations(self, model_results: pd.DataFrame) -> pd.Series:
+        """Create aggregations based on functional areas.
+
+        Args:
+            model_results: The results of a model run.
+
+        Returns:
+            The functional area aggregations as a single pd.Series.
+        """
+        return pd.Series(
+            index=pd.MultiIndex.from_tuples(
+                [],
+                names=["functional_area", "sitetret", "measure"],
+            ),
+            dtype=float,
+            name="value",
+        )
+
     def calculate_avoided_activity(
         self, data: pd.DataFrame, data_resampled: pd.DataFrame
     ) -> pd.DataFrame:

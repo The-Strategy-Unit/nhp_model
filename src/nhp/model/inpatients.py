@@ -112,6 +112,11 @@ class InpatientsModel(Model):
             ]
         )
 
+    def _load_functional_areas(self, data_loader: Data) -> None:
+        self._functional_areas = {
+            "wards": data_loader.get_ip_functional_areas_wards().set_index("rn")
+        }
+
     def get_data_counts(self, data: pd.DataFrame) -> np.ndarray:
         """Get row counts of data.
 
@@ -262,6 +267,85 @@ class InpatientsModel(Model):
                 model_results[model_results["maternity_delivery_in_spell"]]
             ),
         }
+
+    def functional_area_aggregations(self, model_results: pd.DataFrame) -> pd.Series:
+        """Create aggregations based on functional areas.
+
+        Args:
+            model_results: The results of a model run.
+
+        Returns:
+            The functional area aggregations as a single pd.Series.
+        """
+        res = [
+            fn(model_results)
+            for fn in [
+                self._functional_area_wards,
+                self._functional_area_op_conversion,
+                self._functional_area_sdec_conversion,
+            ]
+        ]
+        return pd.concat(res)
+
+    def _functional_area_wards(self, model_results: pd.DataFrame) -> pd.Series:
+        los_df = model_results[["rn", "speldur", "pod"]].set_index("rn")
+
+        # split out op/sdec converted activity, we will not join to these rows
+        op_sdec_rows = los_df["pod"].isin(["op_procedure", "aae_type-05"])
+
+        functional_areas = self._functional_areas["wards"].merge(
+            los_df[~op_sdec_rows], left_index=True, right_index=True
+        )
+        functional_areas["group_los"] = functional_areas["speldur"] * functional_areas["group_pcnt"]
+
+        # remap daycase rows
+        ix = (functional_areas["pod"] == "ip_elective_daycase") & ~functional_areas[
+            "functional_area"
+        ].str.contains("daycase")
+        functional_areas.loc[ix, "functional_area"] = functional_areas.loc[
+            ix, "functional_area"
+        ].replace(r"^(paediatric|adult)_[^_]*_([^_]*)_.*$", r"\1_daycase_\2", regex=True)
+
+        return (
+            functional_areas.groupby(
+                [
+                    "functional_area",
+                    "sitetret",
+                ],
+                as_index=False,
+            )
+            .agg(
+                duration_days=("group_los", "sum"),
+                count=("episodes", "sum"),
+                zero_length_episodes=("zero_length_episodes", "sum"),
+            )
+            .melt(id_vars=["functional_area", "sitetret"], var_name="measure", value_name="value")
+            .set_index(["functional_area", "sitetret", "measure"])["value"]
+        )
+
+    def _functional_area_op_conversion(self, model_results: pd.DataFrame) -> pd.Series:
+        op_df = (
+            model_results.query("pod == 'op_procedure'")
+            .value_counts("sitetret")
+            .rename("value")
+            .reset_index()
+        )
+        op_df["functional_area"] = "op_procedures"
+        op_df["measure"] = "count"
+
+        return op_df.set_index(["functional_area", "sitetret", "measure"])["value"]
+
+    def _functional_area_sdec_conversion(self, model_results: pd.DataFrame) -> pd.Series:
+        sdec_df = (
+            model_results.query("pod == 'aae_type-05'")
+            .value_counts("sitetret")
+            .rename("value")
+            .reset_index()
+        )
+        sdec_df["functional_area"] = "sdec_procedures"
+        sdec_df["measure"] = "count"
+
+        return sdec_df.set_index(["functional_area", "sitetret", "measure"])["value"]
 
     def calculate_avoided_activity(
         self, data: pd.DataFrame, data_resampled: pd.DataFrame

@@ -2,6 +2,7 @@ aae:
 - default
 - sex+age_group
 - age
+- functional_areas
 - acuity
 - attendance_category
 - avoided_activity
@@ -10,6 +11,7 @@ ip:
 - default
 - sex+age_group
 - age
+- functional_areas
 - sex+tretspef_grouped
 - tretspef
 - tretspef+los_group
@@ -20,6 +22,7 @@ op:
 - default
 - sex+age_group
 - age
+- functional_areas
 - sex+tretspef_grouped
 - tretspef
 - avoided_activity

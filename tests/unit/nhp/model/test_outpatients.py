@@ -313,6 +313,20 @@ def test_specific_aggregations(mocker, mock_model):
 
 
 @pytest.mark.unit
+def test_functional_area_aggregations(mock_model):
+    # arrange
+    mdl = mock_model
+
+    # act
+    actual = mdl.functional_area_aggregations(pd.DataFrame())
+
+    # assert
+    assert actual.empty
+    assert actual.name == "value"
+    assert actual.index.names == ["functional_area", "sitetret", "measure"]
+
+
+@pytest.mark.unit
 def test_save_results(mocker, mock_model):
     """Test that it correctly saves the results."""
 

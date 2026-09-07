@@ -250,6 +250,24 @@ class OutpatientsModel(Model):
             "tretspef": self.get_agg(model_results, "tretspef"),
         }
 
+    def functional_area_aggregations(self, model_results: pd.DataFrame) -> pd.Series:
+        """Create aggregations based on functional areas.
+
+        Args:
+            model_results: The results of a model run.
+
+        Returns:
+            The functional area aggregations as a single pd.Series.
+        """
+        return pd.Series(
+            index=pd.MultiIndex.from_tuples(
+                [],
+                names=["functional_area", "sitetret", "measure"],
+            ),
+            dtype=float,
+            name="value",
+        )
+
     def save_results(self, model_iteration: ModelIteration, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model.
 
