@@ -316,14 +316,33 @@ def test_specific_aggregations(mocker, mock_model):
 def test_functional_area_aggregations(mock_model):
     # arrange
     mdl = mock_model
+    model_results = pd.DataFrame(
+        {
+            "group": ["first", "followup", "procedure", "first"],
+            "sitetret": ["a"] * 4,
+            "attendances": [10, 20, 30, 40],
+            "tele_attendances": [1, 2, 0, 3],
+        }
+    )
+    expected = pd.Series(
+        [50, 20, 30, 6],
+        name="value",
+        index=pd.MultiIndex.from_tuples(
+            [
+                ("op_first_attendances", "a", "count"),
+                ("op_follow_up_attendances", "a", "count"),
+                ("op_procedures", "a", "count"),
+                ("op_virtual_attendances", "a", "count"),
+            ],
+            names=["functional_area", "sitetret", "measure"],
+        ),
+    )
 
     # act
-    actual = mdl.functional_area_aggregations(pd.DataFrame())
+    actual = mdl.functional_area_aggregations(model_results)
 
     # assert
-    assert actual.empty
-    assert actual.name == "value"
-    assert actual.index.names == ["functional_area", "sitetret", "measure"]
+    pd.testing.assert_series_equal(actual, expected)
 
 
 @pytest.mark.unit
