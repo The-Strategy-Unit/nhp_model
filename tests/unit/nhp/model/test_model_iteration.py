@@ -306,12 +306,12 @@ def test_get_step_counts(mock_model_iteration):
     # arrange
     step_counts = pd.DataFrame(
         {
-            "pod": ["a"] * 4 + ["b"] * 4,
-            "sitetret": (["a"] * 2 + ["b"] * 2) * 2,
-            "change_factor": ["efficiencies"] * 8,
-            "strategy": ["a", "b"] * 4,
-            "x": range(8),
-            "y": range(8, 16),
+            "pod": ["a"] * 6 + ["b"] * 6,
+            "sitetret": (["a"] * 2 + ["b"] * 2 + [pd.NA] * 2) * 2,
+            "change_factor": ["efficiencies"] * 12,
+            "strategy": ["a", "b"] * 6,
+            "x": range(12),
+            "y": range(12, 24),
         }
     )
 
@@ -326,21 +326,29 @@ def test_get_step_counts(mock_model_iteration):
 
     expected = {
         ("ip", "a", "a", "efficiencies", "a", "x"): 0,
-        ("ip", "a", "a", "efficiencies", "a", "y"): 8,
+        ("ip", "a", "a", "efficiencies", "a", "y"): 12,
         ("ip", "a", "a", "efficiencies", "b", "x"): 1,
-        ("ip", "a", "a", "efficiencies", "b", "y"): 9,
-        ("ip", "a", "b", "efficiencies", "a", "x"): 4,
-        ("ip", "a", "b", "efficiencies", "a", "y"): 12,
-        ("ip", "a", "b", "efficiencies", "b", "x"): 5,
-        ("ip", "a", "b", "efficiencies", "b", "y"): 13,
+        ("ip", "a", "a", "efficiencies", "b", "y"): 13,
+        ("ip", "a", "b", "efficiencies", "a", "x"): 6,
+        ("ip", "a", "b", "efficiencies", "a", "y"): 18,
+        ("ip", "a", "b", "efficiencies", "b", "x"): 7,
+        ("ip", "a", "b", "efficiencies", "b", "y"): 19,
         ("ip", "b", "a", "efficiencies", "a", "x"): 2,
-        ("ip", "b", "a", "efficiencies", "a", "y"): 10,
+        ("ip", "b", "a", "efficiencies", "a", "y"): 14,
         ("ip", "b", "a", "efficiencies", "b", "x"): 3,
-        ("ip", "b", "a", "efficiencies", "b", "y"): 11,
-        ("ip", "b", "b", "efficiencies", "a", "x"): 6,
-        ("ip", "b", "b", "efficiencies", "a", "y"): 14,
-        ("ip", "b", "b", "efficiencies", "b", "x"): 7,
-        ("ip", "b", "b", "efficiencies", "b", "y"): 15,
+        ("ip", "b", "a", "efficiencies", "b", "y"): 15,
+        ("ip", "b", "b", "efficiencies", "a", "x"): 8,
+        ("ip", "b", "b", "efficiencies", "a", "y"): 20,
+        ("ip", "b", "b", "efficiencies", "b", "x"): 9,
+        ("ip", "b", "b", "efficiencies", "b", "y"): 21,
+        ("ip", "unknown", "a", "efficiencies", "a", "x"): 4,
+        ("ip", "unknown", "a", "efficiencies", "a", "y"): 16,
+        ("ip", "unknown", "a", "efficiencies", "b", "x"): 5,
+        ("ip", "unknown", "a", "efficiencies", "b", "y"): 17,
+        ("ip", "unknown", "b", "efficiencies", "a", "x"): 10,
+        ("ip", "unknown", "b", "efficiencies", "a", "y"): 22,
+        ("ip", "unknown", "b", "efficiencies", "b", "x"): 11,
+        ("ip", "unknown", "b", "efficiencies", "b", "y"): 23,
     }
 
     # act

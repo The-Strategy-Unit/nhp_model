@@ -186,7 +186,10 @@ class ModelIteration:
                 [i for i in self.step_counts.columns if i not in self.model.measures],
                 var_name="measure",
             )
-            .assign(activity_type=self.model.model_type)
+            .assign(
+                activity_type=self.model.model_type,
+                sitetret=lambda x: x["sitetret"].fillna("unknown"),
+            )
             .set_index(
                 [
                     "activity_type",
