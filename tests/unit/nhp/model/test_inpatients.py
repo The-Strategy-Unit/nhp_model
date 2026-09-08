@@ -102,7 +102,7 @@ def test_load_functional_areas(mock_model):
     # arrange
     mdl = mock_model
     data_loader = Mock()
-    data_loader.get_ip_functional_areas_wards.return_value = pd.DataFrame(
+    data_loader.get_ip_functional_areas_beds.return_value = pd.DataFrame(
         {
             "rn": [1, 2],
             "sitetret": ["trust", "trust"],
@@ -115,9 +115,9 @@ def test_load_functional_areas(mock_model):
     mdl._load_functional_areas(data_loader)
 
     # assert
-    assert "wards" in mdl._functional_areas
-    assert mdl._functional_areas["wards"].index.tolist() == [1, 2]
-    data_loader.get_ip_functional_areas_wards.assert_called_once_with()
+    assert "beds" in mdl._functional_areas
+    assert mdl._functional_areas["beds"].index.tolist() == [1, 2]
+    data_loader.get_ip_functional_areas_beds.assert_called_once_with()
 
 
 @pytest.mark.unit
@@ -572,11 +572,11 @@ def test_specific_aggregations(mocker, mock_model):
 def test_functional_area_aggregations(mocker, mock_model):
     # arrange
     mdl = mock_model
-    wards = pd.Series([1], index=pd.MultiIndex.from_tuples([("w", "a", "count")]))
+    beds = pd.Series([1], index=pd.MultiIndex.from_tuples([("w", "a", "count")]))
     op = pd.Series([2], index=pd.MultiIndex.from_tuples([("o", "b", "count")]))
     sdec = pd.Series([3], index=pd.MultiIndex.from_tuples([("s", "c", "count")]))
 
-    wards_mock = mocker.patch.object(mdl, "_functional_area_wards", return_value=wards)
+    beds_mock = mocker.patch.object(mdl, "_functional_area_beds", return_value=beds)
     op_mock = mocker.patch.object(mdl, "_functional_area_op_conversion", return_value=op)
     sdec_mock = mocker.patch.object(mdl, "_functional_area_sdec_conversion", return_value=sdec)
 
@@ -586,18 +586,18 @@ def test_functional_area_aggregations(mocker, mock_model):
     actual = mdl.functional_area_aggregations(model_results)
 
     # assert
-    wards_mock.assert_called_once_with(model_results)
+    beds_mock.assert_called_once_with(model_results)
     op_mock.assert_called_once_with(model_results)
     sdec_mock.assert_called_once_with(model_results)
     assert actual.tolist() == [1, 2, 3]
 
 
 @pytest.mark.unit
-def test_functional_area_wards(mock_model):
+def test_functional_area_beds(mock_model):
     # arrange
     mdl = mock_model
     mdl._functional_areas = {
-        "wards": pd.DataFrame(
+        "beds": pd.DataFrame(
             {
                 "rn": [1, 2, 3],
                 "sitetret": ["trust", "trust", "trust"],
@@ -622,7 +622,7 @@ def test_functional_area_wards(mock_model):
     )
 
     # act
-    actual = mdl._functional_area_wards(model_results)
+    actual = mdl._functional_area_beds(model_results)
 
     # assert
     expected = pd.Series(

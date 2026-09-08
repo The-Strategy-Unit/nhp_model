@@ -20,10 +20,10 @@ def test_get_ip_strategies():
 
 
 @pytest.mark.unit
-def test_get_ip_functional_areas_wards():
+def test_get_ip_functional_areas_beds():
     d = Data()
     with pytest.raises(NotImplementedError):
-        d.get_ip_functional_areas_wards()
+        d.get_ip_functional_areas_beds()
 
 
 @pytest.mark.unit

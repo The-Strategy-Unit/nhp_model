@@ -114,7 +114,7 @@ class InpatientsModel(Model):
 
     def _load_functional_areas(self, data_loader: Data) -> None:
         self._functional_areas = {
-            "wards": data_loader.get_ip_functional_areas_wards().set_index("rn")
+            "beds": data_loader.get_ip_functional_areas_beds().set_index("rn")
         }
 
     def get_data_counts(self, data: pd.DataFrame) -> np.ndarray:
@@ -280,20 +280,20 @@ class InpatientsModel(Model):
         res = [
             fn(model_results)
             for fn in [
-                self._functional_area_wards,
+                self._functional_area_beds,
                 self._functional_area_op_conversion,
                 self._functional_area_sdec_conversion,
             ]
         ]
         return pd.concat(res)
 
-    def _functional_area_wards(self, model_results: pd.DataFrame) -> pd.Series:
+    def _functional_area_beds(self, model_results: pd.DataFrame) -> pd.Series:
         los_df = model_results[["rn", "speldur", "pod"]].set_index("rn")
 
         # split out op/sdec converted activity, we will not join to these rows
         op_sdec_rows = los_df["pod"].isin(["op_procedure", "aae_type-05"])
 
-        functional_areas = self._functional_areas["wards"].merge(
+        functional_areas = self._functional_areas["beds"].merge(
             los_df[~op_sdec_rows], left_index=True, right_index=True
         )
         functional_areas["group_los"] = functional_areas["speldur"] * functional_areas["group_pcnt"]
