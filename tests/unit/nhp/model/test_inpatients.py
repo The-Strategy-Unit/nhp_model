@@ -111,6 +111,15 @@ def test_load_functional_areas(mock_model):
         }
     )
 
+    data_loader.get_ip_functional_areas_procedures.return_value = pd.DataFrame(
+        {
+            "rn": [1, 2],
+            "sitetret": ["trust", "trust"],
+            "grouping": ["adult_medical", "adult_surgical"],
+            "group_pcnt": [0.5, 0.3],
+        }
+    )
+
     # act
     mdl._load_functional_areas(data_loader)
 
@@ -118,6 +127,10 @@ def test_load_functional_areas(mock_model):
     assert "beds" in mdl._functional_areas
     assert mdl._functional_areas["beds"].index.tolist() == [1, 2]
     data_loader.get_ip_functional_areas_beds.assert_called_once_with()
+
+    assert "procedures" in mdl._functional_areas
+    assert mdl._functional_areas["procedures"].index.tolist() == [1, 2]
+    data_loader.get_ip_functional_areas_procedures.assert_called_once_with()
 
 
 @pytest.mark.unit

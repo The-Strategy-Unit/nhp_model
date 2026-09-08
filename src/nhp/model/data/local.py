@@ -64,6 +64,14 @@ class Local(Data):
         """
         return self._get_parquet("ip_functional_areas_beds")
 
+    def get_ip_functional_areas_procedures(self) -> pd.DataFrame:
+        """Get the inpatients functional areas procedures dataframe.
+
+        Returns:
+            The inpatients functional areas procedures dataframe.
+        """
+        return self._get_parquet("ip_functional_areas_procedures")
+
     def get_op(self) -> pd.DataFrame:
         """Get the outpatients dataframe.
 

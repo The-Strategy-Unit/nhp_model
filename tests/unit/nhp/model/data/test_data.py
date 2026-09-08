@@ -27,6 +27,13 @@ def test_get_ip_functional_areas_beds():
 
 
 @pytest.mark.unit
+def test_get_ip_functional_areas_procedures():
+    d = Data()
+    with pytest.raises(NotImplementedError):
+        d.get_ip_functional_areas_procedures()
+
+
+@pytest.mark.unit
 def test_get_op():
     d = Data()
     with pytest.raises(NotImplementedError):

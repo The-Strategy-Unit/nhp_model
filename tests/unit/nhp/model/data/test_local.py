@@ -88,6 +88,20 @@ def test_get_ip_functional_areas_beds(mocker):
 
 
 @pytest.mark.unit
+def test_get_ip_functional_areas_procedures(mocker):
+    # arrange
+    m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
+    d = Local("data", 2019, "synthetic")
+
+    # act
+    actual = d.get_ip_functional_areas_procedures()
+
+    # assert
+    assert actual == "data"
+    m.assert_called_once_with("ip_functional_areas_procedures")
+
+
+@pytest.mark.unit
 def test_get_op(mocker):
     # arrange
     op_data = pd.DataFrame({"col_1": [1, 2], "col_2": [3, 4], "index": [5, 6]}, index=[2, 1])

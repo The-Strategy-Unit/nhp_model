@@ -114,7 +114,8 @@ class InpatientsModel(Model):
 
     def _load_functional_areas(self, data_loader: Data) -> None:
         self._functional_areas = {
-            "beds": data_loader.get_ip_functional_areas_beds().set_index("rn")
+            "beds": data_loader.get_ip_functional_areas_beds().set_index("rn"),
+            "procedures": data_loader.get_ip_functional_areas_procedures().set_index("rn"),
         }
 
     def get_data_counts(self, data: pd.DataFrame) -> np.ndarray:
