@@ -81,7 +81,7 @@ def test_run_model(mocker):
 @pytest.mark.unit
 def test_noop_progress_callback():
     # arrange, act & assert
-    assert not noop_progress_callback("a")("b")
+    assert noop_progress_callback("a")("b") is None
 
 
 @pytest.mark.unit
