@@ -263,9 +263,10 @@ class OutpatientsModel(Model):
         Returns:
             The functional area aggregations as a single pd.Series.
         """
+        model_results["sitetret"] = model_results["sitetret"].fillna("unknown")
+
         face_to_face_attendances = (
-            model_results.assign(sitetret=lambda x: x["sitetret"].fillna("unknown"))
-            .groupby(["group", "sitetret"], as_index=False, dropna=False)
+            model_results.groupby(["group", "sitetret"], as_index=False, dropna=False)
             .agg(value=("attendances", "sum"))
             .assign(
                 functional_area=lambda x: x["group"].map(
