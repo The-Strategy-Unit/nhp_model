@@ -588,10 +588,14 @@ def test_functional_area_aggregations(mocker, mock_model):
     beds = pd.Series([1], index=pd.MultiIndex.from_tuples([("w", "a", "count")]))
     op = pd.Series([2], index=pd.MultiIndex.from_tuples([("o", "b", "count")]))
     sdec = pd.Series([3], index=pd.MultiIndex.from_tuples([("s", "c", "count")]))
+    proc = pd.Series([4], index=pd.MultiIndex.from_tuples([("p", "d", "count")]))
 
     beds_mock = mocker.patch.object(mdl, "_functional_area_beds", return_value=beds)
     op_mock = mocker.patch.object(mdl, "_functional_area_op_conversion", return_value=op)
     sdec_mock = mocker.patch.object(mdl, "_functional_area_sdec_conversion", return_value=sdec)
+    proc_mock = mocker.patch.object(
+        mdl, "_functional_area_procedures_conversion", return_value=proc
+    )
 
     model_results = pd.DataFrame({"rn": [1]})
 
@@ -602,7 +606,51 @@ def test_functional_area_aggregations(mocker, mock_model):
     beds_mock.assert_called_once_with(model_results)
     op_mock.assert_called_once_with(model_results)
     sdec_mock.assert_called_once_with(model_results)
-    assert actual.tolist() == [1, 2, 3]
+    proc_mock.assert_called_once_with(model_results)
+    assert actual.tolist() == [1, 2, 3, 4]
+
+
+@pytest.mark.unit
+def test_functional_area_procedures_conversion(mock_model):
+    # arrange
+    mdl = mock_model
+    mdl._functional_areas = {
+        "procedures": pd.DataFrame(
+            {
+                "rn": [1, 1, 2, 3],
+                "sitetret": ["trust", np.nan, "trust", np.nan],
+                "functional_area": [
+                    "adult_medical_general_acute",
+                    "adult_medical_general_acute",
+                    "adult_surgical_general",
+                    "adult_surgical_general",
+                ],
+                "count": [6, 4, 3, 2],
+            }
+        ).set_index("rn")
+    }
+
+    model_results = pd.DataFrame({"rn": [1, 2, 3, 4]})
+
+    expected = pd.Series(
+        [6, 4, 3, 2],
+        index=pd.MultiIndex.from_tuples(
+            [
+                ("count", "adult_medical_general_acute", "trust"),
+                ("count", "adult_medical_general_acute", "unknown"),
+                ("count", "adult_surgical_general", "trust"),
+                ("count", "adult_surgical_general", "unknown"),
+            ],
+            names=["measure", "functional_area", "sitetret"],
+        ),
+        name="value",
+    )
+
+    # act
+    actual = mdl._functional_area_procedures_conversion(model_results).sort_index()
+
+    # assert
+    pd.testing.assert_series_equal(actual, expected)
 
 
 @pytest.mark.unit
@@ -642,14 +690,14 @@ def test_functional_area_beds(mock_model):
         [2.0, 3.0, 2.0, 1.0, 1.0, 0.0],
         index=pd.MultiIndex.from_tuples(
             [
-                ("adult_daycase_general", "trust", "duration_days"),
-                ("adult_medical_general_acute", "trust", "duration_days"),
-                ("adult_daycase_general", "trust", "count"),
-                ("adult_medical_general_acute", "trust", "count"),
-                ("adult_daycase_general", "trust", "zero_length_episodes"),
-                ("adult_medical_general_acute", "trust", "zero_length_episodes"),
+                ("duration_days", "adult_daycase_general", "trust"),
+                ("duration_days", "adult_medical_general_acute", "trust"),
+                ("count", "adult_daycase_general", "trust"),
+                ("count", "adult_medical_general_acute", "trust"),
+                ("zero_length_episodes", "adult_daycase_general", "trust"),
+                ("zero_length_episodes", "adult_medical_general_acute", "trust"),
             ],
-            names=["functional_area", "sitetret", "measure"],
+            names=["measure", "functional_area", "sitetret"],
         ),
         name="value",
     )
@@ -676,10 +724,10 @@ def test_functional_area_op_conversion(mock_model):
         [1, 1],
         index=pd.MultiIndex.from_tuples(
             [
-                ("op_procedures", "trust_a", "count"),
-                ("op_procedures", "trust_b", "count"),
+                ("count", "op_procedures", "trust_a"),
+                ("count", "op_procedures", "trust_b"),
             ],
-            names=["functional_area", "sitetret", "measure"],
+            names=["measure", "functional_area", "sitetret"],
         ),
         name="value",
     )
@@ -706,10 +754,10 @@ def test_functional_area_sdec_conversion(mock_model):
         [1, 1],
         index=pd.MultiIndex.from_tuples(
             [
-                ("sdec_procedures", "trust_a", "count"),
-                ("sdec_procedures", "trust_b", "count"),
+                ("count", "sdec_procedures", "trust_a"),
+                ("count", "sdec_procedures", "trust_b"),
             ],
-            names=["functional_area", "sitetret", "measure"],
+            names=["measure", "functional_area", "sitetret"],
         ),
         name="value",
     )

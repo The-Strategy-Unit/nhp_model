@@ -211,7 +211,7 @@ class AaEModel(Model):
         return (
             model_results.assign(measure="count")
             .assign(sitetret=lambda x: x["sitetret"].fillna("unknown"))
-            .groupby(["functional_area", "sitetret", "measure"], dropna=False)["arrivals"]
+            .groupby(["measure", "functional_area", "sitetret"], dropna=False)["arrivals"]
             .sum()
             .rename("value")
         )
