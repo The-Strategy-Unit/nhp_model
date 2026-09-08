@@ -263,14 +263,32 @@ class OutpatientsModel(Model):
         Returns:
             The functional area aggregations as a single pd.Series.
         """
-        return pd.Series(
-            index=pd.MultiIndex.from_tuples(
-                [],
-                names=["functional_area", "sitetret", "measure"],
-            ),
-            dtype=float,
-            name="value",
+        model_results["sitetret"] = model_results["sitetret"].fillna("unknown")
+
+        face_to_face_attendances = (
+            model_results.groupby(["group", "sitetret"], as_index=False, dropna=False)
+            .agg(value=("attendances", "sum"))
+            .assign(
+                functional_area=lambda x: x["group"].map(
+                    {
+                        "first": "op_first_attendances",
+                        "followup": "op_follow_up_attendances",
+                        "procedure": "op_procedures",
+                    }
+                ),
+                measure="count",
+            )
+            .set_index(["functional_area", "sitetret", "measure"])["value"]
         )
+
+        virtual_attendances = (
+            model_results.groupby(["sitetret"], as_index=False, dropna=False)
+            .agg(value=("tele_attendances", "sum"))
+            .assign(functional_area="op_virtual_attendances", measure="count")
+            .set_index(["functional_area", "sitetret", "measure"])["value"]
+        )
+
+        return pd.concat([face_to_face_attendances, virtual_attendances])
 
     def save_results(self, model_iteration: ModelIteration, path_fn: Callable[[str], str]) -> None:
         """Save the results of running the model.

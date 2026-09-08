@@ -185,13 +185,35 @@ class AaEModel(Model):
         Returns:
             The functional area aggregations as a single pd.Series.
         """
-        return pd.Series(
-            index=pd.MultiIndex.from_tuples(
-                [],
-                names=["functional_area", "sitetret", "measure"],
-            ),
-            dtype=float,
-            name="value",
+        # copy model results to avoid modifying the original DataFrame
+        model_results = model_results.copy()
+
+        # classifications
+        ADULTS_AGE = 18
+        is_paeds = model_results["age"] < ADULTS_AGE
+        is_adults = ~is_paeds
+        is_resus = model_results["acuity"] == "immediate-resuscitation"
+        is_majors = model_results["acuity"].isin(["urgent", "very-urgent"])
+        is_minors = ~is_majors & ~is_resus
+        is_sdec = model_results["aedepttype"] == "05"
+
+        # adult/paediatric major/minor attendances
+        model_results.loc[is_paeds & is_majors, "functional_area"] = "paediatric_major_attendances"
+        model_results.loc[is_paeds & is_minors, "functional_area"] = "paediatric_minor_attendances"
+        model_results.loc[is_adults & is_majors, "functional_area"] = "adult_major_attendances"
+        model_results.loc[is_adults & is_minors, "functional_area"] = "adult_minor_attendances"
+
+        # handle sdec and resus after adult/paediatric major/minor attendances
+        model_results.loc[is_sdec, "functional_area"] = "sdec_attendances"
+        model_results.loc[~is_sdec & is_resus, "functional_area"] = "resus_attendances"
+
+        # return
+        return (
+            model_results.assign(measure="count")
+            .assign(sitetret=lambda x: x["sitetret"].fillna("unknown"))
+            .groupby(["functional_area", "sitetret", "measure"], dropna=False)["arrivals"]
+            .sum()
+            .rename("value")
         )
 
     def calculate_avoided_activity(
