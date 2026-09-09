@@ -284,7 +284,7 @@ class InpatientsModel(Model):
                 self._functional_area_beds,
                 self._functional_area_op_conversion,
                 self._functional_area_sdec_conversion,
-                self._functional_area_procedures_conversion,
+                self._functional_area_procedures,
             ]
         ]
         return pd.concat(res)
@@ -350,14 +350,14 @@ class InpatientsModel(Model):
 
         return sdec_df.set_index(["measure", "functional_area", "sitetret"])["value"]
 
-    def _functional_area_procedures_conversion(self, model_results: pd.DataFrame) -> pd.Series:
+    def _functional_area_procedures(self, model_results: pd.DataFrame) -> pd.Series:
         df = model_results[["rn"]].merge(
             self._functional_areas["procedures"], left_on=["rn"], right_index=True
         )
 
         df["sitetret"] = df["sitetret"].fillna("unknown")
 
-        df["measure"] = "count"
+        df["measure"] = "procedures"
         return (
             df.groupby(["measure", "functional_area", "sitetret"], dropna=False)["count"]
             .sum()

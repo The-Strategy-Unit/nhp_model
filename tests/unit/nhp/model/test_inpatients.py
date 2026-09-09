@@ -593,9 +593,7 @@ def test_functional_area_aggregations(mocker, mock_model):
     beds_mock = mocker.patch.object(mdl, "_functional_area_beds", return_value=beds)
     op_mock = mocker.patch.object(mdl, "_functional_area_op_conversion", return_value=op)
     sdec_mock = mocker.patch.object(mdl, "_functional_area_sdec_conversion", return_value=sdec)
-    proc_mock = mocker.patch.object(
-        mdl, "_functional_area_procedures_conversion", return_value=proc
-    )
+    proc_mock = mocker.patch.object(mdl, "_functional_area_procedures", return_value=proc)
 
     model_results = pd.DataFrame({"rn": [1]})
 
@@ -611,7 +609,7 @@ def test_functional_area_aggregations(mocker, mock_model):
 
 
 @pytest.mark.unit
-def test_functional_area_procedures_conversion(mock_model):
+def test_functional_area_procedures(mock_model):
     # arrange
     mdl = mock_model
     mdl._functional_areas = {
@@ -636,10 +634,10 @@ def test_functional_area_procedures_conversion(mock_model):
         [6, 4, 3, 2],
         index=pd.MultiIndex.from_tuples(
             [
-                ("count", "adult_medical_general_acute", "trust"),
-                ("count", "adult_medical_general_acute", "unknown"),
-                ("count", "adult_surgical_general", "trust"),
-                ("count", "adult_surgical_general", "unknown"),
+                ("procedures", "adult_medical_general_acute", "trust"),
+                ("procedures", "adult_medical_general_acute", "unknown"),
+                ("procedures", "adult_surgical_general", "trust"),
+                ("procedures", "adult_surgical_general", "unknown"),
             ],
             names=["measure", "functional_area", "sitetret"],
         ),
@@ -647,7 +645,7 @@ def test_functional_area_procedures_conversion(mock_model):
     )
 
     # act
-    actual = mdl._functional_area_procedures_conversion(model_results).sort_index()
+    actual = mdl._functional_area_procedures(model_results).sort_index()
 
     # assert
     pd.testing.assert_series_equal(actual, expected)
