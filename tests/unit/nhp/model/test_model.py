@@ -414,12 +414,12 @@ def test_demog_factors_loads_correctly(mock_model, year, expected_demog, expecte
     )
     data_loader.get_birth_factors.return_value = pd.DataFrame(
         {
-            "variant": ["a"] * 5 + ["b"] * 5,
-            "age": list(range(1, 6)) * 2,
-            "sex": [1] * 10,
-            "2018": list(range(1, 11)),
-            "2019": list(range(11, 21)),
-            "2020": list(range(21, 31)),
+            "variant": ["a"] * 5 + ["b"] * 5 + ["a", "a", "b", "b"],
+            "age": list(range(1, 6)) * 2 + [1, 5, 1, 5],
+            "sex": [1] * 10 + [2] * 4,
+            "2018": list(range(1, 15)),
+            "2019": list(range(11, 25)),
+            "2020": list(range(21, 35)),
         }
     )
     mdl = mock_model
@@ -430,10 +430,59 @@ def test_demog_factors_loads_correctly(mock_model, year, expected_demog, expecte
 
     # assert
     assert np.equal(mdl.demog_factors["2020"], expected_demog).all()
-    assert np.equal(mdl.birth_factors["2020"], expected_birth).all()
+    assert np.equal(
+        mdl.birth_factors.loc[(slice(None), slice(1, 5), 1), "2020"].to_numpy(),
+        expected_birth,
+    ).all()
 
     data_loader.get_demographic_factors.assert_called_once_with()
     data_loader.get_birth_factors.assert_called_once_with()
+
+
+@pytest.mark.unit
+def test_birth_factors_fill_missing_values(mock_model):
+    """Test that missing birth-factor rows are completed from the per-variant totals."""
+    # arrange
+    data_loader = Mock()
+    df = pd.DataFrame(
+        {
+            "variant": ["a"] * 30 + ["b"] * 30,
+            "age": list(range(15, 45)) * 2,
+            "sex": [2] * 60,
+            "2020": list(range(1, 61)),
+            "2021": list(range(11, 71)),
+            "2022": list(range(21, 81)),
+        }
+    )
+
+    data_loader.get_demographic_factors.return_value = df
+    data_loader.get_birth_factors.return_value = df
+
+    mdl = mock_model
+    mdl.params["start_year"] = 2020
+    mdl.params["end_year"] = 2022
+
+    # act
+    mdl._load_demog_factors(data_loader)
+
+    # assert
+    assert mdl.birth_factors.loc[("a", 0)].to_dict() == {
+        "2021": {1: 1.6451612903225807, 2: 1.6451612903225807},
+        "2022": {1: 2.2903225806451615, 2: 2.2903225806451615},
+    }
+    assert mdl.birth_factors.loc[("b", 0)].to_dict() == {
+        "2021": {1: 1.2197802197802199, 2: 1.2197802197802199},
+        "2022": {1: 1.4395604395604396, 2: 1.4395604395604396},
+    }
+
+    assert mdl.birth_factors.loc[("a", 55)].to_dict() == {
+        "2021": {2: 1.3333333333333333},
+        "2022": {2: 1.6666666666666667},
+    }
+    assert mdl.birth_factors.loc[("b", 55)].to_dict() == {
+        "2021": {2: 1.1666666666666667},
+        "2022": {2: 1.3333333333333333},
+    }
 
 
 # _generate_run_params()

@@ -179,14 +179,48 @@ class Model:
 
         merge_cols = ["age", "sex"]
 
-        def load_factors(factors):
+        def load_factors(factors, complete_missing_values):
             factors[merge_cols] = factors[merge_cols].astype(int)
             factors = factors.set_index(["variant", *merge_cols])
 
+            if complete_missing_values:
+                total = factors.groupby(level="variant").sum()
+                variants = factors.index.get_level_values("variant").unique()
+                MIN_AGE, MAX_AGE = 13, 55
+                actual_min_age = factors.index.get_level_values("age").min()
+                actual_max_age = factors.index.get_level_values("age").max()
+
+                babies = total.reindex(
+                    pd.MultiIndex.from_tuples(
+                        [(v, 0, s) for v in variants for s in [1, 2]],
+                        names=["variant", "age", "sex"],
+                    ),
+                    level="variant",
+                )
+                younger_mothers = factors.loc[(slice(None), actual_min_age, 2)].reindex(
+                    pd.MultiIndex.from_tuples(
+                        [(v, a, 2) for a in range(MIN_AGE, actual_min_age) for v in variants],
+                        names=["variant", "age", "sex"],
+                    ),
+                    level="variant",
+                )
+                older_mothers = factors.loc[(slice(None), actual_max_age, 2)].reindex(
+                    pd.MultiIndex.from_tuples(
+                        [
+                            (v, a, 2)
+                            for a in range(actual_max_age + 1, MAX_AGE + 1)
+                            for v in variants
+                        ],
+                        names=["variant", "age", "sex"],
+                    ),
+                    level="variant",
+                )
+
+                factors = pd.concat([factors, babies, younger_mothers, older_mothers]).sort_index()
             return factors[years].apply(lambda x: x / factors[start_year])
 
-        self.demog_factors = load_factors(data_loader.get_demographic_factors())
-        self.birth_factors = load_factors(data_loader.get_birth_factors())
+        self.demog_factors = load_factors(data_loader.get_demographic_factors(), False)
+        self.birth_factors = load_factors(data_loader.get_birth_factors(), True)
 
     def _load_inequalities_factors(self, data_loader: Data) -> None:
         """Load the inequalities factors.
