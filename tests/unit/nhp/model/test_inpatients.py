@@ -618,10 +618,10 @@ def test_functional_area_procedures(mock_model):
                 "rn": [1, 1, 2, 3],
                 "sitetret": ["trust", np.nan, "trust", np.nan],
                 "functional_area": [
-                    "adult_medical_general_acute",
-                    "adult_medical_general_acute",
-                    "adult_surgical_general",
-                    "adult_surgical_general",
+                    "a",
+                    "b",
+                    "c",
+                    "d",
                 ],
                 "count": [6, 4, 3, 2],
             }
@@ -634,10 +634,10 @@ def test_functional_area_procedures(mock_model):
         [6, 4, 3, 2],
         index=pd.MultiIndex.from_tuples(
             [
-                ("procedures", "adult_medical_general_acute", "trust"),
-                ("procedures", "adult_medical_general_acute", "unknown"),
-                ("procedures", "adult_surgical_general", "trust"),
-                ("procedures", "adult_surgical_general", "unknown"),
+                ("procedures", "a", "trust"),
+                ("procedures", "b", "unknown"),
+                ("procedures", "c", "trust"),
+                ("procedures", "d", "unknown"),
             ],
             names=["measure", "functional_area", "sitetret"],
         ),
