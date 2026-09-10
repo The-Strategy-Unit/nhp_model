@@ -328,7 +328,6 @@ class InpatientsModel(Model):
             .agg(
                 duration_days=("group_los", "sum"),
                 count=("episodes", "sum"),
-                zero_length_episodes=("zero_length_episodes", "sum"),
             )
             .melt(id_vars=["functional_area", "sitetret"], var_name="measure", value_name="value")
             .set_index(["measure", "functional_area", "sitetret"])["value"]
