@@ -114,7 +114,8 @@ class InpatientsModel(Model):
 
     def _load_functional_areas(self, data_loader: Data) -> None:
         self._functional_areas = {
-            "wards": data_loader.get_ip_functional_areas_wards().set_index("rn")
+            "beds": data_loader.get_ip_functional_areas_beds().set_index("rn"),
+            "procedures": data_loader.get_ip_functional_areas_procedures().set_index("rn"),
         }
 
     def get_data_counts(self, data: pd.DataFrame) -> np.ndarray:
@@ -280,20 +281,21 @@ class InpatientsModel(Model):
         res = [
             fn(model_results)
             for fn in [
-                self._functional_area_wards,
+                self._functional_area_beds,
                 self._functional_area_op_conversion,
                 self._functional_area_sdec_conversion,
+                self._functional_area_procedures,
             ]
         ]
         return pd.concat(res)
 
-    def _functional_area_wards(self, model_results: pd.DataFrame) -> pd.Series:
+    def _functional_area_beds(self, model_results: pd.DataFrame) -> pd.Series:
         los_df = model_results[["rn", "speldur", "pod"]].set_index("rn")
 
         # split out op/sdec converted activity, we will not join to these rows
         op_sdec_rows = los_df["pod"].isin(["op_procedure", "aae_type-05"])
 
-        functional_areas = self._functional_areas["wards"].merge(
+        functional_areas = self._functional_areas["beds"].merge(
             los_df[~op_sdec_rows], left_index=True, right_index=True
         )
         functional_areas["group_los"] = functional_areas["speldur"] * functional_areas["group_pcnt"]
@@ -321,7 +323,7 @@ class InpatientsModel(Model):
                 zero_length_episodes=("zero_length_episodes", "sum"),
             )
             .melt(id_vars=["functional_area", "sitetret"], var_name="measure", value_name="value")
-            .set_index(["functional_area", "sitetret", "measure"])["value"]
+            .set_index(["measure", "functional_area", "sitetret"])["value"]
         )
 
     def _functional_area_op_conversion(self, model_results: pd.DataFrame) -> pd.Series:
@@ -334,7 +336,7 @@ class InpatientsModel(Model):
         op_df["functional_area"] = "op_procedures"
         op_df["measure"] = "count"
 
-        return op_df.set_index(["functional_area", "sitetret", "measure"])["value"]
+        return op_df.set_index(["measure", "functional_area", "sitetret"])["value"]
 
     def _functional_area_sdec_conversion(self, model_results: pd.DataFrame) -> pd.Series:
         sdec_df = (
@@ -346,7 +348,21 @@ class InpatientsModel(Model):
         sdec_df["functional_area"] = "sdec_procedures"
         sdec_df["measure"] = "count"
 
-        return sdec_df.set_index(["functional_area", "sitetret", "measure"])["value"]
+        return sdec_df.set_index(["measure", "functional_area", "sitetret"])["value"]
+
+    def _functional_area_procedures(self, model_results: pd.DataFrame) -> pd.Series:
+        df = model_results[["rn"]].merge(
+            self._functional_areas["procedures"], left_on=["rn"], right_index=True
+        )
+
+        df["sitetret"] = df["sitetret"].fillna("unknown")
+
+        df["measure"] = "procedures"
+        return (
+            df.groupby(["measure", "functional_area", "sitetret"], dropna=False)["count"]
+            .sum()
+            .rename("value")
+        )
 
     def calculate_avoided_activity(
         self, data: pd.DataFrame, data_resampled: pd.DataFrame

@@ -278,14 +278,14 @@ class OutpatientsModel(Model):
                 ),
                 measure="count",
             )
-            .set_index(["functional_area", "sitetret", "measure"])["value"]
+            .set_index(["measure", "functional_area", "sitetret"])["value"]
         )
 
         virtual_attendances = (
             model_results.groupby(["sitetret"], as_index=False, dropna=False)
             .agg(value=("tele_attendances", "sum"))
             .assign(functional_area="op_virtual_attendances", measure="count")
-            .set_index(["functional_area", "sitetret", "measure"])["value"]
+            .set_index(["measure", "functional_area", "sitetret"])["value"]
         )
 
         return pd.concat([face_to_face_attendances, virtual_attendances])

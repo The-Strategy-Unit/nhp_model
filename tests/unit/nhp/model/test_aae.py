@@ -211,14 +211,14 @@ def test_functional_area_aggregations(mock_model):
         name="value",
         index=pd.MultiIndex.from_tuples(
             [
-                ("adult_major_attendances", "a", "count"),
-                ("adult_minor_attendances", "a", "count"),
-                ("paediatric_major_attendances", "a", "count"),
-                ("paediatric_minor_attendances", "a", "count"),
-                ("resus_attendances", "a", "count"),
-                ("sdec_attendances", "a", "count"),
+                ("count", "adult_major_attendances", "a"),
+                ("count", "adult_minor_attendances", "a"),
+                ("count", "paediatric_major_attendances", "a"),
+                ("count", "paediatric_minor_attendances", "a"),
+                ("count", "resus_attendances", "a"),
+                ("count", "sdec_attendances", "a"),
             ],
-            names=["functional_area", "sitetret", "measure"],
+            names=["measure", "functional_area", "sitetret"],
         ),
     )
 

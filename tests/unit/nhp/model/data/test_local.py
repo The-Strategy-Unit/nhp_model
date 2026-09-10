@@ -74,17 +74,31 @@ def test_get_ip_strategies(mocker):
 
 
 @pytest.mark.unit
-def test_get_ip_functional_areas_wards(mocker):
+def test_get_ip_functional_areas_beds(mocker):
     # arrange
     m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
     d = Local("data", 2019, "synthetic")
 
     # act
-    actual = d.get_ip_functional_areas_wards()
+    actual = d.get_ip_functional_areas_beds()
 
     # assert
     assert actual == "data"
-    m.assert_called_once_with("ip_functional_areas_wards")
+    m.assert_called_once_with("ip_functional_areas_beds")
+
+
+@pytest.mark.unit
+def test_get_ip_functional_areas_procedures(mocker):
+    # arrange
+    m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
+    d = Local("data", 2019, "synthetic")
+
+    # act
+    actual = d.get_ip_functional_areas_procedures()
+
+    # assert
+    assert actual == "data"
+    m.assert_called_once_with("ip_functional_areas_procedures")
 
 
 @pytest.mark.unit
