@@ -308,6 +308,14 @@ class InpatientsModel(Model):
             ix, "functional_area"
         ].replace(r"^(paediatric|adult)_[^_]*_([^_]*)_.*$", r"\1_daycase_\2", regex=True)
 
+        # remap non-zero los functional areas to zero los if the speldur is now zero
+        ix = functional_areas["functional_area"].str.endswith("_nonzerolos") & (
+            functional_areas["speldur"] == 0
+        )
+        functional_areas.loc[ix, "functional_area"] = functional_areas.loc[
+            ix, "functional_area"
+        ].str.replace("nonzerolos", "zerolos")
+
         return (
             functional_areas.groupby(
                 [
