@@ -667,7 +667,6 @@ def test_functional_area_beds(mock_model):
                 ],
                 "group_pcnt": [1.0, 0.5, 1.0],
                 "episodes": [1, 2, 1],
-                "zero_length_episodes": [0, 1, 0],
             }
         ).set_index("rn")
     }
@@ -685,15 +684,13 @@ def test_functional_area_beds(mock_model):
 
     # assert
     expected = pd.Series(
-        [2.0, 3.0, 2.0, 1.0, 1.0, 0.0],
+        [2.0, 3.0, 2.0, 1.0],
         index=pd.MultiIndex.from_tuples(
             [
                 ("duration_days", "adult_daycase_general", "trust"),
                 ("duration_days", "adult_medical_general_acute", "trust"),
                 ("count", "adult_daycase_general", "trust"),
                 ("count", "adult_medical_general_acute", "trust"),
-                ("zero_length_episodes", "adult_daycase_general", "trust"),
-                ("zero_length_episodes", "adult_medical_general_acute", "trust"),
             ],
             names=["measure", "functional_area", "sitetret"],
         ),
@@ -715,7 +712,6 @@ def test_functional_area_beds_remaps_nonzerolos_to_zerolos_when_speldur_is_zero(
                 "functional_area": ["adult_medical_nonzerolos"],
                 "group_pcnt": [1.0],
                 "episodes": [1],
-                "zero_length_episodes": [1],
             }
         ).set_index("rn")
     }
@@ -733,12 +729,11 @@ def test_functional_area_beds_remaps_nonzerolos_to_zerolos_when_speldur_is_zero(
 
     # assert
     expected = pd.Series(
-        [0.0, 1.0, 1.0],
+        [0.0, 1.0],
         index=pd.MultiIndex.from_tuples(
             [
                 ("duration_days", "adult_medical_zerolos", "trust"),
                 ("count", "adult_medical_zerolos", "trust"),
-                ("zero_length_episodes", "adult_medical_zerolos", "trust"),
             ],
             names=["measure", "functional_area", "sitetret"],
         ),
