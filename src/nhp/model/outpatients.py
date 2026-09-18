@@ -129,10 +129,12 @@ class OutpatientsModel(Model):
         data["attendances"] -= tele_conversion
         data["tele_attendances"] += tele_conversion
 
-        step_counts = data.merge(strategies, left_on="rn", right_index=True, how="left")[
-            ["pod", "sitetret", "strategy"]
-        ]
-        step_counts["attendances"] = tele_conversion * -1
+        step_counts = (
+            data[["pod", "sitetret", "rn"]]
+            .assign(strategy=data["rn"].map(strategies["strategy"]))
+            .drop(columns="rn")
+        )
+        step_counts["attendances"] = -tele_conversion
         step_counts["tele_attendances"] = tele_conversion
         step_counts = (
             step_counts.assign(change_factor="efficiencies")
