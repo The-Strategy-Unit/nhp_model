@@ -203,22 +203,28 @@ def test_convert_to_tele(mock_model):
     )
 
     assert actual_step_counts.to_dict("list") == {
-        "pod": ["a", "a", "b", "b"],
-        "sitetret": ["c", "d", "c", "d"],
+        "pod": ["a", "a", "a", "a", "b", "b", "b"],
+        "sitetret": ["c", "c", "d", "d", "c", "c", "d"],
         "change_factor": [
+            "efficiencies",
+            "efficiencies",
+            "efficiencies",
             "efficiencies",
             "efficiencies",
             "efficiencies",
             "efficiencies",
         ],
         "strategy": [
-            "convert_to_tele",
-            "convert_to_tele",
-            "convert_to_tele",
-            "convert_to_tele",
+            "convert_to_tele_a",
+            "convert_to_tele_b",
+            "convert_to_tele_a",
+            "convert_to_tele_b",
+            "convert_to_tele_a",
+            "convert_to_tele_b",
+            "convert_to_tele_a",
         ],
-        "attendances": [-25, -65, -45, -40],
-        "tele_attendances": [25, 65, 45, 40],
+        "attendances": [-15, -10, -35, -30, -20, -25, -40],
+        "tele_attendances": [15, 10, 35, 30, 20, 25, 40],
     }
 
 

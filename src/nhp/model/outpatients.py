@@ -129,17 +129,13 @@ class OutpatientsModel(Model):
         data["attendances"] -= tele_conversion
         data["tele_attendances"] += tele_conversion
 
+        step_counts = data.merge(strategies, left_on="rn", right_index=True, how="left")[
+            ["pod", "sitetret", "strategy"]
+        ]
+        step_counts["attendances"] = tele_conversion * -1
+        step_counts["tele_attendances"] = tele_conversion
         step_counts = (
-            pd.DataFrame(
-                {
-                    "pod": data["pod"],
-                    "sitetret": data["sitetret"],
-                    "change_factor": "efficiencies",
-                    "strategy": "convert_to_tele",
-                    "attendances": tele_conversion * -1,
-                    "tele_attendances": tele_conversion,
-                }
-            )
+            step_counts.assign(change_factor="efficiencies")
             .groupby(
                 ["pod", "sitetret", "change_factor", "strategy"],
                 dropna=False,
@@ -148,6 +144,7 @@ class OutpatientsModel(Model):
             .sum()
             .query("attendances<0")
         )
+
         return data, step_counts
 
     def apply_resampling(self, row_samples: np.ndarray, data: pd.DataFrame) -> pd.DataFrame:
