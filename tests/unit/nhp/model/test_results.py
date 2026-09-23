@@ -104,21 +104,25 @@ def test_combine_model_results(mocker):
             {
                 "default": pd.Series([1, 2, 3], name="value"),
                 "other": pd.Series([4, 5, 6], name="value"),
+                "avoided_activity": pd.Series([10, 20], name="value"),
                 "step_counts": pd.Series([10, 20], name="value"),
             },
             {
                 "default": pd.Series([4, 5, 6], name="value"),
                 "other": pd.Series([1, 2, 3], name="value"),
+                "avoided_activity": pd.Series([30, 40], name="value"),
                 "step_counts": pd.Series([30, 40], name="value"),
             },
         ],
         [
             {
                 "default": pd.Series([7], name="value"),
+                "avoided_activity": pd.Series([50], name="value"),
                 "step_counts": pd.Series([50], name="value"),
             },
             {
                 "default": pd.Series([8], name="value"),
+                "avoided_activity": pd.Series([60], name="value"),
                 "step_counts": pd.Series([60], name="value"),
             },
         ],
@@ -131,16 +135,26 @@ def test_combine_model_results(mocker):
     actual = _combine_model_results(results)
 
     # assert
-    assert actual == {"default": "cmr", "other": "cmr", "step_counts": "cmr"}
+    assert actual == {
+        "avoided_activity": "cmr",
+        "default": "cmr",
+        "other": "cmr",
+        "step_counts": "cmr",
+    }
 
-    assert [i["value"].sum() for i in cmr_mock.call_args_list[0][0][0]] == [6, 15, 7, 8]
+    expected_include_baseline = [False, True, True, False]
+    assert [call.kwargs["include_baseline"] for call in cmr_mock.call_args_list] == expected_include_baseline
+
+    assert [i["value"].sum() for i in cmr_mock.call_args_list[0][0][0]] == [30, 70, 50, 60]
     assert cmr_mock.call_args_list[0][0][1] == 1
-    assert [i["value"].sum() for i in cmr_mock.call_args_list[1][0][0]] == [15, 6]
-    assert [i["value"].sum() for i in cmr_mock.call_args_list[2][0][0]] == [30, 70, 50, 60]
+    assert [i["value"].sum() for i in cmr_mock.call_args_list[1][0][0]] == [6, 15, 7, 8]
+    assert [i["value"].sum() for i in cmr_mock.call_args_list[2][0][0]] == [15, 6]
+    assert [i["value"].sum() for i in cmr_mock.call_args_list[3][0][0]] == [30, 70, 50, 60]
     assert cmr_mock.call_args_list[1][0][1] == 1
     assert cmr_mock.call_args_list[2][0][1] == 1
+    assert cmr_mock.call_args_list[3][0][1] == 1
 
-    assert cfd_mock.call_count == 10
+    assert cfd_mock.call_count == 14
 
 
 @pytest.mark.unit

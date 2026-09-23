@@ -95,6 +95,7 @@ def _combine_model_results(
                 if k in aggregated_results
             ],
             model_runs,
+            include_baseline=k not in ["step_counts", "avoided_activity"],
         )
         for k in aggregations
     }
