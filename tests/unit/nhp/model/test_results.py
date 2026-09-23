@@ -143,7 +143,9 @@ def test_combine_model_results(mocker):
     }
 
     expected_include_baseline = [False, True, True, False]
-    assert [call.kwargs["include_baseline"] for call in cmr_mock.call_args_list] == expected_include_baseline
+    assert [
+        call.kwargs["include_baseline"] for call in cmr_mock.call_args_list
+    ] == expected_include_baseline
 
     assert [i["value"].sum() for i in cmr_mock.call_args_list[0][0][0]] == [30, 70, 50, 60]
     assert cmr_mock.call_args_list[0][0][1] == 1
