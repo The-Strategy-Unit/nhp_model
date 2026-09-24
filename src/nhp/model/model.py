@@ -458,6 +458,19 @@ class Model:
         """
         raise NotImplementedError()
 
+    def get_row_samples(self, factors: pd.DataFrame, rng: np.random.Generator) -> np.ndarray:
+        """Get row samples from factors and baseline counts.
+
+        Args:
+            factors (pd.DataFrame): DataFrame containing the factors for resampling.
+            rng (np.random.Generator): Random number generator to use for sampling.
+
+        Returns:
+            np.ndarray: Array of row samples based on the provided factors and baseline counts.
+        """
+        overall_factor = self.baseline_counts * factors.prod(axis=1).to_numpy()
+        return rng.poisson(overall_factor)
+
     def efficiencies(
         self, data: pd.DataFrame, model_iteration: ModelIteration
     ) -> tuple[pd.DataFrame, pd.DataFrame | None]:

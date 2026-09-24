@@ -562,6 +562,24 @@ def test_get_data_counts(mock_model):
         mock_model.get_data_counts(None)
 
 
+@pytest.mark.unit
+def test_get_row_samples(mock_model):
+    # arrange
+    mdl = mock_model
+    mdl.baseline_counts = np.array([[2.0, 4.0], [6.0, 8.0]])
+    factors = pd.DataFrame({"a": [2.0, 3.0], "b": [5.0, 7.0]})
+    rng = Mock()
+    rng.poisson.return_value = np.array([10, 11])
+
+    # act
+    actual = mdl.get_row_samples(factors, rng)
+
+    # assert
+    assert actual.tolist() == [10, 11]
+    rng.poisson.assert_called_once()
+    assert rng.poisson.call_args[0][0].tolist() == [[20.0, 84.0], [60.0, 168.0]]
+
+
 # activity_avoidance
 
 

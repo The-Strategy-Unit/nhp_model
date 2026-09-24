@@ -265,19 +265,15 @@ class ActivityResampling:
         # get the random sampling for each row
         rng = self._model_iteration.rng
         factors = pd.concat(self.factors, axis=1)
+        mdl = self._model_iteration.model
 
-        # reshape this to be the same as baseline counts
-        overall_factor = (
-            self._model_iteration.model.baseline_counts * factors.prod(axis=1).to_numpy()
-        )
-
-        row_samples: np.ndarray = rng.poisson(overall_factor)
+        row_samples = mdl.get_row_samples(factors, rng)
 
         step_counts = self._model_iteration.fix_step_counts(
             self.data, row_samples, factors, "model_interaction_term"
         ).assign(strategy="-")
 
         # apply the random sampling, update the data and get the counts
-        data = self._model_iteration.model.apply_resampling(row_samples, self.data)
+        data = mdl.apply_resampling(row_samples, self.data)
 
         return data, step_counts

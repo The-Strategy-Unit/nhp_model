@@ -640,7 +640,7 @@ def test_apply_resampling(mock_activity_resampling):
     mr = aa_mock._model_iteration
 
     mr.data = "data"
-    mr.rng.poisson.return_value = "poisson"
+    mr.model.get_row_samples.return_value = "row_samples"
     mr.model.apply_resampling.return_value = "data"
 
     mr.fix_step_counts.return_value = pd.DataFrame({"x": [1]})
@@ -652,17 +652,18 @@ def test_apply_resampling(mock_activity_resampling):
     assert actual[0] == "data"
     assert actual[1].to_dict("list") == {"x": [1], "strategy": ["-"]}
 
-    mr.rng.poisson.assert_called_once()
-    assert mr.rng.poisson.call_args[0][0].tolist() == [
-        [5.0, 24.0, 63.0, 128.0],
-        [25.0, 72.0, 147.0, 256.0],
-    ]
+    mr.model.get_row_samples.assert_called_once()
+    assert mr.model.get_row_samples.call_args[0][0].to_dict("list") == {
+        "a": [1, 2, 3, 4],
+        "b": [5, 6, 7, 8],
+    }
+    assert mr.model.get_row_samples.call_args[0][1] == mr.rng
 
-    mr.model.apply_resampling.assert_called_once_with("poisson", "data")
+    mr.model.apply_resampling.assert_called_once_with("row_samples", "data")
 
     mr.fix_step_counts.assert_called_once()
     args = mr.fix_step_counts.call_args[0]
     assert args[0] == "data"
-    assert args[1] == "poisson"
+    assert args[1] == "row_samples"
     assert args[2].to_dict("list") == {"a": [1, 2, 3, 4], "b": [5, 6, 7, 8]}
     assert args[3] == "model_interaction_term"
