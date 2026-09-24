@@ -8,6 +8,7 @@ from typing import Any, Callable, Self, cast
 
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 
 from nhp.model.data import Data
 from nhp.model.model import Model
@@ -144,7 +145,7 @@ class InpatientsModel(Model):
         """
         return data.loc[data.index.repeat(row_samples[0])].reset_index(drop=True)
 
-    def get_row_samples(self, factors: pd.DataFrame, rng: np.random.Generator) -> np.ndarray:
+    def get_row_samples(self, factors: pd.DataFrame, rng: np.random.Generator) -> NDArray[np.int64]:
         """Get row samples from factors and baseline counts.
 
         Args:
@@ -152,10 +153,28 @@ class InpatientsModel(Model):
             rng (np.random.Generator): Random number generator to use for sampling.
 
         Returns:
-            np.ndarray: Array of row samples based on the provided factors and baseline counts.
+            NDArray[np.int64]: Array of how many times to sample each row.
         """
         overall_factor = self.baseline_counts[0] * factors.prod(axis=1).to_numpy()
-        return rng.poisson(overall_factor) * self.baseline_counts
+        return (rng.poisson(overall_factor) * self.baseline_counts).astype(np.int64)
+
+    def get_activity_avoidance_row_samples(
+        self, factors: pd.DataFrame, data_counts: np.ndarray, rng: np.random.Generator
+    ) -> NDArray[np.int64]:
+        """Get row samples specifically for activity avoidance.
+
+        Args:
+            factors (pd.DataFrame): DataFrame containing the factors for resampling.
+            data_counts (np.ndarray): Array containing the baseline counts for each row.
+            rng (np.random.Generator): Random number generator to use for sampling.
+
+        Returns:
+            NDArray[np.int64]: Array of how many times to sample each row for activity avoidance.
+        """
+        overall_factor = factors.prod(axis=1)
+        return (rng.binomial(data_counts[0].astype("int"), overall_factor) * data_counts).astype(
+            np.int64
+        )
 
     def efficiencies(
         self, data: pd.DataFrame, model_iteration: ModelIteration

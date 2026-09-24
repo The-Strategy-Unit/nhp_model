@@ -205,6 +205,25 @@ def test_get_row_samples(mock_model):
 
 
 @pytest.mark.unit
+def test_get_activity_avoidance_row_samples(mock_model):
+    # arrange
+    mdl = mock_model
+    factors = pd.DataFrame({"a": [2 / 8, 3 / 8], "b": [4 / 8, 5 / 8]})
+    data_counts = np.array([[10, 20], [30, 40]])
+    rng = Mock()
+    rng.binomial.return_value = np.array([3, 4])
+
+    # act
+    actual = mdl.get_activity_avoidance_row_samples(factors, data_counts, rng)
+
+    # assert
+    assert actual.tolist() == [[30, 80], [90, 160]]
+    rng.binomial.assert_called_once()
+    assert rng.binomial.call_args[0][0].tolist() == [10, 20]
+    assert rng.binomial.call_args[0][1].to_dict() == {0: 0.125, 1: 0.234375}
+
+
+@pytest.mark.unit
 def test_apply_resampling(mock_model):
     # arrange
     row_samples = np.array([[0, 1, 2, 3], [4, 5, 6, 7]])
