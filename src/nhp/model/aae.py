@@ -72,7 +72,7 @@ class AaEModel(Model):
         Returns:
             The counts of the data, required for activity avoidance steps.
         """
-        return np.array([data["arrivals"]]).astype(float)
+        return np.array([data["arrivals"]]).astype(np.float64, copy=False)
 
     def _load_strategies(self, data_loader: Data) -> None:
         """Loads the activity mitigation strategies."""

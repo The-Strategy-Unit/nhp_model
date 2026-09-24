@@ -93,7 +93,7 @@ class ActivityResampling:
 
         factor = (
             self.data.merge(factor, how="left", left_on=factor.index.names, right_index=True)[step]
-            .astype(float)
+            .astype(np.float64, copy=False)
             .fillna(1.0)
         )
 

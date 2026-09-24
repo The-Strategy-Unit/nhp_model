@@ -220,7 +220,7 @@ def test_get_activity_avoidance_row_samples(mock_model):
     assert actual.tolist() == [[30, 80], [90, 160]]
     rng.binomial.assert_called_once()
     assert rng.binomial.call_args[0][0].tolist() == [10, 20]
-    assert rng.binomial.call_args[0][1].to_dict() == {0: 0.125, 1: 0.234375}
+    assert rng.binomial.call_args[0][1].tolist() == [0.125, 0.234375]
 
 
 @pytest.mark.unit
