@@ -16,6 +16,7 @@ from typing import Any, Callable, List
 
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 
 from nhp.model.data import Data
 from nhp.model.health_status_adjustment import (
@@ -175,12 +176,14 @@ class Model:
           * `self._probabilities`: a list containing the probability of selecting a given variant
         """
         start_year = str(self.params["start_year"])
-        years = (np.arange(self.params["start_year"], self.params["end_year"]) + 1).astype("str")
+        years = (np.arange(self.params["start_year"], self.params["end_year"]) + 1).astype(
+            np.str_, copy=False
+        )
 
         merge_cols = ["age", "sex"]
 
         def load_factors(factors):
-            factors[merge_cols] = factors[merge_cols].astype(int)
+            factors[merge_cols] = factors[merge_cols].astype(np.int64, copy=False)
             factors = factors.set_index(["variant", *merge_cols])
 
             return factors[years].apply(lambda x: x / factors[start_year])
@@ -340,7 +343,7 @@ class Model:
         strategies = self.strategies["activity_avoidance"]
         # decide whether to sample a strategy for each row this model run
         strategies = strategies.loc[
-            rng.binomial(1, strategies["sample_rate"]).astype("bool"), "strategy"
+            rng.binomial(1, strategies["sample_rate"]).astype(np.bool_, copy=False), "strategy"
         ]
         # join the parameters, then pivot wider
         strategies = (
@@ -358,7 +361,7 @@ class Model:
             .drop(columns="rn")
         )
 
-        row_samples = rng.binomial(data_counts.astype("int"), factors_aa.prod(axis=1))
+        row_samples = self.get_activity_avoidance_row_samples(factors_aa, data_counts, rng)
 
         step_counts = (
             model_iteration.fix_step_counts(
@@ -457,6 +460,35 @@ class Model:
             The updated data.
         """
         raise NotImplementedError()
+
+    def get_row_samples(self, factors: pd.DataFrame, rng: np.random.Generator) -> NDArray[np.int64]:
+        """Get row samples from factors and baseline counts.
+
+        Args:
+            factors (pd.DataFrame): DataFrame containing the factors for resampling.
+            rng (np.random.Generator): Random number generator to use for sampling.
+
+        Returns:
+            NDArray[np.int64]: Array of how many times to sample each row.
+        """
+        overall_factor = self.baseline_counts * factors.prod(axis=1).to_numpy()
+        return rng.poisson(overall_factor).astype(np.int64, copy=False)
+
+    def get_activity_avoidance_row_samples(
+        self, factors: pd.DataFrame, data_counts: np.ndarray, rng: np.random.Generator
+    ) -> NDArray[np.int64]:
+        """Get row samples specifically for activity avoidance.
+
+        Args:
+            factors (pd.DataFrame): DataFrame containing the factors for resampling.
+            data_counts (np.ndarray): Array containing the baseline counts for each row.
+            rng (np.random.Generator): Random number generator to use for sampling.
+
+        Returns:
+            NDArray[np.int64]: Array of how many times to sample each row for activity avoidance.
+        """
+        overall_factor = factors.prod(axis=1).to_numpy()
+        return rng.binomial(data_counts.astype(np.int64, copy=False), overall_factor)
 
     def efficiencies(
         self, data: pd.DataFrame, model_iteration: ModelIteration

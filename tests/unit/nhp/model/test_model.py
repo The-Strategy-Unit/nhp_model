@@ -562,6 +562,43 @@ def test_get_data_counts(mock_model):
         mock_model.get_data_counts(None)
 
 
+@pytest.mark.unit
+def test_get_row_samples(mock_model):
+    # arrange
+    mdl = mock_model
+    mdl.baseline_counts = np.array([[2.0, 4.0], [6.0, 8.0]])
+    factors = pd.DataFrame({"a": [2.0, 3.0], "b": [5.0, 7.0]})
+    rng = Mock()
+    rng.poisson.return_value = np.array([10, 11])
+
+    # act
+    actual = mdl.get_row_samples(factors, rng)
+
+    # assert
+    assert actual.tolist() == [10, 11]
+    rng.poisson.assert_called_once()
+    assert rng.poisson.call_args[0][0].tolist() == [[20.0, 84.0], [60.0, 168.0]]
+
+
+@pytest.mark.unit
+def test_get_activity_avoidance_row_samples(mock_model):
+    # arrange
+    mdl = mock_model
+    factors = pd.DataFrame({"a": [2 / 8, 3 / 8], "b": [4 / 8, 5 / 8]})
+    data_counts = np.array([10, 20])
+    rng = Mock()
+    rng.binomial.return_value = np.array([3, 4])
+
+    # act
+    actual = mdl.get_activity_avoidance_row_samples(factors, data_counts, rng)
+
+    # assert
+    assert actual.tolist() == [3, 4]
+    rng.binomial.assert_called_once()
+    assert rng.binomial.call_args[0][0].tolist() == [10, 20]
+    assert rng.binomial.call_args[0][1].tolist() == [0.125, 0.234375]
+
+
 # activity_avoidance
 
 
@@ -585,16 +622,10 @@ def test_activity_avoidance_no_params(mock_model):
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    "binomial_rv, expected_binomial_args, expected_factors",
+    "binomial_rv, expected_factors",
     [
         (
             [1] * 9,
-            {
-                0: 0.01171875,
-                1: 0.046875,
-                2: 0.1171875,
-                3: 1.0,
-            },
             {
                 "a": [0.125, 1.0, 1.0, 1.0],
                 "b": [0.25, 0.25, 1.0, 1.0],
@@ -603,20 +634,21 @@ def test_activity_avoidance_no_params(mock_model):
                 "e": [1.0, 1.0, 0.625, 1.0],
             },
         ),
-        ([0] * 9, {0: 1.0, 1: 1.0, 2: 1.0, 3: 1.0}, {}),
+        ([0] * 9, {}),
     ],
 )
-def test_activity_avoidance(mock_model, binomial_rv, expected_binomial_args, expected_factors):
+def test_activity_avoidance(mock_model, binomial_rv, expected_factors):
     # arrange
     mdl = mock_model
 
     data = pd.DataFrame({"rn": [1, 2, 3, 4]})
 
     mdl.get_data_counts = Mock(return_value=np.array([2, 3, 4, 5]))
+    mdl.get_activity_avoidance_row_samples = Mock(return_value=np.array([1, 2, 3, 4]))
     mdl.apply_resampling = Mock(return_value="apply_resampling")
 
     mr_mock = Mock()
-    mr_mock.rng.binomial.side_effect = [np.array(binomial_rv), np.array([1, 2, 3, 4])]
+    mr_mock.rng.binomial.return_value = np.array(binomial_rv)
 
     mdl.strategies = {
         "activity_avoidance": pd.DataFrame(
@@ -652,8 +684,12 @@ def test_activity_avoidance(mock_model, binomial_rv, expected_binomial_args, exp
         3: 0.5,
     }
 
-    assert mr_mock.rng.binomial.call_args_list[1][0][0].tolist() == [2, 3, 4, 5]
-    assert mr_mock.rng.binomial.call_args_list[1][0][1].to_dict() == expected_binomial_args
+    mdl.get_activity_avoidance_row_samples.assert_called_once()
+    assert (
+        mdl.get_activity_avoidance_row_samples.call_args[0][0].to_dict("list") == expected_factors
+    )
+    assert mdl.get_activity_avoidance_row_samples.call_args[0][1].tolist() == [2, 3, 4, 5]
+    assert mdl.get_activity_avoidance_row_samples.call_args[0][2] == mr_mock.rng
 
     assert mr_mock.fix_step_counts.call_args[0][0].to_dict("list") == {"rn": [1, 2, 3, 4]}
     assert mr_mock.fix_step_counts.call_args[0][1].tolist() == [1, 2, 3, 4]

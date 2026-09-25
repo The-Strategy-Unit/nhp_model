@@ -72,7 +72,12 @@ class OutpatientsModel(Model):
         Returns:
             The counts of the data, required for activity avoidance steps.
         """
-        return data[["attendances", "tele_attendances"]].to_numpy().astype(float).transpose()
+        return (
+            data[["attendances", "tele_attendances"]]
+            .to_numpy()
+            .astype(np.float64, copy=False)
+            .transpose()
+        )
 
     def _load_strategies(self, data_loader: Data) -> None:
         data = self.data.set_index("rn")

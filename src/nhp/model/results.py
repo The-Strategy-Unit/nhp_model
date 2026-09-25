@@ -9,6 +9,7 @@ import logging
 import os
 from typing import Dict, List
 
+import numpy as np
 import pandas as pd
 
 from nhp.model.model_iteration import ModelRunResult
@@ -232,7 +233,7 @@ def _patch_converted_sdec_activity(
         .sum()
     )
 
-    df_fixed["value"] = df_fixed["value"].astype("int64")
+    df_fixed["value"] = df_fixed["value"].astype(np.int64, copy=False)
 
     results[column] = df_fixed
 
