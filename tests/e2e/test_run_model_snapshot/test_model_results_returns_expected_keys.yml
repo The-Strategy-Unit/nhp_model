@@ -7,7 +7,6 @@ default: null
 delivery_episode_in_spell: null
 functional_areas: null
 sex+age_group: null
-sex+tretspef_grouped: null
+sex+tretspef: null
 step_counts: null
-tretspef: null
 tretspef+los_group: null
