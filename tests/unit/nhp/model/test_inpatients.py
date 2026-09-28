@@ -317,7 +317,6 @@ def test_process_results(mock_model):
             "group": ["elective", "non-elective", "maternity"] * 4,
             "classpat": ["1", "-2", "-3", "4", "5", "-1"] * 2,
             "tretspef": [str(i) for i in range(12)],
-            "tretspef_grouped": [str(i) for i in xs],
             "rn": [1] * 12,
             "has_procedure": [0, 1] * 6,
             "speldur": list(range(12)),
@@ -462,32 +461,6 @@ def test_process_results(mock_model):
                 "10",
                 "11",
             ],
-            "tretspef_grouped": [
-                "0",
-                "0",
-                "1",
-                "1",
-                "1",
-                "Other",
-                "3",
-                "3",
-                "3",
-                "4",
-                "4",
-                "5",
-                "0",
-                "0",
-                "1",
-                "1",
-                "1",
-                "Other",
-                "3",
-                "3",
-                "3",
-                "4",
-                "4",
-                "5",
-            ],
             "los_group": [
                 "0 days",
                 "0 days",
@@ -604,15 +577,13 @@ def test_specific_aggregations(mocker, mock_model):
 
     # assert
     assert actual == {
-        "sex+tretspef_grouped": "agg_data",
-        "tretspef": "agg_data",
+        "sex+tretspef": "agg_data",
         "tretspef+los_group": "agg_data",
         "delivery_episode_in_spell": "agg_data",
     }
 
     assert [(len(i[0][0]), *i[0][1:]) for i in m.call_args_list] == [
-        (2, "sex", "tretspef_grouped"),
-        (2, "tretspef"),
+        (2, "sex", "tretspef"),
         (2, "tretspef", "los_group"),
         (1,),
     ]
@@ -898,7 +869,6 @@ def test_save_results_get_op_converted(mock_model):
             "age_group": ["a", "b"] * 3,
             "sex": [1, 2] * 3,
             "tretspef": ["a", "b"] * 3,
-            "tretspef_grouped": ["a", "b"] * 3,
             "sitetret": ["1", "1", "1", "2", "2", "2"],
         }
     )
@@ -908,7 +878,6 @@ def test_save_results_get_op_converted(mock_model):
             "age_group": ["a", "a"],
             "sex": [1, 1],
             "tretspef": ["a", "a"],
-            "tretspef_grouped": ["a", "a"],
             "sitetret": ["1", "2"],
             "attendances": [2, 1],
             "tele_attendances": [0, 0],
@@ -936,7 +905,6 @@ def test_save_results_get_sdec_converted(mock_model):
             "age_group": ["a", "b"] * 3,
             "sex": [1, 2] * 3,
             "tretspef": ["a", "b"] * 3,
-            "tretspef_grouped": ["a", "b"] * 3,
             "sitetret": ["1", "1", "1", "2", "2", "2"],
         }
     )

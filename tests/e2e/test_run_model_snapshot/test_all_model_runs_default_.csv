@@ -54,11 +54,11 @@
 52,ip_regular_day_attender,c,admissions,394.6
 53,ip_regular_day_attender,c,beddays,395.8
 54,ip_regular_day_attender,c,procedures,341.9
-55,op_first,a,attendances,290058.2
-56,op_first,a,tele_attendances,76939.7
-57,op_follow-up,a,attendances,551536.5
-58,op_follow-up,a,tele_attendances,217590.7
-59,op_procedure,a,attendances,299190.3
+55,op_first,a,attendances,284920.3
+56,op_first,a,tele_attendances,75821.9
+57,op_follow-up,a,attendances,539984.8
+58,op_follow-up,a,tele_attendances,213363.0
+59,op_procedure,a,attendances,295417.8
 60,op_procedure,a,tele_attendances,0.0
 61,op_procedure,b,attendances,197.4
 62,op_procedure,c,attendances,199.2
