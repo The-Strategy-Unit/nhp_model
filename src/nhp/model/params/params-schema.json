@@ -126,10 +126,22 @@
                     "type": "object",
                     "properties": {
                         "ambulance": {
-                            "$ref": "#/$defs/value_0-5"
+                            "type": "object",
+                            "properties": {
+                                "Other": {
+                                    "$ref": "#/$defs/value_0-5"
+                                }
+                            },
+                            "additionalProperties": false
                         },
                         "walk-in": {
-                            "$ref": "#/$defs/value_0-5"
+                            "type": "object",
+                            "properties": {
+                                "Other": {
+                                    "$ref": "#/$defs/value_0-5"
+                                }
+                            },
+                            "additionalProperties": false
                         }
                     },
                     "additionalProperties": false
