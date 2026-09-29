@@ -65,10 +65,6 @@ class ModelIteration:
             }
             run_params[i]["aae"] = {k: {"Other": v} for k, v in run_params[i]["aae"].items()}
 
-        run_params["baseline_adjustment"]["aae"] = {
-            k: {"Other": v} for k, v in run_params["baseline_adjustment"]["aae"].items()
-        }
-
     def _run(self):
         if self.model_run == 0:
             return
