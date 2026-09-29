@@ -97,12 +97,7 @@
                             "$ref": "#/$defs/tretspef_groups_0-5"
                         },
                         "maternity": {
-                            "type": "object",
-                            "properties": {
-                                "Other (Medical)": {
-                                    "$ref": "#/$defs/value_0-5"
-                                }
-                            }
+                            "$ref": "#/$defs/tretspef_groups_0-5"
                         }
                     },
                     "additionalProperties": false
@@ -557,12 +552,7 @@
                             "$ref": "#/$defs/tretspef_groups_0-1"
                         },
                         "maternity": {
-                            "type": "object",
-                            "properties": {
-                                "Other (Medical)": {
-                                    "$ref": "#/$defs/confidence_interval_0-1"
-                                }
-                            }
+                            "$ref": "#/$defs/tretspef_groups_0-1"
                         }
                     },
                     "additionalProperties": false
@@ -598,12 +588,7 @@
                             "$ref": "#/$defs/tretspef_groups_1-5"
                         },
                         "maternity": {
-                            "type": "object",
-                            "properties": {
-                                "Other (Medical)": {
-                                    "$ref": "#/$defs/confidence_interval_1-5"
-                                }
-                            }
+                            "$ref": "#/$defs/tretspef_groups_1-5"
                         }
                     },
                     "additionalProperties": false
