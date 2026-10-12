@@ -620,7 +620,7 @@ wheels = [
 
 [[package]]
 name = "metalog-jax"
-version = "2.0.0"
+version = "2.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chex" },
@@ -628,9 +628,9 @@ dependencies = [
     { name = "jax" },
     { name = "plotly" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a0/11/728eb27989d2153e41aea72dbc8e13d837b8db5e47c67f0225706c5827c8/metalog_jax-2.0.0.tar.gz", hash = "sha256:8628fdd0452dc9e2f7e620a76edd921dfd7b71b0928b3f52782aae78ff3d2774", size = 78671, upload-time = "2026-09-25T15:43:22.295Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e1/da/9019070b5e76de7ba04f1730522b1a14a6c2538c8ddf9182d584698d4bf0/metalog_jax-2.0.1.tar.gz", hash = "sha256:695be40feb5ed572b8c08856cec2fa48a65dd2a0d6a8808e0e6b3f401173d8eb", size = 98959, upload-time = "2026-10-04T13:09:24.219Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/58/48/371cb8506e5606eeb698418a623d987005eba1786ac91a1fcc3a421e5630/metalog_jax-2.0.0-py3-none-any.whl", hash = "sha256:cfbc38f640c40c926b4f8c668a70b2d83c950707021a9a52e4505328c95470d2", size = 78994, upload-time = "2026-09-25T15:43:21.111Z" },
+    { url = "https://files.pythonhosted.org/packages/f8/8c/1566235c9723fe04d8eff4dec201b9e98d33d3c543f5d33d5aea8a1f392f/metalog_jax-2.0.1-py3-none-any.whl", hash = "sha256:97ffcf3fc6a5c577cf28ae571b3eb0984e84a20e019e232dbe64276210ef331d", size = 86192, upload-time = "2026-10-04T13:09:22.73Z" },
 ]
 
 [[package]]
