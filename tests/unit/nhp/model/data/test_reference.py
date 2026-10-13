@@ -2,6 +2,7 @@
 
 from unittest.mock import call
 
+import numpy as np
 import pytest
 
 from nhp.model.data import reference
@@ -50,34 +51,40 @@ def test_hsa_metalog_parameters(mocker):
     assert m_metalog.call_count == 2
     assert m_metalog_params.call_count == 2
 
-    assert m_metalog.call_args_list[0] == call(
-        "metalog_params",
-        [
-            0.22597766540977504,
-            0.1216726601048689,
-            0.8497745489369272,
-            0.2322532816930789,
-            -3.5019133822671478,
-            0.20162460337715876,
-            1.6358569059716728,
-            -2.990760420935966,
-            14.260971405049265,
-        ],
+    assert m_metalog.call_args_list[0].args[0] == "metalog_params"
+    np.testing.assert_allclose(
+        m_metalog.call_args_list[0].args[1],
+        np.array(
+            [
+                0.22597766540977504,
+                0.1216726601048689,
+                0.8497745489369272,
+                0.2322532816930789,
+                -3.5019133822671478,
+                0.20162460337715876,
+                1.6358569059716728,
+                -2.990760420935966,
+                14.260971405049265,
+            ]
+        ),
     )
 
-    assert m_metalog.call_args_list[1] == call(
-        "metalog_params",
-        [
-            0.36636018884627675,
-            0.251240039915706,
-            1.1887234662388995,
-            -0.2887848682168371,
-            -5.14659756243718,
-            -0.09486189481151404,
-            2.586705415950949,
-            -4.12765672185841,
-            18.1202866074243,
-        ],
+    assert m_metalog.call_args_list[1].args[0] == "metalog_params"
+    np.testing.assert_allclose(
+        m_metalog.call_args_list[1].args[1],
+        np.array(
+            [
+                0.36636018884627675,
+                0.251240039915706,
+                1.1887234662388995,
+                -0.2887848682168371,
+                -5.14659756243718,
+                -0.09486189481151404,
+                2.586705415950949,
+                -4.12765672185841,
+                18.1202866074243,
+            ]
+        ),
     )
 
     assert m_metalog_params.call_args_list[0] == call(
