@@ -8,6 +8,7 @@ Helper methods for loading the reference data should be created here.
 import json
 import pathlib
 
+import numpy as np
 import pandas as pd
 from metalog_jax.base import MetalogParameters
 from metalog_jax.metalog import Metalog
@@ -61,7 +62,7 @@ def hsa_metalog_parameters(target_year: int) -> dict[int, Metalog]:
         return {
             sex_to_int[k]: Metalog(
                 MetalogParameters(**v["metalog_params"]),
-                v["a"],
+                np.array(v["a"]),
             )
             for k, v in json.load(f)[str(target_year)].items()
         }
