@@ -551,7 +551,7 @@ class InpatientEfficiencies:
 
         new = rng.binomial(data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"])
 
-        self.data.loc[i, "speldur"] = new.astype(np.int64, copy=False)
+        self.data.loc[i, "speldur"] = new.astype(np.int32, copy=False)
 
         return self
 
@@ -570,7 +570,7 @@ class InpatientEfficiencies:
             return self
 
         rnd_choice = np.array(rng.binomial(1, losr.loc[data.loc[i].index, "losr_f"])).astype(
-            np.int64, copy=False
+            np.int32, copy=False
         )
 
         self.data.loc[i, "classpat"] = np.where(rnd_choice == 0, "-3", "1")
@@ -596,7 +596,7 @@ class InpatientEfficiencies:
             rng.binomial(1, 1 - losr.loc[data.loc[i].index, "losr_f"])
             * losr.loc[data.loc[i].index, "pre-op_days"]
         )
-        self.data.loc[i, "speldur"] = new.astype(np.int64, copy=False)
+        self.data.loc[i, "speldur"] = new.astype(np.int32, copy=False)
 
         return self
 
@@ -627,7 +627,9 @@ class InpatientEfficiencies:
         )["losr_f"]
 
         dont_change_classpat: np.ndarray = rng.binomial(1, factor).astype(np.bool_, copy=False)
-        data.loc[i, "speldur"] *= dont_change_classpat
+        data.loc[i, "speldur"] = (data.loc[i, "speldur"] * dont_change_classpat).astype(
+            np.int32, copy=False
+        )
 
         # change the classpat column
         data.loc[i, "classpat"] = np.where(
