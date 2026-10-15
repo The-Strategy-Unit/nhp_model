@@ -1,7 +1,7 @@
 pod,sitetret,measure,value
-op_first,a,attendances,243285
-op_first,a,tele_attendances,62858
-op_follow-up,a,attendances,549185
-op_follow-up,a,tele_attendances,213691
-op_procedure,a,attendances,273333
+op_first,a,attendances,240103
+op_first,a,tele_attendances,64816
+op_follow-up,a,attendances,530130
+op_follow-up,a,tele_attendances,206156
+op_procedure,a,attendances,276703
 op_procedure,a,tele_attendances,0

@@ -66,7 +66,6 @@ def test_patch_run_params(mock_model_iteration):
             "op": {"100": 1, "200": 2},
             "aae": {"ambulance": 3, "walk-in": 4},
         },
-        "baseline_adjustment": {"aae": {"ambulance": 5, "walk-in": 6}},
     }
 
     # act
@@ -98,7 +97,6 @@ def test_patch_run_params(mock_model_iteration):
             },
             "aae": {"ambulance": {"Other": 3}, "walk-in": {"Other": 4}},
         },
-        "baseline_adjustment": {"aae": {"ambulance": {"Other": 5}, "walk-in": {"Other": 6}}},
     }
 
 
