@@ -16,8 +16,8 @@ def mock_activity_resampling():
     with patch.object(ActivityResampling, "__init__", lambda m, c: None):
         mdl = ActivityResampling(None)  # ty: ignore[invalid-argument-type]
     mdl._model_iteration = Mock()
-    mdl._model_iteration.model.baseline_counts = np.array([[1, 2, 3, 4], [5, 6, 7, 8]]).astype(
-        np.float64, copy=False
+    mdl._model_iteration.model.baseline_counts = np.array(
+        [[1, 2, 3, 4], [5, 6, 7, 8]], dtype=np.float64
     )
     return mdl
 
@@ -69,6 +69,18 @@ def test_update(mock_activity_resampling):
     # assert
     assert aa_mock.factors[0].to_list() == [1, 2, 3, 1]
     assert actual == aa_mock
+
+
+@pytest.mark.unit
+def test_pandas_astype_copies_to_prevent_mutation(mocker):
+    """Pandas 3 already returns a new array from astype, so the original data is not mutated."""
+    original = pd.Series([1, 2, 3], dtype="int64")
+
+    converted = original.astype(np.float64)
+    converted.iloc[0] = 99.0
+
+    assert original.tolist() == [1, 2, 3]
+    assert converted.tolist() == [99.0, 2.0, 3.0]
 
 
 @pytest.mark.unit

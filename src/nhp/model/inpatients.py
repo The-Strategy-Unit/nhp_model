@@ -129,7 +129,7 @@ class InpatientsModel(Model):
             The counts of the data, required for activity avoidance steps.
         """
         return np.array([np.ones_like(data["rn"]), (1 + data["speldur"]).to_numpy()]).astype(
-            np.float64, copy=False
+            np.float64
         )
 
     def apply_resampling(self, row_samples: np.ndarray, data: pd.DataFrame) -> pd.DataFrame:
@@ -158,7 +158,7 @@ class InpatientsModel(Model):
             NDArray[np.int64]: Array of how many times to sample each row.
         """
         overall_factor = self.baseline_counts[0] * factors.prod(axis=1).to_numpy()
-        return (rng.poisson(overall_factor) * self.baseline_counts).astype(np.int64, copy=False)
+        return (rng.poisson(overall_factor) * self.baseline_counts).astype(np.int64)
 
     def get_activity_avoidance_row_samples(
         self, factors: pd.DataFrame, data_counts: np.ndarray, rng: np.random.Generator
@@ -175,8 +175,8 @@ class InpatientsModel(Model):
         """
         overall_factor = factors.prod(axis=1).to_numpy()
         return (
-            rng.binomial(data_counts[0].astype(np.int64, copy=False), overall_factor) * data_counts
-        ).astype(np.int64, copy=False)
+            rng.binomial(data_counts[0].astype(np.int64), overall_factor) * data_counts
+        ).astype(np.int64)
 
     def efficiencies(
         self, data: pd.DataFrame, model_iteration: ModelIteration
@@ -551,7 +551,7 @@ class InpatientEfficiencies:
 
         new = rng.binomial(data.loc[i, "speldur"], losr.loc[data.loc[i].index, "losr_f"])
 
-        self.data.loc[i, "speldur"] = new.astype(np.int32, copy=False)
+        self.data.loc[i, "speldur"] = new.astype(np.int32)
 
         return self
 
@@ -570,7 +570,7 @@ class InpatientEfficiencies:
             return self
 
         rnd_choice = np.array(rng.binomial(1, losr.loc[data.loc[i].index, "losr_f"])).astype(
-            np.int32, copy=False
+            np.int32
         )
 
         self.data.loc[i, "classpat"] = np.where(rnd_choice == 0, "-3", "1")
@@ -596,7 +596,7 @@ class InpatientEfficiencies:
             rng.binomial(1, 1 - losr.loc[data.loc[i].index, "losr_f"])
             * losr.loc[data.loc[i].index, "pre-op_days"]
         )
-        self.data.loc[i, "speldur"] = new.astype(np.int32, copy=False)
+        self.data.loc[i, "speldur"] = new.astype(np.int32)
 
         return self
 
@@ -626,9 +626,9 @@ class InpatientEfficiencies:
             right_index=True,
         )["losr_f"]
 
-        dont_change_classpat: np.ndarray = rng.binomial(1, factor).astype(np.bool_, copy=False)
+        dont_change_classpat: np.ndarray = rng.binomial(1, factor).astype(np.bool_)
         data.loc[i, "speldur"] = (data.loc[i, "speldur"] * dont_change_classpat).astype(
-            np.int32, copy=False
+            np.int32
         )
 
         # change the classpat column
