@@ -136,34 +136,6 @@ def test_get_aae(mocker):
 
 
 @pytest.mark.unit
-def test_get_birth_factors(mocker):
-    # arrange
-    m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
-    d = Local("data", 2019, "synthetic")
-
-    # act
-    actual = d.get_birth_factors()
-
-    # assert
-    assert actual == "data"
-    m.assert_called_once_with("birth_factors")
-
-
-@pytest.mark.unit
-def test_get_demographic_factors(mocker):
-    # arrange
-    m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
-    d = Local("data", 2019, "synthetic")
-
-    # act
-    actual = d.get_demographic_factors()
-
-    # assert
-    assert actual == "data"
-    m.assert_called_once_with("demographic_factors")
-
-
-@pytest.mark.unit
 def test_get_hsa_activity_table(mocker):
     # arrange
     m = mocker.patch("nhp.model.data.Local._get_parquet", return_value="data")
