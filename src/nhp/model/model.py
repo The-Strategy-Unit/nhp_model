@@ -175,19 +175,28 @@ class Model:
             | available
           * `self._probabilities`: a list containing the probability of selecting a given variant
         """
-        start_year = str(self.params["start_year"])
-        years = (np.arange(self.params["start_year"], self.params["end_year"]) + 1).astype(np.str_)
+        demog = self.params["demographic_adjustment"]
 
-        merge_cols = ["age", "sex"]
+        pop = demog["population"]
+        self.demog_factors = pd.Series(
+            {
+                (int(s), int(a)): pop["horizon"][s][a] / v
+                for s in ["1", "2"]
+                for a, v in pop["baseline"][s].items()
+            },
+            name="demographic_adjustment",
+        )
+        self.demog_factors.index.names = ["sex", "age"]
 
-        def load_factors(factors):
-            factors[merge_cols] = factors[merge_cols].astype(np.int64)
-            factors = factors.set_index(["variant", *merge_cols])
-
-            return factors[years].apply(lambda x: x / factors[start_year])
-
-        self.demog_factors = load_factors(data_loader.get_demographic_factors())
-        self.birth_factors = load_factors(data_loader.get_birth_factors())
+        births = demog["births"]
+        self.birth_factors = pd.Series(
+            {
+                (2, int(a)): births["horizon"]["2"][a] / v
+                for a, v in births["baseline"]["2"].items()
+            },
+            name="birth_adjustment",
+        )
+        self.birth_factors.index.names = ["sex", "age"]
 
     def _load_inequalities_factors(self, data_loader: Data) -> None:
         """Load the inequalities factors.
@@ -257,19 +266,7 @@ class Model:
                 prm = prm["interval"]
             return [valid_range(gen_value(mr, prm)) for mr in range(model_runs)]
 
-        variants = list(params["demographic_factors"]["variant_probabilities"].keys())
-        probabilities = list(params["demographic_factors"]["variant_probabilities"].values())
-        # there can be numerical inacurracies in the probabilities not summing to 1
-        # this will adjust the probabiliteies to sum correctly
-        probabilities = [p / sum(probabilities) for p in probabilities]
-
-        variants = [
-            variants[np.argmax(probabilities)],
-            *rng.choice(variants, model_runs - 1, p=probabilities).tolist(),
-        ]
-
         return {
-            "variant": variants,
             "seeds": rng.integers(0, 65535, model_runs).tolist(),
             "non-demographic_adjustment": {
                 k: generate_param_values(v, inrange_0_5)
