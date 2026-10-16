@@ -75,7 +75,7 @@ class OutpatientsModel(Model):
         return (
             data[["attendances", "tele_attendances"]]
             .to_numpy()
-            .astype(np.float64, copy=False)
+            .astype(np.float64)
             .transpose()
         )
 

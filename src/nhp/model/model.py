@@ -176,14 +176,12 @@ class Model:
           * `self._probabilities`: a list containing the probability of selecting a given variant
         """
         start_year = str(self.params["start_year"])
-        years = (np.arange(self.params["start_year"], self.params["end_year"]) + 1).astype(
-            np.str_, copy=False
-        )
+        years = (np.arange(self.params["start_year"], self.params["end_year"]) + 1).astype(np.str_)
 
         merge_cols = ["age", "sex"]
 
         def load_factors(factors):
-            factors[merge_cols] = factors[merge_cols].astype(np.int64, copy=False)
+            factors[merge_cols] = factors[merge_cols].astype(np.int64)
             factors = factors.set_index(["variant", *merge_cols])
 
             return factors[years].apply(lambda x: x / factors[start_year])
@@ -343,7 +341,7 @@ class Model:
         strategies = self.strategies["activity_avoidance"]
         # decide whether to sample a strategy for each row this model run
         strategies = strategies.loc[
-            rng.binomial(1, strategies["sample_rate"]).astype(np.bool_, copy=False), "strategy"
+            rng.binomial(1, strategies["sample_rate"]).astype(np.bool_), "strategy"
         ]
         # join the parameters, then pivot wider
         strategies = (
@@ -472,7 +470,7 @@ class Model:
             NDArray[np.int64]: Array of how many times to sample each row.
         """
         overall_factor = self.baseline_counts * factors.prod(axis=1).to_numpy()
-        return rng.poisson(overall_factor).astype(np.int64, copy=False)
+        return rng.poisson(overall_factor).astype(np.int64)
 
     def get_activity_avoidance_row_samples(
         self, factors: pd.DataFrame, data_counts: np.ndarray, rng: np.random.Generator
@@ -488,7 +486,7 @@ class Model:
             NDArray[np.int64]: Array of how many times to sample each row for activity avoidance.
         """
         overall_factor = factors.prod(axis=1).to_numpy()
-        return rng.binomial(data_counts.astype(np.int64, copy=False), overall_factor)
+        return rng.binomial(data_counts.astype(np.int64), overall_factor)
 
     def efficiencies(
         self, data: pd.DataFrame, model_iteration: ModelIteration
