@@ -174,9 +174,9 @@ class InpatientsModel(Model):
             NDArray[np.int64]: Array of how many times to sample each row for activity avoidance.
         """
         overall_factor = factors.prod(axis=1).to_numpy()
-        return (
-            rng.binomial(data_counts[0].astype(np.int64), overall_factor) * data_counts
-        ).astype(np.int64)
+        return (rng.binomial(data_counts[0].astype(np.int64), overall_factor) * data_counts).astype(
+            np.int64
+        )
 
     def efficiencies(
         self, data: pd.DataFrame, model_iteration: ModelIteration
@@ -627,9 +627,7 @@ class InpatientEfficiencies:
         )["losr_f"]
 
         dont_change_classpat: np.ndarray = rng.binomial(1, factor).astype(np.bool_)
-        data.loc[i, "speldur"] = (data.loc[i, "speldur"] * dont_change_classpat).astype(
-            np.int32
-        )
+        data.loc[i, "speldur"] = (data.loc[i, "speldur"] * dont_change_classpat).astype(np.int32)
 
         # change the classpat column
         data.loc[i, "classpat"] = np.where(
