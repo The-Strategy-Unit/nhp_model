@@ -42,7 +42,7 @@
         ]
       },
       "maternity": {
-        "Other (Medical)": [
+        "Other": [
           0.97,
           0.99
         ]
@@ -140,14 +140,6 @@
           1.01,
           1.03
         ],
-        "Other (Medical)": [
-          1.01,
-          1.03
-        ],
-        "Other (Surgical)": [
-          1.01,
-          1.03
-        ],
         "Other": [
           1.01,
           1.03
@@ -226,21 +218,13 @@
           1.01,
           1.03
         ],
-        "Other (Medical)": [
-          1.01,
-          1.03
-        ],
-        "Other (Surgical)": [
-          1.01,
-          1.03
-        ],
         "Other": [
           1.01,
           1.03
         ]
       },
       "maternity": {
-        "Other (Medical)": [
+        "Other": [
           1.01,
           1.03
         ]
@@ -316,14 +300,6 @@
         1.03
       ],
       "502": [
-        1.01,
-        1.03
-      ],
-      "Other (Medical)": [
-        1.01,
-        1.03
-      ],
-      "Other (Surgical)": [
         1.01,
         1.03
       ],
@@ -418,14 +394,6 @@
           1.01,
           1.03
         ],
-        "Other (Medical)": [
-          1.01,
-          1.03
-        ],
-        "Other (Surgical)": [
-          1.01,
-          1.03
-        ],
         "Other": [
           1.01,
           1.03
@@ -504,21 +472,13 @@
           1.01,
           1.03
         ],
-        "Other (Medical)": [
-          1.01,
-          1.03
-        ],
-        "Other (Surgical)": [
-          1.01,
-          1.03
-        ],
         "Other": [
           1.01,
           1.03
         ]
       },
       "maternity": {
-        "Other (Medical)": [
+        "Other": [
           1.01,
           1.03
         ]
@@ -597,14 +557,6 @@
         1.01,
         1.03
       ],
-      "Other (Medical)": [
-        1.01,
-        1.03
-      ],
-      "Other (Surgical)": [
-        1.01,
-        1.03
-      ],
       "Other": [
         1.01,
         1.03
@@ -641,8 +593,6 @@
         "410": 1.0,
         "430": 1.0,
         "502": 1.0,
-        "Other (Medical)": 1.0,
-        "Other (Surgical)": 1.0,
         "Other": 1.0
       },
       "non-elective": {
@@ -663,12 +613,10 @@
         "410": 1.0,
         "430": 1.0,
         "502": 1.0,
-        "Other (Medical)": 1.0,
-        "Other (Surgical)": 1.0,
         "Other": 1.0
       },
       "maternity": {
-        "Other (Medical)": 1.0
+        "Other": 1.0
       }
     },
     "op": {
@@ -690,8 +638,6 @@
         "410": 1.0,
         "430": 1.0,
         "502": 1.0,
-        "Other (Medical)": 1.0,
-        "Other (Surgical)": 1.0,
         "Other": 1.0
       },
       "followup": {
@@ -712,8 +658,6 @@
         "410": 1.0,
         "430": 1.0,
         "502": 1.0,
-        "Other (Medical)": 1.0,
-        "Other (Surgical)": 1.0,
         "Other": 1.0
       },
       "procedure": {
@@ -734,14 +678,16 @@
         "410": 1.0,
         "430": 1.0,
         "502": 1.0,
-        "Other (Medical)": 1.0,
-        "Other (Surgical)": 1.0,
         "Other": 1.0
       }
     },
     "aae": {
-      "ambulance": 1.0,
-      "walk-in": 1.0
+      "ambulance": {
+        "Other": 1.0
+      },
+      "walk-in": {
+        "Other": 1.0
+      }
     }
   },
   "waiting_list_adjustment": {
@@ -764,8 +710,6 @@
       "410": 1.01,
       "430": 1.01,
       "502": 1.01,
-      "Other (Medical)": 1.01,
-      "Other (Surgical)": 1.01,
       "Other": 1.01
     },
     "op": {
@@ -787,8 +731,6 @@
       "410": 1.02,
       "430": 1.02,
       "502": 1.02,
-      "Other (Medical)": 1.02,
-      "Other (Surgical)": 1.02,
       "Other": 1.02
     }
   },

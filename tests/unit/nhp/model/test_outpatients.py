@@ -268,7 +268,6 @@ def test_process_results(mock_model):
             "is_first": [True, True, False, False],
             "has_procedures": [False, True, False, True],
             "tretspef": [1, 1, 1, 1],
-            "tretspef_grouped": [1, 1, 1, 1],
             "rn": [1, 2, 3, 4],
             "attendances": [5, 6, 7, 8],
             "tele_attendances": [9, 10, 11, 12],
@@ -286,7 +285,6 @@ def test_process_results(mock_model):
         "age": [1] * 6,
         "age_group": [1] * 6,
         "tretspef": [1] * 6,
-        "tretspef_grouped": [1] * 6,
         "value": [5, 9, 7, 11, 14, 22],
     }
     # act
@@ -308,13 +306,11 @@ def test_specific_aggregations(mocker, mock_model):
 
     # assert
     assert actual == {
-        "sex+tretspef_grouped": "agg_data",
-        "tretspef": "agg_data",
+        "sex+tretspef": "agg_data",
     }
 
     assert m.call_args_list == [
-        call("results", "sex", "tretspef_grouped"),
-        call("results", "tretspef"),
+        call("results", "sex", "tretspef"),
     ]
 
 
