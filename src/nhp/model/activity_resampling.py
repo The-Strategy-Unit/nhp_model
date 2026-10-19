@@ -103,34 +103,14 @@ class ActivityResampling:
 
     def demographic_adjustment(self) -> "ActivityResampling":
         """Perform the demograhic adjustment."""
-        year = str(self.run_params["year"])
-        variant = self.run_params["variant"]
-
-        factor = pd.concat(
-            {
-                "demographics": self.demog_factors.loc[(variant, slice(None), slice(None))][
-                    year
-                ].rename("demographic_adjustment")
-            }
-        )
-
+        factor = pd.concat({"demographics": self.demog_factors})
         factor.index.names = ["demog_type", *factor.index.names[1:]]
 
         return self._update(factor)
 
     def birth_adjustment(self) -> "ActivityResampling":
         """Perform the birth adjustment."""
-        year = str(self.run_params["year"])
-        variant = self.run_params["variant"]
-
-        factor = pd.concat(
-            {
-                "births": self.birth_factors.loc[(variant, slice(None), slice(None))][year].rename(
-                    "birth_adjustment"
-                )
-            }
-        )
-
+        factor = pd.concat({"births": self.birth_factors})
         factor.index.names = ["demog_type", *factor.index.names[1:]]
 
         return self._update(factor)

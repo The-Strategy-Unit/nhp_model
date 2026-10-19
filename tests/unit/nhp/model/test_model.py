@@ -78,7 +78,6 @@ def mock_model():
 def mock_run_params():
     """Generate the expected run params."""
     return {
-        "variant": ["a", "a", "b", "a"],
         "seeds": [1, 2, 3, 4],
         "non-demographic_adjustment": {
             "a": {"a_a": [1, 1, 2, 3], "a_b": [1, 4, 5, 6]},
@@ -383,57 +382,43 @@ def test_load_functional_areas(mock_model):
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize(
-    "year, expected_demog, expected_birth",
-    [
-        (
-            2018,
-            np.arange(21, 41) / np.arange(1, 21),
-            np.arange(21, 31) / np.arange(1, 11),
-        ),
-        (
-            2019,
-            np.arange(21, 41) / np.arange(11, 31),
-            np.arange(21, 31) / np.arange(11, 21),
-        ),
-    ],
-)
-def test_demog_factors_loads_correctly(mock_model, year, expected_demog, expected_birth):
-    """Test that the demographic factors are loaded correctly."""
+def test_demog_factors_loads_correctly(mock_model):
+    """Test that the demographic factors are loaded correctly from the params spec."""
     # arrange
     data_loader = Mock()
-    data_loader.get_demographic_factors.return_value = pd.DataFrame(
-        {
-            "variant": ["a"] * 10 + ["b"] * 10,
-            "age": list(range(1, 6)) * 4,
-            "sex": ([1] * 5 + [2] * 5) * 2,
-            "2018": list(range(1, 21)),
-            "2019": list(range(11, 31)),
-            "2020": list(range(21, 41)),
-        }
-    )
-    data_loader.get_birth_factors.return_value = pd.DataFrame(
-        {
-            "variant": ["a"] * 5 + ["b"] * 5,
-            "age": list(range(1, 6)) * 2,
-            "sex": [1] * 10,
-            "2018": list(range(1, 11)),
-            "2019": list(range(11, 21)),
-            "2020": list(range(21, 31)),
-        }
-    )
     mdl = mock_model
-    mdl.params["start_year"] = year
+    mdl.params["demographic_adjustment"] = {
+        "population": {
+            "baseline": {"1": {"0": 10.0, "1": 20.0}, "2": {"0": 50.0, "1": 100.0}},
+            "horizon": {"1": {"0": 5.0, "1": 10.0}, "2": {"0": 25.0, "1": 50.0}},
+        },
+        "births": {
+            "baseline": {"2": {"0": 8.0, "1": 16.0}},
+            "horizon": {"2": {"0": 4.0, "1": 8.0}},
+        },
+    }
+
+    expected_demog = pd.Series(
+        [0.5, 0.5, 0.5, 0.5],
+        index=pd.MultiIndex.from_tuples([(1, 0), (1, 1), (2, 0), (2, 1)], names=["sex", "age"]),
+        name="demographic_adjustment",
+    )
+    expected_birth = pd.Series(
+        [0.5, 0.5],
+        index=pd.MultiIndex.from_tuples([(2, 0), (2, 1)], names=["sex", "age"]),
+        name="birth_adjustment",
+    )
 
     # act
     mdl._load_demog_factors(data_loader)
 
     # assert
-    assert np.equal(mdl.demog_factors["2020"], expected_demog).all()
-    assert np.equal(mdl.birth_factors["2020"], expected_birth).all()
-
-    data_loader.get_demographic_factors.assert_called_once_with()
-    data_loader.get_birth_factors.assert_called_once_with()
+    assert mdl.demog_factors.equals(expected_demog)
+    assert mdl.birth_factors.equals(expected_birth)
+    assert mdl.demog_factors.index.names == ["sex", "age"]
+    assert mdl.birth_factors.index.names == ["sex", "age"]
+    data_loader.get_demographic_factors.assert_not_called()
+    data_loader.get_birth_factors.assert_not_called()
 
 
 # _generate_run_params()
@@ -459,8 +444,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
     mocker.patch("nhp.model.model.inrange", wraps=lambda x, low, high: x)
 
     mdl = mock_model
-    mdl._variants = ["a", "b"]
-    mdl._probabilities = [0.6, 0.4]
 
     # act
     actual = mdl.generate_run_params(mdl.params)
@@ -479,7 +462,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
         (
             0,
             {
-                "variant": "a",
                 "seed": 1,
                 "non-demographic_adjustment": {
                     "a": {"a_a": 1, "a_b": 1},
@@ -508,7 +490,6 @@ def test_generate_run_params(mocker, mock_model, mock_run_params):
         (
             2,
             {
-                "variant": "b",
                 "seed": 3,
                 "non-demographic_adjustment": {
                     "a": {"a_a": 2, "a_b": 5},

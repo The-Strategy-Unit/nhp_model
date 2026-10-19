@@ -48,20 +48,6 @@ def test_get_aae():
 
 
 @pytest.mark.unit
-def test_get_birth_factors():
-    d = Data()
-    with pytest.raises(NotImplementedError):
-        d.get_birth_factors()
-
-
-@pytest.mark.unit
-def test_get_demographic_factors():
-    d = Data()
-    with pytest.raises(NotImplementedError):
-        d.get_demographic_factors()
-
-
-@pytest.mark.unit
 def test_get_hsa_activity_table():
     d = Data()
     with pytest.raises(NotImplementedError):

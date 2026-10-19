@@ -76,9 +76,10 @@ def test_demographic_adjustment(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
     aa_mock._model_iteration.run_params = {"year": 2020, "variant": "a"}
-    aa_mock._model_iteration.model.demog_factors = pd.DataFrame(
-        {"2020": [1, 2, 3]},
-        index=pd.MultiIndex.from_tuples([("a", 0), ("a", 1), ("b", 0)]),
+    aa_mock._model_iteration.model.demog_factors = pd.Series(
+        [1.0, 2.0, 3.0],
+        index=pd.MultiIndex.from_tuples([(1, 0), (1, 1), (2, 0)], names=["sex", "age"]),
+        name="demographic_adjustment",
     )
 
     u_mock = mocker.patch(
@@ -92,10 +93,11 @@ def test_demographic_adjustment(mocker, mock_activity_resampling):
     # assert
     assert actual == "update"
     u_mock.assert_called_once()
-
+    assert u_mock.call_args[0][0].index.names == ["demog_type", "sex", "age"]
     assert u_mock.call_args[0][0].to_dict() == {
-        ("demographics", 0): 1,
-        ("demographics", 1): 2,
+        ("demographics", 1, 0): 1.0,
+        ("demographics", 1, 1): 2.0,
+        ("demographics", 2, 0): 3.0,
     }
 
 
@@ -104,9 +106,10 @@ def test_birth_adjustment(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
     aa_mock._model_iteration.run_params = {"year": 2020, "variant": "a"}
-    aa_mock._model_iteration.model.birth_factors = pd.DataFrame(
-        {"2020": [1, 2, 3]},
-        index=pd.MultiIndex.from_tuples([("a", 0), ("a", 1), ("b", 0)]),
+    aa_mock._model_iteration.model.birth_factors = pd.Series(
+        [1.0, 2.0, 3.0],
+        index=pd.MultiIndex.from_tuples([(2, 0), (2, 1), (2, 2)], names=["sex", "age"]),
+        name="birth_adjustment",
     )
 
     u_mock = mocker.patch(
@@ -120,8 +123,12 @@ def test_birth_adjustment(mocker, mock_activity_resampling):
     # assert
     assert actual == "update"
     u_mock.assert_called_once()
-
-    assert u_mock.call_args[0][0].to_dict() == {("births", 0): 1, ("births", 1): 2}
+    assert u_mock.call_args[0][0].index.names == ["demog_type", "sex", "age"]
+    assert u_mock.call_args[0][0].to_dict() == {
+        ("births", 2, 0): 1.0,
+        ("births", 2, 1): 2.0,
+        ("births", 2, 2): 3.0,
+    }
 
 
 # _health_status_adjustment()

@@ -88,22 +88,6 @@ class Local(Data):
         """
         return self._get_parquet("aae").rename(columns={"index": "rn"})
 
-    def get_birth_factors(self) -> pd.DataFrame:
-        """Get the birth factors dataframe.
-
-        Returns:
-            The birth factors dataframe.
-        """
-        return self._get_parquet("birth_factors")
-
-    def get_demographic_factors(self) -> pd.DataFrame:
-        """Get the demographic factors dataframe.
-
-        Returns:
-            The demographic factors dataframe.
-        """
-        return self._get_parquet("demographic_factors")
-
     def get_hsa_activity_table(self) -> pd.DataFrame:
         """Get the demographic factors dataframe.
 

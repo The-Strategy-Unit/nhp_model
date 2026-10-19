@@ -68,22 +68,6 @@ class Data:
         """
         raise NotImplementedError()
 
-    def get_birth_factors(self) -> pd.DataFrame:
-        """Get the birth factors dataframe.
-
-        Returns:
-            The birth factors dataframe.
-        """
-        raise NotImplementedError()
-
-    def get_demographic_factors(self) -> pd.DataFrame:
-        """Get the demographic factors dataframe.
-
-        Returns:
-            The demographic factors dataframe.
-        """
-        raise NotImplementedError()
-
     def get_hsa_activity_table(self) -> pd.DataFrame:
         """Get the health status adjustment activity table dataframe.
 
