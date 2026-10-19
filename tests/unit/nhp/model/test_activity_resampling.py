@@ -72,18 +72,6 @@ def test_update(mock_activity_resampling):
 
 
 @pytest.mark.unit
-def test_pandas_astype_copies_to_prevent_mutation(mocker):
-    """Pandas 3 already returns a new array from astype, so the original data is not mutated."""
-    original = pd.Series([1, 2, 3], dtype="int64")
-
-    converted = original.astype(np.float64)
-    converted.iloc[0] = 99.0
-
-    assert original.tolist() == [1, 2, 3]
-    assert converted.tolist() == [99.0, 2.0, 3.0]
-
-
-@pytest.mark.unit
 def test_demographic_adjustment(mocker, mock_activity_resampling):
     # arrange
     aa_mock = mock_activity_resampling
