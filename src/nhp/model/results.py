@@ -233,7 +233,7 @@ def _patch_converted_sdec_activity(
         .sum()
     )
 
-    df_fixed["value"] = df_fixed["value"].astype(np.int64, copy=False)
+    df_fixed["value"] = df_fixed["value"].astype(np.int64)
 
     results[column] = df_fixed
 

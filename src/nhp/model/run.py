@@ -198,7 +198,7 @@ def run_single_model_run(
         .pivot_table(index="change_factor", columns="measure")
     )
     step_counts.loc["total"] = step_counts.sum()
-    print(step_counts.fillna(0).astype(np.int64, copy=False))
+    print(step_counts.fillna(0).astype(np.int64))
     print()
     print("aggregated (default) results:")
 
