@@ -164,14 +164,12 @@ class Model:
     def _load_demog_factors(self, data_loader: Data) -> None:
         """Load the demographic factors.
 
-        Load the demographic factors csv file and calculate the demographics growth factor for the
-        years in the parameters.
+        Load the demographic factors from the params
 
-        Creates 3 private variables:
+        Creates 2 private variables:
 
-          * | `self.demog_factors`: a pandas.DataFrame which has a 1:1 correspondance to the model
-            | data and a column for each of the different population projections available
-          * `self._probabilities`: a list containing the probability of selecting a given variant
+          * | `self.demog_factors`: a pandas.Series for each age/sex combination
+          * `self.birth_factors`: a pandas.Series for each age/sex combination
         """
         demog = self.params["demographic_adjustment"]
 
