@@ -171,8 +171,6 @@ class Model:
 
           * | `self.demog_factors`: a pandas.DataFrame which has a 1:1 correspondance to the model
             | data and a column for each of the different population projections available
-          * | `self._variants`: a list containing the names of the different population projections
-            | available
           * `self._probabilities`: a list containing the probability of selecting a given variant
         """
         demog = self.params["demographic_adjustment"]

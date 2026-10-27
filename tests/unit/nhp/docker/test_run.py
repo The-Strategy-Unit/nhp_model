@@ -33,10 +33,10 @@ def test_RunWithLocalStorage_finish(mocker):
     s = RunWithLocalStorage("filename")
 
     # act
-    s.finish("results", "variants", False, {})  # ty: ignore[invalid-argument-type]
+    s.finish("results", False, {})  # ty: ignore[invalid-argument-type]
 
     # assert
-    save_results_files_mock.assert_called_once_with("results", "params", "variants")
+    save_results_files_mock.assert_called_once_with("results", "params")
 
 
 @pytest.mark.unit
@@ -295,7 +295,11 @@ def test_RunWithAzureStorage_upload_results_files(mock_run_with_azure_storage, m
     s.params = {"params": "params"}
 
     # act
-    s._upload_results_files("file_path", {"a": results_file_mock}, metadata, ["variants"])
+    s._upload_results_files(
+        "file_path",
+        {"a": results_file_mock},
+        metadata,
+    )
 
     # assert
     get_container_mock.assert_called_once_with("results-sa", "results")
@@ -310,12 +314,6 @@ def test_RunWithAzureStorage_upload_results_files(mock_run_with_azure_storage, m
             call(
                 "file_path/params.json",
                 b'{"params": "params"}',
-                overwrite=True,
-                metadata=metadata,
-            ),
-            call(
-                "file_path/variants.json",
-                b'["variants"]',
                 overwrite=True,
                 metadata=metadata,
             ),
@@ -430,14 +428,13 @@ def test_RunWithAzureStorage_finish_save_full_model_results_false(
     )
 
     # act
-    s.finish("results", "variants", False, additional_metadata)
+    s.finish("results", False, additional_metadata)
 
     # assert
     m1.assert_called_once_with(
         file_path,
         "results",
         {"model_run_id": "00000000-0000-0000-0000-000000000001"},
-        "variants",
     )
     m2.assert_called_once_with(
         status="complete",
@@ -490,14 +487,13 @@ def test_RunWithAzureStorage_finish_save_full_model_results_true(
     )
 
     # act
-    s.finish("results", "variants", True, additional_metadata)
+    s.finish("results", True, additional_metadata)
 
     # assert
     m1.assert_called_once_with(
         file_path,
         "results",
         {"model_run_id": "00000000-0000-0000-0000-000000000001"},
-        "variants",
     )
     m2.assert_called_once_with(
         status="complete",

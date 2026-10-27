@@ -98,7 +98,7 @@ def test_main_all_runs(mocker):
     local_data_mock = mocker.patch("nhp.model.__main__.Local")
     local_data_mock.create.return_value = "data"
 
-    run_all_mock = mocker.patch("nhp.model.__main__.run_all", return_value=("results", "variants"))
+    run_all_mock = mocker.patch("nhp.model.__main__.run_all", return_value="results")
     save_results_files_mock = mocker.patch(
         "nhp.model.__main__.save_results_files", return_value=["results_paths"]
     )
@@ -112,7 +112,7 @@ def test_main_all_runs(mocker):
     assert run_all_mock.call_args[0][0] == "params"
     assert run_all_mock.call_args[0][1] == "data"
     assert run_all_mock.call_args[0][2]("a")(0) is None
-    save_results_files_mock.assert_called_once_with("results", "params", "variants")
+    save_results_files_mock.assert_called_once_with("results", "params")
 
     run_single_mock.assert_not_called()
     ldp_mock.assert_called_once_with("queue/params.json")

@@ -34,7 +34,6 @@ class RunWithLocalStorage:
     def finish(
         self,
         results: dict[str, pd.DataFrame],
-        variants: list[str],
         _save_full_model_results: bool,
         _additional_metadata: dict[str, Any],
     ) -> None:
@@ -42,11 +41,10 @@ class RunWithLocalStorage:
 
         Args:
             results: A dictionary containing the results dataframes.
-            variants: A list of the variants that were run.
             save_full_model_results: Whether to save the full model results or not.
             additional_metadata: Additional metadata to log.
         """
-        save_results_files(results, self.params, variants)
+        save_results_files(results, self.params)
 
     def error(self, error_message: str) -> None:
         """Error handling.
@@ -169,7 +167,6 @@ class RunWithAzureStorage:
         file_path: str,
         results: dict[str, pd.DataFrame],
         metadata: dict[str, str],
-        variants: list[str],
     ) -> None:
         """Upload the results.
 
@@ -180,7 +177,6 @@ class RunWithAzureStorage:
             file_path: The path to save the results to.
             results: A dictionary containing the results dataframes.
             metadata: The metadata to attach to the blob.
-            variants: A list of the variants that were run.
         """
         params = self.params
         container = self._get_container(self._config.RESULTS_STORAGE_ACCOUNT, "results")
@@ -197,13 +193,6 @@ class RunWithAzureStorage:
         container.upload_blob(
             f"{file_path}/params.json",
             json.dumps(params).encode("utf-8"),
-            overwrite=True,
-            metadata=metadata,
-        )
-        logging.debug(" * variants.json")
-        container.upload_blob(
-            f"{file_path}/variants.json",
-            json.dumps(variants).encode("utf-8"),
             overwrite=True,
             metadata=metadata,
         )
@@ -252,7 +241,6 @@ class RunWithAzureStorage:
     def finish(
         self,
         results: dict[str, pd.DataFrame],
-        variants: list[str],
         save_full_model_results: bool,
         additional_metadata: dict[str, Any],
     ) -> None:
@@ -260,7 +248,6 @@ class RunWithAzureStorage:
 
         Args:
             results: A dictionary containing the results dataframes.
-            variants: A list of the variants that were run.
             save_full_model_results: Whether to save the full model results or not.
             additional_metadata: Additional metadata to log.
         """
@@ -280,9 +267,7 @@ class RunWithAzureStorage:
             **additional_metadata,
         )
 
-        self._upload_results_files(
-            file_path, results, {"model_run_id": str(self._model_run_id)}, variants
-        )
+        self._upload_results_files(file_path, results, {"model_run_id": str(self._model_run_id)})
         ## ---
         if save_full_model_results:
             self._upload_full_model_results()

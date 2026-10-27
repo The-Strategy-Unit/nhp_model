@@ -16,4 +16,4 @@ def test_load_sample_params_validation_fails():
     from jsonschema.exceptions import ValidationError
 
     with pytest.raises(ValidationError):
-        load_sample_params(demographic_factors="invalid-factor")
+        load_sample_params(baseline_adjustment={"invalid": "value"})

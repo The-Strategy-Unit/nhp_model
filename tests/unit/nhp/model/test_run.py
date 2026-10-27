@@ -89,7 +89,7 @@ def test_run_all(mocker):
     # arrange
     grp_m = mocker.patch(
         "nhp.model.run.Model.generate_run_params",
-        return_value={"variant": "variants"},
+        return_value={},
     )
     hsa_m = mocker.patch("nhp.model.run.HealthStatusAdjustmentInterpolated", return_value="hsa")
 
@@ -120,7 +120,7 @@ def test_run_all(mocker):
     actual = run_all(params, data_factory, pc_m, False)
 
     # assert
-    assert actual == ("combined_results", "variants")
+    assert actual == "combined_results"
 
     data_factory.assert_called_once_with(2020, "synthetic")
 
@@ -139,7 +139,7 @@ def test_run_all(mocker):
             params,
             nhp_data,
             "hsa",
-            {"variant": "variants"},
+            {},
             pc_m(),
             False,
             None,
@@ -155,7 +155,7 @@ def test_run_all_filters_model_types_by_available_data(mocker):
     # arrange
     grp_m = mocker.patch(
         "nhp.model.run.Model.generate_run_params",
-        return_value={"variant": "variants"},
+        return_value={},
     )
     hsa_m = mocker.patch("nhp.model.run.HealthStatusAdjustmentInterpolated", return_value="hsa")
     rm_m = mocker.patch("nhp.model.run._run_model", side_effect=["ip", "aae"])
@@ -183,7 +183,7 @@ def test_run_all_filters_model_types_by_available_data(mocker):
     actual = run_all(params, nhp_data, pc_m, False)
 
     # assert
-    assert actual == ("combined_results", "variants")
+    assert actual == "combined_results"
     grp_m.assert_called_once_with(params)
     hsa_m.assert_called_once_with(nhp_data, 2020, 2025, 42, 10)
     cr_m.assert_called_once_with(["ip", "aae"])
@@ -195,7 +195,7 @@ def test_run_all_filters_model_types_by_available_data(mocker):
             params,
             nhp_data,
             "hsa",
-            {"variant": "variants"},
+            {},
             pc_m(),
             False,
             None,
@@ -205,7 +205,7 @@ def test_run_all_filters_model_types_by_available_data(mocker):
             params,
             nhp_data,
             "hsa",
-            {"variant": "variants"},
+            {},
             pc_m(),
             False,
             None,
@@ -286,7 +286,7 @@ def test_run_all_uses_data_instance(mocker):
     # arrange
     grp_m = mocker.patch(
         "nhp.model.run.Model.generate_run_params",
-        return_value={"variant": "variants"},
+        return_value={},
     )
     hsa_m = mocker.patch("nhp.model.run.HealthStatusAdjustmentInterpolated", return_value="hsa")
     rm_m = mocker.patch("nhp.model.run._run_model", side_effect=["ip", "op", "aae"])
@@ -311,7 +311,7 @@ def test_run_all_uses_data_instance(mocker):
     actual = run_all(params, nhp_data, pc_m, False)
 
     # assert
-    assert actual == ("combined_results", "variants")
+    assert actual == "combined_results"
     grp_m.assert_called_once_with(params)
     hsa_m.assert_called_once_with(nhp_data, 2020, 2025, 42, 10)
     cr_m.assert_called_once_with(["ip", "op", "aae"])
@@ -322,7 +322,7 @@ def test_run_all_uses_data_instance(mocker):
             params,
             nhp_data,
             "hsa",
-            {"variant": "variants"},
+            {},
             pc_m(),
             False,
             None,
