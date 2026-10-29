@@ -342,7 +342,7 @@ def test_waiting_list_adjustment_aae(mocker, mock_activity_resampling):
     aa_mock = mock_activity_resampling
     aa_mock._model_iteration.model.model_type = "aae"
 
-    aa_mock._model_iteration.data = pd.DataFrame({"tretspef_grouped": ["100"] * 4 + ["200"] * 2})
+    aa_mock._model_iteration.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
 
     aa_mock._model_iteration.run_params = {
         "waiting_list_adjustment": {
@@ -372,7 +372,7 @@ def test_waiting_list_adjustment_no_params(mocker, mock_activity_resampling):
     aa_mock = mock_activity_resampling
     aa_mock._model_iteration.model.model_type = "ip"
 
-    aa_mock._model_iteration.data = pd.DataFrame({"tretspef_grouped": ["100"] * 4 + ["200"] * 2})
+    aa_mock._model_iteration.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
 
     aa_mock._model_iteration.run_params = {"waiting_list_adjustment": {"ip": {}}}
 
@@ -395,7 +395,7 @@ def test_waiting_list_adjustment(mocker, mock_activity_resampling):
     aa_mock = mock_activity_resampling
     aa_mock._model_iteration.model.model_type = "ip"
 
-    aa_mock._model_iteration.data = pd.DataFrame({"tretspef_grouped": ["100"] * 4 + ["200"] * 2})
+    aa_mock._model_iteration.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
 
     aa_mock._model_iteration.run_params = {
         "waiting_list_adjustment": {
@@ -537,7 +537,7 @@ def test_non_demographic_adjustment_no_params(mocker, mock_activity_resampling, 
     aa_mock = mock_activity_resampling
     aa_mock._model_iteration.model.model_type = model_type
 
-    aa_mock._model_iteration.data = pd.DataFrame({"tretspef_grouped": ["100"] * 4 + ["200"] * 2})
+    aa_mock._model_iteration.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
 
     aa_mock._model_iteration.run_params = {
         "non-demographic_adjustment": {"ip": {}, "op": {}, "aae": {}}
@@ -573,7 +573,7 @@ def test_non_demographic_adjustment(mocker, mock_activity_resampling, model_type
     aa_mock = mock_activity_resampling
     aa_mock._model_iteration.model.model_type = model_type
 
-    aa_mock._model_iteration.data = pd.DataFrame({"tretspef_grouped": ["100"] * 4 + ["200"] * 2})
+    aa_mock._model_iteration.data = pd.DataFrame({"tretspef": ["100"] * 4 + ["200"] * 2})
 
     aa_mock._model_iteration.run_params = {
         "year": year,

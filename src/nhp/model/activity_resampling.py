@@ -179,7 +179,7 @@ class ActivityResampling:
             return self
 
         factor: pd.Series = pd.concat({k: pd.Series(v, name="expat") for k, v in params.items()})
-        factor.index.names = ["group", "tretspef_grouped"]
+        factor.index.names = ["group", "tretspef"]
         return self._update(factor)
 
     def repat_adjustment(self) -> "ActivityResampling":
@@ -197,7 +197,7 @@ class ActivityResampling:
             return self
 
         factor: pd.Series = pd.concat(params)
-        factor.index.names = ["is_main_icb", "group", "tretspef_grouped"]
+        factor.index.names = ["is_main_icb", "group", "tretspef"]
         return self._update(factor)
 
     def baseline_adjustment(self) -> "ActivityResampling":
@@ -217,7 +217,7 @@ class ActivityResampling:
                 for k, v in params.items()
             }
         )
-        factor.index.names = ["group", "tretspef_grouped"]
+        factor.index.names = ["group", "tretspef"]
         return self._update(factor)
 
     def waiting_list_adjustment(self) -> "ActivityResampling":
@@ -239,7 +239,7 @@ class ActivityResampling:
 
         # update the index to include "True" for the is_wla field
         factor.index = pd.MultiIndex.from_tuples(
-            [(True, i) for i in factor.index], names=["is_wla", "tretspef_grouped"]
+            [(True, i) for i in factor.index], names=["is_wla", "tretspef"]
         )
         factor.name = "waiting_list_adjustment"
 

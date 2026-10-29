@@ -223,7 +223,6 @@ class OutpatientsModel(Model):
             "age_group",
             "age",
             "tretspef",
-            "tretspef_grouped",
         ]
         data = (
             data.drop(["attendances", "tele_attendances"], axis="columns")
@@ -249,8 +248,7 @@ class OutpatientsModel(Model):
             Dictionary containing the specific aggregations.
         """
         return {
-            "sex+tretspef_grouped": self.get_agg(model_results, "sex", "tretspef_grouped"),
-            "tretspef": self.get_agg(model_results, "tretspef"),
+            "sex+tretspef": self.get_agg(model_results, "sex", "tretspef"),
         }
 
     def functional_area_aggregations(self, model_results: pd.DataFrame) -> pd.Series:

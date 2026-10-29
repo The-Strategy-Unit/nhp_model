@@ -240,7 +240,6 @@ class InpatientsModel(Model):
             "sex",
             "pod",
             "tretspef",
-            "tretspef_grouped",
             "los_group",
             "maternity_delivery_in_spell",
         ]
@@ -276,7 +275,6 @@ class InpatientsModel(Model):
         sdec_ix = data["pod"] == "aae_type-05"
         data.loc[sdec_ix, "measure"] = "walk-in"
         data.loc[sdec_ix, "tretspef"] = "Other"
-        data.loc[sdec_ix, "tretspef_grouped"] = "Other"
         data.loc[sdec_ix, "los_group"] = None
 
         # reduce any duplicated rows
@@ -295,8 +293,7 @@ class InpatientsModel(Model):
             Dictionary containing the specific aggregations.
         """
         return {
-            "sex+tretspef_grouped": self.get_agg(model_results, "sex", "tretspef_grouped"),
-            "tretspef": self.get_agg(model_results, "tretspef"),
+            "sex+tretspef": self.get_agg(model_results, "sex", "tretspef"),
             "tretspef+los_group": self.get_agg(model_results, "tretspef", "los_group"),
             "delivery_episode_in_spell": self.get_agg(
                 model_results[model_results["maternity_delivery_in_spell"]]
@@ -453,7 +450,7 @@ class InpatientsModel(Model):
         return (
             model_results[ix]
             .groupby(
-                ["age", "age_group", "sex", "tretspef", "tretspef_grouped", "sitetret"],
+                ["age", "age_group", "sex", "tretspef", "sitetret"],
                 dropna=False,
                 as_index=False,
             )
