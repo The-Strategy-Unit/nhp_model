@@ -97,12 +97,7 @@
                             "$ref": "#/$defs/tretspef_groups_0-5"
                         },
                         "maternity": {
-                            "type": "object",
-                            "properties": {
-                                "Other (Medical)": {
-                                    "$ref": "#/$defs/value_0-5"
-                                }
-                            }
+                            "$ref": "#/$defs/tretspef_groups_0-5"
                         }
                     },
                     "additionalProperties": false
@@ -126,10 +121,22 @@
                     "type": "object",
                     "properties": {
                         "ambulance": {
-                            "$ref": "#/$defs/value_0-5"
+                            "type": "object",
+                            "properties": {
+                                "Other": {
+                                    "$ref": "#/$defs/value_0-5"
+                                }
+                            },
+                            "additionalProperties": false
                         },
                         "walk-in": {
-                            "$ref": "#/$defs/value_0-5"
+                            "type": "object",
+                            "properties": {
+                                "Other": {
+                                    "$ref": "#/$defs/value_0-5"
+                                }
+                            },
+                            "additionalProperties": false
                         }
                     },
                     "additionalProperties": false
@@ -545,12 +552,7 @@
                             "$ref": "#/$defs/tretspef_groups_0-1"
                         },
                         "maternity": {
-                            "type": "object",
-                            "properties": {
-                                "Other (Medical)": {
-                                    "$ref": "#/$defs/confidence_interval_0-1"
-                                }
-                            }
+                            "$ref": "#/$defs/tretspef_groups_0-1"
                         }
                     },
                     "additionalProperties": false
@@ -586,12 +588,7 @@
                             "$ref": "#/$defs/tretspef_groups_1-5"
                         },
                         "maternity": {
-                            "type": "object",
-                            "properties": {
-                                "Other (Medical)": {
-                                    "$ref": "#/$defs/confidence_interval_1-5"
-                                }
-                            }
+                            "$ref": "#/$defs/tretspef_groups_1-5"
                         }
                     },
                     "additionalProperties": false
@@ -622,7 +619,40 @@
                 "101": {
                     "$ref": "#/$defs/value_0-5"
                 },
+                "102": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "103": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "104": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "105": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "106": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "107": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "108": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "109": {
+                    "$ref": "#/$defs/value_0-5"
+                },
                 "110": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "111": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "113": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "115": {
                     "$ref": "#/$defs/value_0-5"
                 },
                 "120": {
@@ -634,13 +664,172 @@
                 "140": {
                     "$ref": "#/$defs/value_0-5"
                 },
+                "141": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "143": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "144": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "145": {
+                    "$ref": "#/$defs/value_0-5"
+                },
                 "150": {
                     "$ref": "#/$defs/value_0-5"
                 },
                 "160": {
                     "$ref": "#/$defs/value_0-5"
                 },
+                "161": {
+                    "$ref": "#/$defs/value_0-5"
+                },
                 "170": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "172": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "173": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "174": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "191": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "142": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "171": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "211": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "212": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "213": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "214": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "215": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "216": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "217": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "218": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "219": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "220": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "221": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "222": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "223": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "230": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "240": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "241": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "242": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "250": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "251": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "252": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "253": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "254": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "255": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "256": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "257": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "258": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "259": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "260": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "261": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "262": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "263": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "264": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "270": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "280": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "290": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "291": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "321": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "421": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "180": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "190": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "192": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "200": {
                     "$ref": "#/$defs/value_0-5"
                 },
                 "300": {
@@ -649,31 +838,313 @@
                 "301": {
                     "$ref": "#/$defs/value_0-5"
                 },
+                "302": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "303": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "304": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "305": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "306": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "307": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "308": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "309": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "310": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "311": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "313": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "314": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "315": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "316": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "317": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "318": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "319": {
+                    "$ref": "#/$defs/value_0-5"
+                },
                 "320": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "322": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "323": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "324": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "325": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "326": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "327": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "328": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "329": {
                     "$ref": "#/$defs/value_0-5"
                 },
                 "330": {
                     "$ref": "#/$defs/value_0-5"
                 },
+                "331": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "333": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "335": {
+                    "$ref": "#/$defs/value_0-5"
+                },
                 "340": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "341": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "342": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "343": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "344": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "345": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "346": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "347": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "348": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "350": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "352": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "360": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "361": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "370": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "371": {
                     "$ref": "#/$defs/value_0-5"
                 },
                 "400": {
                     "$ref": "#/$defs/value_0-5"
                 },
+                "401": {
+                    "$ref": "#/$defs/value_0-5"
+                },
                 "410": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "420": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "422": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "424": {
                     "$ref": "#/$defs/value_0-5"
                 },
                 "430": {
                     "$ref": "#/$defs/value_0-5"
                 },
+                "431": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "450": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "451": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "460": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "461": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "501": {
+                    "$ref": "#/$defs/value_0-5"
+                },
                 "502": {
                     "$ref": "#/$defs/value_0-5"
                 },
-                "Other (Medical)": {
+                "503": {
                     "$ref": "#/$defs/value_0-5"
                 },
-                "Other (Surgical)": {
+                "504": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "505": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "560": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "656": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "700": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "710": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "711": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "712": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "713": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "715": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "720": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "721": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "722": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "723": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "724": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "725": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "726": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "727": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "730": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "800": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "811": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "812": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "822": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "834": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "650": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "651": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "652": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "653": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "654": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "655": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "657": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "658": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "659": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "660": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "661": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "662": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "663": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "670": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "673": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "675": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "677": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "840": {
+                    "$ref": "#/$defs/value_0-5"
+                },
+                "920": {
                     "$ref": "#/$defs/value_0-5"
                 },
                 "Other": {
@@ -691,7 +1162,40 @@
                 "101": {
                     "$ref": "#/$defs/confidence_interval_0-1"
                 },
+                "102": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "103": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "104": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "105": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "106": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "107": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "108": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "109": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
                 "110": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "111": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "113": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "115": {
                     "$ref": "#/$defs/confidence_interval_0-1"
                 },
                 "120": {
@@ -703,13 +1207,172 @@
                 "140": {
                     "$ref": "#/$defs/confidence_interval_0-1"
                 },
+                "141": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "143": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "144": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "145": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
                 "150": {
                     "$ref": "#/$defs/confidence_interval_0-1"
                 },
                 "160": {
                     "$ref": "#/$defs/confidence_interval_0-1"
                 },
+                "161": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
                 "170": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "172": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "173": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "174": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "191": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "142": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "171": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "211": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "212": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "213": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "214": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "215": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "216": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "217": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "218": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "219": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "220": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "221": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "222": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "223": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "230": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "240": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "241": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "242": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "250": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "251": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "252": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "253": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "254": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "255": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "256": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "257": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "258": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "259": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "260": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "261": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "262": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "263": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "264": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "270": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "280": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "290": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "291": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "321": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "421": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "180": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "190": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "192": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "200": {
                     "$ref": "#/$defs/confidence_interval_0-1"
                 },
                 "300": {
@@ -718,31 +1381,313 @@
                 "301": {
                     "$ref": "#/$defs/confidence_interval_0-1"
                 },
+                "302": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "303": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "304": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "305": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "306": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "307": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "308": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "309": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "310": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "311": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "313": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "314": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "315": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "316": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "317": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "318": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "319": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
                 "320": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "322": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "323": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "324": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "325": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "326": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "327": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "328": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "329": {
                     "$ref": "#/$defs/confidence_interval_0-1"
                 },
                 "330": {
                     "$ref": "#/$defs/confidence_interval_0-1"
                 },
+                "331": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "333": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "335": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
                 "340": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "341": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "342": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "343": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "344": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "345": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "346": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "347": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "348": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "350": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "352": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "360": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "361": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "370": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "371": {
                     "$ref": "#/$defs/confidence_interval_0-1"
                 },
                 "400": {
                     "$ref": "#/$defs/confidence_interval_0-1"
                 },
+                "401": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
                 "410": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "420": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "422": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "424": {
                     "$ref": "#/$defs/confidence_interval_0-1"
                 },
                 "430": {
                     "$ref": "#/$defs/confidence_interval_0-1"
                 },
+                "431": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "450": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "451": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "460": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "461": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "501": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
                 "502": {
                     "$ref": "#/$defs/confidence_interval_0-1"
                 },
-                "Other (Medical)": {
+                "503": {
                     "$ref": "#/$defs/confidence_interval_0-1"
                 },
-                "Other (Surgical)": {
+                "504": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "505": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "560": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "656": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "700": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "710": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "711": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "712": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "713": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "715": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "720": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "721": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "722": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "723": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "724": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "725": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "726": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "727": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "730": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "800": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "811": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "812": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "822": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "834": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "650": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "651": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "652": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "653": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "654": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "655": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "657": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "658": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "659": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "660": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "661": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "662": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "663": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "670": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "673": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "675": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "677": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "840": {
+                    "$ref": "#/$defs/confidence_interval_0-1"
+                },
+                "920": {
                     "$ref": "#/$defs/confidence_interval_0-1"
                 },
                 "Other": {
@@ -760,7 +1705,40 @@
                 "101": {
                     "$ref": "#/$defs/confidence_interval_1-5"
                 },
+                "102": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "103": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "104": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "105": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "106": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "107": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "108": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "109": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
                 "110": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "111": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "113": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "115": {
                     "$ref": "#/$defs/confidence_interval_1-5"
                 },
                 "120": {
@@ -772,13 +1750,172 @@
                 "140": {
                     "$ref": "#/$defs/confidence_interval_1-5"
                 },
+                "141": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "143": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "144": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "145": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
                 "150": {
                     "$ref": "#/$defs/confidence_interval_1-5"
                 },
                 "160": {
                     "$ref": "#/$defs/confidence_interval_1-5"
                 },
+                "161": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
                 "170": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "172": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "173": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "174": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "191": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "142": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "171": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "211": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "212": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "213": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "214": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "215": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "216": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "217": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "218": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "219": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "220": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "221": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "222": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "223": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "230": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "240": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "241": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "242": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "250": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "251": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "252": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "253": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "254": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "255": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "256": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "257": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "258": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "259": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "260": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "261": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "262": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "263": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "264": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "270": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "280": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "290": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "291": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "321": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "421": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "180": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "190": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "192": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "200": {
                     "$ref": "#/$defs/confidence_interval_1-5"
                 },
                 "300": {
@@ -787,31 +1924,313 @@
                 "301": {
                     "$ref": "#/$defs/confidence_interval_1-5"
                 },
+                "302": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "303": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "304": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "305": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "306": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "307": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "308": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "309": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "310": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "311": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "313": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "314": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "315": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "316": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "317": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "318": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "319": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
                 "320": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "322": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "323": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "324": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "325": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "326": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "327": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "328": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "329": {
                     "$ref": "#/$defs/confidence_interval_1-5"
                 },
                 "330": {
                     "$ref": "#/$defs/confidence_interval_1-5"
                 },
+                "331": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "333": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "335": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
                 "340": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "341": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "342": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "343": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "344": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "345": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "346": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "347": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "348": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "350": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "352": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "360": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "361": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "370": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "371": {
                     "$ref": "#/$defs/confidence_interval_1-5"
                 },
                 "400": {
                     "$ref": "#/$defs/confidence_interval_1-5"
                 },
+                "401": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
                 "410": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "420": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "422": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "424": {
                     "$ref": "#/$defs/confidence_interval_1-5"
                 },
                 "430": {
                     "$ref": "#/$defs/confidence_interval_1-5"
                 },
+                "431": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "450": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "451": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "460": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "461": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "501": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
                 "502": {
                     "$ref": "#/$defs/confidence_interval_1-5"
                 },
-                "Other (Medical)": {
+                "503": {
                     "$ref": "#/$defs/confidence_interval_1-5"
                 },
-                "Other (Surgical)": {
+                "504": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "505": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "560": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "656": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "700": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "710": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "711": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "712": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "713": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "715": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "720": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "721": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "722": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "723": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "724": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "725": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "726": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "727": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "730": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "800": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "811": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "812": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "822": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "834": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "650": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "651": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "652": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "653": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "654": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "655": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "657": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "658": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "659": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "660": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "661": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "662": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "663": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "670": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "673": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "675": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "677": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "840": {
+                    "$ref": "#/$defs/confidence_interval_1-5"
+                },
+                "920": {
                     "$ref": "#/$defs/confidence_interval_1-5"
                 },
                 "Other": {
