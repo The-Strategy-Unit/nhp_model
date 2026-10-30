@@ -13,7 +13,6 @@ from nhp.model.results import (
     _patch_converted_sdec_activity,
     _save_params_file,
     _save_parquet_file,
-    _save_variants_file,
     combine_results,
     save_results_files,
 )
@@ -197,9 +196,6 @@ def test_save_results_files(mocker):
     save_params_mock = mocker.patch(
         "nhp.model.results._save_params_file", return_value="params.json"
     )
-    save_variants_mock = mocker.patch(
-        "nhp.model.results._save_variants_file", return_value="variants.json"
-    )
 
     os_m = mocker.patch("os.makedirs")
 
@@ -209,11 +205,10 @@ def test_save_results_files(mocker):
         "default.parquet",
         "step_counts.parquet",
         "params.json",
-        "variants.json",
     ]
 
     # act
-    actual = save_results_files(results, params, ["variants"])
+    actual = save_results_files(results, params)
 
     # assert
     assert actual == expected
@@ -225,8 +220,6 @@ def test_save_results_files(mocker):
     ]
 
     save_params_mock.assert_called_once_with(path, params)
-
-    save_variants_mock.assert_called_once_with(path, ["variants"])
 
 
 @pytest.mark.unit
@@ -286,21 +279,6 @@ def test_save_params_file(mocker):
     assert actual == "path/params.json"
     mock_file.assert_called_once_with(actual, "w", encoding="utf-8")
     j_mock.assert_called_once_with("params", mock_file(), indent=2)
-
-
-@pytest.mark.unit
-def test_save_variants_file(mocker):
-    # arrange
-    j_mock = mocker.patch("json.dump")
-
-    # act
-    with patch("builtins.open", mock_open()) as mock_file:
-        actual = _save_variants_file("path", ["variants"])
-
-    # assert
-    assert actual == "path/variants.json"
-    mock_file.assert_called_once_with(actual, "w", encoding="utf-8")
-    j_mock.assert_called_once_with(["variants"], mock_file(), indent=2)
 
 
 @pytest.mark.unit

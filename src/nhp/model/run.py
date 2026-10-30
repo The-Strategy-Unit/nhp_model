@@ -121,7 +121,7 @@ def run_all(
     progress_callback: Callable[[Any], Callable[[Any], None]] = noop_progress_callback,
     save_full_model_results: bool = False,
     aggregation_columns: list[str] | None = None,
-) -> tuple[dict[str, pd.DataFrame], list[str]]:
+) -> dict[str, pd.DataFrame]:
     """Run the model.
 
     Runs all 3 model types, aggregates and combines the results.
@@ -135,7 +135,7 @@ def run_all(
         aggregation_columns: The columns to use for aggregation. Defaults to None.
 
     Returns:
-        A dictionary containing the results dataframes, and a list of the variants that were run.
+        A dictionary containing the results dataframes.
     """
     model_types = [InpatientsModel, OutpatientsModel, AaEModel]
     run_params = Model.generate_run_params(params)
@@ -169,7 +169,7 @@ def run_all(
         ]
     )
 
-    return results, run_params["variant"]
+    return results
 
 
 def run_single_model_run(

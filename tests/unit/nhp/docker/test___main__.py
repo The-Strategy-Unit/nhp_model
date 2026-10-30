@@ -91,7 +91,7 @@ def test_main_local(mocker):
     rwls().params = params
     rwls.reset_mock()
 
-    ru_m = mocker.patch("nhp.docker.__main__.run_all", return_value=("results", "variants"))
+    ru_m = mocker.patch("nhp.docker.__main__.run_all", return_value="results")
 
     expected_additional_metadata = {
         "model_run_start_time": m_start_time.isoformat(),
@@ -108,7 +108,7 @@ def test_main_local(mocker):
 
     s = rwls()
     ru_m.assert_called_once_with(params, "data", s.progress_callback(), False)
-    s.finish.assert_called_once_with("results", "variants", False, expected_additional_metadata)
+    s.finish.assert_called_once_with("results", False, expected_additional_metadata)
 
     local_data_mock.create.assert_called_once_with("data")
 
@@ -148,7 +148,7 @@ def test_main_azure(mocker):
     rwas().params = params
     rwas.reset_mock()
 
-    ru_m = mocker.patch("nhp.docker.__main__.run_all", return_value=("results", "variants"))
+    ru_m = mocker.patch("nhp.docker.__main__.run_all", return_value="results")
 
     expected_additional_metadata = {
         "model_run_start_time": m_start_time.isoformat(),
@@ -167,7 +167,7 @@ def test_main_azure(mocker):
 
     s = rwas()
     ru_m.assert_called_once_with(params, "data", s.progress_callback(), False)
-    s.finish.assert_called_once_with("results", "variants", False, expected_additional_metadata)
+    s.finish.assert_called_once_with("results", False, expected_additional_metadata)
 
     local_data_mock.create.assert_called_once_with("data")
 
