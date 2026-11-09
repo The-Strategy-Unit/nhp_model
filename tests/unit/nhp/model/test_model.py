@@ -387,38 +387,64 @@ def test_demog_factors_loads_correctly(mock_model):
     # arrange
     data_loader = Mock()
     mdl = mock_model
-    mdl.params["demographic_adjustment"] = {
-        "population": {
-            "baseline": {"1": {"0": 10.0, "1": 20.0}, "2": {"0": 50.0, "1": 100.0}},
-            "horizon": {"1": {"0": 5.0, "1": 10.0}, "2": {"0": 25.0, "1": 50.0}},
-        },
-        "births": {
-            "baseline": {"2": {"0": 8.0, "1": 16.0}},
-            "horizon": {"2": {"0": 4.0, "1": 8.0}},
-        },
-    }
-
-    expected_demog = pd.Series(
-        [0.5, 0.5, 0.5, 0.5],
-        index=pd.MultiIndex.from_tuples([(1, 0), (1, 1), (2, 0), (2, 1)], names=["sex", "age"]),
-        name="demographic_adjustment",
-    )
-    expected_birth = pd.Series(
-        [0.5, 0.5],
-        index=pd.MultiIndex.from_tuples([(2, 0), (2, 1)], names=["sex", "age"]),
-        name="birth_adjustment",
-    )
+    mdl.params["demographic_adjustment"] = dict({"population": "population", "births": "births"})
+    mdl._get_pop_factors = Mock(return_value="pop")
+    mdl._get_birth_factors = Mock(return_value="birth")
 
     # act
     mdl._load_demog_factors(data_loader)
 
     # assert
-    assert mdl.demog_factors.equals(expected_demog)
-    assert mdl.birth_factors.equals(expected_birth)
-    assert mdl.demog_factors.index.names == ["sex", "age"]
-    assert mdl.birth_factors.index.names == ["sex", "age"]
-    data_loader.get_demographic_factors.assert_not_called()
-    data_loader.get_birth_factors.assert_not_called()
+    assert mdl.demog_factors == "pop"
+    assert mdl.birth_factors == "birth"
+    mdl._get_pop_factors.assert_called_once_with("population")
+    mdl._get_birth_factors.assert_called_once_with("births")
+
+
+@pytest.mark.unit
+def test_get_pop_factors():
+    # arrange
+    values = {
+        "baseline": {"1": {"0": 10.0, "1": 20.0}, "2": {"0": 50.0, "1": 100.0}},
+        "horizon": {"1": {"0": 5.0, "1": 10.0}, "2": {"0": 25.0, "1": 50.0}},
+    }
+
+    expected = pd.Series(
+        [0.5, 0.5, 0.5, 0.5],
+        index=pd.MultiIndex.from_tuples([(1, 0), (1, 1), (2, 0), (2, 1)], names=["sex", "age"]),
+        name="demographic_adjustment",
+    )
+
+    # act
+    actual = Model._get_pop_factors(values)
+
+    # assert
+    assert actual.equals(expected)
+
+
+@pytest.mark.unit
+def test_get_birth_factors():
+    # arrange
+    values = {
+        "baseline": {"2": {"15": 8.0, "16": 24.0, "44": 16.0}},
+        "horizon": {"2": {"15": 2.0, "16": 3.0, "44": 8.0}},
+    }
+    overall_rate = sum(values["horizon"]["2"].values()) / sum(values["baseline"]["2"].values())
+
+    expected_birth = pd.Series(
+        [overall_rate] * 2 + [0.25] * 3 + [0.125] + [0.5] * 12,
+        index=pd.MultiIndex.from_tuples(
+            [(1, 0), (2, 0)] + [(2, i) for i in list(range(13, 17)) + list(range(44, 56))],
+            names=["sex", "age"],
+        ),
+        name="birth_adjustment",
+    )
+
+    # act
+    actual = Model._get_birth_factors(values)
+
+    # assert
+    assert actual.equals(expected_birth)
 
 
 # _generate_run_params()
