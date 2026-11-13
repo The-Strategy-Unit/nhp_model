@@ -172,9 +172,12 @@ class Model:
           * `self.birth_factors`: a pandas.Series for each age/sex combination
         """
         demog = self.params["demographic_adjustment"]
+        self.demog_factors = self._get_pop_factors(demog["population"])
+        self.birth_factors = self._get_birth_factors(demog["births"])
 
-        pop = demog["population"]
-        self.demog_factors = pd.Series(
+    @staticmethod
+    def _get_pop_factors(pop: dict) -> pd.Series:
+        pop_factors = pd.Series(
             {
                 (int(s), int(a)): pop["horizon"][s][a] / v
                 for s in ["1", "2"]
@@ -182,17 +185,32 @@ class Model:
             },
             name="demographic_adjustment",
         )
-        self.demog_factors.index.names = ["sex", "age"]
+        pop_factors.index.names = ["sex", "age"]
+        return pop_factors
 
-        births = demog["births"]
-        self.birth_factors = pd.Series(
+    @staticmethod
+    def _get_birth_factors(births: dict) -> pd.Series:
+        birth_factors = pd.Series(
             {
                 (2, int(a)): births["horizon"]["2"][a] / v
                 for a, v in births["baseline"]["2"].items()
             },
             name="birth_adjustment",
         )
-        self.birth_factors.index.names = ["sex", "age"]
+        # insert birth factors for 13/14 yo females
+        for i in [13, 14]:
+            birth_factors.loc[(2, i)] = birth_factors.loc[(2, 15)]
+        # insert birth factors for >44 yo females
+        for i in range(45, 56):
+            birth_factors.loc[(2, i)] = birth_factors.loc[(2, 44)]
+        # insert overall birth rate for males/females aged 0
+        overall_birth_rate = sum(births["horizon"]["2"].values()) / sum(
+            births["baseline"]["2"].values()
+        )
+        for s in [1, 2]:
+            birth_factors.loc[(s, 0)] = overall_birth_rate
+        birth_factors.index.names = ["sex", "age"]
+        return birth_factors.sort_index()
 
     def _load_inequalities_factors(self, data_loader: Data) -> None:
         """Load the inequalities factors.
